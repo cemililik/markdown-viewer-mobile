@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The launcher label shown under the app icon. The user-facing copy
+         inside the app itself is localized via Flutter ARB files in
+         lib/l10n/ — this XML resource only controls the OS-level launcher
+         label. -->
+    <string name="app_name">Markdown Viewer</string>
+</resources>

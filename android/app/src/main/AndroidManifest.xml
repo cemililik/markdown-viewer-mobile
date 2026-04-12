@@ -1,6 +1,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Required by the repo_sync feature in release builds. The debug
+         and profile manifests inherit this declaration through Flutter's
+         manifest merger; declaring it in the main manifest ensures it
+         applies to release builds too. See ADR-0011 (network policy)
+         and docs/standards/security-standards.md for the rules around
+         when this permission may actually be exercised. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
-        android:label="markdown_viewer"
+        android:label="@string/app_name"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

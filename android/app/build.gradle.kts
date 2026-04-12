@@ -32,9 +32,24 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Release builds intentionally have NO signing configuration
+            // wired up here. Local `flutter run --release` will fail until
+            // the developer (or CI) supplies a release keystore — this is
+            // the desired behaviour because falling back to the debug
+            // keystore would let an unintended key reach production.
+            //
+            // To produce a signable release build, populate the following
+            // properties in `android/key.properties` (gitignored):
+            //
+            //   storeFile=path/to/release.keystore
+            //   storePassword=...
+            //   keyAlias=...
+            //   keyPassword=...
+            //
+            // and add a matching `signingConfigs.create("release") { ... }`
+            // block above this `buildTypes` section that reads them.
+            // CI release pipelines should populate `key.properties` from
+            // secrets at build time and never commit it.
         }
     }
 }
