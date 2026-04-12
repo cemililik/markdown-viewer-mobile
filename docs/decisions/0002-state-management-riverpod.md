@@ -17,11 +17,14 @@ BLoC, GetX, MobX, Redux, and Signals. We need:
 ## Decision
 
 Use **`flutter_riverpod`** together with **`riverpod_generator`** for code
-generation. Notifiers and providers are written as `@riverpod` annotated
-functions or classes, producing `Notifier`, `AsyncNotifier`, and plain
-`Provider` outputs as appropriate. Manual `Provider((_) => ...)`
-declarations are not used — the generator is the canonical provider
-pattern across the whole codebase.
+generation. Notifiers and providers are written as `@riverpod` or
+`@Riverpod(...)` annotated functions or classes, producing `Notifier`,
+`AsyncNotifier`, and plain `Provider` outputs as appropriate. Both
+annotation forms are accepted — use the bare `@riverpod` for the
+common case and the configurable `@Riverpod(...)` form when an option
+is needed (e.g. `@Riverpod(keepAlive: true)` on the router provider).
+Manual `Provider((_) => ...)` declarations are not used — the generator
+is the canonical provider pattern across the whole codebase.
 
 Concrete pinned versions live in [tech-stack.md](../tech-stack.md) and
 `pubspec.yaml`. The original 2.5+ pin in this ADR was updated to the
