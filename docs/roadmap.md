@@ -12,7 +12,7 @@ gantt
     axisFormat  %b %d
 
     section Phase 0
-    Foundation             :p0, 2026-04-13, 7d
+    Foundation             :done, p0, 2026-04-12, 1d
 
     section Phase 1
     MVP Rendering          :p1, after p0, 21d

@@ -59,9 +59,17 @@ bash tool/install-hooks.sh    # installs the pre-commit hook
 flutter test
 ```
 
-The pre-commit hook runs `dart format`, `flutter analyze`, and an ARB
-key-parity check on your staged changes. It is mandatory — do not bypass
-it with `--no-verify` (see
+The pre-commit hook runs three checks before every commit:
+
+- `dart format --set-exit-if-changed` — **only on the Dart files staged
+  for this commit** (excluding generated outputs)
+- `flutter analyze` — **project-wide**, not limited to staged files;
+  unrelated pre-existing analyzer issues anywhere in `lib/` or `test/`
+  will block the commit until they are fixed
+- ARB key-parity — only when ARB files are staged, ensures every locale
+  has the same key set as `app_en.arb`
+
+The hook is mandatory — do not bypass it with `--no-verify` (see
 [git-workflow-standards.md](docs/standards/git-workflow-standards.md)).
 
 ### Running the app
