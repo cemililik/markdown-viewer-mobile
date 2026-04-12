@@ -53,9 +53,16 @@ privately so we can coordinate a fix and a responsible disclosure.
 git clone <repo-url>
 cd markdown_viewer
 flutter pub get
+flutter gen-l10n
 dart run build_runner build --delete-conflicting-outputs
+bash tool/install-hooks.sh    # installs the pre-commit hook
 flutter test
 ```
+
+The pre-commit hook runs `dart format`, `flutter analyze`, and an ARB
+key-parity check on your staged changes. It is mandatory — do not bypass
+it with `--no-verify` (see
+[git-workflow-standards.md](docs/standards/git-workflow-standards.md)).
 
 ### Running the app
 

@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+#
+# Pre-commit hook for Mobile Markdown Viewer.
+#
+# Runs the same checks CI runs, but only against the files staged for commit
+# so it stays fast. Install once with:
+#
+#   tool/install-hooks.sh
+#
+# Bypassing this hook with `git commit --no-verify` is forbidden by the
+# project standards (see docs/standards/git-workflow-standards.md).
+
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
+
+info()  { printf "${GREEN}[pre-commit]${NC} %s\n" "$1"; }
+warn()  { printf "${YELLOW}[pre-commit]${NC} %s\n" "$1"; }
+fail()  { printf "${RED}[pre-commit]${NC} %s\n" "$1" >&2; exit 1; }
+
+# Portable across bash 3.2 (macOS default) and bash 4+: store staged
+# file lists in newline-separated strings rather than arrays.
+
+# 1) Collect staged Dart files (added, copied, modified, renamed),
+#    excluding generated outputs.
+STAGED_DART=$(
+  git diff --cached --name-only --diff-filter=ACMR -- '*.dart' \
+    | grep -v -E '\.g\.dart$|\.freezed\.dart$|^lib/l10n/generated/' \
+    || true
+)
+
+# 2) Collect staged ARB files.
+STAGED_ARB=$(
+  git diff --cached --name-only --diff-filter=ACMR -- 'lib/l10n/*.arb' \
+    || true
+)
+
+if [[ -z "$STAGED_DART" && -z "$STAGED_ARB" ]]; then
+  info "No Dart or ARB changes staged; skipping checks."
+  exit 0
+fi
+
+# 3) Format check (Dart files only).
+if [[ -n "$STAGED_DART" ]]; then
+  DART_COUNT=$(printf '%s\n' "$STAGED_DART" | wc -l | tr -d ' ')
+  info "Checking format on ${DART_COUNT} file(s)..."
+  # xargs handles whitespace-safe expansion of the file list.
+  if ! printf '%s\n' "$STAGED_DART" | xargs dart format --output=none --set-exit-if-changed; then
+    fail "Formatting issues found. Run 'dart format .' and re-stage."
+  fi
+fi
+
+# 4) Static analysis. Analyzer needs the whole project to resolve imports
+#    correctly, so we run it project-wide but only on touched paths.
+info "Running flutter analyze..."
+if ! flutter analyze --no-fatal-infos; then
+  fail "Static analysis failed. Fix the issues above and re-stage."
+fi
+
+# 5) ARB completeness — every secondary locale must have the same key set
+#    as the source ARB. A missing key is a hard failure.
+if [[ -n "$STAGED_ARB" ]]; then
+  info "Verifying ARB key parity..."
+
+  SOURCE='lib/l10n/app_en.arb'
+  if [[ ! -f "$SOURCE" ]]; then
+    warn "Source ARB $SOURCE not found; skipping parity check."
+  else
+    EN_KEYS=$(python3 -c "import json,sys; d=json.load(open('$SOURCE')); print('\n'.join(sorted(k for k in d if not k.startswith('@'))))")
+    for arb in lib/l10n/app_*.arb; do
+      [[ "$arb" == "$SOURCE" ]] && continue
+      OTHER_KEYS=$(python3 -c "import json,sys; d=json.load(open('$arb')); print('\n'.join(sorted(k for k in d if not k.startswith('@'))))")
+      MISSING=$(comm -23 <(echo "$EN_KEYS") <(echo "$OTHER_KEYS") || true)
+      EXTRA=$(comm -13 <(echo "$EN_KEYS") <(echo "$OTHER_KEYS") || true)
+      if [[ -n "$MISSING" ]]; then
+        fail "$arb is missing keys present in $SOURCE:
+$MISSING"
+      fi
+      if [[ -n "$EXTRA" ]]; then
+        fail "$arb has keys not present in $SOURCE:
+$EXTRA"
+      fi
+    done
+  fi
+fi
+
+# 6) Targeted tests. Skipped by default to keep the hook fast — set
+#    PRECOMMIT_RUN_TESTS=1 to enable. CI runs the full suite anyway.
+if [[ "${PRECOMMIT_RUN_TESTS:-0}" == "1" ]]; then
+  info "Running tests..."
+  if ! flutter test; then
+    fail "Tests failed. Fix them and re-stage."
+  fi
+fi
+
+info "All checks passed."
