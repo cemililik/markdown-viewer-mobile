@@ -34,7 +34,17 @@ sealed class Failure implements Exception {
   @override
   String toString() {
     final base = '$name($message)';
-    return cause == null ? base : '$base <- $cause';
+    if (cause == null) {
+      return base;
+    }
+    // Deliberately emit only the cause's *type name*, never the raw
+    // cause value. A [cause] can hold arbitrary data — file contents,
+    // response bodies, HTTP headers, authentication tokens — and a
+    // naive `'$base <- $cause'` interpolation would route that payload
+    // through every logger and crash report that touches this string.
+    // See docs/standards/security-standards.md (logging rules).
+    // ignore: no_runtimeType_toString
+    return '$base <- ${cause.runtimeType}';
   }
 }
 

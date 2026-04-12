@@ -30,17 +30,21 @@ CI must fail on a coverage regression of more than 1%.
 - Pure Dart, no Flutter bindings
 - One class per test file
 - Use `mocktail` for mocks; prefer hand-written `Fake` for repositories
-- Arrange / act / assert structure with blank-line separators
+- Arrange / act / assert structure expressed as **blank-line separated
+  blocks**, not as `// arrange`, `// act`, `// assert` comment labels.
+  The labels are redundant — they restate what the next line plainly
+  shows — and violate the project's broader "do not write comments
+  that explain *what* the code does" rule in
+  [coding-standards.md](coding-standards.md). Use comments only when
+  the *why* is non-obvious (e.g. a regression guard or an
+  environment-specific assumption).
 
 ```dart
 test('should return ParseFailure when input is empty', () {
-  // arrange
   final parser = MarkdownParser();
 
-  // act
   final result = parser.parse('');
 
-  // assert
   expect(result, isA<ParseFailure>());
 });
 ```

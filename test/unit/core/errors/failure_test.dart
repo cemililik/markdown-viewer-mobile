@@ -4,7 +4,6 @@ import 'package:markdown_viewer/core/errors/failure.dart';
 void main() {
   group('Failure', () {
     test('should expose a stable tree-shake-safe name for each subtype', () {
-      // arrange
       const failures = <Failure>[
         FileNotFoundFailure(message: 'gone'),
         PermissionDeniedFailure(message: 'denied'),
@@ -12,53 +11,53 @@ void main() {
         RenderFailure(message: 'render'),
         UnknownFailure(message: 'what'),
       ];
-      const expected = <String>[
+
+      final names = failures.map((f) => f.name).toList();
+
+      expect(names, const [
         'FileNotFoundFailure',
         'PermissionDeniedFailure',
         'ParseFailure',
         'RenderFailure',
         'UnknownFailure',
-      ];
-
-      // act
-      final names = failures.map((f) => f.name).toList();
-
-      // assert
-      expect(names, expected);
+      ]);
     });
 
     test('should implement Exception so repositories can throw them', () {
-      // act & assert
       expect(const FileNotFoundFailure(message: 'nope'), isA<Exception>());
     });
 
     test('should render message and type in toString without a cause', () {
-      // act
       const failure = ParseFailure(message: 'bad utf8');
 
-      // assert
       expect(failure.toString(), 'ParseFailure(bad utf8)');
     });
 
-    test('should include cause in toString when present', () {
-      // arrange
-      const cause = FormatException('not utf8');
+    test('should emit only the cause type in toString, never the value', () {
+      // Regression guard for the security rule in
+      // security-standards.md: `cause` can hold raw file contents,
+      // response bodies, or credentials, and must never be rendered
+      // into a string that will reach a logger.
+      const secret = FormatException('extremely sensitive payload');
+      const failure = ParseFailure(message: 'bad utf8', cause: secret);
 
-      // act
-      const failure = ParseFailure(message: 'bad utf8', cause: cause);
+      final text = failure.toString();
 
-      // assert
-      expect(failure.toString(), contains('ParseFailure(bad utf8)'));
-      expect(failure.toString(), contains('FormatException'));
+      expect(text, contains('ParseFailure(bad utf8)'));
+      expect(text, contains('FormatException'));
+      expect(
+        text,
+        isNot(contains('extremely sensitive payload')),
+        reason: 'toString must not leak the raw cause value',
+      );
     });
 
     test('should allow exhaustive switch over all subtypes', () {
-      // arrange
+      // Regression guard: adding a new Failure subtype without updating
+      // call sites should break this build via the compile-time
+      // exhaustiveness check on sealed classes.
       const Failure failure = ParseFailure(message: 'bad');
 
-      // act — a switch expression on a sealed class is exhaustive at
-      // compile time; this test is a regression guard so adding a new
-      // Failure subtype without updating call sites breaks the build.
       final label = switch (failure) {
         FileNotFoundFailure() => 'not-found',
         PermissionDeniedFailure() => 'denied',
@@ -67,7 +66,6 @@ void main() {
         UnknownFailure() => 'unknown',
       };
 
-      // assert
       expect(label, 'parse');
     });
   });

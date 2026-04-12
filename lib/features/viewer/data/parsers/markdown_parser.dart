@@ -36,12 +36,15 @@ final class MarkdownParser {
 
   String _decode(List<int> bytes) {
     // Strip a leading UTF-8 BOM if present so it does not leak into
-    // the first heading or paragraph.
+    // the first heading or paragraph. `Utf8Decoder.convert` accepts a
+    // start offset, which lets us skip the 3 BOM bytes without
+    // allocating a copy of the backing byte array — important for
+    // large files where `bytes.sublist(3)` would double peak memory.
     if (bytes.length >= 3 &&
         bytes[0] == 0xEF &&
         bytes[1] == 0xBB &&
         bytes[2] == 0xBF) {
-      return utf8.decode(bytes.sublist(3));
+      return const Utf8Decoder().convert(bytes, 3);
     }
     return utf8.decode(bytes);
   }
@@ -61,22 +64,36 @@ final class MarkdownParser {
     final nodes = document.parseLines(const LineSplitter().convert(source));
     final out = <HeadingRef>[];
     final seenAnchors = <String, int>{};
+    _walkForHeadings(nodes, out, seenAnchors);
+    return List.unmodifiable(out);
+  }
+
+  /// Depth-first walk that collects heading elements from anywhere in
+  /// the parsed AST, not just top-level nodes. Headings can legally
+  /// appear inside blockquotes, list items, and other container blocks;
+  /// a top-level-only scan would silently drop them from the TOC.
+  void _walkForHeadings(
+    List<md.Node> nodes,
+    List<HeadingRef> out,
+    Map<String, int> seenAnchors,
+  ) {
     for (final node in nodes) {
       if (node is! md.Element) {
         continue;
       }
       final level = _headingLevel(node.tag);
-      if (level == null) {
-        continue;
+      if (level != null) {
+        final text = _plainText(node);
+        if (text.isNotEmpty) {
+          final anchor = _uniqueAnchor(text, seenAnchors);
+          out.add(HeadingRef(level: level, text: text, anchor: anchor));
+        }
       }
-      final text = _plainText(node);
-      if (text.isEmpty) {
-        continue;
+      final children = node.children;
+      if (children != null && children.isNotEmpty) {
+        _walkForHeadings(children, out, seenAnchors);
       }
-      final anchor = _uniqueAnchor(text, seenAnchors);
-      out.add(HeadingRef(level: level, text: text, anchor: anchor));
     }
-    return List.unmodifiable(out);
   }
 
   int? _headingLevel(String tag) {
