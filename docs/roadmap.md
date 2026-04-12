@@ -12,25 +12,30 @@ gantt
     axisFormat  %b %d
 
     section Phase 0
-    Foundation             :done, p0, 2026-04-12, 1d
+    Foundation               :done, p0, 2026-04-12, 1d
 
     section Phase 1
-    MVP Rendering          :p1, after p0, 21d
+    1.1 Domain + parser      :done, p11, 2026-04-13, 1d
+    1.2 End-to-end slice     :done, p12, after p11, 1d
+    1.3 Code + GFM verify    :done, p13, after p12, 1d
+    1.4 LaTeX math           :active, p14, after p13, 3d
+    1.5 Admonitions          :p15, after p14, 2d
+    1.6 Mermaid diagrams     :p16, after p15, 7d
 
     section Phase 2
-    Advanced Blocks        :p2, after p1, 14d
+    Advanced Blocks polish   :p2, after p16, 7d
 
     section Phase 3
-    Reading Experience     :p3, after p2, 14d
+    Reading Experience       :p3, after p2, 14d
 
     section Phase 4
-    Platform Integration   :p4, after p3, 7d
+    Platform Integration     :p4, after p3, 7d
 
     section Phase 4.5
-    Repo Sync              :p45, after p4, 14d
+    Repo Sync                :p45, after p4, 14d
 
     section Phase 5
-    Hardening & Release    :p5, after p45, 10d
+    Hardening & Release      :p5, after p45, 10d
 ```
 
 ## Phase 0 — Foundation
@@ -62,32 +67,146 @@ both themes. ✅ `flutter analyze` clean, smoke test passing.
 
 ## Phase 1 — MVP Rendering
 
-**Goal**: Open a file and render core markdown correctly.
+**Goal**: Open a file and render every block type we promise, correctly
+and legibly, on both themes. Phase 1 is split into six thin slices so
+each can ship, be reviewed, and stay under a tight commit size.
 
-- Domain models: `Document`, `Heading`, `Block`, `Failure`
-- `markdown` package integration with GFM enabled
-- Custom block syntax stubs (mermaid, math, admonitions)
-- `markdown_widget` integration with theming
-- Syntax-highlighted code blocks
-- Tables, task lists, footnotes
-- File picker integration
-- Failure mapping and error UI
+### Phase 1.1 — Domain + parser
 
-**Exit criteria**: A typical README renders pixel-correct vs GitHub's
-renderer; coverage ≥ 80%.
+**Status**: ✅ Completed 2026-04-12
 
-## Phase 2 — Advanced Blocks
+- [x] Sealed `Failure` hierarchy in `lib/core/errors/failure.dart`
+- [x] `Document`, `HeadingRef` (freezed) + `DocumentId` extension type
+- [x] `DocumentRepository` domain port
+- [x] `MarkdownParser` (CommonMark + GFM, recursive heading walk,
+      stable slug anchors, BOM-safe UTF-8 decode)
+- [x] `DocumentRepositoryImpl` with typed failure mapping +
+      `Isolate.run` offload for documents ≥ 200 KiB
+- [x] Unit tests: parser (nested headings, BOM, invalid UTF-8,
+      line counting), repo (happy / missing / permission / parse /
+      isolate-branch), failure (cause-leak regression)
 
-**Goal**: Mermaid and math working end-to-end within performance budgets.
+### Phase 1.2 — End-to-end thin slice
 
-- Bundled `mermaid.min.js` asset
-- Pre-warmed `InAppWebView` for mermaid rendering
-- `flutter_math_fork` integration for inline and block math
-- SVG caching layer
-- Performance benchmarks vs budgets in `integration_test/benchmark/`
+**Status**: ✅ Completed 2026-04-13
 
-**Exit criteria**: 10 sample mermaid diagrams and a math-heavy document
-render within performance budgets on reference devices.
+- [x] Shared `ErrorView` + `LoadingView` in `lib/core/widgets/`
+- [x] `viewerDocumentProvider` (`@riverpod` family) application provider
+- [x] Domain-inverted `documentRepositoryProvider` wired at the
+      composition root via `ProviderScope.overrides` in `lib/main.dart`
+- [x] `mapFailureToViewerMessage` — exhaustive sealed switch
+- [x] `ViewerScreen` reading the provider and dispatching on
+      `AsyncValue.when` (loading / error with retry / data)
+- [x] `MarkdownView` with default `markdown_widget` config
+- [x] `/viewer?path=…` route + `ViewerRoute` helpers in `go_router`
+- [x] Library screen "Open file" button wired to `file_picker` →
+      `context.go`
+- [x] Unit + widget tests: notifier state transitions, mapper
+      exhaustive TR/EN check, viewer screen three states
+
+### Phase 1.3 — Themed code blocks + GFM verification
+
+**Status**: ✅ Completed 2026-04-13
+
+- [x] Theme-aware `PreConfig` using Material 3 `surfaceContainer*`
+      colours + `outlineVariant` border
+- [x] `atomOneLight` / `atomOneDark` syntax themes from
+      `flutter_highlight` (added as direct dep)
+- [x] Fixtures: `code_blocks.md` (dart, bash, json, unknown, no-lang)
+      and `gfm_features.md` (table, task list, footnote, strikethrough)
+- [x] Widget tests locking in highlighting, table rendering, task-list
+      checkbox icons, footnotes, strikethrough on both themes
+- [x] `appLoggerProvider` Riverpod binding (replacing the rejected
+      top-level `appLogger` singleton)
+
+### Phase 1.4 — LaTeX math — **Next**
+
+**Goal**: Render inline `$…$` and block `$$…$$` math using
+`flutter_math_fork`, plugged into `markdown_widget` via custom inline
+and block builders.
+
+- [ ] Custom `InlineSyntax` / `BlockSyntax` on the data layer to
+      recognise `$…$` and `$$…$$` tokens inside the CommonMark AST
+      without breaking existing escape-sequence behaviour
+- [ ] `flutter_math_fork` widget wrappers in the presentation layer
+      (inline wraps into a `WidgetSpan`, block wraps with horizontal
+      scroll overflow for long equations)
+- [ ] Extend `MarkdownView` config with the custom builders
+- [ ] Fixture: `math.md` with inline expressions, display equations,
+      a matrix, and a broken expression that must fall back to a
+      styled placeholder
+- [ ] Widget tests: inline math round-trip, block math centred,
+      malformed math surfaces a `RenderFailure` placeholder
+- [ ] Parser-level unit tests for the custom syntax
+
+**Exit criteria**: A math-heavy document renders without text
+reflow/ jitter, and malformed input never crashes the viewer.
+
+### Phase 1.5 — Admonitions
+
+**Goal**: Recognise `!!! note|warning|tip|danger` block syntax and
+render themed containers.
+
+- [ ] Custom `BlockSyntax` that detects the `!!!` fence and captures
+      its optional title line
+- [ ] `AdmonitionView` widget keyed off `ColorScheme.tertiary*` for
+      note / `errorContainer` for warning / `primaryContainer` for tip
+- [ ] `MarkdownView` config extension
+- [ ] Fixture + widget tests for each admonition kind
+
+**Exit criteria**: All four admonition variants render on both
+themes with the right icon and colour, and unknown variants fall
+back to the `note` styling.
+
+### Phase 1.6 — Mermaid diagrams
+
+**Goal**: Render mermaid fenced code blocks as inline SVGs through a
+sandboxed, pre-warmed `InAppWebView`. This is the heaviest slice in
+Phase 1 and may span multiple commits.
+
+- [ ] Bundle `mermaid.min.js` as a project asset
+- [ ] `MermaidRenderer` service with an async render queue and LRU
+      `sha256(source) → svg` cache (in-memory, bounded)
+- [ ] Pre-warmed `InAppWebView` created at app start, sandboxed per
+      [security-standards.md](standards/security-standards.md)
+      (no network, no file access, no cookies, CSP meta tag)
+- [ ] `MermaidBlockBuilder` hooked into `MarkdownView`'s
+      `PreConfig.builder` that detects `language == 'mermaid'` and
+      renders the returned SVG via `flutter_svg`
+- [ ] Error UI for failed mermaid parses (inline `ErrorView`
+      placeholder, never crashes the document)
+- [ ] Fixtures: flowchart, sequence diagram, class diagram, state
+      diagram, ER diagram, gantt, a broken mermaid source
+- [ ] Widget + integration tests including the broken-source case
+- [ ] Performance measurement against the < 800 ms typical budget
+
+**Exit criteria**: Every mermaid diagram type from
+[features.md](features.md) renders on both themes; the renderer
+survives an instant theme flip; malformed diagrams never crash the
+viewer.
+
+**Phase 1 exit criteria**: A typical README (`test/fixtures/markdown/
+typical.md` + a math-heavy doc + a mermaid-heavy doc) renders
+pixel-correct vs GitHub's renderer with matching semantics;
+domain + application + data coverage ≥ 80 %.
+
+## Phase 2 — Advanced Blocks Polish
+
+**Goal**: Harden and measure what Phase 1.4-1.6 shipped. This phase
+is mostly benchmarking, caching, and regression coverage — not new
+surface area.
+
+- [ ] Performance benchmarks vs budgets in
+      `integration_test/benchmark/` (decode, parse, render, mermaid,
+      code highlight, math)
+- [ ] Mermaid SVG cache hit-rate instrumentation
+- [ ] Math layout jitter check (no reflow on scroll)
+- [ ] Golden test baseline for every block type
+
+**Exit criteria**: 10 sample mermaid diagrams, a math-heavy
+document, and a 10k-line typical README all render within the
+budgets in [rendering-pipeline.md](rendering-pipeline.md) on the
+reference devices in [platform-support.md](platform-support.md).
 
 ## Phase 3 — Reading Experience
 
