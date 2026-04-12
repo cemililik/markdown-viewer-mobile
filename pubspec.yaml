@@ -25,9 +25,11 @@ dependencies:
   intl: ^0.20.2
 
   # ── State management & DI ───────────────────────────────────────────
-  # ADR-0002
-  flutter_riverpod: ^2.6.1
-  riverpod_annotation: ^2.6.1
+  # ADR-0002. Riverpod 3.x is required because the 2.x line pulls in
+  # `analyzer_plugin 0.12.0`, which is incompatible with the analyzer
+  # bundled with Flutter 3.41.
+  flutter_riverpod: ^3.2.1
+  riverpod_annotation: ^4.0.2
 
   # ── Navigation ──────────────────────────────────────────────────────
   # ADR-0003
@@ -70,7 +72,7 @@ dependencies:
   flutter_secure_storage: ^9.2.2
 
   # ── Models & serialization ──────────────────────────────────────────
-  freezed_annotation: ^2.4.4
+  freezed_annotation: ^3.1.0
   json_annotation: ^4.9.0
 
   # ── Utilities ───────────────────────────────────────────────────────
@@ -86,16 +88,20 @@ dev_dependencies:
   flutter_lints: ^5.0.0
 
   # ── Codegen ─────────────────────────────────────────────────────────
-  build_runner: ^2.4.13
-  riverpod_generator: ^2.6.3
-  freezed: ^2.5.7
+  build_runner: ^2.13.1
+  riverpod_generator: ^4.0.3
+  freezed: ^3.2.5
   json_serializable: ^6.8.0
   drift_dev: ^2.21.0
-  go_router_builder: ^2.7.5
+  go_router_builder: ^4.2.1
 
   # ── Custom lints (Riverpod) ─────────────────────────────────────────
-  custom_lint: ^0.7.0
-  riverpod_lint: ^2.6.3
+  # Temporarily removed because of an analyzer-version split across the
+  # codegen ecosystem (freezed 3.x and riverpod 3.x require analyzer ^9
+  # while custom_lint 0.8 still pins analyzer ^8). Re-enable by adding
+  #   custom_lint: ^0.8.x
+  #   riverpod_lint: ^3.x.x
+  # once those packages realign on a single analyzer line.
 
   # ── Testing ─────────────────────────────────────────────────────────
   mocktail: ^1.0.4
@@ -108,9 +114,15 @@ flutter:
   # under `lib/l10n/`. See `l10n.yaml` for the generation configuration.
   generate: true
 
-  assets:
-    - assets/mermaid/
-    - assets/icons/
+  # Real assets get declared here as they land. Empty directories with only
+  # .gitkeep placeholders are not declared, otherwise `flutter pub get`
+  # bundles nothing useful and the asset manifest grows unnecessarily.
+  # Re-add `assets/mermaid/` once `mermaid.min.js` is bundled (see
+  # docs/decisions/0005-mermaid-rendering.md) and `assets/icons/` once the
+  # in-app icons are added.
+  # assets:
+  #   - assets/mermaid/
+  #   - assets/icons/
 
   # fonts:
   #   - family: Inter
