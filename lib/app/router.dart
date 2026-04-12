@@ -1,8 +1,11 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/features/library/library.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-final routerProvider = Provider<GoRouter>((ref) {
+part 'router.g.dart';
+
+@Riverpod(keepAlive: true)
+GoRouter router(Ref ref) {
   return GoRouter(
     initialLocation: LibraryRoute.path,
     routes: [
@@ -13,7 +16,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
     ],
   );
-});
+}
 
 abstract final class LibraryRoute {
   static const String path = '/';
