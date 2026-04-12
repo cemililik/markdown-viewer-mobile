@@ -107,6 +107,13 @@ dev_dependencies:
   mocktail: ^1.0.4
   alchemist: ^0.12.1
 
+  # Transitive dependency of `markdown_widget` that schedules a 500 ms
+  # debounce timer on paint. Exposed here so widget tests can import
+  # `VisibilityDetectorController` and collapse the debounce to zero,
+  # otherwise `flutter_test` reports the timer as a pending-timer leak
+  # when a test pumps a MarkdownView.
+  visibility_detector: ^0.4.0+2
+
 flutter:
   uses-material-design: true
 

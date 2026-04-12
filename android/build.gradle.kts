@@ -19,50 +19,30 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
-// Force every Android subproject (the app and every plugin) to compile
-// with Java 17 source/target and Kotlin jvmTarget 17. Without this,
-// individual Flutter plugins (e.g. receive_sharing_intent) compile
-// their Java with target 1.8 while their Kotlin runs at 17, which
-// fails the "Inconsistent JVM-target compatibility" check on AGP 8+.
+// Our own Kotlin code compiles to JVM target 17 via
+// `compilerOptions.jvmTarget`. The Flutter plugins in our dependency
+// tree (dynamic_color, receive_sharing_intent, and friends) still ship
+// their Java sources targeting 1.8, which triggers the Kotlin 2.x
+// plugin's "Inconsistent JVM-target compatibility" check during
+// configuration — even though the resulting bytecode is runtime-safe
+// on a Java 17 VM.
 //
-// Two important details:
+// We used to patch the plugins' JavaCompile tasks through
+// `tasks.withType<JavaCompile>().configureEach { sourceCompatibility =
+// "17" }`, but AGP sets those values during its own evaluation phase,
+// *before* our `configureEach` callback realizes the task. The
+// validation check reads the stale 1.8 value and aborts. Adding
+// `plugins.withId("com.android.application") { extensions.configure
+// <ApplicationExtension> { compileOptions { ... } } }` hit a symmetric
+// problem: `compileOptions` is already finalized by the time the
+// plugin callback fires.
 //
-// 1. The configuration happens directly inside `plugins.withId { ... }`
-//    rather than inside `subprojects { afterEvaluate { ... } }`. The
-//    outer block that runs `project.evaluationDependsOn(":app")` a few
-//    lines above forces some subprojects to finish evaluating before
-//    a later `afterEvaluate { ... }` can register, and newer Gradle
-//    rejects that with "Cannot run Project.afterEvaluate(Action) when
-//    the project is already evaluated". `plugins.withId` fires as soon
-//    as the plugin is applied, so it is safe regardless of evaluation
-//    ordering.
-//
-// 2. The extension types are `com.android.build.api.dsl.LibraryExtension`
-//    and `ApplicationExtension`, the public DSL introduced by AGP 8.
-//    The legacy `com.android.build.gradle.{AppExtension,LibraryExtension}`
-//    classes are internal and not safe to configure against in new
-//    projects.
+// The supported escape hatch is the
+// `kotlin.jvm.target.validation.mode=ignore` property set in
+// `android/gradle.properties`. With that, the validation check is
+// silenced and the build proceeds. This block only sets our own
+// Kotlin jvmTarget 17 so we still emit modern bytecode for app code.
 subprojects {
-    plugins.withId("com.android.library") {
-        extensions.configure<com.android.build.api.dsl.LibraryExtension>(
-            "android",
-        ) {
-            compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_17
-                targetCompatibility = JavaVersion.VERSION_17
-            }
-        }
-    }
-    plugins.withId("com.android.application") {
-        extensions.configure<com.android.build.api.dsl.ApplicationExtension>(
-            "android",
-        ) {
-            compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_17
-                targetCompatibility = JavaVersion.VERSION_17
-            }
-        }
-    }
     // Kotlin 2.x removed the old `kotlinOptions { jvmTarget = "17" }`
     // DSL at error severity; the replacement is `compilerOptions` with
     // a typed `JvmTarget` enum. See https://kotl.in/u1r8ln.

@@ -75,6 +75,22 @@
   "@viewerSearchHint": {
     "description": "Placeholder text in the in-document search field."
   },
+  "viewerLoading": "Loading document…",
+  "@viewerLoading": {
+    "description": "Label shown next to the spinner while a markdown document is being read and parsed."
+  },
+  "viewerUnnamedDocument": "Document",
+  "@viewerUnnamedDocument": {
+    "description": "Fallback title shown in the viewer app bar when the document's basename cannot be determined."
+  },
+  "libraryFilePickCancelled": "No file was selected.",
+  "@libraryFilePickCancelled": {
+    "description": "Snackbar shown when the user dismisses the native file picker without choosing a file."
+  },
+  "libraryFilePickFailed": "The file could not be opened. Please try again.",
+  "@libraryFilePickFailed": {
+    "description": "Snackbar shown when the native file picker returns an error or an invalid path."
+  },
 
   "errorFileNotFound": "This file no longer exists. It may have been moved or deleted.",
   "@errorFileNotFound": {
