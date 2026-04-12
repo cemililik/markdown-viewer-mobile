@@ -2,11 +2,16 @@ import Flutter
 import UIKit
 import XCTest
 
+// Native iOS unit tests are intentionally minimal — the project has no
+// native iOS code beyond the default `AppDelegate`, and all behaviour is
+// implemented in Dart with `flutter_test` / `integration_test`. This file
+// exists so the `RunnerTests` Xcode target compiles and runs at least one
+// assertion in CI; expand it only if and when native iOS code is added.
 class RunnerTests: XCTestCase {
 
-  func testExample() {
-    // If you add code to the Runner application, consider adding tests here.
-    // See https://developer.apple.com/documentation/xctest for more information about using XCTest.
+  func testRunnerHostBootsAndExposesFlutterAppDelegate() {
+    let appDelegate = AppDelegate()
+    XCTAssertNotNil(appDelegate, "AppDelegate must instantiate")
   }
 
 }
