@@ -42,9 +42,12 @@ subprojects {
                 }
             }
         }
+        // Kotlin 2.x removed the old `kotlinOptions { jvmTarget = "17" }`
+        // DSL at error severity; the replacement is `compilerOptions`
+        // with a typed `JvmTarget` enum. See https://kotl.in/u1r8ln.
         tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-            kotlinOptions {
-                jvmTarget = JavaVersion.VERSION_17.toString()
+            compilerOptions {
+                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
             }
         }
     }
