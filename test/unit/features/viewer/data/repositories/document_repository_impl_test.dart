@@ -1,0 +1,67 @@
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:markdown_viewer/core/errors/failure.dart';
+import 'package:markdown_viewer/features/viewer/data/parsers/markdown_parser.dart';
+import 'package:markdown_viewer/features/viewer/data/repositories/document_repository_impl.dart';
+import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
+
+void main() {
+  const repo = DocumentRepositoryImpl(parser: MarkdownParser());
+
+  group('DocumentRepositoryImpl.load', () {
+    test('should load and parse an existing fixture file', () async {
+      // arrange
+      const path = DocumentId('test/fixtures/markdown/minimal.md');
+
+      // act
+      final doc = await repo.load(path);
+
+      // assert
+      expect(doc.id, path);
+      expect(doc.source, contains('# Hello'));
+      expect(doc.headings, hasLength(1));
+      expect(doc.headings.single.text, 'Hello');
+    });
+
+    test(
+      'should throw FileNotFoundFailure when the path does not exist',
+      () async {
+        // arrange
+        const path = DocumentId(
+          'test/fixtures/markdown/__definitely_missing__.md',
+        );
+
+        // act & assert
+        await expectLater(
+          repo.load(path),
+          throwsA(
+            isA<FileNotFoundFailure>().having(
+              (f) => f.message,
+              'message',
+              contains('__definitely_missing__'),
+            ),
+          ),
+        );
+      },
+    );
+
+    test(
+      'should throw ParseFailure for a file that is not valid UTF-8',
+      () async {
+        // arrange — write a byte sequence that cannot decode as UTF-8
+        // into a temp file and point the repository at it.
+        final tempDir = Directory.systemTemp.createTempSync('md_viewer_test_');
+        addTearDown(() => tempDir.deleteSync(recursive: true));
+        final tempFile = File('${tempDir.path}/bad.md')
+          ..writeAsBytesSync([0xC3, 0x28]); // lone continuation byte
+
+        // act & assert
+        await expectLater(
+          repo.load(DocumentId(tempFile.path)),
+          throwsA(isA<ParseFailure>()),
+        );
+      },
+    );
+  });
+}
