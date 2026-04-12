@@ -19,28 +19,30 @@ subprojects {
     project.evaluationDependsOn(":app")
 }
 
-// Force every Android subproject (the app and every plugin) to compile
-// with Java 17 source/target and Kotlin jvmTarget 17. Without this,
-// individual Flutter plugins (e.g. receive_sharing_intent) compile
-// their Java with target 1.8 while their Kotlin runs at 17, which
-// fails the "Inconsistent JVM-target compatibility" check on AGP 8+.
+// Our own Kotlin code compiles to JVM target 17 via
+// `compilerOptions.jvmTarget`. The Flutter plugins in our dependency
+// tree (dynamic_color, receive_sharing_intent, and friends) still ship
+// their Java sources targeting 1.8, which triggers the Kotlin 2.x
+// plugin's "Inconsistent JVM-target compatibility" check during
+// configuration — even though the resulting bytecode is runtime-safe
+// on a Java 17 VM.
 //
-// Implementation note: we configure the compile *tasks* directly
-// instead of writing through the Android extension's compileOptions
-// DSL. Earlier revisions of this block used
+// We used to patch the plugins' JavaCompile tasks through
+// `tasks.withType<JavaCompile>().configureEach { sourceCompatibility =
+// "17" }`, but AGP sets those values during its own evaluation phase,
+// *before* our `configureEach` callback realizes the task. The
+// validation check reads the stale 1.8 value and aborts. Adding
 // `plugins.withId("com.android.application") { extensions.configure
-// <ApplicationExtension> { compileOptions { ... } } }`, but on recent
-// AGP / Gradle the `compileOptions` property is already finalized by
-// the time `plugins.withId` fires, so the assignment crashes with
-// "sourceCompatibility has been finalized". Patching the JavaCompile
-// and KotlinCompile tasks via `tasks.withType(...).configureEach`
-// runs late enough to survive that lifecycle and still overrides the
-// Flutter plugins' defaults before the compilation tasks execute.
+// <ApplicationExtension> { compileOptions { ... } } }` hit a symmetric
+// problem: `compileOptions` is already finalized by the time the
+// plugin callback fires.
+//
+// The supported escape hatch is the
+// `kotlin.jvm.target.validation.mode=ignore` property set in
+// `android/gradle.properties`. With that, the validation check is
+// silenced and the build proceeds. This block only sets our own
+// Kotlin jvmTarget 17 so we still emit modern bytecode for app code.
 subprojects {
-    tasks.withType<JavaCompile>().configureEach {
-        sourceCompatibility = JavaVersion.VERSION_17.toString()
-        targetCompatibility = JavaVersion.VERSION_17.toString()
-    }
     // Kotlin 2.x removed the old `kotlinOptions { jvmTarget = "17" }`
     // DSL at error severity; the replacement is `compilerOptions` with
     // a typed `JvmTarget` enum. See https://kotl.in/u1r8ln.

@@ -5,7 +5,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/core/errors/failure.dart';
-import 'package:markdown_viewer/features/viewer/data/repositories/document_repository_provider.dart';
+import 'package:markdown_viewer/features/viewer/application/document_repository_provider.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/domain/repositories/document_repository.dart';
 import 'package:markdown_viewer/features/viewer/presentation/screens/viewer_screen.dart';
@@ -20,8 +20,20 @@ void main() {
   // pending-timer leak at teardown. Collapsing the debounce interval
   // to zero here makes the callback fire synchronously on each paint,
   // which avoids the leak without changing any production behaviour.
+  //
+  // The controller is a process-wide singleton, so we save the
+  // original interval before mutating it and restore it in
+  // `tearDownAll` — otherwise a later test file that loaded this one
+  // would inherit `Duration.zero` and lose visibility-detector
+  // behaviour it relies on.
   TestWidgetsFlutterBinding.ensureInitialized();
+  final originalUpdateInterval =
+      VisibilityDetectorController.instance.updateInterval;
   VisibilityDetectorController.instance.updateInterval = Duration.zero;
+  tearDownAll(() {
+    VisibilityDetectorController.instance.updateInterval =
+        originalUpdateInterval;
+  });
 
   const id = DocumentId('/tmp/example.md');
 

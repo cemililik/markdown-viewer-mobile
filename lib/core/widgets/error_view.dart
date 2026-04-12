@@ -14,7 +14,13 @@ class ErrorView extends StatelessWidget {
     this.retryLabel,
     this.icon = Icons.error_outline,
     super.key,
-  });
+  }) : assert(
+         onRetry == null || retryLabel != null,
+         'ErrorView.onRetry requires a non-null localized retryLabel. '
+         'Passing onRetry without retryLabel would force the widget to '
+         'pick a hard-coded English fallback for the button copy, which '
+         'violates localization-standards.md.',
+       );
 
   /// Localized, user-facing description of the failure. Must already be
   /// translated — do not pass raw [Failure.message] here.
@@ -24,8 +30,10 @@ class ErrorView extends StatelessWidget {
   /// button entirely.
   final VoidCallback? onRetry;
 
-  /// Localized label for the retry button. Required when [onRetry] is
-  /// non-null; ignored otherwise.
+  /// Localized label for the retry button. Must be non-null whenever
+  /// [onRetry] is non-null — the constructor asserts on this. Ignored
+  /// when [onRetry] is null. The widget never falls back to an
+  /// untranslated English label.
   final String? retryLabel;
 
   /// Icon shown above the message. Defaults to a generic error icon;
@@ -57,7 +65,10 @@ class ErrorView extends StatelessWidget {
                 FilledButton.tonalIcon(
                   onPressed: onRetry,
                   icon: const Icon(Icons.refresh),
-                  label: Text(retryLabel ?? 'Retry'),
+                  // `retryLabel!` is safe because the constructor
+                  // asserts that a non-null onRetry implies a non-null
+                  // retryLabel.
+                  label: Text(retryLabel!),
                 ),
               ],
             ],

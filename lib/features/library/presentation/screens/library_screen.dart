@@ -2,9 +2,9 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:logger/logger.dart';
 import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
+import 'package:markdown_viewer/core/logging/logger.dart';
 
 class LibraryScreen extends ConsumerWidget {
   const LibraryScreen({super.key});
@@ -74,7 +74,7 @@ class LibraryScreen extends ConsumerWidget {
       // file_picker can surface platform-channel errors, plugin init
       // failures, or platform-specific exceptions. None of them should
       // crash the app — log the failure and show a localized snackbar.
-      Logger().e('File picker failed', error: error, stackTrace: stackTrace);
+      appLogger.e('File picker failed', error: error, stackTrace: stackTrace);
       if (!context.mounted) {
         return;
       }

@@ -4,16 +4,15 @@
 /// a feature's internals (see
 /// `docs/standards/architecture-standards.md`).
 ///
-/// The barrel intentionally re-exports only the **domain**,
-/// **application**, and **presentation** layers. The data-layer
-/// implementation (`DocumentRepositoryImpl`, the raw `MarkdownParser`,
-/// the `documentRepositoryProvider` Riverpod binding) is internal to
-/// the feature and must not leak through this barrel — consumers
-/// outside the feature depend on the domain port and the
-/// `viewerDocumentProvider` application provider, never on the
-/// concrete data-layer symbols.
+/// The barrel re-exports only the **domain**, **application**, and
+/// **presentation** layers. Concrete data-layer symbols
+/// (`DocumentRepositoryImpl`, `MarkdownParser`) stay internal to the
+/// feature — the composition root (`lib/main.dart`) is the single
+/// place allowed to import them directly to wire up the
+/// [documentRepositoryProvider] override.
 library;
 
+export 'application/document_repository_provider.dart';
 export 'application/viewer_document.dart';
 export 'domain/entities/document.dart';
 export 'domain/repositories/document_repository.dart';

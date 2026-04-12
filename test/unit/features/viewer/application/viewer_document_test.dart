@@ -3,8 +3,8 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/core/errors/failure.dart';
+import 'package:markdown_viewer/features/viewer/application/document_repository_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/viewer_document.dart';
-import 'package:markdown_viewer/features/viewer/data/repositories/document_repository_provider.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/domain/repositories/document_repository.dart';
 

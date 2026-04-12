@@ -61,26 +61,38 @@ void main() {
   });
 
   group('mapFailureToViewerMessage (tr)', () {
-    test(
-      'should resolve every Failure in Turkish without falling back',
-      () async {
-        // Regression guard: if a Failure subtype gets added without a
-        // matching Turkish ARB key, the AppLocalizations getter would
-        // throw here rather than silently showing the English fallback.
-        final tr = await loadLocale('tr');
+    test('should return a distinct translation for every Failure, not fall '
+        'back to the English copy', () async {
+      // Asserting only `isNotEmpty` used to pass even when the ARB
+      // generator silently emitted the English string into the
+      // Turkish locale. Comparing each TR result against the matching
+      // EN result catches that case — a fresh Failure subtype shipped
+      // without a real translation would fail this test immediately.
+      final en = await loadLocale('en');
+      final tr = await loadLocale('tr');
 
-        const failures = <Failure>[
-          FileNotFoundFailure(message: 'x'),
-          PermissionDeniedFailure(message: 'x'),
-          ParseFailure(message: 'x'),
-          RenderFailure(message: 'x'),
-          UnknownFailure(message: 'x'),
-        ];
+      const failures = <Failure>[
+        FileNotFoundFailure(message: 'x'),
+        PermissionDeniedFailure(message: 'x'),
+        ParseFailure(message: 'x'),
+        RenderFailure(message: 'x'),
+        UnknownFailure(message: 'x'),
+      ];
 
-        for (final f in failures) {
-          expect(mapFailureToViewerMessage(f, tr), isNotEmpty);
-        }
-      },
-    );
+      for (final f in failures) {
+        final enMessage = mapFailureToViewerMessage(f, en);
+        final trMessage = mapFailureToViewerMessage(f, tr);
+
+        expect(trMessage, isNotEmpty);
+        expect(
+          trMessage,
+          isNot(equals(enMessage)),
+          reason:
+              'Turkish copy for ${f.runtimeType} must differ from '
+              'English — identical output means the ARB file is '
+              'missing a real translation.',
+        );
+      }
+    });
   });
 }
