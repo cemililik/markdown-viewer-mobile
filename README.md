@@ -1,8 +1,8 @@
 # Mobile Markdown Viewer
 
-A mobile-first markdown viewer for **iOS** and **Android**, built with
+A mobile-first Markdown viewer for **iOS** and **Android**, built with
 Flutter. Designed to be the best mobile reading experience for `.md`
-documents — including mermaid diagrams, LaTeX math, syntax-highlighted
+documents — including Mermaid diagrams, LaTeX math, syntax-highlighted
 code, tables, footnotes, and admonitions.
 
 ## Status
