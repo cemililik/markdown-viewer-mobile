@@ -59,6 +59,53 @@ void main() {
     );
 
     test(
+      'should parse a >= 200 KiB document through the isolate branch',
+      () async {
+        // DocumentRepositoryImpl offloads to Isolate.run when the
+        // byte count reaches the 200 KiB threshold documented in
+        // docs/rendering-pipeline.md. This test writes a ~250 KiB
+        // fixture to a temp file so the threshold is unambiguously
+        // crossed, then asserts the isolate-parsed Document has the
+        // same shape as an inline parse.
+        final tempDir = Directory.systemTemp.createTempSync(
+          'md_viewer_isolate_',
+        );
+        addTearDown(() => tempDir.deleteSync(recursive: true));
+
+        final buffer =
+            StringBuffer()
+              ..writeln('# Large Document')
+              ..writeln();
+        const filler =
+            'This paragraph repeats to grow the document beyond '
+            'the 200 KiB isolate threshold so that load() actually '
+            'takes the Isolate.run branch.\n';
+        while (buffer.length < 250 * 1024) {
+          buffer.write(filler);
+        }
+
+        final tempFile = File('${tempDir.path}/large.md')
+          ..writeAsStringSync(buffer.toString());
+
+        final path = DocumentId(tempFile.path);
+        final doc = await repo.load(path);
+
+        expect(doc.id, path);
+        expect(
+          doc.byteSize,
+          greaterThanOrEqualTo(200 * 1024),
+          reason: 'fixture must cross the isolate threshold',
+        );
+        expect(doc.source, startsWith('# Large Document'));
+        expect(doc.source, contains(filler.trim()));
+        expect(doc.headings, hasLength(1));
+        expect(doc.headings.single.text, 'Large Document');
+        expect(doc.headings.single.level, 1);
+        expect(doc.headings.single.anchor, 'large-document');
+      },
+    );
+
+    test(
       'should throw PermissionDeniedFailure when the file is unreadable',
       () async {
         if (Platform.isWindows) {

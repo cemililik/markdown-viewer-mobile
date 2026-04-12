@@ -212,6 +212,30 @@ abstract class AppLocalizations {
   /// **'Search in document'**
   String get viewerSearchHint;
 
+  /// Label shown next to the spinner while a markdown document is being read and parsed.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading document…'**
+  String get viewerLoading;
+
+  /// Fallback title shown in the viewer app bar when the document's basename cannot be determined.
+  ///
+  /// In en, this message translates to:
+  /// **'Document'**
+  String get viewerUnnamedDocument;
+
+  /// Snackbar shown when the user dismisses the native file picker without choosing a file.
+  ///
+  /// In en, this message translates to:
+  /// **'No file was selected.'**
+  String get libraryFilePickCancelled;
+
+  /// Snackbar shown when the native file picker returns an error or an invalid path.
+  ///
+  /// In en, this message translates to:
+  /// **'The file could not be opened. Please try again.'**
+  String get libraryFilePickFailed;
+
   /// User-facing message when a file path is no longer valid.
   ///
   /// In en, this message translates to:

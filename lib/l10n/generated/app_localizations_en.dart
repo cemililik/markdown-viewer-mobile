@@ -67,6 +67,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewerSearchHint => 'Search in document';
 
   @override
+  String get viewerLoading => 'Loading document…';
+
+  @override
+  String get viewerUnnamedDocument => 'Document';
+
+  @override
+  String get libraryFilePickCancelled => 'No file was selected.';
+
+  @override
+  String get libraryFilePickFailed =>
+      'The file could not be opened. Please try again.';
+
+  @override
   String get errorFileNotFound =>
       'This file no longer exists. It may have been moved or deleted.';
 

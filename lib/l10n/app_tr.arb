@@ -27,6 +27,10 @@
 
   "viewerTocTitle": "İçindekiler",
   "viewerSearchHint": "Dokümanda ara",
+  "viewerLoading": "Doküman yükleniyor…",
+  "viewerUnnamedDocument": "Doküman",
+  "libraryFilePickCancelled": "Hiçbir dosya seçilmedi.",
+  "libraryFilePickFailed": "Dosya açılamadı. Lütfen tekrar deneyin.",
 
   "errorFileNotFound": "Bu dosya artık mevcut değil. Taşınmış veya silinmiş olabilir.",
   "errorPermissionDenied": "Bu dosyayı okuma izni reddedildi. Lütfen dosyayı seçiciden tekrar seçin.",

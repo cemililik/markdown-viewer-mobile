@@ -67,6 +67,18 @@ class AppLocalizationsTr extends AppLocalizations {
   String get viewerSearchHint => 'Dokümanda ara';
 
   @override
+  String get viewerLoading => 'Doküman yükleniyor…';
+
+  @override
+  String get viewerUnnamedDocument => 'Doküman';
+
+  @override
+  String get libraryFilePickCancelled => 'Hiçbir dosya seçilmedi.';
+
+  @override
+  String get libraryFilePickFailed => 'Dosya açılamadı. Lütfen tekrar deneyin.';
+
+  @override
   String get errorFileNotFound =>
       'Bu dosya artık mevcut değil. Taşınmış veya silinmiş olabilir.';
 
