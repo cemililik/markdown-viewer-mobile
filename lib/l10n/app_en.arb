@@ -1,0 +1,147 @@
+{
+  "@@locale": "en",
+
+  "appTitle": "Markdown Viewer",
+  "@appTitle": {
+    "description": "The application name shown in the launcher and app bar."
+  },
+
+  "navLibrary": "Library",
+  "@navLibrary": {
+    "description": "Bottom navigation label for the library / recent files screen."
+  },
+  "navSettings": "Settings",
+  "@navSettings": {
+    "description": "Bottom navigation label for the settings screen."
+  },
+  "navRepoSync": "Sync",
+  "@navRepoSync": {
+    "description": "Bottom navigation label for the repository sync screen."
+  },
+
+  "libraryEmptyTitle": "No documents yet",
+  "@libraryEmptyTitle": {
+    "description": "Title shown when the library has no files."
+  },
+  "libraryEmptyMessage": "Open a markdown file or sync a repository to get started.",
+  "@libraryEmptyMessage": {
+    "description": "Body shown beneath libraryEmptyTitle."
+  },
+
+  "actionOpenFile": "Open file",
+  "@actionOpenFile": {
+    "description": "Button label that opens a file picker on the device."
+  },
+  "actionSyncRepo": "Sync repository",
+  "@actionSyncRepo": {
+    "description": "Button label that starts the repo sync flow."
+  },
+  "actionCancel": "Cancel",
+  "@actionCancel": {
+    "description": "Generic cancel button label."
+  },
+  "actionRetry": "Retry",
+  "@actionRetry": {
+    "description": "Generic retry button label, e.g. on an error screen."
+  },
+
+  "settingsThemeTitle": "Theme",
+  "@settingsThemeTitle": {
+    "description": "Section title for the theme selector in settings."
+  },
+  "settingsThemeLight": "Light",
+  "settingsThemeDark": "Dark",
+  "settingsThemeSystem": "System default",
+
+  "settingsLanguageTitle": "Language",
+  "@settingsLanguageTitle": {
+    "description": "Section title for the language selector in settings."
+  },
+  "settingsLanguageSystem": "System default",
+  "@settingsLanguageSystem": {
+    "description": "Option in the language selector that follows the OS language."
+  },
+
+  "settingsFontSizeTitle": "Font size",
+  "@settingsFontSizeTitle": {
+    "description": "Section title for the reading font size selector."
+  },
+
+  "viewerTocTitle": "Contents",
+  "@viewerTocTitle": {
+    "description": "Title of the table of contents drawer."
+  },
+  "viewerSearchHint": "Search in document",
+  "@viewerSearchHint": {
+    "description": "Placeholder text in the in-document search field."
+  },
+
+  "errorFileNotFound": "This file no longer exists. It may have been moved or deleted.",
+  "@errorFileNotFound": {
+    "description": "User-facing message when a file path is no longer valid."
+  },
+  "errorPermissionDenied": "Permission to read this file was denied. Choose the file again from the picker.",
+  "@errorPermissionDenied": {
+    "description": "User-facing message when the OS denies file access."
+  },
+  "errorParseFailed": "This document could not be read as markdown.",
+  "@errorParseFailed": {
+    "description": "User-facing message when markdown parsing fails."
+  },
+  "errorRenderFailed": "A part of this document could not be rendered.",
+  "@errorRenderFailed": {
+    "description": "User-facing message when a single block fails to render."
+  },
+  "errorUnknown": "Something went wrong. Please try again.",
+  "@errorUnknown": {
+    "description": "Fallback user-facing message for unknown failures."
+  },
+
+  "syncUrlHint": "Paste a public GitHub URL",
+  "@syncUrlHint": {
+    "description": "Placeholder in the repo sync URL input field."
+  },
+  "syncStart": "Start sync",
+  "@syncStart": {
+    "description": "Button label to begin a repository sync."
+  },
+  "syncFilesFound": "{count, plural, =0{No markdown files found} =1{1 markdown file found} other{{count} markdown files found}}",
+  "@syncFilesFound": {
+    "description": "Plural message showing how many .md files were discovered in a repo.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "12"
+      }
+    }
+  },
+  "syncProgress": "Downloading {current} of {total}",
+  "@syncProgress": {
+    "description": "Per-file progress indicator during a sync.",
+    "placeholders": {
+      "current": { "type": "int", "example": "5" },
+      "total":   { "type": "int", "example": "12" }
+    }
+  },
+  "syncCompleted": "Sync complete",
+  "@syncCompleted": {
+    "description": "Confirmation shown when a repository sync finishes successfully."
+  },
+  "syncPartial": "Some files could not be downloaded.",
+  "@syncPartial": {
+    "description": "Warning shown when a sync finishes with partial failures."
+  },
+
+  "errorRateLimited": "GitHub rate limit reached. Add a personal access token in Settings or try again later.",
+  "@errorRateLimited": {
+    "description": "User-facing message when the GitHub API responds with 403 due to rate limiting."
+  },
+  "errorRepoNotFound": "Repository or path not found. Check the URL and try again.",
+  "@errorRepoNotFound": {
+    "description": "User-facing message when the GitHub repo or sub-path returns 404."
+  },
+  "errorNetworkUnavailable": "No network connection. Sync needs internet access.",
+  "@errorNetworkUnavailable": {
+    "description": "User-facing message when the device has no connectivity during a sync."
+  }
+}

@@ -1,0 +1,104 @@
+# Security Standards
+
+## Threat Model (v1)
+
+- The app reads local files the user has explicitly chosen
+- The app makes network calls **only** when the user explicitly initiates
+  a sync from the repo-sync feature (see
+  [ADR-0011](../decisions/0011-network-access-policy.md))
+- Primary risks:
+  1. Malicious markdown triggering XSS in the mermaid WebView
+  2. Malicious file paths escaping the document sandbox
+  3. Malicious content fetched from a remote repo writing outside the
+     intended mirror directory (path traversal)
+  4. Hostile or compromised remote responses (HTML masquerading as `.md`,
+     oversized payloads, redirect loops)
+  5. Malicious code in fenced blocks being misinterpreted as executable
+
+## WebView Rules
+
+The mermaid WebView **must** be configured with:
+
+- `javaScriptEnabled: true` (required by mermaid)
+- `allowFileAccess: false`
+- `allowFileAccessFromFileURLs: false`
+- `allowUniversalAccessFromFileURLs: false`
+- `clearCache: true` on init
+- `blockNetworkLoads: true`
+- No cookies, no local storage, no IndexedDB
+- CSP meta tag: `default-src 'none'; script-src 'unsafe-inline' 'self'`
+- Only two entry points: `mermaid.render(id, code)` and the result callback
+- No JavaScript bridge exposing native APIs beyond the result channel
+
+Mermaid source is treated as **untrusted input** even when the file is local.
+
+## File System Rules
+
+- Honor scoped storage on Android 10+
+- Use `file_picker` or share intents — never construct arbitrary paths
+- Never read outside the document directory tree
+- Resolve relative image paths with normalization that rejects `..`
+  traversal outside the base directory
+- Synced repo files are written **only** under
+  `<app-documents>/synced_repos/<provider>/<owner>/<repo>/<ref>/`. Reject
+  any remote path containing `..`, absolute components, or characters
+  that resolve outside this directory after normalization.
+
+## Network Rules
+
+Network access is allowed only for the `repo_sync` feature, subject to
+all of:
+
+- All HTTP requests go through the **single shared `dio` client** in
+  `repo_sync` — no other feature creates HTTP clients
+- The client enforces an allow-list of hosts: `api.github.com`,
+  `raw.githubusercontent.com` for v1
+- Every request has a timeout (connect: 10s, total: 60s)
+- Every response is size-capped (per file: 5MB; per discovery call: 25MB)
+- Redirects are followed only within the host allow-list, max 5 hops
+- TLS verification is **never** disabled
+- A short, identifiable User-Agent is sent (no PII, no device fingerprint)
+- No cookies stored, no session resumption
+- No automatic retry on 4xx — only on transient 5xx with bounded backoff
+- Network requests are gated behind explicit user action (tap "Sync" or
+  "Refresh") and never fired from app start, navigation, or scroll
+- Any failure surfaces as a typed `Failure` and logs the basename of the
+  affected resource only
+
+## Input Handling
+
+- Treat all markdown input as untrusted
+- Strip or escape raw HTML by default
+- When HTML support lands (post-v1), use an allow-list sanitizer
+
+## Secrets
+
+- No API keys, tokens, or credentials in source
+- `.env` files are gitignored
+- Any accidentally committed secret triggers immediate rotation
+- User-supplied tokens (e.g. GitHub Personal Access Token for repo sync)
+  are stored **only** in `flutter_secure_storage`, never in
+  `shared_preferences`, drift, or app documents
+- Tokens are scoped to the minimum permission set (`public_repo`)
+- Tokens are never logged, never sent to any host outside the network
+  allow-list, and never serialized into crash reports
+
+## Dependencies
+
+- `pub outdated` reviewed monthly
+- Security advisories tracked via Dependabot
+- New dependencies require an architectural review and an ADR if they
+  expand the attack surface
+
+## Logs
+
+- Never log file contents, user input, or full file paths
+- Error logs may include the basename only
+
+## Permissions
+
+- Request the minimum set: file access at the time of use
+- The Android `INTERNET` permission is declared because of the repo-sync
+  feature, but the app must remain fully usable when the permission is
+  effectively unavailable (sync simply fails with an actionable message)
+- No location, camera, microphone, or contacts permissions

@@ -1,0 +1,31 @@
+name: markdown_viewer
+description: A mobile-first markdown viewer for iOS and Android with rich rendering for mermaid, math, code, tables, and more.
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ">=3.7.0 <4.0.0"
+  flutter: ">=3.41.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # i18n runtime support. The version range may need adjustment depending
+  # on which `intl` ships with the installed Flutter SDK — `flutter pub get`
+  # will surface a clear error if there is a conflict.
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Enables `flutter gen-l10n` to generate AppLocalizations from ARB files
+  # under `lib/l10n/`. See `l10n.yaml` for the generation configuration.
+  generate: true

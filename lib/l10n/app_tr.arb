@@ -1,0 +1,47 @@
+{
+  "@@locale": "tr",
+
+  "appTitle": "Markdown Viewer",
+
+  "navLibrary": "Kütüphane",
+  "navSettings": "Ayarlar",
+  "navRepoSync": "Senkronizasyon",
+
+  "libraryEmptyTitle": "Henüz doküman yok",
+  "libraryEmptyMessage": "Başlamak için bir markdown dosyası açın veya bir depoyu senkronize edin.",
+
+  "actionOpenFile": "Dosya aç",
+  "actionSyncRepo": "Depoyu senkronize et",
+  "actionCancel": "İptal",
+  "actionRetry": "Yeniden dene",
+
+  "settingsThemeTitle": "Tema",
+  "settingsThemeLight": "Açık",
+  "settingsThemeDark": "Koyu",
+  "settingsThemeSystem": "Sistem varsayılanı",
+
+  "settingsLanguageTitle": "Dil",
+  "settingsLanguageSystem": "Sistem varsayılanı",
+
+  "settingsFontSizeTitle": "Yazı tipi boyutu",
+
+  "viewerTocTitle": "İçindekiler",
+  "viewerSearchHint": "Dokümanda ara",
+
+  "errorFileNotFound": "Bu dosya artık mevcut değil. Taşınmış veya silinmiş olabilir.",
+  "errorPermissionDenied": "Bu dosyayı okuma izni reddedildi. Lütfen dosyayı seçiciden tekrar seçin.",
+  "errorParseFailed": "Bu doküman markdown olarak okunamadı.",
+  "errorRenderFailed": "Bu dokümanın bir kısmı görüntülenemedi.",
+  "errorUnknown": "Bir sorun oluştu. Lütfen tekrar deneyin.",
+
+  "syncUrlHint": "Herkese açık bir GitHub URL'si yapıştırın",
+  "syncStart": "Senkronizasyonu başlat",
+  "syncFilesFound": "{count, plural, =0{Markdown dosyası bulunamadı} =1{1 markdown dosyası bulundu} other{{count} markdown dosyası bulundu}}",
+  "syncProgress": "{total} dosyadan {current} tanesi indiriliyor",
+  "syncCompleted": "Senkronizasyon tamamlandı",
+  "syncPartial": "Bazı dosyalar indirilemedi.",
+
+  "errorRateLimited": "GitHub istek limitine ulaşıldı. Ayarlar'dan kişisel erişim belirteci ekleyin veya daha sonra tekrar deneyin.",
+  "errorRepoNotFound": "Depo veya yol bulunamadı. URL'yi kontrol edip tekrar deneyin.",
+  "errorNetworkUnavailable": "Ağ bağlantısı yok. Senkronizasyon için internet gerekli."
+}
