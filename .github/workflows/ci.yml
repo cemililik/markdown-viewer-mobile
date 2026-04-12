@@ -11,6 +11,15 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# All third-party actions below are pinned to full-length commit SHAs
+# instead of tags. Tags are mutable — an attacker who compromises an
+# action's repository could point the existing tag at malicious code and
+# every downstream workflow would pick it up automatically. Commit SHAs
+# are immutable, so every update is an explicit, reviewable change.
+#
+# When bumping an action, update BOTH the SHA and the trailing `# vX.Y.Z`
+# comment so reviewers can see at a glance which release is being pinned.
+
 jobs:
   lint-and-test:
     name: Lint, analyze, test
@@ -19,10 +28,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.22.0
         with:
           flutter-version: '3.41.4'
           channel: stable
@@ -40,6 +49,22 @@ jobs:
       - name: Generate localizations
         run: flutter gen-l10n
 
+      - name: Fail if generated l10n files drifted from tracked version
+        # Generated localizations under lib/l10n/generated/ are committed
+        # (see docs/standards/naming-conventions.md). If the last push
+        # forgot to regenerate them after editing an ARB file, this diff
+        # check catches it early instead of shipping stale translations.
+        run: git diff --exit-code -- lib/l10n/generated/
+
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Fail if generated Dart files drifted from tracked version
+        # Same rationale as the l10n drift check: *.g.dart and
+        # *.freezed.dart are committed, so any forgotten build_runner
+        # run shows up here.
+        run: git diff --exit-code -- '*.g.dart' '*.freezed.dart'
+
       - name: Static analysis
         run: flutter analyze --no-fatal-infos
 
@@ -48,7 +73,7 @@ jobs:
 
       - name: Upload coverage artifact
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: coverage
           path: coverage/lcov.info
@@ -63,16 +88,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Set up Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.6.0
         with:
           distribution: temurin
           java-version: '17'
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.22.0
         with:
           flutter-version: '3.41.4'
           channel: stable
@@ -83,6 +108,9 @@ jobs:
 
       - name: Generate localizations
         run: flutter gen-l10n
+
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Android APK (debug)
         run: flutter build apk --debug
@@ -95,10 +123,10 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
 
       - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.22.0
         with:
           flutter-version: '3.41.4'
           channel: stable
@@ -109,6 +137,9 @@ jobs:
 
       - name: Generate localizations
         run: flutter gen-l10n
+
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Build iOS (no codesign)
         run: flutter build ios --debug --no-codesign
