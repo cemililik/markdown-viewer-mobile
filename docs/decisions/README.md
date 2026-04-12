@@ -36,6 +36,7 @@ supersedes an old one with a new ADR.
 | [0010](0010-testing-strategy.md) | Layered testing strategy | Accepted |
 | [0011](0011-network-access-policy.md) | Network access policy — user-initiated only | Accepted |
 | [0012](0012-document-sync-architecture.md) | Document sync from public git repositories | Accepted |
+| [0013](0013-codegen-ecosystem-alignment.md) | Align codegen ecosystem on Riverpod 3.x and freezed 3.x (updates ADR-0002) | Accepted |
 
 ## Template
 

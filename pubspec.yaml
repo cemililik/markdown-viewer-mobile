@@ -7,21 +7,105 @@ environment:
   sdk: ">=3.7.0 <4.0.0"
   flutter: ">=3.41.0"
 
+# All version constraints below are best-effort recent values that match
+# the choices in docs/tech-stack.md and the relevant ADRs. If `flutter pub
+# get` reports a conflict on the installed Flutter 3.41+ SDK, bump the
+# offending caret range and re-resolve. Do not loosen any constraint to
+# `any` and do not introduce a new top-level dependency without a matching
+# ADR (see docs/standards/architecture-standards.md).
+
 dependencies:
   flutter:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
 
-  # i18n runtime support. The version range may need adjustment depending
-  # on which `intl` ships with the installed Flutter SDK — `flutter pub get`
-  # will surface a clear error if there is a conflict.
-  intl: ^0.19.0
+  # ── i18n ────────────────────────────────────────────────────────────
+  # Pinned by `flutter_localizations` from the Flutter 3.41 SDK.
+  intl: ^0.20.2
+
+  # ── State management & DI ───────────────────────────────────────────
+  # ADR-0002. Riverpod 3.x is required because the 2.x line pulls in
+  # `analyzer_plugin 0.12.0`, which is incompatible with the analyzer
+  # bundled with Flutter 3.41.
+  flutter_riverpod: ^3.2.1
+  riverpod_annotation: ^4.0.2
+
+  # ── Navigation ──────────────────────────────────────────────────────
+  # ADR-0003
+  go_router: ^14.6.2
+
+  # ── Markdown parsing & rendering ────────────────────────────────────
+  # ADR-0004
+  markdown: ^7.2.2
+  markdown_widget: ^2.3.2+8
+  re_highlight: ^0.0.3
+  flutter_highlighting: ^0.9.0
+
+  # ── Mermaid ─────────────────────────────────────────────────────────
+  # ADR-0005
+  flutter_inappwebview: ^6.1.5
+  flutter_svg: ^2.0.16
+
+  # ── Math ────────────────────────────────────────────────────────────
+  # ADR-0006
+  flutter_math_fork: ^0.7.3
+
+  # ── Local storage ───────────────────────────────────────────────────
+  # ADR-0007
+  drift: ^2.21.0
+  sqlite3_flutter_libs: ^0.5.24
+  path_provider: ^2.1.5
+  shared_preferences: ^2.3.3
+
+  # ── File I/O & share intents ────────────────────────────────────────
+  file_picker: ^8.1.4
+  receive_sharing_intent: ^1.8.1
+
+  # ── Theming ─────────────────────────────────────────────────────────
+  # ADR-0008
+  dynamic_color: ^1.7.0
+
+  # ── Repo sync (network) ─────────────────────────────────────────────
+  # ADR-0011, ADR-0012
+  dio: ^5.7.0
+  flutter_secure_storage: ^9.2.2
+
+  # ── Models & serialization ──────────────────────────────────────────
+  freezed_annotation: ^3.1.0
+  json_annotation: ^4.9.0
+
+  # ── Utilities ───────────────────────────────────────────────────────
+  logger: ^2.5.0
+  path: ^1.9.0
+  crypto: ^3.0.6
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  integration_test:
+    sdk: flutter
   flutter_lints: ^5.0.0
+
+  # ── Codegen ─────────────────────────────────────────────────────────
+  build_runner: ^2.13.1
+  riverpod_generator: ^4.0.3
+  freezed: ^3.2.5
+  json_serializable: ^6.8.0
+  drift_dev: ^2.21.0
+  go_router_builder: ^4.2.1
+
+  # ── Custom lints (Riverpod) ─────────────────────────────────────────
+  # Temporarily removed because of an analyzer-version split across the
+  # codegen ecosystem (freezed 3.x and riverpod 3.x require analyzer ^9
+  # while custom_lint 0.8 still pins analyzer ^8). Re-enable by adding
+  #   custom_lint: ^0.8.x
+  #   riverpod_lint: ^3.x.x
+  # once those packages realign on a single analyzer line.
+
+  # ── Testing ─────────────────────────────────────────────────────────
+  mocktail: ^1.0.4
+  alchemist: ^0.12.1
 
 flutter:
   uses-material-design: true
@@ -29,3 +113,20 @@ flutter:
   # Enables `flutter gen-l10n` to generate AppLocalizations from ARB files
   # under `lib/l10n/`. See `l10n.yaml` for the generation configuration.
   generate: true
+
+  # Real assets get declared here as they land. Empty directories with only
+  # .gitkeep placeholders are not declared, otherwise `flutter pub get`
+  # bundles nothing useful and the asset manifest grows unnecessarily.
+  # Re-add `assets/mermaid/` once `mermaid.min.js` is bundled (see
+  # docs/decisions/0005-mermaid-rendering.md) and `assets/icons/` once the
+  # in-app icons are added.
+  # assets:
+  #   - assets/mermaid/
+  #   - assets/icons/
+
+  # fonts:
+  #   - family: Inter
+  #     fonts:
+  #       - asset: assets/fonts/Inter/Inter-Regular.ttf
+  #       - asset: assets/fonts/Inter/Inter-Bold.ttf
+  #         weight: 700

@@ -1,0 +1,5 @@
+# In-app iconography assets.
+#
+# Platform launcher icons are generated separately under android/ and ios/
+# (see flutter_launcher_icons or the platform-native assets); this folder
+# is for in-app SVG/PNG icons used by the UI.

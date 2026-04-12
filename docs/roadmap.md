@@ -12,7 +12,7 @@ gantt
     axisFormat  %b %d
 
     section Phase 0
-    Foundation             :p0, 2026-04-13, 7d
+    Foundation             :done, p0, 2026-04-12, 1d
 
     section Phase 1
     MVP Rendering          :p1, after p0, 21d
@@ -35,20 +35,30 @@ gantt
 
 ## Phase 0 — Foundation
 
+**Status**: ✅ Completed 2026-04-12
+
 **Goal**: Empty-but-valid Flutter project wired to all tooling.
 
-- Initialize Flutter project on Flutter 3.41+ (Dart bundled)
-- Configure `analysis_options.yaml` per coding standards
-- Set up Riverpod, go_router, freezed, drift, build_runner
-- Set up CI pipeline (lint, test, build, coverage)
-- Configure pre-commit hooks
-- Create skeleton feature folders
-- Wire Material 3 theme with light / dark switching
-- First screen: empty `LibraryScreen` routed via go_router
-- Establish golden test baseline
+- [x] Initialize Flutter project on Flutter 3.41+ (Dart 3.11 bundled)
+- [x] Configure `analysis_options.yaml` per coding standards
+- [x] Add full dependency stack to `pubspec.yaml` (Riverpod, go_router,
+      drift, freezed, dio, markdown, mermaid WebView, math, etc.)
+- [x] Set up i18n infrastructure with English and Turkish defaults
+      (`lib/l10n/`, `l10n.yaml`, `context.l10n` extension)
+- [x] Set up CI pipeline (lint, analyze, test, coverage, Android + iOS
+      debug builds) — `.github/workflows/ci.yml`
+- [x] Configure pre-commit hooks (`tool/git-hooks/pre-commit` +
+      `tool/install-hooks.sh`) — format, analyze, ARB key parity
+- [x] Create skeleton feature folders (`lib/features/library/`)
+- [x] Wire Material 3 theme with light / dark + dynamic color
+      (`lib/app/theme.dart`)
+- [x] First screen: empty `LibraryScreen` routed via go_router, fully
+      localized
+- [x] Smoke widget test (`test/widget_test.dart`)
+- [ ] Establish golden test baseline _(deferred to early Phase 1)_
 
 **Exit criteria**: CI green on an empty app that renders correctly in
-both themes.
+both themes. ✅ `flutter analyze` clean, smoke test passing.
 
 ## Phase 1 — MVP Rendering
 

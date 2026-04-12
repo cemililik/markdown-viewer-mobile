@@ -1,6 +1,7 @@
 # ADR-0002: Riverpod for state management
 
-- **Status**: Accepted
+- **Status**: Accepted (version pin updated by
+  [ADR-0013](0013-codegen-ecosystem-alignment.md))
 - **Date**: 2026-04-12
 
 ## Context
@@ -15,9 +16,17 @@ BLoC, GetX, MobX, Redux, and Signals. We need:
 
 ## Decision
 
-Use **`flutter_riverpod` ≥ 2.5** together with **`riverpod_generator`**
-for code generation. Notifiers are written as `@riverpod` annotated
-functions or classes, producing `Notifier` and `AsyncNotifier` providers.
+Use **`flutter_riverpod`** together with **`riverpod_generator`** for code
+generation. Notifiers and providers are written as `@riverpod` annotated
+functions or classes, producing `Notifier`, `AsyncNotifier`, and plain
+`Provider` outputs as appropriate. Manual `Provider((_) => ...)`
+declarations are not used — the generator is the canonical provider
+pattern across the whole codebase.
+
+Concrete pinned versions live in [tech-stack.md](../tech-stack.md) and
+`pubspec.yaml`. The original 2.5+ pin in this ADR was updated to the
+3.x line by [ADR-0013](0013-codegen-ecosystem-alignment.md) for Flutter
+3.41 compatibility.
 
 ## Consequences
 

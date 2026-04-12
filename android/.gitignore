@@ -1,0 +1,18 @@
+# Local Gradle state and build outputs.
+/.gradle
+/build/
+/captures/
+/local.properties
+GeneratedPluginRegistrant.java
+.cxx/
+
+# Gradle wrapper artifacts (gradlew, gradlew.bat, gradle-wrapper.jar) are
+# intentionally tracked so contributors and CI can build the project
+# without installing Gradle separately. The wrapper properties live under
+# gradle/wrapper/gradle-wrapper.properties and are also committed.
+
+# Remember to never publicly share your keystore.
+# See https://flutter.dev/to/reference-keystore
+key.properties
+**/*.keystore
+**/*.jks

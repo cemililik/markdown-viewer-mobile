@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+#
+# Pre-commit hook for Mobile Markdown Viewer.
+#
+# Runs the same checks CI runs, but only against the files staged for commit
+# so it stays fast. Install once with:
+#
+#   tool/install-hooks.sh
+#
+# Bypassing this hook with `git commit --no-verify` is forbidden by the
+# project standards (see docs/standards/git-workflow-standards.md).
+
+set -euo pipefail
+
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[0;33m'
+NC='\033[0m'
+
+info()  { printf "${GREEN}[pre-commit]${NC} %s\n" "$1"; }
+warn()  { printf "${YELLOW}[pre-commit]${NC} %s\n" "$1"; }
+fail()  { printf "${RED}[pre-commit]${NC} %s\n" "$1" >&2; exit 1; }
+
+# All staged-file lists are NUL-delimited so paths containing whitespace,
+# newlines, or other shell metacharacters are handled correctly. We write
+# the NUL-delimited streams straight to temp files instead of capturing
+# them in shell variables, because `$( ... )` and `printf '%s'` truncate
+# at the first NUL in most shells. The hook is portable across bash 3.2
+# (macOS default) and bash 4+ because it never uses `mapfile` or array
+# indexing.
+
+STAGED_DART_FILE=$(mktemp)
+STAGED_ARB_FILE=$(mktemp)
+PARTIAL_FILE=$(mktemp)
+STAGED_CACHED_FILE=$(mktemp)
+STAGED_WORKING_FILE=$(mktemp)
+trap 'rm -f "$STAGED_DART_FILE" "$STAGED_ARB_FILE" "$PARTIAL_FILE" "$STAGED_CACHED_FILE" "$STAGED_WORKING_FILE"' EXIT
+
+# 1) Reject partially-staged Dart or ARB files. dart format and the ARB
+#    parity check inspect the working tree, so a file that has both
+#    staged and unstaged changes would be checked against content that
+#    differs from what is about to be committed. Force the contributor
+#    to either stage everything or stash the rest.
+git diff --cached --name-only -z --diff-filter=ACMR -- '*.dart' 'lib/l10n/*.arb' \
+  > "$STAGED_CACHED_FILE" || true
+git diff           --name-only -z --diff-filter=ACMR -- '*.dart' 'lib/l10n/*.arb' \
+  > "$STAGED_WORKING_FILE" || true
+
+# Translate NUL-delimited lists to newline-delimited for `comm`. These
+# three xargs invocations are safe because `comm` works on line-sorted
+# text — the intermediate newline form is discarded immediately after
+# the comparison.
+if [[ -s "$STAGED_CACHED_FILE" && -s "$STAGED_WORKING_FILE" ]]; then
+  comm -12 \
+    <(tr '\0' '\n' < "$STAGED_CACHED_FILE"  | sort -u) \
+    <(tr '\0' '\n' < "$STAGED_WORKING_FILE" | sort -u) \
+    > "$PARTIAL_FILE" || true
+
+  if [[ -s "$PARTIAL_FILE" ]]; then
+    PARTIAL=$(cat "$PARTIAL_FILE")
+    fail "These files have both staged and unstaged changes — the hook
+cannot reliably check what is about to be committed. Either
+\`git add\` the rest of each file or \`git stash --keep-index\`
+the unstaged portion before committing:
+
+$PARTIAL"
+  fi
+fi
+
+# 2) Collect staged Dart files (added, copied, modified, renamed),
+#    excluding generated outputs. NUL-delimited on disk.
+git diff --cached --name-only -z --diff-filter=ACMR -- '*.dart' \
+  | grep -zvE '\.g\.dart$|\.freezed\.dart$|^lib/l10n/generated/' \
+  > "$STAGED_DART_FILE" || true
+
+# 3) Collect staged ARB files. NUL-delimited on disk.
+git diff --cached --name-only -z --diff-filter=ACMR -- 'lib/l10n/*.arb' \
+  > "$STAGED_ARB_FILE" || true
+
+if [[ ! -s "$STAGED_DART_FILE" && ! -s "$STAGED_ARB_FILE" ]]; then
+  info "No Dart or ARB changes staged; skipping checks."
+  exit 0
+fi
+
+# 4) Format check on staged Dart files. Count equals the number of
+#    trailing NUL bytes in the file.
+if [[ -s "$STAGED_DART_FILE" ]]; then
+  DART_COUNT=$(tr -cd '\0' < "$STAGED_DART_FILE" | wc -c | tr -d ' ')
+  info "Checking format on ${DART_COUNT} file(s)..."
+  if ! xargs -0 dart format --output=none --set-exit-if-changed < "$STAGED_DART_FILE"; then
+    fail "Formatting issues found. Run 'dart format .' and re-stage."
+  fi
+fi
+
+# 5) Static analysis runs project-wide. The analyzer needs the whole
+#    package to resolve imports, so this check may flag issues in files
+#    you did not touch. CONTRIBUTING.md documents that limitation.
+info "Running flutter analyze (project-wide)..."
+if ! flutter analyze --no-fatal-infos; then
+  fail "Static analysis failed. Fix the issues above and re-stage."
+fi
+
+# 6) ARB completeness — every secondary locale must have the same key
+#    set as the source ARB. A missing or extra key is a hard failure.
+if [[ -s "$STAGED_ARB_FILE" ]]; then
+  info "Verifying ARB key parity..."
+
+  SOURCE='lib/l10n/app_en.arb'
+  if [[ ! -f "$SOURCE" ]]; then
+    warn "Source ARB $SOURCE not found; skipping parity check."
+  else
+    EN_KEYS=$(python3 -c "import json; d=json.load(open('$SOURCE')); print('\n'.join(sorted(k for k in d if not k.startswith('@'))))")
+    for arb in lib/l10n/app_*.arb; do
+      [[ "$arb" == "$SOURCE" ]] && continue
+      OTHER_KEYS=$(python3 -c "import json; d=json.load(open('$arb')); print('\n'.join(sorted(k for k in d if not k.startswith('@'))))")
+      MISSING=$(comm -23 <(echo "$EN_KEYS") <(echo "$OTHER_KEYS") || true)
+      EXTRA=$(comm -13 <(echo "$EN_KEYS") <(echo "$OTHER_KEYS") || true)
+      if [[ -n "$MISSING" ]]; then
+        fail "$arb is missing keys present in $SOURCE:
+$MISSING"
+      fi
+      if [[ -n "$EXTRA" ]]; then
+        fail "$arb has keys not present in $SOURCE:
+$EXTRA"
+      fi
+    done
+  fi
+fi
+
+# 7) Targeted tests. Skipped by default to keep the hook fast — set
+#    PRECOMMIT_RUN_TESTS=1 to enable. CI runs the full suite anyway.
+if [[ "${PRECOMMIT_RUN_TESTS:-0}" == "1" ]]; then
+  info "Running tests..."
+  if ! flutter test; then
+    fail "Tests failed. Fix them and re-stage."
+  fi
+fi
+
+info "All checks passed."

@@ -3,7 +3,17 @@ template-arb-file: app_en.arb
 output-localization-file: app_localizations.dart
 output-class: AppLocalizations
 output-dir: lib/l10n/generated
+
+# Keep `synthetic-package: false` even though Flutter 3.41 reports it as
+# deprecated. The deprecation warning is harmless, but removing the line
+# entirely would mean falling back on Flutter's default behaviour, which
+# differs across SDK versions. Imports such as
+# `package:markdown_viewer/l10n/generated/app_localizations.dart` only
+# resolve when the generator emits files into `output-dir` instead of the
+# synthetic `flutter_gen` package — making this explicit prevents a future
+# Flutter upgrade or contributor from silently breaking the build.
 synthetic-package: false
+
 nullable-getter: false
 use-deferred-loading: false
 preferred-supported-locales:

@@ -6,7 +6,16 @@
 - Feature files: `<feature>_<role>.dart` — e.g. `viewer_notifier.dart`,
   `document_repository.dart`
 - Test files mirror source path under `test/` with the `_test.dart` suffix
-- Generated files: `*.g.dart`, `*.freezed.dart` — committed to the repo
+- Generated files are **always committed** to the repo. This covers:
+  - `*.g.dart` (build_runner outputs — riverpod_generator,
+    json_serializable, drift, go_router_builder)
+  - `*.freezed.dart` (freezed outputs)
+  - Every file under `lib/l10n/generated/` (`flutter gen-l10n` output)
+
+  Committing generated files lets CI's drift check
+  (`git diff --exit-code`) catch forgotten regenerations and avoids a
+  "run build_runner before opening the project" step for new
+  contributors.
 
 ## Directories
 
