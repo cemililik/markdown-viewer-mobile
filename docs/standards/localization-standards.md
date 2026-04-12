@@ -12,10 +12,16 @@ new language never requires touching application code.
 
 ## Tooling and File Layout
 
-- `flutter_localizations` + `intl`
-- Generation configured via [`l10n.yaml`](../../l10n.yaml) at the project root
+- `flutter_localizations` + `intl` (`intl` version is pinned by the
+  Flutter SDK — see [tech-stack.md](../tech-stack.md))
+- Generation configured via [`l10n.yaml`](../../l10n.yaml) at the
+  project root, with `synthetic-package: false` set explicitly so the
+  generator writes into `output-dir` regardless of Flutter SDK defaults
 - ARB source files: [`lib/l10n/app_<locale>.arb`](../../lib/l10n/)
-- Generated classes: `lib/l10n/generated/app_localizations.dart` (committed)
+- Generated classes: `lib/l10n/generated/app_localizations.dart` and the
+  per-locale files — **committed** per
+  [naming-conventions.md](naming-conventions.md), and verified by CI
+  with a `git diff --exit-code` drift check after `flutter gen-l10n`
 - Context extension: [`lib/core/l10n/build_context_l10n.dart`](../../lib/core/l10n/build_context_l10n.dart)
 - Access strings via `context.l10n.<keyName>` from any widget
 

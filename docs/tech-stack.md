@@ -24,10 +24,14 @@ HarmonyOS native support is **out of scope for v1** — see
 
 ## Core Libraries
 
+All version constraints below are the actual values in
+[`pubspec.yaml`](../pubspec.yaml). When bumping a major version, update
+this table and the corresponding ADR in the same PR.
+
 | Concern | Package | Version | ADR |
 |---------|---------|---------|-----|
-| State management | `flutter_riverpod` + `riverpod_generator` | ^2.5 | [0002](decisions/0002-state-management-riverpod.md) |
-| Navigation | `go_router` + `go_router_builder` | ^14.0 | [0003](decisions/0003-navigation-go-router.md) |
+| State management | `flutter_riverpod` + `riverpod_annotation` | ^3.2.1 / ^4.0.2 | [0002](decisions/0002-state-management-riverpod.md), [0013](decisions/0013-codegen-ecosystem-alignment.md) |
+| Navigation | `go_router` | ^14.0 | [0003](decisions/0003-navigation-go-router.md) |
 | Markdown AST | `markdown` | ^7.2 | [0004](decisions/0004-markdown-rendering.md) |
 | Markdown widget | `markdown_widget` | ^2.3 | [0004](decisions/0004-markdown-rendering.md) |
 | Code highlighting | `re_highlight` + `flutter_highlighting` | latest | [0004](decisions/0004-markdown-rendering.md) |
@@ -39,8 +43,8 @@ HarmonyOS native support is **out of scope for v1** — see
 | File picking | `file_picker` | ^8.0 | — |
 | Share intent | `receive_sharing_intent` | ^1.8 | — |
 | Theming | Material 3 + `dynamic_color` | ^1.7 | [0008](decisions/0008-theming-material3.md) |
-| Localization | `flutter_localizations` + `intl` | — | — |
-| Immutable models | `freezed` + `json_serializable` | ^2.5 | — |
+| Localization | `flutter_localizations` + `intl` | pinned by SDK / ^0.20.2 | — |
+| Immutable models | `freezed_annotation` + `json_annotation` | ^3.1.0 / ^4.9.0 | [0013](decisions/0013-codegen-ecosystem-alignment.md) |
 | Logging | `logger` | ^2.4 | — |
 | HTTP client (repo sync) | `dio` | ^5.4 | [0012](decisions/0012-document-sync-architecture.md) |
 | Secure token storage | `flutter_secure_storage` | ^9.2 | [0012](decisions/0012-document-sync-architecture.md) |
@@ -49,14 +53,20 @@ HarmonyOS native support is **out of scope for v1** — see
 
 ## Tooling
 
-| Concern | Choice |
-|---------|--------|
-| Linter | `flutter_lints` with project-specific rules |
-| Formatter | `dart format` (80-column default) |
-| Codegen | `build_runner` (riverpod, freezed, drift, json_serializable, go_router) |
-| Unit / widget tests | `flutter_test` |
-| Mocking | `mocktail` |
-| Golden tests | `alchemist` or `golden_toolkit` |
-| Integration tests | `integration_test` |
-| CI | GitHub Actions |
-| Versioning | Semantic versioning, derived from git tags |
+| Concern | Choice | Version |
+|---------|--------|---------|
+| Linter | `flutter_lints` with project-specific rules | ^5.0 |
+| Formatter | `dart format` (80-column default) | bundled |
+| Codegen | `build_runner` (riverpod_generator, freezed, drift_dev, json_serializable, go_router_builder) | ^2.13.1 |
+| Custom Riverpod lints | `custom_lint` + `riverpod_lint` | **removed** (see [ADR-0013](decisions/0013-codegen-ecosystem-alignment.md)) |
+| Unit / widget tests | `flutter_test` | SDK |
+| Mocking | `mocktail` | ^1.0 |
+| Golden tests | `alchemist` | ^0.12 |
+| Integration tests | `integration_test` | SDK |
+| CI | GitHub Actions | actions pinned to SHAs |
+| Versioning | Semantic versioning, derived from git tags | — |
+
+`custom_lint` and `riverpod_lint` are intentionally **not** in
+`pubspec.yaml` right now because of an upstream analyzer version split
+between the two. See [ADR-0013](decisions/0013-codegen-ecosystem-alignment.md)
+for the details and the conditions for re-introducing them.

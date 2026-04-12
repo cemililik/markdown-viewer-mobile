@@ -5,10 +5,21 @@ Feature-first layout with clean architecture layers inside each feature.
 ```
 markdown_viewer/
 ├── android/                    # Android platform code
+│   ├── app/src/main/
+│   │   ├── AndroidManifest.xml # INTERNET permission lives here (ADR-0011)
+│   │   └── res/values/
+│   │       └── strings.xml     # app_name (launcher label)
+│   ├── build.gradle.kts        # JVM 17 toolchain for all subprojects
+│   ├── gradle/wrapper/         # Wrapper JAR is committed
+│   ├── gradlew                 # Wrapper scripts are committed
+│   └── gradlew.bat
 ├── ios/                        # iOS platform code
+│   ├── Runner/
+│   ├── Runner.xcodeproj/       # Deployment target: iOS 14.0 (no DEVELOPMENT_TEAM)
+│   ├── RunnerTests/            # Native iOS tests (minimal; real tests are Dart)
+│   └── Podfile                 # platform :ios, '14.0'
 ├── assets/
-│   ├── mermaid/
-│   │   └── mermaid.min.js      # Bundled mermaid runtime
+│   ├── mermaid/                # mermaid.min.js lands here (ADR-0005)
 │   ├── fonts/
 │   └── icons/
 ├── lib/
@@ -85,9 +96,13 @@ markdown_viewer/
 │   │       │       ├── url_input.dart
 │   │       │       └── sync_progress.dart
 │   │       └── repo_sync.dart      # Public barrel
-│   └── l10n/                   # ARB files
-│       ├── app_en.arb
-│       └── app_tr.arb
+│   └── l10n/
+│       ├── app_en.arb          # ARB source of truth
+│       ├── app_tr.arb
+│       └── generated/          # flutter gen-l10n output (committed)
+│           ├── app_localizations.dart
+│           ├── app_localizations_en.dart
+│           └── app_localizations_tr.dart
 ├── test/
 │   ├── unit/
 │   ├── widget/
@@ -95,12 +110,23 @@ markdown_viewer/
 │   └── fixtures/
 ├── integration_test/
 ├── docs/                       # This directory
+│   ├── standards/
+│   ├── decisions/
+│   └── how-to/                 # Task-oriented guides (e.g. add-a-language.md)
+├── tool/
+│   ├── install-hooks.sh        # Installs the pre-commit hook via core.hooksPath
+│   └── git-hooks/
+│       └── pre-commit          # Format + analyze + ARB parity + partial-stage guard
+├── .github/workflows/          # CI (lint, test, android/ios debug builds)
 ├── .claude/                    # Claude Code skills and rules
 │   └── skills/
 ├── CLAUDE.md                   # Claude Code project instructions
 ├── AGENTS.md                   # Generic AI agent instructions
+├── CONTRIBUTING.md             # Contributor guide
 ├── analysis_options.yaml
+├── l10n.yaml                   # flutter gen-l10n configuration
 ├── pubspec.yaml
+├── pubspec.lock                # Committed so Flutter CLI has a deterministic resolve
 └── README.md
 ```
 

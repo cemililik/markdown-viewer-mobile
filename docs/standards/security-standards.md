@@ -90,6 +90,41 @@ all of:
 - New dependencies require an architectural review and an ADR if they
   expand the attack surface
 
+## Supply Chain (CI and Build Tooling)
+
+The CI pipeline and release toolchain are treated as part of the attack
+surface. Rules:
+
+- **Pin every third-party GitHub Action to a full-length commit SHA**,
+  with a trailing comment identifying the release (e.g.
+  `actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1`).
+  Tags are mutable; SHAs are immutable. Bumping an action is an explicit
+  diff review.
+- **Never use `uses: org/repo@main`** or any other branch reference in a
+  workflow. Branches are mutable.
+- **Never skip pre-commit hooks** with `--no-verify`.
+- **Release signing keystores are never committed.** `android/key.properties`
+  is gitignored; the Android release `buildType` is intentionally left
+  without a fallback signing config so forgetting to wire up a real
+  keystore fails the build instead of silently shipping with the debug
+  key. CI release pipelines populate `key.properties` from secrets at
+  build time.
+- **iOS development teams are not pinned in `project.pbxproj`.** Forcing
+  a specific Apple `DEVELOPMENT_TEAM` leaks it to every contributor and
+  CI runner. Each developer supplies their own team locally; CI uses
+  `--no-codesign` for debug builds.
+
+## Codegen and Drift Detection
+
+- Generated files (`*.g.dart`, `*.freezed.dart`, everything under
+  `lib/l10n/generated/`) are committed — see
+  [naming-conventions.md](naming-conventions.md).
+- CI re-runs `flutter gen-l10n` and `dart run build_runner build` on
+  every PR, then runs `git diff --exit-code` against the tracked
+  generated paths. Any drift fails the job immediately. This prevents
+  a subtle supply-chain hazard where a PR could introduce hand-crafted
+  changes to generated files that the codegen would never reproduce.
+
 ## Logs
 
 - Never log file contents, user input, or full file paths
