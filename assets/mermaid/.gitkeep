@@ -1,0 +1,5 @@
+# Bundled mermaid runtime lives here.
+#
+# Drop `mermaid.min.js` from a pinned upstream release into this directory.
+# The version is intentionally pinned and committed; bumping it requires a
+# new ADR (see docs/decisions/0005-mermaid-rendering.md).
