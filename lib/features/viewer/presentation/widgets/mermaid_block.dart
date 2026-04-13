@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -10,16 +12,20 @@ import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_
 /// Renders a single mermaid fenced code block as an inline SVG.
 ///
 /// Hooked into [MarkdownView] via `PreConfig.wrapper`. The widget
-/// owns no parsing logic — it just calls the application-layer
-/// [mermaidRendererProvider] with the block's body, then displays
-/// either the returned SVG or a localized error placeholder.
+/// owns no parsing logic — it reads the active Material 3
+/// [ColorScheme], builds a mermaid `%%{init: …}%%` directive so
+/// the rendered diagram inherits the same palette as the rest of
+/// the app, and hands both strings to the
+/// [mermaidRendererProvider].
 ///
-/// The renderer is called with a [MermaidDiagramTheme] derived from
-/// the active Flutter brightness, so the resulting SVG has the
-/// right palette for both light and dark mode. Flipping the app
-/// theme rebuilds the widget, triggers a fresh render, and the
-/// renderer's cache keeps the previously-rendered opposite-theme
-/// SVG in its LRU slot — toggling back is instant.
+/// Flipping the app theme rebuilds the widget, fires a fresh
+/// render against a cache key that bakes the directive in, and
+/// the renderer's LRU keeps the previous palette's output in its
+/// own slot — toggling back is instant.
+///
+/// If the user's source already carries its own
+/// `%%{init: …}%%` directive, the ColorScheme-derived override is
+/// suppressed — user intent wins.
 ///
 /// The error placeholder reuses [paletteForAdmonition] with
 /// [AdmonitionKind.warning] so a failed mermaid diagram has the
@@ -41,37 +47,42 @@ class MermaidBlock extends ConsumerStatefulWidget {
 
 class _MermaidBlockState extends ConsumerState<MermaidBlock> {
   Future<MermaidRenderResult>? _future;
-  Brightness? _renderedBrightness;
+  String? _renderedDirective;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final brightness = Theme.of(context).brightness;
-    if (_future == null || _renderedBrightness != brightness) {
-      _renderedBrightness = brightness;
-      _future = ref
-          .read(mermaidRendererProvider)
-          .render(widget.code, theme: _themeFor(brightness));
-    }
+    _maybeRerender();
   }
 
   @override
   void didUpdateWidget(covariant MermaidBlock oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.code != widget.code) {
-      final brightness = Theme.of(context).brightness;
-      _renderedBrightness = brightness;
-      _future = ref
-          .read(mermaidRendererProvider)
-          .render(widget.code, theme: _themeFor(brightness));
+      _renderedDirective = null;
+      _maybeRerender();
     }
   }
 
-  static MermaidDiagramTheme _themeFor(Brightness brightness) {
-    return switch (brightness) {
-      Brightness.dark => MermaidDiagramTheme.dark,
-      Brightness.light => MermaidDiagramTheme.defaultTheme,
-    };
+  void _maybeRerender() {
+    final scheme = Theme.of(context).colorScheme;
+    final brightness = Theme.of(context).brightness;
+    final directive =
+        _sourceHasOwnDirective(widget.code)
+            ? ''
+            : buildMermaidInitDirective(scheme, brightness);
+
+    if (_future != null && _renderedDirective == directive) {
+      return;
+    }
+    _renderedDirective = directive;
+    _future = ref
+        .read(mermaidRendererProvider)
+        .render(widget.code, initDirective: directive);
+  }
+
+  static bool _sourceHasOwnDirective(String source) {
+    return source.trimLeft().startsWith('%%{init:');
   }
 
   @override
@@ -92,7 +103,161 @@ class _MermaidBlockState extends ConsumerState<MermaidBlock> {
   }
 }
 
-/// Pan+zoom container for a mermaid SVG.
+/// Builds a mermaid init directive string that threads the active
+/// Material 3 [scheme] through every theme variable mermaid honours,
+/// so flowchart / sequence / class / state / gantt / ER diagrams
+/// all read as if the app drew them itself.
+///
+/// The returned string is intended to be prepended to a mermaid
+/// source by the renderer; it always ends with a newline so the
+/// real diagram content starts on a fresh line.
+///
+/// `theme: "base"` is pinned because it is the only mermaid preset
+/// that honours user-supplied `themeVariables`. The `default` and
+/// `dark` presets silently drop most overrides.
+///
+/// [brightness] is currently only used to decide a few contrast
+/// fallbacks (task text colour in gantt charts that have to read
+/// on top of a filled bar); the rest of the palette comes from
+/// [scheme] directly so it follows both dynamic-colour seed changes
+/// and light ⇄ dark flips.
+String buildMermaidInitDirective(ColorScheme scheme, Brightness brightness) {
+  String hex(Color color) {
+    final r = (color.r * 255).round() & 0xff;
+    final g = (color.g * 255).round() & 0xff;
+    final b = (color.b * 255).round() & 0xff;
+    return '#${r.toRadixString(16).padLeft(2, '0')}'
+        '${g.toRadixString(16).padLeft(2, '0')}'
+        '${b.toRadixString(16).padLeft(2, '0')}';
+  }
+
+  final onPrimaryContainer = hex(scheme.onPrimaryContainer);
+  final onSecondaryContainer = hex(scheme.onSecondaryContainer);
+  final onTertiaryContainer = hex(scheme.onTertiaryContainer);
+  final primaryContainer = hex(scheme.primaryContainer);
+  final secondaryContainer = hex(scheme.secondaryContainer);
+  final tertiaryContainer = hex(scheme.tertiaryContainer);
+  final primary = hex(scheme.primary);
+  final secondary = hex(scheme.secondary);
+  final tertiary = hex(scheme.tertiary);
+  final surface = hex(scheme.surface);
+  final surfaceContainer = hex(scheme.surfaceContainer);
+  final surfaceContainerHigh = hex(scheme.surfaceContainerHigh);
+  final onSurface = hex(scheme.onSurface);
+  final outline = hex(scheme.outline);
+  final outlineVariant = hex(scheme.outlineVariant);
+  final error = hex(scheme.error);
+  final errorContainer = hex(scheme.errorContainer);
+  final onErrorContainer = hex(scheme.onErrorContainer);
+
+  // Task text on active gantt bars has to read on top of
+  // `primaryContainer`; on dark mode that container is darker than
+  // mid-grey so the task text wants to be lighter, and vice versa.
+  // Keeping it as `onPrimaryContainer` already handles that.
+  final taskTextOnBar = onPrimaryContainer;
+
+  final variables = <String, String>{
+    // ── Core / shared across every diagram type ──────────────────
+    'background': surface,
+    'primaryColor': primaryContainer,
+    'primaryTextColor': onPrimaryContainer,
+    'primaryBorderColor': primary,
+    'secondaryColor': secondaryContainer,
+    'secondaryTextColor': onSecondaryContainer,
+    'secondaryBorderColor': secondary,
+    'tertiaryColor': tertiaryContainer,
+    'tertiaryTextColor': onTertiaryContainer,
+    'tertiaryBorderColor': tertiary,
+    'lineColor': outline,
+    'textColor': onSurface,
+    'titleColor': onSurface,
+    'mainBkg': surfaceContainer,
+    'errorBkgColor': errorContainer,
+    'errorTextColor': onErrorContainer,
+
+    // ── Flowchart ────────────────────────────────────────────────
+    'nodeBkg': primaryContainer,
+    'nodeBorder': primary,
+    'nodeTextColor': onPrimaryContainer,
+    'clusterBkg': surfaceContainerHigh,
+    'clusterBorder': outlineVariant,
+    'edgeLabelBackground': surfaceContainer,
+    'defaultLinkColor': outline,
+
+    // ── Sequence diagram ─────────────────────────────────────────
+    'actorBkg': primaryContainer,
+    'actorBorder': primary,
+    'actorTextColor': onPrimaryContainer,
+    'actorLineColor': outline,
+    'signalColor': onSurface,
+    'signalTextColor': onSurface,
+    'labelBoxBkgColor': secondaryContainer,
+    'labelBoxBorderColor': secondary,
+    'labelTextColor': onSecondaryContainer,
+    'loopTextColor': onSurface,
+    'noteBkgColor': tertiaryContainer,
+    'noteBorderColor': tertiary,
+    'noteTextColor': onTertiaryContainer,
+    'activationBkgColor': secondaryContainer,
+    'activationBorderColor': secondary,
+    'sequenceNumberColor': onPrimaryContainer,
+
+    // ── State diagram ────────────────────────────────────────────
+    'labelColor': onSurface,
+    'altBackground': surfaceContainerHigh,
+    'compositeBackground': surfaceContainer,
+    'compositeTitleBackground': primaryContainer,
+    'compositeBorder': outlineVariant,
+
+    // ── Gantt ────────────────────────────────────────────────────
+    'sectionBkgColor': surfaceContainer,
+    'altSectionBkgColor': surfaceContainerHigh,
+    'gridColor': outlineVariant,
+    'taskBkgColor': primaryContainer,
+    'taskBorderColor': primary,
+    'taskTextColor': taskTextOnBar,
+    'taskTextLightColor': onPrimaryContainer,
+    'taskTextDarkColor': onPrimaryContainer,
+    'taskTextClickableColor': onPrimaryContainer,
+    'doneTaskBkgColor': secondaryContainer,
+    'doneTaskBorderColor': secondary,
+    'activeTaskBkgColor': tertiaryContainer,
+    'activeTaskBorderColor': tertiary,
+    'critBkgColor': errorContainer,
+    'critBorderColor': error,
+    'todayLineColor': error,
+
+    // ── ER diagram ───────────────────────────────────────────────
+    'attributeBackgroundColorOdd': surfaceContainer,
+    'attributeBackgroundColorEven': surfaceContainerHigh,
+    'relationColor': outline,
+    'relationLabelColor': onSurface,
+    'relationLabelBackground': surfaceContainer,
+  };
+
+  // Mermaid accepts JSON syntax inside the init directive, so we
+  // can let `jsonEncode` do all the escaping work and avoid hand-
+  // rolled string concatenation edge cases.
+  //
+  // `htmlLabels: false` is critical for `flutter_svg` compatibility:
+  // mermaid's default label mode uses `<foreignObject>` + `<div>`
+  // to host HTML text inside the SVG, and `flutter_svg` has no
+  // support for `foreignObject` at all — labels disappear
+  // entirely. Forcing every diagram type to emit plain `<text>`
+  // elements makes the labels renderable at the cost of losing
+  // some fancy HTML wrapping we don't need on mobile anyway.
+  final payload = jsonEncode({
+    'theme': 'base',
+    'themeVariables': variables,
+    'flowchart': {'htmlLabels': false},
+    'class': {'htmlLabels': false},
+    'state': {'htmlLabels': false},
+  });
+  return '%%{init: $payload}%%\n';
+}
+
+/// Pan+zoom container for a mermaid SVG with a smooth reset-to-centre
+/// affordance.
 ///
 /// The SVG carries its natural size in a `viewBox="minX minY W H"`
 /// attribute. We parse it once, compute `aspectRatio = W / H`, and
@@ -106,7 +271,14 @@ class _MermaidBlockState extends ConsumerState<MermaidBlock> {
 /// wide diagrams. `boundaryMargin: infinity` lets the user pan
 /// anywhere while zoomed; `ClipRect` makes sure the zoomed-in
 /// content does not bleed into adjacent markdown blocks.
-class _MermaidSvg extends StatelessWidget {
+///
+/// A small tonal icon button in the top-left fades in whenever the
+/// underlying `TransformationController` has moved off the identity
+/// matrix. Tapping it runs a short [Matrix4Tween] animation back
+/// to identity, so a user who has zoomed in and panned out of
+/// frame can recover in one tap with a smooth transition rather
+/// than a jarring snap.
+class _MermaidSvg extends StatefulWidget {
   const _MermaidSvg({required this.svg});
 
   final String svg;
@@ -118,30 +290,7 @@ class _MermaidSvg extends StatelessWidget {
     r'viewBox\s*=\s*"\s*[\d.eE+-]+\s+[\d.eE+-]+\s+([\d.eE+-]+)\s+([\d.eE+-]+)"',
   );
 
-  @override
-  Widget build(BuildContext context) {
-    final aspectRatio = _parseAspectRatio(svg);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: AspectRatio(
-        aspectRatio: aspectRatio,
-        child: ClipRect(
-          child: InteractiveViewer(
-            minScale: 1.0,
-            maxScale: 5.0,
-            // Infinite boundary so the user can pan the zoomed
-            // content anywhere within the clip, without fighting
-            // the default bounded behaviour that snaps back to
-            // the edge.
-            boundaryMargin: const EdgeInsets.all(double.infinity),
-            child: SvgPicture.string(svg, fit: BoxFit.contain),
-          ),
-        ),
-      ),
-    );
-  }
-
-  static double _parseAspectRatio(String svg) {
+  static double parseAspectRatio(String svg) {
     final match = _viewBox.firstMatch(svg);
     if (match == null) {
       return 16 / 9;
@@ -152,6 +301,141 @@ class _MermaidSvg extends StatelessWidget {
       return 16 / 9;
     }
     return w / h;
+  }
+
+  @override
+  State<_MermaidSvg> createState() => _MermaidSvgState();
+}
+
+class _MermaidSvgState extends State<_MermaidSvg>
+    with SingleTickerProviderStateMixin {
+  late final TransformationController _transform;
+  late final AnimationController _resetController;
+  Animation<Matrix4>? _resetAnimation;
+  bool _isTransformed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _transform = TransformationController();
+    _transform.addListener(_onTransformChanged);
+    _resetController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+  }
+
+  void _onTransformChanged() {
+    final transformed = !_transform.value.isIdentity();
+    if (transformed != _isTransformed) {
+      setState(() => _isTransformed = transformed);
+    }
+  }
+
+  void _resetTransform() {
+    // Build a fresh Matrix4Tween every time so the animation is
+    // always based on the current matrix — without this a quick
+    // zoom immediately after a reset would interpolate from the
+    // stale starting matrix.
+    final tween = Matrix4Tween(
+      begin: _transform.value.clone(),
+      end: Matrix4.identity(),
+    );
+    _resetAnimation?.removeListener(_applyResetFrame);
+    _resetAnimation = tween.animate(
+      CurvedAnimation(parent: _resetController, curve: Curves.easeOutCubic),
+    )..addListener(_applyResetFrame);
+    _resetController
+      ..reset()
+      ..forward();
+  }
+
+  void _applyResetFrame() {
+    final animation = _resetAnimation;
+    if (animation == null) {
+      return;
+    }
+    _transform.value = animation.value;
+  }
+
+  @override
+  void dispose() {
+    _resetAnimation?.removeListener(_applyResetFrame);
+    _resetController.dispose();
+    _transform
+      ..removeListener(_onTransformChanged)
+      ..dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final aspectRatio = _MermaidSvg.parseAspectRatio(widget.svg);
+    final l10n = context.l10n;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: AspectRatio(
+        aspectRatio: aspectRatio,
+        child: ClipRect(
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: InteractiveViewer(
+                  transformationController: _transform,
+                  minScale: 1.0,
+                  maxScale: 5.0,
+                  boundaryMargin: const EdgeInsets.all(double.infinity),
+                  child: SvgPicture.string(widget.svg, fit: BoxFit.contain),
+                ),
+              ),
+              Positioned(
+                top: 8,
+                left: 8,
+                child: AnimatedOpacity(
+                  duration: const Duration(milliseconds: 150),
+                  opacity: _isTransformed ? 1 : 0,
+                  child: IgnorePointer(
+                    ignoring: !_isTransformed,
+                    child: _CenterButton(
+                      tooltip: l10n.mermaidReset,
+                      onPressed: _resetTransform,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CenterButton extends StatelessWidget {
+  const _CenterButton({required this.tooltip, required this.onPressed});
+
+  final String tooltip;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.92),
+      shape: const CircleBorder(),
+      elevation: 2,
+      child: IconButton(
+        tooltip: tooltip,
+        iconSize: 20,
+        padding: const EdgeInsets.all(6),
+        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        icon: Icon(
+          Icons.center_focus_strong_outlined,
+          color: theme.colorScheme.onSurface,
+        ),
+        onPressed: onPressed,
+      ),
+    );
   }
 }
 

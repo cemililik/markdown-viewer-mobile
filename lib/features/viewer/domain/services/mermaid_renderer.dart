@@ -7,8 +7,8 @@
 ///
 /// Implementations must:
 ///
-/// 1. Treat [render] as a pure function of [source] — identical
-///    sources must return identical SVG.
+/// 1. Treat `(source, initDirective)` as the cache key — identical
+///    pairs must return identical SVG.
 /// 2. Catch every error path that comes out of the underlying
 ///    renderer (mermaid syntax errors, WebView crashes, JS
 ///    exceptions, asset-load failures) and translate it into a
@@ -23,47 +23,44 @@ abstract interface class MermaidRenderer {
   /// before [prewarm] completes is allowed — the implementation must
   /// queue the request behind initialisation rather than failing.
   ///
-  /// Returning normally means the renderer is ready. Throwing means
-  /// it is permanently unusable; the composition root catches the
-  /// error and substitutes a fallback that returns
-  /// [MermaidRenderFailure] for every subsequent [render] call so
-  /// the rest of the document still loads.
+  /// **Resilient by contract: this never throws.** A failed
+  /// initialisation (missing asset, WebView platform binding
+  /// unavailable, mermaid global not present after script load,
+  /// …) flips the renderer into a permanent-failure state where
+  /// every subsequent [render] call returns a
+  /// [MermaidRenderFailure] with the original cause. The rest of
+  /// the document keeps loading and the user sees the inline
+  /// "diagram could not be rendered" placeholder instead of a
+  /// crashed app.
+  ///
+  /// Calling [prewarm] more than once is a no-op once the
+  /// renderer has either initialised successfully or recorded a
+  /// permanent failure.
   Future<void> prewarm();
 
-  /// Renders [source] under [theme] and returns either an SVG string
-  /// or a typed failure. Identical `(source, theme)` pairs should
-  /// hit a cache instead of re-running the underlying renderer, but
-  /// the same source under different themes must NOT collide —
-  /// light and dark variants are distinct renders with distinct
-  /// SVG output.
+  /// Renders [source] and returns either an SVG string or a typed
+  /// failure.
+  ///
+  /// [initDirective] is an opaque prefix that the implementation
+  /// prepends to [source] before handing it to the underlying
+  /// renderer. Callers use it to thread Flutter-derived theming
+  /// (a `%%{init: {"theme":"base","themeVariables":{…}}}%%`
+  /// directive built from the active `ColorScheme`) without
+  /// leaking Flutter types into the domain layer. Distinct
+  /// directives produce distinct cache keys so a single source
+  /// can coexist in the cache in light and dark variants.
+  ///
+  /// An empty [initDirective] means "do not prepend anything" —
+  /// used when the user's source already carries its own init
+  /// directive that must be respected.
   Future<MermaidRenderResult> render(
     String source, {
-    MermaidDiagramTheme theme = MermaidDiagramTheme.defaultTheme,
+    String initDirective = '',
   });
 
   /// Releases any resources held by the renderer. Called by the
   /// composition root when the [ProviderContainer] disposes.
   Future<void> dispose();
-}
-
-/// Which mermaid theme to render with. Maps directly to the
-/// `%%{init: {'theme':'<name>'}}%%` directive that mermaid parses
-/// at the top of any diagram source, so the dart side can flip
-/// palettes without calling `mermaid.initialize` again in the
-/// sandboxed WebView.
-///
-/// Only two values: `defaultTheme` covers Flutter light mode
-/// (mermaid's default white-background palette) and `dark` covers
-/// Flutter dark mode (mermaid's "dark" preset, high-contrast
-/// strokes on transparent background).
-enum MermaidDiagramTheme {
-  defaultTheme('default'),
-  dark('dark');
-
-  const MermaidDiagramTheme(this.directiveName);
-
-  /// Name used in the `%%{init: {'theme':'<name>'}}%%` directive.
-  final String directiveName;
 }
 
 /// Sealed result of a single [MermaidRenderer.render] call.

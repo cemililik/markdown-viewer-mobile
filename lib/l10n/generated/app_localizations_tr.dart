@@ -98,6 +98,30 @@ class AppLocalizationsTr extends AppLocalizations {
       'Diyagram söz dizimini kontrol edip tekrar deneyin.';
 
   @override
+  String get mermaidReset => 'Görünümü sıfırla';
+
+  @override
+  String get viewerBackToTopTooltip => 'Başa dön';
+
+  @override
+  String get viewerBookmarkSaveTooltip => 'Kaldığın yeri işaretle';
+
+  @override
+  String get viewerBookmarkClearTooltip => 'İşareti kaldır';
+
+  @override
+  String get viewerBookmarkSaved => 'Kaldığın yer kaydedildi';
+
+  @override
+  String get viewerBookmarkCleared => 'İşaret silindi';
+
+  @override
+  String get viewerResumedFromBookmark => 'Son okuduğun yerden devam ediliyor';
+
+  @override
+  String get actionGoToTop => 'Başa dön';
+
+  @override
   String get viewerLoading => 'Doküman yükleniyor…';
 
   @override

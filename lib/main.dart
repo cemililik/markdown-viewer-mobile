@@ -6,8 +6,10 @@ import 'package:markdown_viewer/features/settings/application/settings_providers
 import 'package:markdown_viewer/features/settings/data/settings_store.dart';
 import 'package:markdown_viewer/features/viewer/application/document_repository_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
+import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
 import 'package:markdown_viewer/features/viewer/data/parsers/markdown_parser.dart';
 import 'package:markdown_viewer/features/viewer/data/repositories/document_repository_impl.dart';
+import 'package:markdown_viewer/features/viewer/data/repositories/reading_position_store_impl.dart';
 import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_renderer_impl.dart';
 import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,9 +22,12 @@ Future<void> main() async {
   // Preload SharedPreferences so the settings controllers can seed
   // their initial state synchronously — otherwise the very first
   // frame would render with the default light theme / system locale
-  // regardless of what the user last picked.
+  // regardless of what the user last picked. The same instance also
+  // backs the reading-position store so its synchronous `read` can
+  // run inside a post-frame callback without an extra disk hop.
   final prefs = await SharedPreferences.getInstance();
   final settingsStore = SettingsStore(prefs);
+  final readingPositionStore = ReadingPositionStoreImpl(prefs);
 
   final mermaidRenderer = await _buildMermaidRenderer();
 
@@ -44,6 +49,7 @@ Future<void> main() async {
           return mermaidRenderer;
         }),
         settingsStoreProvider.overrideWithValue(settingsStore),
+        readingPositionStoreProvider.overrideWithValue(readingPositionStore),
       ],
       child: const MarkdownViewerApp(),
     ),
@@ -53,14 +59,16 @@ Future<void> main() async {
 /// Loads the bundled mermaid runtime, constructs a production
 /// [MermaidRendererImpl], and pre-warms its sandboxed WebView.
 ///
-/// The asset load and pre-warm are both wrapped in a try/catch: if
-/// either fails (asset missing because `tool/fetch_mermaid.sh` was
-/// not run, WebView platform binding unavailable, etc.) we still
-/// return a usable renderer instance — its internal "permanent
-/// failure" flag will route every subsequent render to a typed
-/// [MermaidRenderFailure] so the rest of the document continues to
-/// load. A diagram-less reading experience is strictly better than
-/// a crashed app.
+/// `prewarm` itself is non-throwing per the contract in
+/// `mermaid_renderer.dart` — a failed initialisation just flips the
+/// renderer into permanent-failure mode and every subsequent render
+/// returns a typed [MermaidRenderFailure]. The try/catch here only
+/// covers the `rootBundle.loadString` call, which can throw when
+/// the asset is genuinely missing (e.g. a dev forgot to run
+/// `tool/fetch_mermaid.sh`). In that case we still return a usable
+/// renderer instance constructed with an empty JS payload so the
+/// rest of the document continues to load — a diagram-less reading
+/// experience is strictly better than a crashed app.
 Future<MermaidRenderer> _buildMermaidRenderer() async {
   try {
     final mermaidJs = await rootBundle.loadString(

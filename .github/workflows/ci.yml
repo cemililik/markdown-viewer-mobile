@@ -43,6 +43,16 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Fetch bundled mermaid runtime
+        # `assets/mermaid/mermaid.min.js` is intentionally not
+        # committed (see .gitignore); every CI run must download the
+        # pinned version + SHA-256 before `flutter test` or any
+        # build, otherwise `rootBundle.loadString` throws and the
+        # mermaid integration tests fail. Failing early here surfaces
+        # a download / hash mismatch with a clearer error than a
+        # downstream test timeout.
+        run: bash tool/fetch_mermaid.sh
+
       - name: Verify formatting
         run: dart format --output=none --set-exit-if-changed .
 
@@ -106,6 +116,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Fetch bundled mermaid runtime
+        run: bash tool/fetch_mermaid.sh
+
       - name: Generate localizations
         run: flutter gen-l10n
 
@@ -134,6 +147,9 @@ jobs:
 
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Fetch bundled mermaid runtime
+        run: bash tool/fetch_mermaid.sh
 
       - name: Generate localizations
         run: flutter gen-l10n

@@ -6,8 +6,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/core/errors/failure.dart';
 import 'package:markdown_viewer/features/viewer/application/document_repository_provider.dart';
+import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
+import 'package:markdown_viewer/features/viewer/domain/entities/reading_position.dart';
 import 'package:markdown_viewer/features/viewer/domain/repositories/document_repository.dart';
+import 'package:markdown_viewer/features/viewer/domain/repositories/reading_position_store.dart';
 import 'package:markdown_viewer/features/viewer/presentation/screens/viewer_screen.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:visibility_detector/visibility_detector.dart';
@@ -45,9 +48,17 @@ void main() {
     byteSize: 22,
   );
 
-  Widget harness(DocumentRepository repo) {
+  Widget harness(
+    DocumentRepository repo, {
+    ReadingPositionStore? readingPositionStore,
+  }) {
     return ProviderScope(
-      overrides: [documentRepositoryProvider.overrideWithValue(repo)],
+      overrides: [
+        documentRepositoryProvider.overrideWithValue(repo),
+        readingPositionStoreProvider.overrideWithValue(
+          readingPositionStore ?? _InMemoryReadingPositionStore(),
+        ),
+      ],
       child: const MaterialApp(
         localizationsDelegates: [
           AppLocalizations.delegate,
@@ -138,6 +149,75 @@ void main() {
         );
       },
     );
+
+    testWidgets(
+      'bookmark icon is outlined on first build when no position is saved',
+      (tester) async {
+        await tester.pumpWidget(
+          harness(const _ImmediateDocumentRepository(sampleDocument)),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byIcon(Icons.bookmark_outline), findsOneWidget);
+        expect(find.byIcon(Icons.bookmark), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'bookmark icon flips to filled after the user taps the AppBar action',
+      (tester) async {
+        await tester.pumpWidget(
+          harness(const _ImmediateDocumentRepository(sampleDocument)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byIcon(Icons.bookmark_outline));
+        await tester.pumpAndSettle();
+
+        expect(find.byIcon(Icons.bookmark), findsOneWidget);
+        expect(find.text('Reading position saved'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'bookmark icon shows filled on first build when a position is already '
+      'saved for this document',
+      (tester) async {
+        final store = _InMemoryReadingPositionStore();
+        await store.write(
+          ReadingPosition(
+            documentId: id,
+            offset: 1234,
+            savedAt: DateTime.utc(2026, 4, 13),
+          ),
+        );
+
+        await tester.pumpWidget(
+          harness(
+            const _ImmediateDocumentRepository(sampleDocument),
+            readingPositionStore: store,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byIcon(Icons.bookmark), findsOneWidget);
+        expect(find.byIcon(Icons.bookmark_outline), findsNothing);
+      },
+    );
+
+    testWidgets('shows the back-to-top FAB tooltip widget on the data state', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        harness(const _ImmediateDocumentRepository(sampleDocument)),
+      );
+      await tester.pumpAndSettle();
+
+      // FloatingActionButton.small is rendered (always present, but
+      // wrapped in AnimatedScale that starts at scale 0 — the widget
+      // itself is in the tree).
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+    });
   });
 }
 
@@ -171,4 +251,24 @@ final class _ThrowingNonFailureRepository implements DocumentRepository {
 
   @override
   Future<Document> load(DocumentId path) async => throw _error;
+}
+
+/// In-memory [ReadingPositionStore] for tests that don't care about
+/// the bookmark feature itself but still need a store that can be
+/// `read` synchronously without throwing.
+final class _InMemoryReadingPositionStore implements ReadingPositionStore {
+  final Map<String, ReadingPosition> _positions = {};
+
+  @override
+  ReadingPosition? read(DocumentId documentId) => _positions[documentId.value];
+
+  @override
+  Future<void> write(ReadingPosition position) async {
+    _positions[position.documentId.value] = position;
+  }
+
+  @override
+  Future<void> clear(DocumentId documentId) async {
+    _positions.remove(documentId.value);
+  }
 }

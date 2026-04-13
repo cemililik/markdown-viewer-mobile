@@ -75,9 +75,19 @@ final MarkdownGenerator _markdownGenerator = MarkdownGenerator(
 ///   the rendering contract and `docs/standards/security-standards.md`
 ///   §WebView Rules for the sandbox configuration.
 class MarkdownView extends StatelessWidget {
-  const MarkdownView({required this.document, super.key});
+  const MarkdownView({required this.document, this.controller, super.key});
 
   final Document document;
+
+  /// Optional external [ScrollController] for the rendered list.
+  ///
+  /// Provided by [ViewerScreen] so the back-to-top FAB and the
+  /// reading-position bookmark feature can read the offset and
+  /// animate scroll position. When omitted the widget falls back
+  /// to an internal controller — useful for tests and for any
+  /// future caller that just wants to render a document without
+  /// the scroll-bound features.
+  final ScrollController? controller;
 
   @override
   Widget build(BuildContext context) {
@@ -101,11 +111,22 @@ class MarkdownView extends StatelessWidget {
       configs: [_buildPreConfig(theme), _buildTableConfig()],
     );
 
-    return MarkdownWidget(
-      data: document.source,
+    // We render through `MarkdownGenerator.buildWidgets(...)` (rather
+    // than handing the source to `MarkdownWidget`) because
+    // `MarkdownWidget` does not accept an external `ScrollController`
+    // — it owns a private one internally. Owning the controller at
+    // this layer is what lets [ViewerScreen] drive the back-to-top
+    // FAB and the reading-position bookmark feature.
+    final widgets = _markdownGenerator.buildWidgets(
+      document.source,
       config: config,
-      markdownGenerator: _markdownGenerator,
+    );
+
+    return ListView.builder(
+      controller: controller,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      itemCount: widgets.length,
+      itemBuilder: (context, index) => widgets[index],
     );
   }
 

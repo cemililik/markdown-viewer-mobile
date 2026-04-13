@@ -89,13 +89,29 @@ class MermaidRendererImpl implements MermaidRenderer {
   /// containing this message.
   String? _permanentFailure;
 
+  /// In-flight prewarm future so concurrent callers — a user-level
+  /// `prewarm()` from the composition root running in parallel with
+  /// the lazy prewarm inside [_pump] — share a single channel
+  /// `initialize()` call instead of racing and issuing two.
+  Future<void>? _prewarmInFlight;
+
   int _nextRequestSeq = 0;
 
   @override
-  Future<void> prewarm() async {
+  Future<void> prewarm() {
     if (_initialized || _permanentFailure != null) {
-      return;
+      return Future<void>.value();
     }
+    final inflight = _prewarmInFlight;
+    if (inflight != null) {
+      return inflight;
+    }
+    final future = _runPrewarm();
+    _prewarmInFlight = future;
+    return future;
+  }
+
+  Future<void> _runPrewarm() async {
     try {
       await _channel.initialize(
         html: buildMermaidHtml(mermaidJs: _mermaidJs),
@@ -106,13 +122,15 @@ class MermaidRendererImpl implements MermaidRenderer {
       _permanentFailure = e.message;
     } catch (e) {
       _permanentFailure = 'Unexpected mermaid renderer init error: $e';
+    } finally {
+      _prewarmInFlight = null;
     }
   }
 
   @override
   Future<MermaidRenderResult> render(
     String source, {
-    MermaidDiagramTheme theme = MermaidDiagramTheme.defaultTheme,
+    String initDirective = '',
   }) async {
     if (_disposed) {
       return const MermaidRenderFailure('Renderer has been disposed');
@@ -121,15 +139,18 @@ class MermaidRendererImpl implements MermaidRenderer {
       return MermaidRenderFailure(_permanentFailure!);
     }
 
-    // Prepend the mermaid init directive so the JS side renders
-    // with the right palette without us having to re-call
+    // Prepend the caller-supplied init directive so the sandbox JS
+    // renders with the right palette without us having to re-call
     // `mermaid.initialize` (which would need global state on the
-    // sandbox page and invite race conditions). The directive is
-    // part of the source that gets hashed, so light and dark
-    // variants of the same diagram automatically occupy different
-    // cache slots.
+    // sandbox page and invite race conditions). An empty directive
+    // means the caller wants the raw source respected (used when
+    // the source already starts with its own `%%{init: …}%%`).
+    // The directive is part of the hashed input, so light and
+    // dark variants of the same diagram — or any other theme
+    // variation the caller threads through — automatically occupy
+    // distinct cache slots.
     final themedSource =
-        "%%{init: {'theme':'${theme.directiveName}'}}%%\n$source";
+        initDirective.isEmpty ? source : '$initDirective$source';
     final key = sha256.convert(utf8.encode(themedSource)).toString();
 
     final cached = _cache.get(key);
