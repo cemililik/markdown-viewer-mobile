@@ -5,33 +5,44 @@ import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_js
 import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_renderer_impl.dart';
 import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
 
+/// Minimal valid 1×1 PNG used as a placeholder payload for every
+/// scripted channel reply. Tests do not inspect the pixels — they
+/// only care that `base64Decode` accepts the string and that the
+/// byte list round-trips through the cache.
+const String _tinyPngBase64 =
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNgAAIAAAUAAen63/AAAAAASUVORK5CYII=';
+
 void main() {
   group('MermaidRendererImpl', () {
-    test(
-      'should hit the channel exactly once for a repeated source thanks to the cache',
-      () async {
-        final channel = _FakeChannel();
-        final renderer = MermaidRendererImpl(
-          channel: channel,
-          mermaidJs: '/* fake */',
-        );
-        await renderer.prewarm();
+    test('should hit the channel exactly once for a repeated source thanks to '
+        'the cache', () async {
+      final channel = _FakeChannel();
+      final renderer = MermaidRendererImpl(
+        channel: channel,
+        mermaidJs: '/* fake */',
+      );
+      await renderer.prewarm();
 
-        channel.scriptResult('flowchart LR; A-->B', 'svg-1');
-        final first = await renderer.render('flowchart LR; A-->B');
-        final second = await renderer.render('flowchart LR; A-->B');
+      channel.scriptResult(
+        'flowchart LR; A-->B',
+        png: _tinyPngBase64,
+        width: 120,
+        height: 40,
+      );
+      final first = await renderer.render('flowchart LR; A-->B');
+      final second = await renderer.render('flowchart LR; A-->B');
 
-        expect(first, isA<MermaidRenderSuccess>());
-        expect((first as MermaidRenderSuccess).svg, 'svg-1');
-        expect(second, isA<MermaidRenderSuccess>());
-        expect((second as MermaidRenderSuccess).svg, 'svg-1');
-        expect(
-          channel.renderCallCount,
-          1,
-          reason: 'Second render call must be served from the LRU cache.',
-        );
-      },
-    );
+      expect(first, isA<MermaidRenderSuccess>());
+      expect((first as MermaidRenderSuccess).width, 120);
+      expect(first.height, 40);
+      expect(first.pngBytes, isNotEmpty);
+      expect(second, isA<MermaidRenderSuccess>());
+      expect(
+        channel.renderCallCount,
+        1,
+        reason: 'Second render call must be served from the LRU cache.',
+      );
+    });
 
     test('should collapse two concurrent identical render calls to one channel '
         'eval', () async {
@@ -42,16 +53,17 @@ void main() {
       );
       await renderer.prewarm();
 
-      channel.scriptResult('graph TD; X-->Y', 'svg-xy');
+      channel.scriptResult(
+        'graph TD; X-->Y',
+        png: _tinyPngBase64,
+        width: 100,
+        height: 50,
+      );
       final futureA = renderer.render('graph TD; X-->Y');
       final futureB = renderer.render('graph TD; X-->Y');
       final results = await Future.wait([futureA, futureB]);
 
       expect(results.every((r) => r is MermaidRenderSuccess), isTrue);
-      expect(
-        (results.first as MermaidRenderSuccess).svg,
-        (results.last as MermaidRenderSuccess).svg,
-      );
       expect(
         channel.renderCallCount,
         1,
@@ -69,14 +81,16 @@ void main() {
         );
         await renderer.prewarm();
 
-        channel.scriptResult('A', 'svg-a');
-        channel.scriptResult('B', 'svg-b');
+        channel.scriptResult('A', png: _tinyPngBase64, width: 50, height: 50);
+        channel.scriptResult('B', png: _tinyPngBase64, width: 60, height: 60);
 
         final a = await renderer.render('A');
         final b = await renderer.render('B');
 
-        expect((a as MermaidRenderSuccess).svg, 'svg-a');
-        expect((b as MermaidRenderSuccess).svg, 'svg-b');
+        expect(a, isA<MermaidRenderSuccess>());
+        expect(b, isA<MermaidRenderSuccess>());
+        expect((a as MermaidRenderSuccess).width, 50);
+        expect((b as MermaidRenderSuccess).width, 60);
         expect(channel.renderCallCount, 2);
       },
     );
@@ -122,8 +136,8 @@ void main() {
           channel.renderCallCount,
           0,
           reason:
-              'A permanently failed renderer must not invoke the channel for '
-              'render requests.',
+              'A permanently failed renderer must not invoke the channel '
+              'for render requests.',
         );
       },
     );
@@ -143,33 +157,81 @@ void main() {
       expect((result as MermaidRenderFailure).message, contains('disposed'));
     });
 
-    test(
-      'should prepend a non-empty initDirective verbatim to the source',
-      () async {
-        final channel = _FakeChannel();
-        final renderer = MermaidRendererImpl(
-          channel: channel,
-          mermaidJs: '/* fake */',
-        );
-        await renderer.prewarm();
+    test('should prepend a non-empty initDirective verbatim to a source with '
+        'no frontmatter', () async {
+      final channel = _FakeChannel();
+      final renderer = MermaidRendererImpl(
+        channel: channel,
+        mermaidJs: '/* fake */',
+      );
+      await renderer.prewarm();
 
-        const directive =
-            '%%{init: {"theme":"base","themeVariables":{"primaryColor":"#aabbcc"}}}%%\n';
-        channel.scriptResult('flowchart LR; A-->B', 'svg');
-        await renderer.render('flowchart LR; A-->B', initDirective: directive);
+      const directive =
+          '%%{init: {"theme":"base","themeVariables":{"primaryColor":"#aabbcc"}}}%%\n';
+      channel.scriptResult(
+        'flowchart LR; A-->B',
+        png: _tinyPngBase64,
+        width: 100,
+        height: 50,
+      );
+      await renderer.render('flowchart LR; A-->B', initDirective: directive);
 
-        expect(channel.observedSources, hasLength(1));
-        expect(
-          channel.observedSources.single,
-          startsWith(directive),
-          reason:
-              'The renderer must prepend the caller-supplied init '
-              'directive verbatim so mermaid.js picks up the requested '
-              'theme variables without us having to re-call '
-              'mermaid.initialize on the sandbox page.',
-        );
-      },
-    );
+      expect(channel.observedSources, hasLength(1));
+      expect(
+        channel.observedSources.single,
+        startsWith(directive),
+        reason:
+            'A source without YAML frontmatter must keep the simple '
+            'prepend behaviour.',
+      );
+    });
+
+    test('should splice the init directive AFTER a leading YAML frontmatter '
+        'block so mermaid still sees `---` on line 1', () async {
+      final channel = _FakeChannel();
+      final renderer = MermaidRendererImpl(
+        channel: channel,
+        mermaidJs: '/* fake */',
+      );
+      await renderer.prewarm();
+
+      const directive =
+          '%%{init: {"theme":"base","themeVariables":{"primaryColor":"#abcdef"}}}%%\n';
+      const userSource =
+          '---\ntitle: Architecture Evolution\n---\nflowchart LR\n  A --> B';
+      channel.scriptResult(
+        'flowchart LR',
+        png: _tinyPngBase64,
+        width: 100,
+        height: 50,
+      );
+      await renderer.render(userSource, initDirective: directive);
+
+      expect(channel.observedSources, hasLength(1));
+      final observed = channel.observedSources.single;
+      expect(
+        observed,
+        startsWith('---\n'),
+        reason:
+            'The YAML frontmatter opener must remain at the absolute '
+            'start of the source — otherwise mermaid fails to parse '
+            'the frontmatter and the diagram body.',
+      );
+      expect(
+        observed,
+        contains(directive),
+        reason: 'The init directive must still reach mermaid.',
+      );
+      final directiveIdx = observed.indexOf(directive);
+      final closingIdx = observed.indexOf('\n---\n');
+      expect(
+        directiveIdx,
+        greaterThan(closingIdx),
+        reason:
+            'The directive must be spliced in after the frontmatter '
+            'closer, not prepended before the opener.',
+      );
+    });
 
     test(
       'should pass the source through untouched when initDirective is empty',
@@ -183,7 +245,12 @@ void main() {
 
         const userSource =
             '%%{init: {"theme":"forest"}}%%\nflowchart LR; A-->B';
-        channel.scriptResult('flowchart LR; A-->B', 'svg');
+        channel.scriptResult(
+          'flowchart LR; A-->B',
+          png: _tinyPngBase64,
+          width: 100,
+          height: 50,
+        );
         await renderer.render(userSource);
 
         expect(channel.observedSources, hasLength(1));
@@ -207,27 +274,22 @@ void main() {
           mermaidJs: '/* fake */',
         );
 
-        // Kick off prewarm without awaiting it — the channel's
-        // initialise future is pending, so the renderer is stuck
-        // between "uninitialised" and "ready".
         final prewarmFuture = renderer.prewarm();
 
-        channel.scriptResult('flowchart LR; A-->B', 'early-svg');
-        // Fire a render() while initialisation is still in flight.
-        // The renderer's internal _pump must queue the request and
-        // only drain it after the channel becomes ready.
+        channel.scriptResult(
+          'flowchart LR; A-->B',
+          png: _tinyPngBase64,
+          width: 100,
+          height: 50,
+        );
         final renderFuture = renderer.render('flowchart LR; A-->B');
 
-        // Release the channel's initialise future so both the
-        // outstanding prewarm AND the pending render can make
-        // forward progress.
         channel.completeInitialize();
 
         await prewarmFuture;
         final result = await renderFuture;
 
         expect(result, isA<MermaidRenderSuccess>());
-        expect((result as MermaidRenderSuccess).svg, 'early-svg');
         expect(
           channel.initializeCallCount,
           1,
@@ -255,7 +317,12 @@ void main() {
       );
       await renderer.prewarm();
 
-      channel.scriptResult('flowchart LR; X-->Y', 'svg');
+      channel.scriptResult(
+        'flowchart LR; X-->Y',
+        png: _tinyPngBase64,
+        width: 100,
+        height: 50,
+      );
       await renderer.render(
         'flowchart LR; X-->Y',
         initDirective:
@@ -276,14 +343,36 @@ void main() {
             'of the hashed input.',
       );
     });
+
+    test(
+      'should reject a result with a zero-sized bitmap as a failure',
+      () async {
+        final channel = _FakeChannel();
+        final renderer = MermaidRendererImpl(
+          channel: channel,
+          mermaidJs: '/* fake */',
+        );
+        await renderer.prewarm();
+
+        channel.scriptResult(
+          'flowchart LR; A-->B',
+          png: _tinyPngBase64,
+          width: 0,
+          height: 0,
+        );
+        final result = await renderer.render('flowchart LR; A-->B');
+
+        expect(result, isA<MermaidRenderFailure>());
+      },
+    );
   });
 }
 
 /// Fake [MermaidJsChannel] that lets a test pre-register canned
-/// results keyed by source substring. Each `render` call looks up
-/// the first scripted key that the observed source contains and
-/// posts the matching reply via the `onResult` callback registered
-/// in [initialize].
+/// PNG-base64 results keyed by source substring. Each `render`
+/// call looks up the first scripted key that the observed source
+/// contains and posts the matching reply via the `onResult`
+/// callback registered in [initialize].
 ///
 /// Matching by substring (rather than exact equality) is deliberate:
 /// [MermaidRendererImpl] prepends a `%%{init: {...}}%%` directive
@@ -297,8 +386,20 @@ class _FakeChannel implements MermaidJsChannel {
   final List<String> observedSources = <String>[];
   int renderCallCount = 0;
 
-  void scriptResult(String sourceContains, String svg) {
-    _replies.add(_ScriptedReply(match: sourceContains, svg: svg));
+  void scriptResult(
+    String sourceContains, {
+    required String png,
+    required double width,
+    required double height,
+  }) {
+    _replies.add(
+      _ScriptedReply(
+        match: sourceContains,
+        png: png,
+        width: width,
+        height: height,
+      ),
+    );
   }
 
   void scriptError(String sourceContains, String error) {
@@ -325,14 +426,17 @@ class _FakeChannel implements MermaidJsChannel {
     if (callback == null) {
       return;
     }
-    // Schedule the reply on the next microtask so the call site has
-    // a chance to await the matching completer.
     scheduleMicrotask(() {
       if (reply.error != null) {
         callback({'id': id, 'error': reply.error});
         return;
       }
-      callback({'id': id, 'svg': reply.svg});
+      callback({
+        'id': id,
+        'png': reply.png,
+        'width': reply.width,
+        'height': reply.height,
+      });
     });
   }
 
@@ -343,18 +447,24 @@ class _FakeChannel implements MermaidJsChannel {
 }
 
 class _ScriptedReply {
-  _ScriptedReply({required this.match, this.svg, this.error});
+  _ScriptedReply({
+    required this.match,
+    this.png,
+    this.width,
+    this.height,
+    this.error,
+  });
 
-  /// Substring that must appear in the observed source for this
-  /// reply to be considered a match.
   final String match;
-  final String? svg;
+  final String? png;
+  final double? width;
+  final double? height;
   final String? error;
 }
 
 /// Channel that throws on initialize so we can exercise the
 /// permanent-failure path.
-class _FailingChannel implements MermaidJsChannel {
+final class _FailingChannel implements MermaidJsChannel {
   _FailingChannel(this.error);
 
   final MermaidJsChannelException error;
@@ -395,8 +505,20 @@ final class _DelayedInitializingChannel implements MermaidJsChannel {
     }
   }
 
-  void scriptResult(String sourceContains, String svg) {
-    _replies.add(_ScriptedReply(match: sourceContains, svg: svg));
+  void scriptResult(
+    String sourceContains, {
+    required String png,
+    required double width,
+    required double height,
+  }) {
+    _replies.add(
+      _ScriptedReply(
+        match: sourceContains,
+        png: png,
+        width: width,
+        height: height,
+      ),
+    );
   }
 
   @override
@@ -425,7 +547,12 @@ final class _DelayedInitializingChannel implements MermaidJsChannel {
         callback({'id': id, 'error': reply.error});
         return;
       }
-      callback({'id': id, 'svg': reply.svg});
+      callback({
+        'id': id,
+        'png': reply.png,
+        'width': reply.width,
+        'height': reply.height,
+      });
     });
   }
 

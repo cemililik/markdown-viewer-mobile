@@ -1,9 +1,10 @@
-/// Bounded in-memory LRU cache keyed by string, value string.
+/// Bounded in-memory LRU cache keyed by [String], generic value.
 ///
 /// Designed for the mermaid renderer where the key is the hex
-/// SHA-256 of a diagram source and the value is the rendered SVG.
-/// The cache lives entirely in process memory; surviving across app
-/// restarts is a non-goal for v1 (see ADR-0005).
+/// SHA-256 of a `(initDirective + source)` pair and the value is
+/// the rasterised bitmap + its natural dimensions. The cache lives
+/// entirely in process memory; surviving across app restarts is a
+/// non-goal for v1 (see ADR-0005).
 ///
 /// Implementation notes:
 ///
@@ -15,7 +16,7 @@
 ///   least-recently-used) is removed.
 /// - Pure Dart and stateless beyond the map — unit-testable in
 ///   isolation without pumping a widget or spinning up a WebView.
-class MermaidLruCache {
+class MermaidLruCache<V> {
   MermaidLruCache({required this.capacity}) {
     if (capacity <= 0) {
       // ArgumentError (not an assert) so a release build still
@@ -31,14 +32,14 @@ class MermaidLruCache {
   }
 
   final int capacity;
-  final Map<String, String> _entries = <String, String>{};
+  final Map<String, V> _entries = <String, V>{};
 
   /// Number of entries currently held.
   int get length => _entries.length;
 
   /// Looks up [key] and promotes it to most-recently-used. Returns
   /// `null` if absent.
-  String? get(String key) {
+  V? get(String key) {
     final value = _entries.remove(key);
     if (value == null) {
       return null;
@@ -50,7 +51,7 @@ class MermaidLruCache {
   /// Inserts [value] under [key], evicting the least-recently-used
   /// entry if [capacity] would otherwise be exceeded. If [key] is
   /// already present its position is refreshed.
-  void put(String key, String value) {
+  void put(String key, V value) {
     _entries.remove(key);
     _entries[key] = value;
     while (_entries.length > capacity) {

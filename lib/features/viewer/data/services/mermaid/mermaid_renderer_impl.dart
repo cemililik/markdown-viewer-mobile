@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:markdown_viewer/features/viewer/data/services/mermaid/headless_mermaid_js_channel.dart';
@@ -40,7 +41,7 @@ class MermaidRendererImpl implements MermaidRenderer {
     int cacheCapacity = _defaultCacheCapacity,
   }) : _channel = channel,
        _mermaidJs = mermaidJs,
-       _cache = MermaidLruCache(capacity: cacheCapacity);
+       _cache = MermaidLruCache<_CachedBitmap>(capacity: cacheCapacity);
 
   /// Convenience constructor used by `lib/main.dart` to wire a
   /// production [HeadlessMermaidJsChannel]. Tests use the primary
@@ -60,7 +61,7 @@ class MermaidRendererImpl implements MermaidRenderer {
 
   final MermaidJsChannel _channel;
   final String _mermaidJs;
-  final MermaidLruCache _cache;
+  final MermaidLruCache<_CachedBitmap> _cache;
 
   /// Per-key in-flight collapse: when two widgets ask for the same
   /// source at the same time, the second call attaches to this
@@ -139,23 +140,25 @@ class MermaidRendererImpl implements MermaidRenderer {
       return MermaidRenderFailure(_permanentFailure!);
     }
 
-    // Prepend the caller-supplied init directive so the sandbox JS
-    // renders with the right palette without us having to re-call
-    // `mermaid.initialize` (which would need global state on the
-    // sandbox page and invite race conditions). An empty directive
-    // means the caller wants the raw source respected (used when
-    // the source already starts with its own `%%{init: …}%%`).
-    // The directive is part of the hashed input, so light and
-    // dark variants of the same diagram — or any other theme
-    // variation the caller threads through — automatically occupy
-    // distinct cache slots.
-    final themedSource =
-        initDirective.isEmpty ? source : '$initDirective$source';
+    // Splice the caller-supplied init directive into the source so
+    // the sandbox JS renders with the right palette without us
+    // having to re-call `mermaid.initialize` (which would need
+    // global state on the sandbox page and invite race
+    // conditions). An empty directive means the caller wants the
+    // raw source respected (used when the source already starts
+    // with its own `%%{init: …}%%`). The directive is part of the
+    // hashed input, so light and dark variants of the same diagram
+    // automatically occupy distinct cache slots.
+    final themedSource = _composeSourceWithInit(source, initDirective);
     final key = sha256.convert(utf8.encode(themedSource)).toString();
 
     final cached = _cache.get(key);
     if (cached != null) {
-      return MermaidRenderSuccess(cached);
+      return MermaidRenderSuccess(
+        pngBytes: cached.pngBytes,
+        width: cached.width,
+        height: cached.height,
+      );
     }
 
     final existing = _inFlight[key];
@@ -257,8 +260,15 @@ class MermaidRendererImpl implements MermaidRenderer {
   }
 
   /// Single bridge endpoint registered with the JS channel.
-  /// Routes a `{id, svg | error}` payload back to the matching
-  /// pending [Completer] and updates the cache on success.
+  /// Routes a `{id, pngBytes | png, width, height | error}` payload
+  /// back to the matching pending [Completer] and updates the
+  /// cache on success.
+  ///
+  /// The production channel takes a native WKWebView snapshot and
+  /// forwards the raw [Uint8List] under `pngBytes`; test fakes
+  /// stage a base64 string under `png` because they have no real
+  /// WebView to screenshot. The handler accepts either shape so a
+  /// single code path covers both.
   void _handleChannelResult(Map<String, Object?> message) {
     final id = message['id'] as String?;
     if (id == null || id == '__ready__' || id == '__init__') {
@@ -273,18 +283,70 @@ class MermaidRendererImpl implements MermaidRenderer {
       completer.complete(MermaidRenderFailure(error));
       return;
     }
-    final svg = message['svg'];
-    if (svg is! String || svg.isEmpty) {
+    final Uint8List bytes;
+    final rawBytes = message['pngBytes'];
+    if (rawBytes is Uint8List && rawBytes.isNotEmpty) {
+      bytes = rawBytes;
+    } else {
+      final rawBase64 = message['png'];
+      if (rawBase64 is! String || rawBase64.isEmpty) {
+        completer.complete(
+          const MermaidRenderFailure('Mermaid renderer returned an empty PNG'),
+        );
+        return;
+      }
+      try {
+        bytes = base64Decode(rawBase64);
+      } on FormatException catch (e) {
+        completer.complete(
+          MermaidRenderFailure('Mermaid renderer PNG was not valid base64: $e'),
+        );
+        return;
+      }
+    }
+    if (bytes.isEmpty) {
       completer.complete(
-        const MermaidRenderFailure('Mermaid renderer returned empty SVG'),
+        const MermaidRenderFailure('Mermaid renderer returned an empty PNG'),
       );
       return;
     }
+    final width = _asPositiveDouble(message['width']);
+    final height = _asPositiveDouble(message['height']);
+    if (width == null || height == null) {
+      completer.complete(
+        const MermaidRenderFailure(
+          'Mermaid renderer returned a PNG without natural dimensions',
+        ),
+      );
+      return;
+    }
+    final bitmap = _CachedBitmap(pngBytes: bytes, width: width, height: height);
     final pendingKey = _keyForCompleter(completer);
     if (pendingKey != null) {
-      _cache.put(pendingKey, svg);
+      _cache.put(pendingKey, bitmap);
     }
-    completer.complete(MermaidRenderSuccess(svg));
+    completer.complete(
+      MermaidRenderSuccess(
+        pngBytes: bitmap.pngBytes,
+        width: bitmap.width,
+        height: bitmap.height,
+      ),
+    );
+  }
+
+  /// Coerces a JSON-bridged number into a positive [double].
+  /// The `flutter_inappwebview` bridge sometimes hands integers
+  /// back to Dart as [int] and decimals as [double]; both need to
+  /// end up as doubles with a sanity-bounded value so we do not
+  /// cache a zero-sized bitmap that would crash layout.
+  static double? _asPositiveDouble(Object? raw) {
+    if (raw is num) {
+      final value = raw.toDouble();
+      if (value > 0 && value.isFinite) {
+        return value;
+      }
+    }
+    return null;
   }
 
   String? _keyForCompleter(Completer<MermaidRenderResult> completer) {
@@ -292,6 +354,91 @@ class MermaidRendererImpl implements MermaidRenderer {
       if (identical(entry.value, completer)) {
         return entry.key;
       }
+    }
+    return null;
+  }
+
+  /// Splices [initDirective] into [source] at the correct position
+  /// for mermaid's parser.
+  ///
+  /// The naive path is `'$initDirective$source'`, but that breaks
+  /// mermaid's YAML frontmatter handling: mermaid expects the
+  /// opening `---` of a frontmatter block to be the very first
+  /// token of the source, and any `%%{init: …}%%` line pushed in
+  /// front of it derails the frontmatter parser. The visible
+  /// symptom is a "Parse error on line 1: ---title: X / Expecting
+  /// NEWLINE, got LINK" message from mermaid's diagram parser,
+  /// because once the frontmatter parse fails mermaid falls
+  /// through to the diagram parser which cannot make sense of
+  /// `---title: …`.
+  ///
+  /// The fix is to insert the init directive AFTER the closing
+  /// `---` of a leading frontmatter block so frontmatter stays on
+  /// line 1. Sources without frontmatter keep the original
+  /// "prepend to the top" behaviour.
+  static String _composeSourceWithInit(String source, String initDirective) {
+    if (initDirective.isEmpty) {
+      return source;
+    }
+    final frontmatterEnd = _frontmatterEndIndex(source);
+    if (frontmatterEnd == null) {
+      return '$initDirective$source';
+    }
+    // Insert BETWEEN the frontmatter block and the diagram body.
+    return '${source.substring(0, frontmatterEnd)}'
+        '$initDirective'
+        '${source.substring(frontmatterEnd)}';
+  }
+
+  /// Returns the byte index just past the closing `---` (and its
+  /// trailing newline) of a leading YAML frontmatter block, or
+  /// `null` when [source] has no frontmatter.
+  ///
+  /// Recognises the canonical mermaid frontmatter shape:
+  ///
+  /// ```
+  /// ---
+  /// key: value
+  /// ...
+  /// ---
+  /// <diagram body>
+  /// ```
+  ///
+  /// The opener must be the literal `---` at offset 0 (optionally
+  /// followed by whitespace before the newline). The closer is the
+  /// first later line whose trimmed content equals `---`. Anything
+  /// else — stray `-`, `----`, missing closer before EOF — falls
+  /// through to "no frontmatter" and the caller reverts to the
+  /// simple prepend path.
+  static int? _frontmatterEndIndex(String source) {
+    if (!source.startsWith('---')) {
+      return null;
+    }
+    final firstNewline = source.indexOf('\n');
+    if (firstNewline < 0 || firstNewline > 4) {
+      // `---\n` is four bytes; anything longer means the first
+      // line is `---junk` or similar, not a real frontmatter
+      // opener.
+      return null;
+    }
+    final openerLine = source.substring(0, firstNewline).trimRight();
+    if (openerLine != '---') {
+      return null;
+    }
+    var cursor = firstNewline + 1;
+    while (cursor < source.length) {
+      final nextNewline = source.indexOf('\n', cursor);
+      final lineEnd = nextNewline < 0 ? source.length : nextNewline;
+      final line = source.substring(cursor, lineEnd).trimRight();
+      if (line == '---') {
+        // Include the newline after the closer so the spliced
+        // init directive lands on its own fresh line.
+        return nextNewline < 0 ? source.length : nextNewline + 1;
+      }
+      if (nextNewline < 0) {
+        break;
+      }
+      cursor = nextNewline + 1;
     }
     return null;
   }
@@ -307,4 +454,23 @@ class _PendingRender {
   final String key;
   final String source;
   final Completer<MermaidRenderResult> completer;
+}
+
+/// Internal cache value type — PNG bytes + natural dimensions.
+///
+/// Kept private to the impl because it exists only to thread the
+/// three values through the LRU cache together. The public result
+/// shape is [MermaidRenderSuccess]; this is the in-memory form
+/// the cache holds so that a cache hit does not have to rebuild
+/// the fields one-by-one from scattered maps.
+class _CachedBitmap {
+  const _CachedBitmap({
+    required this.pngBytes,
+    required this.width,
+    required this.height,
+  });
+
+  final Uint8List pngBytes;
+  final double width;
+  final double height;
 }
