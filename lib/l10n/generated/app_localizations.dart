@@ -242,6 +242,24 @@ abstract class AppLocalizations {
   /// **'Caution'**
   String get admonitionCautionTitle;
 
+  /// Semantic label and placeholder text shown while a mermaid diagram is being rendered by the sandboxed WebView.
+  ///
+  /// In en, this message translates to:
+  /// **'Rendering diagram…'**
+  String get mermaidLoading;
+
+  /// Title of the inline error placeholder shown when a mermaid diagram fails to render (parse error, missing asset, sandbox failure).
+  ///
+  /// In en, this message translates to:
+  /// **'Diagram could not be rendered'**
+  String get mermaidRenderErrorTitle;
+
+  /// Body of the inline error placeholder shown when a mermaid diagram fails to render.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the diagram syntax and try again.'**
+  String get mermaidRenderErrorBody;
+
   /// Label shown next to the spinner while a markdown document is being read and parsed.
   ///
   /// In en, this message translates to:

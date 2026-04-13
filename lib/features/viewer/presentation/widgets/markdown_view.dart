@@ -6,6 +6,7 @@ import 'package:markdown_viewer/features/viewer/application/markdown_extensions/
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_view.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/math_view.dart';
+import 'package:markdown_viewer/features/viewer/presentation/widgets/mermaid_block.dart';
 import 'package:markdown_widget/markdown_widget.dart';
 
 /// Pre-built `MarkdownGenerator` reused for every render of every
@@ -67,10 +68,12 @@ final MarkdownGenerator _markdownGenerator = MarkdownGenerator(
 ///   `package:markdown`'s built-in [md.AlertBlockSyntax] on the
 ///   parser side plus [buildAdmonitionSpanNodeGenerators] on the
 ///   rendering side, producing themed [AdmonitionView] containers.
-///
-/// A custom block builder for mermaid lands in the next phase by
-/// extending the cached `_markdownGenerator` with one more
-/// `SpanNodeGeneratorWithTag` entry for fenced `mermaid` blocks.
+/// - Mermaid diagrams via a sandboxed `HeadlessInAppWebView` —
+///   fenced code blocks tagged `mermaid` are intercepted by
+///   [PreConfig.builder] and rendered through [MermaidBlock], which
+///   talks to the `mermaidRendererProvider` port. See ADR-0005 for
+///   the rendering contract and `docs/standards/security-standards.md`
+///   §WebView Rules for the sandbox configuration.
 class MarkdownView extends StatelessWidget {
   const MarkdownView({required this.document, super.key});
 
@@ -149,6 +152,20 @@ class MarkdownView extends StatelessWidget {
       textStyle: codeTextStyle,
       styleNotMatched: TextStyle(color: scheme.onSurface),
       theme: isDark ? hl_dark.atomOneDarkTheme : hl_light.atomOneLightTheme,
+      // `wrapper` (not `builder`) is the right hook for a
+      // selective override: markdown_widget builds the default
+      // syntax-highlighted code container first, then passes it
+      // and the (code, language) tuple through the wrapper. Using
+      // `builder` would force us to re-implement the highlight
+      // rendering for every non-mermaid block. With `wrapper` we
+      // intercept only `mermaid` and let everything else fall
+      // through unchanged.
+      wrapper: (child, code, language) {
+        if (language.toLowerCase() == 'mermaid') {
+          return MermaidBlock(code: code);
+        }
+        return child;
+      },
     );
   }
 }

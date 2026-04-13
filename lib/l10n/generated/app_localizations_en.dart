@@ -82,6 +82,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get admonitionCautionTitle => 'Caution';
 
   @override
+  String get mermaidLoading => 'Rendering diagram…';
+
+  @override
+  String get mermaidRenderErrorTitle => 'Diagram could not be rendered';
+
+  @override
+  String get mermaidRenderErrorBody =>
+      'Check the diagram syntax and try again.';
+
+  @override
   String get viewerLoading => 'Loading document…';
 
   @override

@@ -160,25 +160,39 @@ back to the `note` styling.
 
 ### Phase 1.6 — Mermaid diagrams
 
+**Status**: 🟡 Partial — runtime, sandbox, fixtures, unit + widget
+tests landed. Real-WebView integration test and the < 800 ms perf
+measurement ride into a follow-up commit alongside the iPhone test
+findings.
+
 **Goal**: Render mermaid fenced code blocks as inline SVGs through a
 sandboxed, pre-warmed `InAppWebView`. This is the heaviest slice in
 Phase 1 and may span multiple commits.
 
-- [ ] Bundle `mermaid.min.js` as a project asset
-- [ ] `MermaidRenderer` service with an async render queue and LRU
-      `sha256(source) → svg` cache (in-memory, bounded)
-- [ ] Pre-warmed `InAppWebView` created at app start, sandboxed per
+- [x] Bundle `mermaid.min.js` as a project asset (fetched by
+      `tool/fetch_mermaid.sh` with pinned version + SHA-256, not
+      committed to git — CI runs the script before tests/builds)
+- [x] `MermaidRenderer` service with an async render queue and LRU
+      `sha256(source) → svg` cache (in-memory, bounded), plus
+      in-flight collapse for concurrent identical requests
+- [x] Pre-warmed `HeadlessInAppWebView` created at app start,
+      sandboxed per
       [security-standards.md](standards/security-standards.md)
-      (no network, no file access, no cookies, CSP meta tag)
-- [ ] `MermaidBlockBuilder` hooked into `MarkdownView`'s
-      `PreConfig.builder` that detects `language == 'mermaid'` and
+      (`blockNetworkLoads`, no file access, CSP meta tag, single
+      `mermaidResult` JS bridge handler)
+- [x] `MermaidBlock` widget hooked into `MarkdownView`'s
+      `PreConfig.wrapper` that detects `language == 'mermaid'` and
       renders the returned SVG via `flutter_svg`
-- [ ] Error UI for failed mermaid parses (inline `ErrorView`
-      placeholder, never crashes the document)
-- [ ] Fixtures: flowchart, sequence diagram, class diagram, state
+- [x] Error UI for failed mermaid parses (inline warning placeholder
+      that reuses the existing admonition warning palette, never
+      crashes the document)
+- [x] Fixtures: flowchart, sequence diagram, class diagram, state
       diagram, ER diagram, gantt, a broken mermaid source
-- [ ] Widget + integration tests including the broken-source case
+- [x] Widget + unit tests including the broken-source case
+- [ ] Real-WebView integration test (deferred — needs a device /
+      simulator harness)
 - [ ] Performance measurement against the < 800 ms typical budget
+      (deferred — manual on-device measurement)
 
 **Exit criteria**: Every mermaid diagram type from
 [features.md](features.md) renders on both themes; the renderer

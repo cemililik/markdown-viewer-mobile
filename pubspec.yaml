@@ -127,15 +127,12 @@ flutter:
   # under `lib/l10n/`. See `l10n.yaml` for the generation configuration.
   generate: true
 
-  # Real assets get declared here as they land. Empty directories with only
-  # .gitkeep placeholders are not declared, otherwise `flutter pub get`
-  # bundles nothing useful and the asset manifest grows unnecessarily.
-  # Re-add `assets/mermaid/` once `mermaid.min.js` is bundled (see
-  # docs/decisions/0005-mermaid-rendering.md) and `assets/icons/` once the
-  # in-app icons are added.
-  # assets:
-  #   - assets/mermaid/
-  #   - assets/icons/
+  # Bundled mermaid runtime — see ADR-0005. The file itself is not
+  # committed; `tool/fetch_mermaid.sh` downloads the pinned version
+  # with SHA-256 verification before `flutter build` / `flutter test`.
+  # `assets/icons/` will be added once the in-app icons are bundled.
+  assets:
+    - assets/mermaid/
 
   # fonts:
   #   - family: Inter

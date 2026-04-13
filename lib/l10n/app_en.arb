@@ -95,6 +95,18 @@
   "@admonitionCautionTitle": {
     "description": "Title shown on an admonition rendered from a GitHub alert of kind `caution`."
   },
+  "mermaidLoading": "Rendering diagram…",
+  "@mermaidLoading": {
+    "description": "Semantic label and placeholder text shown while a mermaid diagram is being rendered by the sandboxed WebView."
+  },
+  "mermaidRenderErrorTitle": "Diagram could not be rendered",
+  "@mermaidRenderErrorTitle": {
+    "description": "Title of the inline error placeholder shown when a mermaid diagram fails to render (parse error, missing asset, sandbox failure)."
+  },
+  "mermaidRenderErrorBody": "Check the diagram syntax and try again.",
+  "@mermaidRenderErrorBody": {
+    "description": "Body of the inline error placeholder shown when a mermaid diagram fails to render."
+  },
   "viewerLoading": "Loading document…",
   "@viewerLoading": {
     "description": "Label shown next to the spinner while a markdown document is being read and parsed."
