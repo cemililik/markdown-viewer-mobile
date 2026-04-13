@@ -1,13 +1,12 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:markdown_viewer/features/viewer/data/parsers/markdown_parser.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/markdown_view.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/math_view.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+
+import '../../../../_helpers/markdown_fixtures.dart';
 
 void main() {
   // Same VisibilityDetector workaround as the other markdown_widget
@@ -23,19 +22,7 @@ void main() {
         originalUpdateInterval;
   });
 
-  const parser = MarkdownParser();
-
-  Document parseFixture(String name) {
-    // Read as raw bytes so non-ASCII characters like `…` survive
-    // round-tripping through `MarkdownParser._decode`. `String.codeUnits`
-    // returns UTF-16 code units and would trip the parser's UTF-8
-    // decoder on any multibyte glyph.
-    final bytes = File('test/fixtures/markdown/$name').readAsBytesSync();
-    return parser.parse(
-      id: DocumentId('test/fixtures/markdown/$name'),
-      bytes: bytes,
-    );
-  }
+  Document parseFixture(String name) => parseMarkdownFixture(name);
 
   void useTallSurface(WidgetTester tester) {
     tester.view.physicalSize = const Size(1200, 4000);
@@ -125,7 +112,7 @@ void main() {
 
   group('MarkdownView math integration', () {
     testWidgets(
-      'inline `\$ … \$` in a paragraph reaches the rendered tree as Math',
+      'inline `\$ … \$` in a paragraph reaches the rendered tree as inline Math',
       (tester) async {
         useTallSurface(tester);
         final doc = parseFixture('math.md');
@@ -133,10 +120,25 @@ void main() {
         await tester.pumpWidget(markdownHarness(doc));
         await tester.pumpAndSettle();
 
-        // The fixture has many inline expressions. We only need to
-        // prove at least one made it through the custom generator
-        // pipeline and ended up as a flutter_math_fork `Math`.
-        expect(find.byType(Math), findsWidgets);
+        // The fixture contains BOTH inline (`$…$`) and display
+        // (`$$…$$`) math, so a bare `find.byType(Math)` would pass
+        // even if inline matching were broken. Filter the visible
+        // Math widgets down to ones whose `mathStyle` is
+        // `MathStyle.text` to prove that the inline pipeline (the
+        // InlineMathSyntax parser + InlineMathSpanNode generator +
+        // MathView.inline widget) is wired end-to-end.
+        final inlineMaths = tester
+            .widgetList<Math>(find.byType(Math))
+            .where((m) => m.mathStyle == MathStyle.text);
+        expect(
+          inlineMaths,
+          isNotEmpty,
+          reason:
+              'Inline math from `\$ … \$` must produce at least one '
+              'flutter_math_fork Math widget with MathStyle.text. '
+              'Display math `\$\$ … \$\$` is handled by a separate '
+              'pipeline and would not satisfy this assertion.',
+        );
       },
     );
 

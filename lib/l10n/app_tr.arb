@@ -27,6 +27,11 @@
 
   "viewerTocTitle": "İçindekiler",
   "viewerSearchHint": "Dokümanda ara",
+  "admonitionNoteTitle": "Not",
+  "admonitionTipTitle": "İpucu",
+  "admonitionImportantTitle": "Önemli",
+  "admonitionWarningTitle": "Uyarı",
+  "admonitionCautionTitle": "Dikkat",
   "viewerLoading": "Doküman yükleniyor…",
   "viewerUnnamedDocument": "Doküman",
   "libraryFilePickCancelled": "Hiçbir dosya seçilmedi.",

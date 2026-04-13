@@ -75,6 +75,26 @@
   "@viewerSearchHint": {
     "description": "Placeholder text in the in-document search field."
   },
+  "admonitionNoteTitle": "Note",
+  "@admonitionNoteTitle": {
+    "description": "Title shown on an admonition rendered from a GitHub alert of kind `note`, e.g. `> [!NOTE]`."
+  },
+  "admonitionTipTitle": "Tip",
+  "@admonitionTipTitle": {
+    "description": "Title shown on an admonition rendered from a GitHub alert of kind `tip`."
+  },
+  "admonitionImportantTitle": "Important",
+  "@admonitionImportantTitle": {
+    "description": "Title shown on an admonition rendered from a GitHub alert of kind `important`."
+  },
+  "admonitionWarningTitle": "Warning",
+  "@admonitionWarningTitle": {
+    "description": "Title shown on an admonition rendered from a GitHub alert of kind `warning`."
+  },
+  "admonitionCautionTitle": "Caution",
+  "@admonitionCautionTitle": {
+    "description": "Title shown on an admonition rendered from a GitHub alert of kind `caution`."
+  },
   "viewerLoading": "Loading document…",
   "@viewerLoading": {
     "description": "Label shown next to the spinner while a markdown document is being read and parsed."

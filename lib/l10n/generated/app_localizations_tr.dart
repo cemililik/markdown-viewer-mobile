@@ -67,6 +67,21 @@ class AppLocalizationsTr extends AppLocalizations {
   String get viewerSearchHint => 'Dokümanda ara';
 
   @override
+  String get admonitionNoteTitle => 'Not';
+
+  @override
+  String get admonitionTipTitle => 'İpucu';
+
+  @override
+  String get admonitionImportantTitle => 'Önemli';
+
+  @override
+  String get admonitionWarningTitle => 'Uyarı';
+
+  @override
+  String get admonitionCautionTitle => 'Dikkat';
+
+  @override
   String get viewerLoading => 'Doküman yükleniyor…';
 
   @override

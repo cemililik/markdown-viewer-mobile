@@ -67,6 +67,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewerSearchHint => 'Search in document';
 
   @override
+  String get admonitionNoteTitle => 'Note';
+
+  @override
+  String get admonitionTipTitle => 'Tip';
+
+  @override
+  String get admonitionImportantTitle => 'Important';
+
+  @override
+  String get admonitionWarningTitle => 'Warning';
+
+  @override
+  String get admonitionCautionTitle => 'Caution';
+
+  @override
   String get viewerLoading => 'Loading document…';
 
   @override
