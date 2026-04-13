@@ -194,6 +194,18 @@ abstract class AppLocalizations {
   /// **'System default'**
   String get settingsLanguageSystem;
 
+  /// Label for the English option in the settings language selector.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get settingsLanguageEnglish;
+
+  /// Label for the Turkish option in the settings language selector.
+  ///
+  /// In en, this message translates to:
+  /// **'Turkish'**
+  String get settingsLanguageTurkish;
+
   /// Section title for the reading font size selector.
   ///
   /// In en, this message translates to:
@@ -241,6 +253,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Caution'**
   String get admonitionCautionTitle;
+
+  /// Semantic label and placeholder text shown while a mermaid diagram is being rendered by the sandboxed WebView.
+  ///
+  /// In en, this message translates to:
+  /// **'Rendering diagram…'**
+  String get mermaidLoading;
+
+  /// Title of the inline error placeholder shown when a mermaid diagram fails to render (parse error, missing asset, sandbox failure).
+  ///
+  /// In en, this message translates to:
+  /// **'Diagram could not be rendered'**
+  String get mermaidRenderErrorTitle;
+
+  /// Body of the inline error placeholder shown when a mermaid diagram fails to render.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the diagram syntax and try again.'**
+  String get mermaidRenderErrorBody;
 
   /// Label shown next to the spinner while a markdown document is being read and parsed.
   ///

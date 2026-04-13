@@ -58,6 +58,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLanguageSystem => 'System default';
 
   @override
+  String get settingsLanguageEnglish => 'English';
+
+  @override
+  String get settingsLanguageTurkish => 'Turkish';
+
+  @override
   String get settingsFontSizeTitle => 'Font size';
 
   @override
@@ -80,6 +86,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get admonitionCautionTitle => 'Caution';
+
+  @override
+  String get mermaidLoading => 'Rendering diagram…';
+
+  @override
+  String get mermaidRenderErrorTitle => 'Diagram could not be rendered';
+
+  @override
+  String get mermaidRenderErrorBody =>
+      'Check the diagram syntax and try again.';
 
   @override
   String get viewerLoading => 'Loading document…';

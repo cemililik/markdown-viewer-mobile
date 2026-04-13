@@ -108,8 +108,10 @@ String titleForAdmonition(AppLocalizations l10n, AdmonitionKind kind) {
 
 /// Pure helper that returns the icon / accent / background /
 /// foreground tuple for [kind] resolved against [scheme]. Kept as a
-/// top-level function for the same reasons as [titleForAdmonition].
-@visibleForTesting
+/// top-level function so [AdmonitionView] and [MermaidBlock]'s error
+/// placeholder can share the same palette table without
+/// duplication, and so the colour selection can be unit-tested in
+/// isolation from the surrounding widget.
 AdmonitionPalette paletteForAdmonition(
   ColorScheme scheme,
   AdmonitionKind kind,

@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/core/widgets/error_view.dart';
 import 'package:markdown_viewer/features/library/library.dart';
+import 'package:markdown_viewer/features/settings/presentation/screens/settings_screen.dart';
 import 'package:markdown_viewer/features/viewer/viewer.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
@@ -32,6 +33,11 @@ GoRouter router(Ref ref) {
           return ViewerScreen(documentId: DocumentId(rawPath));
         },
       ),
+      GoRoute(
+        path: SettingsRoute.path,
+        name: SettingsRoute.name,
+        builder: (context, state) => const SettingsScreen(),
+      ),
     ],
   );
 }
@@ -39,6 +45,18 @@ GoRouter router(Ref ref) {
 abstract final class LibraryRoute {
   static const String path = '/';
   static const String name = 'library';
+
+  /// Canonical location of the library screen, used by navigation
+  /// fall-throughs (e.g. [ViewerScreen]'s back button when the stack
+  /// is empty) so deep-linked routes still have a way home.
+  static String location() => path;
+}
+
+abstract final class SettingsRoute {
+  static const String path = '/settings';
+  static const String name = 'settings';
+
+  static String location() => path;
 }
 
 /// Route for [ViewerScreen]. The document path is passed as a query

@@ -58,6 +58,12 @@ class AppLocalizationsTr extends AppLocalizations {
   String get settingsLanguageSystem => 'Sistem varsayılanı';
 
   @override
+  String get settingsLanguageEnglish => 'İngilizce';
+
+  @override
+  String get settingsLanguageTurkish => 'Türkçe';
+
+  @override
   String get settingsFontSizeTitle => 'Yazı tipi boyutu';
 
   @override
@@ -80,6 +86,16 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get admonitionCautionTitle => 'Dikkat';
+
+  @override
+  String get mermaidLoading => 'Diyagram oluşturuluyor…';
+
+  @override
+  String get mermaidRenderErrorTitle => 'Diyagram görüntülenemedi';
+
+  @override
+  String get mermaidRenderErrorBody =>
+      'Diyagram söz dizimini kontrol edip tekrar deneyin.';
 
   @override
   String get viewerLoading => 'Doküman yükleniyor…';

@@ -1,26 +1,75 @@
+import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/app/app.dart';
+import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
+import 'package:markdown_viewer/features/settings/data/settings_store.dart';
 import 'package:markdown_viewer/features/viewer/application/document_repository_provider.dart';
+import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
 import 'package:markdown_viewer/features/viewer/data/parsers/markdown_parser.dart';
 import 'package:markdown_viewer/features/viewer/data/repositories/document_repository_impl.dart';
+import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_renderer_impl.dart';
+import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+Future<void> main() async {
+  // Required so we can load asset bundles, hit SharedPreferences,
+  // and run the mermaid pre-warm before the first frame.
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // Preload SharedPreferences so the settings controllers can seed
+  // their initial state synchronously — otherwise the very first
+  // frame would render with the default light theme / system locale
+  // regardless of what the user last picked.
+  final prefs = await SharedPreferences.getInstance();
+  final settingsStore = SettingsStore(prefs);
+
+  final mermaidRenderer = await _buildMermaidRenderer();
+
   runApp(
     ProviderScope(
       // Composition root — this is the only place in the app that is
       // allowed to reach into `features/**/data/` and hand a concrete
       // implementation to an application-layer port. Every other file
-      // depends on the abstract [documentRepositoryProvider] declared
-      // in the application layer, so the data implementation can be
-      // swapped (tests, fakes, integration harnesses) without touching
-      // application or presentation code.
+      // depends on the abstract providers declared in the application
+      // layer, so data implementations can be swapped (tests, fakes,
+      // integration harnesses) without touching application or
+      // presentation code.
       overrides: [
         documentRepositoryProvider.overrideWithValue(
           const DocumentRepositoryImpl(parser: MarkdownParser()),
         ),
+        mermaidRendererProvider.overrideWith((ref) {
+          ref.onDispose(mermaidRenderer.dispose);
+          return mermaidRenderer;
+        }),
+        settingsStoreProvider.overrideWithValue(settingsStore),
       ],
       child: const MarkdownViewerApp(),
     ),
   );
+}
+
+/// Loads the bundled mermaid runtime, constructs a production
+/// [MermaidRendererImpl], and pre-warms its sandboxed WebView.
+///
+/// The asset load and pre-warm are both wrapped in a try/catch: if
+/// either fails (asset missing because `tool/fetch_mermaid.sh` was
+/// not run, WebView platform binding unavailable, etc.) we still
+/// return a usable renderer instance — its internal "permanent
+/// failure" flag will route every subsequent render to a typed
+/// [MermaidRenderFailure] so the rest of the document continues to
+/// load. A diagram-less reading experience is strictly better than
+/// a crashed app.
+Future<MermaidRenderer> _buildMermaidRenderer() async {
+  try {
+    final mermaidJs = await rootBundle.loadString(
+      'assets/mermaid/mermaid.min.js',
+    );
+    final renderer = MermaidRendererImpl.production(mermaidJs: mermaidJs);
+    await renderer.prewarm();
+    return renderer;
+  } catch (_) {
+    return MermaidRendererImpl.production(mermaidJs: '');
+  }
 }

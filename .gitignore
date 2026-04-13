@@ -90,6 +90,12 @@ app.*.map.json
 # intentionally tracked so contributors do not need to run code generation
 # before opening the project, and so CI can detect generated-output drift.
 
+# Bundled mermaid asset — fetched by tool/fetch_mermaid.sh, never
+# committed. Pinned version + SHA-256 live in the script; CI runs
+# the script before tests / builds. Keeps the repo small and forces
+# a deliberate diff review when bumping mermaid.
+assets/mermaid/mermaid.min.js
+
 # Local environment
 .env
 .env.*

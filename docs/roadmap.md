@@ -18,9 +18,9 @@ gantt
     1.1 Domain + parser      :done, p11, 2026-04-13, 1d
     1.2 End-to-end slice     :done, p12, after p11, 1d
     1.3 Code + GFM verify    :done, p13, after p12, 1d
-    1.4 LaTeX math           :active, p14, after p13, 3d
-    1.5 Admonitions          :p15, after p14, 2d
-    1.6 Mermaid diagrams     :p16, after p15, 7d
+    1.4 LaTeX math           :done, p14, after p13, 1d
+    1.5 Admonitions          :done, p15, after p14, 1d
+    1.6 Mermaid diagrams     :done, p16, after p15, 1d
 
     section Phase 2
     Advanced Blocks polish   :p2, after p16, 7d
@@ -66,6 +66,9 @@ gantt
 both themes. ✅ `flutter analyze` clean, smoke test passing.
 
 ## Phase 1 — MVP Rendering
+
+**Status**: ✅ Completed 2026-04-13 — all six slices shipped. Manual
+on-device validation pass is the gate to declaring Phase 2 ready.
 
 **Goal**: Open a file and render every block type we promise, correctly
 and legibly, on both themes. Phase 1 is split into six thin slices so
@@ -119,66 +122,86 @@ each can ship, be reviewed, and stay under a tight commit size.
 - [x] `appLoggerProvider` Riverpod binding (replacing the rejected
       top-level `appLogger` singleton)
 
-### Phase 1.4 — LaTeX math — **Next**
+### Phase 1.4 — LaTeX math
+
+**Status**: ✅ Completed 2026-04-13
 
 **Goal**: Render inline `$…$` and block `$$…$$` math using
 `flutter_math_fork`, plugged into `markdown_widget` via custom inline
 and block builders.
 
-- [ ] Custom `InlineSyntax` / `BlockSyntax` on the data layer to
-      recognise `$…$` and `$$…$$` tokens inside the CommonMark AST
-      without breaking existing escape-sequence behaviour
-- [ ] `flutter_math_fork` widget wrappers in the presentation layer
+- [x] Custom `InlineSyntax` / `BlockSyntax` recognising `$…$` and
+      `$$…$$` (with `(?!\d)` currency lookahead and a block-level
+      `$$ … $$` syntax that refuses to match mid-paragraph)
+- [x] `flutter_math_fork` widget wrappers in the presentation layer
       (inline wraps into a `WidgetSpan`, block wraps with horizontal
-      scroll overflow for long equations)
-- [ ] Extend `MarkdownView` config with the custom builders
-- [ ] Fixture: `math.md` with inline expressions, display equations,
+      scroll for long equations)
+- [x] Extended `MarkdownView` config with the custom builders
+- [x] Fixture `math.md` with inline expressions, display equations,
       a matrix, and a broken expression that must fall back to a
       styled placeholder
-- [ ] Widget tests: inline math round-trip, block math centred,
-      malformed math surfaces a `RenderFailure` placeholder
-- [ ] Parser-level unit tests for the custom syntax
-
-**Exit criteria**: A math-heavy document renders without text
-reflow/ jitter, and malformed input never crashes the viewer.
+- [x] Widget tests: inline math round-trip, block math centred,
+      malformed math surfaces an error placeholder
+- [x] Parser-level unit tests for the custom syntax (currency
+      collision, escaped dollar, multi-line opener/closer)
 
 ### Phase 1.5 — Admonitions
 
-**Goal**: Recognise `!!! note|warning|tip|danger` block syntax and
-render themed containers.
+**Status**: ✅ Completed 2026-04-13
 
-- [ ] Custom `BlockSyntax` that detects the `!!!` fence and captures
-      its optional title line
-- [ ] `AdmonitionView` widget keyed off `ColorScheme.tertiary*` for
-      note / `errorContainer` for warning / `primaryContainer` for tip
-- [ ] `MarkdownView` config extension
-- [ ] Fixture + widget tests for each admonition kind
+**Goal**: Recognise GitHub-style `> [!NOTE|TIP|IMPORTANT|WARNING|CAUTION]`
+blockquote alerts and render themed containers.
 
-**Exit criteria**: All four admonition variants render on both
-themes with the right icon and colour, and unknown variants fall
-back to the `note` styling.
+- [x] Wired `package:markdown`'s built-in `AlertBlockSyntax` for
+      parsing (no custom syntax needed once GitHub aligned on
+      blockquote alerts instead of the old `!!!` fence)
+- [x] `AdmonitionView` widget keyed off Material 3 container roles
+      (primary/tertiary/secondary/error) per kind, with kind-specific
+      icon + localized title
+- [x] `MarkdownView` config extension via `AdmonitionSpanNode`
+- [x] Class-guarded title-paragraph drop so a future
+      `AlertBlockSyntax` change cannot silently eat user content
+- [x] Fixture + widget tests for each admonition kind, including the
+      "unknown kind falls through to a normal blockquote" path
 
 ### Phase 1.6 — Mermaid diagrams
+
+**Status**: ✅ Completed 2026-04-13
 
 **Goal**: Render mermaid fenced code blocks as inline SVGs through a
 sandboxed, pre-warmed `InAppWebView`. This is the heaviest slice in
 Phase 1 and may span multiple commits.
 
-- [ ] Bundle `mermaid.min.js` as a project asset
-- [ ] `MermaidRenderer` service with an async render queue and LRU
-      `sha256(source) → svg` cache (in-memory, bounded)
-- [ ] Pre-warmed `InAppWebView` created at app start, sandboxed per
+- [x] Bundle `mermaid.min.js` as a project asset (fetched by
+      `tool/fetch_mermaid.sh` with pinned version + SHA-256, not
+      committed to git — CI runs the script before tests/builds)
+- [x] `MermaidRenderer` service with an async render queue and LRU
+      `sha256(source) → svg` cache (in-memory, bounded), plus
+      in-flight collapse for concurrent identical requests
+- [x] Pre-warmed `HeadlessInAppWebView` created at app start,
+      sandboxed per
       [security-standards.md](standards/security-standards.md)
-      (no network, no file access, no cookies, CSP meta tag)
-- [ ] `MermaidBlockBuilder` hooked into `MarkdownView`'s
-      `PreConfig.builder` that detects `language == 'mermaid'` and
+      (`blockNetworkLoads`, no file access, CSP meta tag, single
+      `mermaidResult` JS bridge handler)
+- [x] `MermaidBlock` widget hooked into `MarkdownView`'s
+      `PreConfig.wrapper` that detects `language == 'mermaid'` and
       renders the returned SVG via `flutter_svg`
-- [ ] Error UI for failed mermaid parses (inline `ErrorView`
-      placeholder, never crashes the document)
-- [ ] Fixtures: flowchart, sequence diagram, class diagram, state
+- [x] Error UI for failed mermaid parses (inline warning placeholder
+      that reuses the existing admonition warning palette, never
+      crashes the document)
+- [x] Fixtures: flowchart, sequence diagram, class diagram, state
       diagram, ER diagram, gantt, a broken mermaid source
-- [ ] Widget + integration tests including the broken-source case
-- [ ] Performance measurement against the < 800 ms typical budget
+- [x] Widget + unit tests including the broken-source case
+- [x] Real-WebView integration test
+      (`integration_test/mermaid_render_test.dart`) drives the
+      production `HeadlessMermaidJsChannel` end-to-end: bundled
+      asset load, real flowchart → SVG round-trip, broken source →
+      typed failure with recovery, cache hit on repeat render, every
+      diagram type from the fixture rendering successfully
+- [x] Performance measurement against the < 800 ms typical budget —
+      the integration test asserts `prewarm + first render < 800 ms`
+      and prints the actual cold-path duration so future regressions
+      have a data point
 
 **Exit criteria**: Every mermaid diagram type from
 [features.md](features.md) renders on both themes; the renderer

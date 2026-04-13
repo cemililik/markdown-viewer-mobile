@@ -39,10 +39,10 @@ const String mathInlineTag = 'math-inline';
 class DisplayMathBlockSyntax extends md.BlockSyntax {
   const DisplayMathBlockSyntax();
 
-  /// Pattern used by [canParse] — matches any line that begins with
-  /// `$$` after optional leading whitespace. The full classification
-  /// (single-line vs multi-line, body extraction) is done in [parse]
-  /// for clarity.
+  /// Pattern handed to [md.BlockSyntax]'s default `canParse`, which
+  /// gates this syntax on lines that begin with `$$` after optional
+  /// leading whitespace. The full classification (single-line vs
+  /// multi-line, body extraction) is done in [parse] for clarity.
   static final RegExp _opening = RegExp(r'^\s*\$\$');
 
   /// Captures `$$ body $$` on a single line, with optional
@@ -57,13 +57,12 @@ class DisplayMathBlockSyntax extends md.BlockSyntax {
   /// (with optional surrounding whitespace).
   static final RegExp _bareFence = RegExp(r'^\s*\$\$\s*$');
 
+  // No `canParse` override: the base [md.BlockSyntax.canParse]
+  // already returns `pattern.hasMatch(parser.current.content)`,
+  // which is exactly what we want, so a custom override would just
+  // duplicate the framework code.
   @override
   RegExp get pattern => _opening;
-
-  @override
-  bool canParse(md.BlockParser parser) {
-    return _opening.hasMatch(parser.current.content);
-  }
 
   @override
   md.Node? parse(md.BlockParser parser) {

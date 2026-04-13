@@ -34,6 +34,11 @@ enum AdmonitionKind {
 const String _markdownAlertClass = 'markdown-alert';
 const String _markdownAlertKindPrefix = 'markdown-alert-';
 
+/// Tokeniser for the HTML `class` attribute. Cached at top level so
+/// [tryParseAdmonitionKind] does not allocate a fresh [RegExp] on
+/// every `<div>` the markdown parser walks past.
+final RegExp _classAttrSplit = RegExp(r'\s+');
+
 /// Tag name of the [md.Element] that [md.Document]'s
 /// [AlertBlockSyntax] emits for a GitHub alert block.
 const String admonitionElementTag = 'div';
@@ -60,7 +65,7 @@ AdmonitionKind? tryParseAdmonitionKind(md.Element element) {
   if (classAttr == null || classAttr.isEmpty) {
     return null;
   }
-  final tokens = classAttr.split(RegExp(r'\s+'));
+  final tokens = classAttr.split(_classAttrSplit);
   if (!tokens.contains(_markdownAlertClass)) {
     return null;
   }

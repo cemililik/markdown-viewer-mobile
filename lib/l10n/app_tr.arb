@@ -22,6 +22,8 @@
 
   "settingsLanguageTitle": "Dil",
   "settingsLanguageSystem": "Sistem varsayılanı",
+  "settingsLanguageEnglish": "İngilizce",
+  "settingsLanguageTurkish": "Türkçe",
 
   "settingsFontSizeTitle": "Yazı tipi boyutu",
 
@@ -32,6 +34,9 @@
   "admonitionImportantTitle": "Önemli",
   "admonitionWarningTitle": "Uyarı",
   "admonitionCautionTitle": "Dikkat",
+  "mermaidLoading": "Diyagram oluşturuluyor…",
+  "mermaidRenderErrorTitle": "Diyagram görüntülenemedi",
+  "mermaidRenderErrorBody": "Diyagram söz dizimini kontrol edip tekrar deneyin.",
   "viewerLoading": "Doküman yükleniyor…",
   "viewerUnnamedDocument": "Doküman",
   "libraryFilePickCancelled": "Hiçbir dosya seçilmedi.",
