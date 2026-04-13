@@ -1,18 +1,17 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:markdown_viewer/features/viewer/data/parsers/markdown_parser.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/markdown_view.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+
+import '../../../../_helpers/markdown_fixtures.dart';
 
 void main() {
   // `markdown_widget` paints content through `visibility_detector`,
   // which schedules a 500 ms debounce timer that flutter_test's fake
   // clock would otherwise leak. Collapse the debounce to zero for the
-  // duration of this file and restore it on tearDown so we don't pollute
-  // any later test that loads the same singleton.
+  // duration of this file and restore it on tearDown so we don't
+  // pollute any later test that loads the same singleton.
   TestWidgetsFlutterBinding.ensureInitialized();
   final originalUpdateInterval =
       VisibilityDetectorController.instance.updateInterval;
@@ -22,18 +21,7 @@ void main() {
         originalUpdateInterval;
   });
 
-  const parser = MarkdownParser();
-
-  Document parseFixture(String name) {
-    // Read as raw bytes so non-ASCII fixtures survive the parser's
-    // UTF-8 decoder. `String.codeUnits` returns UTF-16 units and
-    // would corrupt any multibyte glyph.
-    final bytes = File('test/fixtures/markdown/$name').readAsBytesSync();
-    return parser.parse(
-      id: DocumentId('test/fixtures/markdown/$name'),
-      bytes: bytes,
-    );
-  }
+  Document parseFixture(String name) => parseMarkdownFixture(name);
 
   /// Resizes the test surface to a tall window before each test runs
   /// and resets it on tear-down. `MarkdownWidget` is internally backed

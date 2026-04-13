@@ -1,15 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown/markdown.dart' as md;
-import 'package:markdown_viewer/features/viewer/data/parsers/math_syntax.dart';
+import 'package:markdown_viewer/features/viewer/application/markdown_extensions/math_syntax.dart';
 
 void main() {
-  /// Parses [source] with our math syntaxes plus the default GFM
-  /// extension set — matches the configuration `MarkdownView` uses at
-  /// runtime so the tests exercise the same code path.
+  /// Parses [source] with the same parser configuration `MarkdownView`
+  /// uses at runtime: GFM extension set, the math block syntax for
+  /// display math, and the math inline syntax for `$ … $`.
   List<md.Node> parse(String source) {
     final document = md.Document(
       extensionSet: md.ExtensionSet.gitHubFlavored,
       encodeHtml: false,
+      blockSyntaxes: buildMathBlockSyntaxes(),
       inlineSyntaxes: buildMathInlineSyntaxes(),
     );
     return document.parseLines(source.split('\n'));
@@ -87,18 +88,42 @@ void main() {
       expect(matches, isEmpty);
     });
 
-    test('should not span across a newline', () {
-      // The regex forbids `\n` in the body so a stray `$` at end of
-      // one line cannot accidentally eat content from the next one.
-      final nodes = parse('Start of a paragraph \$oops\nNext line.');
+    test('should not match adjacent currency amounts as one math run', () {
+      // Regression guard: without the negative lookahead `(?!\d)` on
+      // the closing `$`, the regex would match `$5 and $` as a math
+      // run wrapping `5 and `, turning currency text into garbage
+      // math. Both forms below must stay as plain prose.
+      final nodes = parse(r'Pay $5 and $10 in change.');
 
       final matches = findByTag(nodes, mathInlineTag);
 
-      expect(matches, isEmpty);
+      expect(
+        matches,
+        isEmpty,
+        reason:
+            'Currency-like `\$5 and \$10` must not be eaten by the '
+            'inline math regex.',
+      );
     });
+
+    test(
+      'should not span an opener and a closer that sit on different lines',
+      () {
+        // Real cross-line case: an opening `$` at the end of one line
+        // and a closing `$` at the start of the next line. Without
+        // the `\n` exclusion in the body class, the regex would
+        // happily eat the newline and treat the two as a single
+        // multi-line inline match.
+        final nodes = parse('First line ends with \$\nNext line \$ closes.');
+
+        final matches = findByTag(nodes, mathInlineTag);
+
+        expect(matches, isEmpty);
+      },
+    );
   });
 
-  group('DisplayMathSyntax', () {
+  group('DisplayMathBlockSyntax', () {
     test(r'should recognise a single-line `$$ … $$` display block', () {
       final nodes = parse(r'$$E = mc^2$$');
 
@@ -109,9 +134,8 @@ void main() {
         displays,
         hasLength(1),
         reason:
-            'Display syntax must win over the inline syntax for '
-            r'`$$ … $$` — otherwise two empty inline runs surround '
-            'the body.',
+            'A line containing only `\$\$ … \$\$` must be parsed '
+            'as a display block by DisplayMathBlockSyntax.',
       );
       expect(plainTextOf(displays.single), 'E = mc^2');
       expect(inlines, isEmpty);
@@ -141,23 +165,47 @@ Prose after.
     });
 
     test(r'should reject an empty `$$$$` block', () {
-      final nodes = parse(r'Nothing here: $$$$');
+      final nodes = parse(r'$$$$');
 
       final displays = findByTag(nodes, mathBlockTag);
 
       expect(displays, isEmpty);
     });
+
+    test(
+      'should leave `\$\$ … \$\$` mid-paragraph as literal text, not a block',
+      () {
+        // Regression guard: with the previous InlineSyntax-based
+        // implementation, `$$ … $$` inside a sentence matched and
+        // produced a layout-disrupting WidgetSpan. The BlockSyntax
+        // refuses to match anything that is not a `$$`-only line,
+        // so this case stays as prose and no display element is
+        // emitted.
+        final nodes = parse(r'Hello $$E=mc^2$$ world.');
+
+        final displays = findByTag(nodes, mathBlockTag);
+
+        expect(displays, isEmpty);
+      },
+    );
   });
 
-  group('syntax ordering', () {
-    test('factory list must put display before inline', () {
-      // Regression guard: if this order ever flips, `$$x$$` breaks
-      // into two empty inline runs surrounding `x`.
+  group('factory shape', () {
+    test('block factory returns one DisplayMathBlockSyntax', () {
+      final syntaxes = buildMathBlockSyntaxes();
+
+      expect(syntaxes, hasLength(1));
+      expect(syntaxes.single, isA<DisplayMathBlockSyntax>());
+    });
+
+    test('inline factory returns one InlineMathSyntax', () {
+      // Regression guard: a future refactor must not silently ship
+      // a list of zero (forgetting to register) or two (re-adding
+      // the deleted DisplayMathSyntax) inline syntaxes.
       final syntaxes = buildMathInlineSyntaxes();
 
-      expect(syntaxes, hasLength(2));
-      expect(syntaxes[0], isA<DisplayMathSyntax>());
-      expect(syntaxes[1], isA<InlineMathSyntax>());
+      expect(syntaxes, hasLength(1));
+      expect(syntaxes.single, isA<InlineMathSyntax>());
     });
   });
 }

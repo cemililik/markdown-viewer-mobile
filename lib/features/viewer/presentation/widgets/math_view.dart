@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:markdown/markdown.dart' as md;
-import 'package:markdown_viewer/features/viewer/data/parsers/math_syntax.dart';
+import 'package:markdown_viewer/features/viewer/application/markdown_extensions/math_syntax.dart';
 import 'package:markdown_widget/markdown_widget.dart';
 
 /// Renders a single LaTeX math expression via `flutter_math_fork`.
@@ -39,12 +39,23 @@ class MathView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // Display math sits one Material 3 type step above body text —
+    // `headlineSmall` matches the visual weight of a centred
+    // equation without crowding the reading column. Inline math
+    // inherits the body text size so it stays in line with the
+    // surrounding paragraph. Both branches respect system font
+    // scaling and any `MediaQuery.textScaler` overrides.
+    final fontSize =
+        _displayBlock
+            ? theme.textTheme.headlineSmall?.fontSize ??
+                theme.textTheme.bodyMedium?.fontSize
+            : theme.textTheme.bodyMedium?.fontSize;
     final math = Math.tex(
       expression,
       mathStyle: mathStyle,
       textStyle: TextStyle(
         color: theme.colorScheme.onSurface,
-        fontSize: _displayBlock ? 18 : theme.textTheme.bodyMedium?.fontSize,
+        fontSize: fontSize,
       ),
       onErrorFallback:
           (error) => _MathErrorFallback(

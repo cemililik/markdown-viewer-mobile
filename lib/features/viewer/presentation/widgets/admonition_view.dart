@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
-import 'package:markdown_viewer/features/viewer/data/parsers/admonition.dart';
+import 'package:markdown_viewer/features/viewer/application/markdown_extensions/admonition.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:markdown_widget/markdown_widget.dart';
 

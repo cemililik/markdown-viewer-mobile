@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown/markdown.dart' as md;
-import 'package:markdown_viewer/features/viewer/data/parsers/admonition.dart';
+import 'package:markdown_viewer/features/viewer/application/markdown_extensions/admonition.dart';
 
 void main() {
   /// Parses [source] with the same parser options MarkdownView uses

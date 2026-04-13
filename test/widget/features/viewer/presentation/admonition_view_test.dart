@@ -1,15 +1,14 @@
-import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:markdown_viewer/features/viewer/data/parsers/admonition.dart';
-import 'package:markdown_viewer/features/viewer/data/parsers/markdown_parser.dart';
+import 'package:markdown_viewer/features/viewer/application/markdown_extensions/admonition.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_view.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/markdown_view.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:visibility_detector/visibility_detector.dart';
+
+import '../../../../_helpers/markdown_fixtures.dart';
 
 void main() {
   // Same VisibilityDetector workaround as the other markdown_widget
@@ -24,15 +23,7 @@ void main() {
         originalUpdateInterval;
   });
 
-  const parser = MarkdownParser();
-
-  Document parseFixture(String name) {
-    final bytes = File('test/fixtures/markdown/$name').readAsBytesSync();
-    return parser.parse(
-      id: DocumentId('test/fixtures/markdown/$name'),
-      bytes: bytes,
-    );
-  }
+  Document parseFixture(String name) => parseMarkdownFixture(name);
 
   void useTallSurface(WidgetTester tester) {
     tester.view.physicalSize = const Size(1200, 4000);

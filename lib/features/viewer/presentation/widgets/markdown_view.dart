@@ -2,11 +2,46 @@ import 'package:flutter/material.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart' as hl_dark;
 import 'package:flutter_highlight/themes/atom-one-light.dart' as hl_light;
 import 'package:markdown/markdown.dart' as md;
-import 'package:markdown_viewer/features/viewer/data/parsers/math_syntax.dart';
+import 'package:markdown_viewer/features/viewer/application/markdown_extensions/math_syntax.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_view.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/math_view.dart';
 import 'package:markdown_widget/markdown_widget.dart';
+
+/// Pre-built `MarkdownGenerator` reused for every render of every
+/// [MarkdownView] instance.
+///
+/// The generator is pure and immutable: it owns three stateless
+/// configuration lists ([md.AlertBlockSyntax], the math block /
+/// inline syntaxes, and the math + admonition span node
+/// generators). Recreating it on every `build` would allocate four
+/// new lists and a new `MarkdownGenerator` per frame and per
+/// scroll, for no behavioural benefit. Caching it once at
+/// load time keeps the hot path allocation-free.
+///
+/// The list literal includes the math block syntax, GitHub alert
+/// block syntax (admonitions), the inline math syntax, the math
+/// span node generators, and the admonition span node generators
+/// in the order the parser and visitor expect:
+///
+/// 1. **Block syntaxes** run first during parsing. Display math
+///    must therefore live here, not in `inlineSyntaxList`, so a
+///    user who writes `$$ … $$` mid-paragraph gets literal text
+///    instead of a layout-disrupting inline `WidgetSpan`.
+/// 2. **Inline syntaxes** run during paragraph processing. Only
+///    single-dollar `$ … $` math is inline by construction.
+/// 3. **Generators** are written into the visitor's tag→builder
+///    map; ours are additive on top of the package's defaults
+///    (links, emphasis, lists, …) — see the `WidgetVisitor`
+///    constructor in `markdown_widget`.
+final MarkdownGenerator _markdownGenerator = MarkdownGenerator(
+  blockSyntaxList: const [DisplayMathBlockSyntax(), md.AlertBlockSyntax()],
+  inlineSyntaxList: buildMathInlineSyntaxes(),
+  generators: [
+    ...buildMathSpanNodeGenerators(),
+    ...buildAdmonitionSpanNodeGenerators(),
+  ],
+);
 
 /// Renders a parsed [Document] using `markdown_widget`.
 ///
@@ -23,10 +58,10 @@ import 'package:markdown_widget/markdown_widget.dart';
 ///   `colorScheme.surfaceContainer*` instead of the package's
 ///   hard-coded greys, and the syntax theme is `atom-one-light` /
 ///   `atom-one-dark` from `flutter_highlight`.
-/// - LaTeX math via `flutter_math_fork`: `$…$` inline and
-///   `$$…$$` display math are recognised by [buildMathInlineSyntaxes]
-///   and rendered by the `SpanNodeGenerator`s in
-///   [buildMathSpanNodeGenerators]. Malformed input renders an
+/// - LaTeX math via `flutter_math_fork`: `$ … $` inline (via
+///   [InlineMathSyntax]) and `$$ … $$` display math (via
+///   [DisplayMathBlockSyntax]) rendered by the `SpanNodeGenerator`s
+///   in [buildMathSpanNodeGenerators]. Malformed input renders an
 ///   inline error placeholder without crashing the document.
 /// - GitHub-style admonitions (`> [!NOTE]`, `> [!WARNING]`, …) via
 ///   `package:markdown`'s built-in [md.AlertBlockSyntax] on the
@@ -34,7 +69,7 @@ import 'package:markdown_widget/markdown_widget.dart';
 ///   rendering side, producing themed [AdmonitionView] containers.
 ///
 /// A custom block builder for mermaid lands in the next phase by
-/// extending the same [MarkdownGenerator] with one more
+/// extending the cached `_markdownGenerator` with one more
 /// `SpanNodeGeneratorWithTag` entry for fenced `mermaid` blocks.
 class MarkdownView extends StatelessWidget {
   const MarkdownView({required this.document, super.key});
@@ -48,19 +83,22 @@ class MarkdownView extends StatelessWidget {
         theme.brightness == Brightness.dark
             ? MarkdownConfig.darkConfig
             : MarkdownConfig.defaultConfig;
+
+    // `MarkdownConfig.copy(configs: [...])` is a **merge**, not a
+    // replacement: it writes each entry in the supplied list into
+    // the existing tag→config map and then constructs a new
+    // MarkdownConfig from the full merged set. Passing only our
+    // PreConfig therefore overrides the `pre` slot while every
+    // other dark variant (HConfig, BlockquoteConfig, PConfig, …)
+    // pre-loaded by `MarkdownConfig.darkConfig` survives unchanged.
+    // See `MarkdownConfig.copy` in
+    // `package:markdown_widget/config/configs.dart`.
     final config = base.copy(configs: [_buildPreConfig(theme)]);
 
     return MarkdownWidget(
       data: document.source,
       config: config,
-      markdownGenerator: MarkdownGenerator(
-        blockSyntaxList: const [md.AlertBlockSyntax()],
-        inlineSyntaxList: buildMathInlineSyntaxes(),
-        generators: [
-          ...buildMathSpanNodeGenerators(),
-          ...buildAdmonitionSpanNodeGenerators(),
-        ],
-      ),
+      markdownGenerator: _markdownGenerator,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
   }
@@ -77,13 +115,14 @@ class MarkdownView extends StatelessWidget {
     final baseBodyStyle =
         theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
     final codeTextStyle = baseBodyStyle.copyWith(
-      // Font resolution rules on every Flutter platform (Android, iOS,
-      // desktop, web): the engine tries `fontFamily` first and only
-      // walks `fontFamilyFallback` if nothing matches. `'monospace'`
-      // is a valid system alias on Android, so putting it first would
-      // cause the engine to stop there and never consider the
-      // specific faces below. The stack must therefore run from most
-      // specific to least specific, with the generic alias at the end.
+      // Font resolution rules on every Flutter platform (Android,
+      // iOS, desktop, web): the engine tries `fontFamily` first and
+      // only walks `fontFamilyFallback` if nothing matches.
+      // `'monospace'` is a valid system alias on Android, so putting
+      // it first would cause the engine to stop there and never
+      // consider the specific faces below. The stack must therefore
+      // run from most specific to least specific, with the generic
+      // alias at the end.
       //
       // `'JetBrains Mono'` uses the canonical family name with a
       // space — matches the font when we eventually bundle it.
