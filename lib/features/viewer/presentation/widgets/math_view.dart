@@ -81,16 +81,25 @@ class _MathErrorFallback extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    // Inherit the reader's current body text size, then override only
+    // what a code-like error label needs. The monospace stack runs
+    // from most specific to least specific — `'monospace'` is a
+    // valid system alias on Android and would short-circuit the
+    // fallback walk if placed first. See the matching comment in
+    // `markdown_view.dart`.
+    final baseBodyStyle =
+        theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
     final text = Text(
       expression,
-      style: TextStyle(
-        fontFamily: 'monospace',
+      style: baseBodyStyle.copyWith(
+        fontFamily: 'JetBrains Mono',
         fontFamilyFallback: const [
-          'JetBrainsMono',
           'Menlo',
           'Consolas',
           'Roboto Mono',
+          'monospace',
         ],
         color: scheme.onErrorContainer,
       ),
