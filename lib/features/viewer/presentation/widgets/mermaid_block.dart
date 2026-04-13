@@ -238,7 +238,21 @@ String buildMermaidInitDirective(ColorScheme scheme, Brightness brightness) {
   // Mermaid accepts JSON syntax inside the init directive, so we
   // can let `jsonEncode` do all the escaping work and avoid hand-
   // rolled string concatenation edge cases.
-  final payload = jsonEncode({'theme': 'base', 'themeVariables': variables});
+  //
+  // `htmlLabels: false` is critical for `flutter_svg` compatibility:
+  // mermaid's default label mode uses `<foreignObject>` + `<div>`
+  // to host HTML text inside the SVG, and `flutter_svg` has no
+  // support for `foreignObject` at all — labels disappear
+  // entirely. Forcing every diagram type to emit plain `<text>`
+  // elements makes the labels renderable at the cost of losing
+  // some fancy HTML wrapping we don't need on mobile anyway.
+  final payload = jsonEncode({
+    'theme': 'base',
+    'themeVariables': variables,
+    'flowchart': {'htmlLabels': false},
+    'class': {'htmlLabels': false},
+    'state': {'htmlLabels': false},
+  });
   return '%%{init: $payload}%%\n';
 }
 

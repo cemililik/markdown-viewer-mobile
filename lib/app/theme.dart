@@ -37,6 +37,26 @@ abstract final class AppTheme {
         backgroundColor: scheme.surface,
         indicatorColor: scheme.secondaryContainer,
       ),
+      // Material 3's default snackbar uses `inverseSurface`, which
+      // flips to LIGHT in dark mode — bright, harsh, and out of
+      // place against the rest of the reading UI. We lock it to a
+      // subtly elevated tonal surface (`surfaceContainerHigh`) in
+      // both modes so snackbars feel like a quiet elevation change
+      // rather than a mode-inverting flash. Floating behaviour keeps
+      // the snackbar visually separate from the back-to-top FAB and
+      // respects bottom safe-area padding.
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: scheme.surfaceContainerHigh,
+        contentTextStyle: TextStyle(color: scheme.onSurface),
+        actionTextColor: scheme.primary,
+        closeIconColor: scheme.onSurface,
+        behavior: SnackBarBehavior.floating,
+        elevation: 3,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+        ),
+        insetPadding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+      ),
     );
   }
 }

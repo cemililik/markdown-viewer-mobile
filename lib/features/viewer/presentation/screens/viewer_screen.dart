@@ -12,6 +12,7 @@ import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/reading_position.dart';
 import 'package:markdown_viewer/features/viewer/presentation/failure_message_mapper.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/markdown_view.dart';
+import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:path/path.dart' as p;
 
 /// Screen that loads and renders a single markdown document.
@@ -111,23 +112,11 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
         duration: const Duration(milliseconds: 600),
         curve: Curves.easeOutCubic,
       );
-      final l10n = context.l10n;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          duration: const Duration(seconds: 4),
-          content: Text(l10n.viewerResumedFromBookmark),
-          action: SnackBarAction(
-            label: l10n.actionGoToTop,
-            onPressed: _scrollToTop,
-          ),
-        ),
-      );
+      _showLocalizedSnackBar((l10n) => l10n.viewerResumedFromBookmark);
     });
   }
 
   Future<void> _toggleBookmark() async {
-    final l10n = context.l10n;
-    final messenger = ScaffoldMessenger.of(context);
     final store = ref.read(readingPositionStoreProvider);
     if (_isBookmarked.value) {
       _isBookmarked.value = false;
@@ -135,9 +124,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       if (!mounted) {
         return;
       }
-      messenger.showSnackBar(
-        SnackBar(content: Text(l10n.viewerBookmarkCleared)),
-      );
+      _showLocalizedSnackBar((l10n) => l10n.viewerBookmarkCleared);
       return;
     }
     final offset =
@@ -153,7 +140,28 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     if (!mounted) {
       return;
     }
-    messenger.showSnackBar(SnackBar(content: Text(l10n.viewerBookmarkSaved)));
+    _showLocalizedSnackBar((l10n) => l10n.viewerBookmarkSaved);
+  }
+
+  /// Shows a snackbar whose content reads its localized string on
+  /// every rebuild, so an instant-apply locale change in settings
+  /// flips the visible text while the snackbar is still on screen.
+  ///
+  /// Without the [Builder] wrap, `SnackBar(content: Text(l10n.xxx))`
+  /// captures the localized string at the moment of construction
+  /// and the shown snackbar keeps the stale copy even after
+  /// `MaterialApp.locale` changes.
+  ///
+  /// The explicit 3 s duration matches the Material 3 guidance for
+  /// short confirmation messages and keeps the snackbar from
+  /// lingering over the back-to-top FAB.
+  void _showLocalizedSnackBar(String Function(AppLocalizations l10n) resolve) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        duration: const Duration(seconds: 3),
+        content: Builder(builder: (context) => Text(resolve(context.l10n))),
+      ),
+    );
   }
 
   @override
