@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart' as hl_dark;
 import 'package:flutter_highlight/themes/atom-one-light.dart' as hl_light;
+import 'package:markdown_viewer/features/viewer/data/parsers/math_syntax.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
+import 'package:markdown_viewer/features/viewer/presentation/widgets/math_view.dart';
 import 'package:markdown_widget/markdown_widget.dart';
 
 /// Renders a parsed [Document] using `markdown_widget`.
@@ -13,19 +15,21 @@ import 'package:markdown_widget/markdown_widget.dart';
 /// `flutter_highlight` themes. We do not need a custom block builder
 /// for any of those.
 ///
-/// What this widget customises on top of the package defaults:
+/// On top of the package defaults this widget adds:
 ///
-/// - Picks the right top-level [MarkdownConfig] (`defaultConfig` or
-///   `darkConfig`) based on the active [ThemeData.brightness] so light
-///   and dark theme switching works without rebuilding subtrees.
-/// - Replaces [PreConfig] with a Material-3-aware variant: code blocks
-///   sit on `colorScheme.surfaceContainer*` instead of the package's
-///   hard-coded greys, and the syntax theme is the well-known
-///   `atom-one-light` / `atom-one-dark` from `flutter_highlight`.
+/// - Material-3-aware [PreConfig]: code blocks sit on
+///   `colorScheme.surfaceContainer*` instead of the package's
+///   hard-coded greys, and the syntax theme is `atom-one-light` /
+///   `atom-one-dark` from `flutter_highlight`.
+/// - LaTeX math via `flutter_math_fork`: `$…$` inline and
+///   `$$…$$` display math are recognised by [buildMathInlineSyntaxes]
+///   and rendered by the `SpanNodeGenerator`s in
+///   [buildMathSpanNodeGenerators]. Malformed input renders an
+///   inline error placeholder without crashing the document.
 ///
-/// Custom block builders for mermaid, math, and admonitions land in
-/// later phases by plugging into the same [MarkdownConfig] via
-/// additional config slots.
+/// Custom block builders for mermaid and admonitions land in later
+/// phases by extending the same [MarkdownGenerator] with more
+/// syntaxes and more `SpanNodeGeneratorWithTag` entries.
 class MarkdownView extends StatelessWidget {
   const MarkdownView({required this.document, super.key});
 
@@ -34,20 +38,56 @@ class MarkdownView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
     final base =
-        isDark ? MarkdownConfig.darkConfig : MarkdownConfig.defaultConfig;
-    final config = base.copy(configs: [_buildPreConfig(theme, isDark: isDark)]);
+        theme.brightness == Brightness.dark
+            ? MarkdownConfig.darkConfig
+            : MarkdownConfig.defaultConfig;
+    final config = base.copy(configs: [_buildPreConfig(theme)]);
 
     return MarkdownWidget(
       data: document.source,
       config: config,
+      markdownGenerator: MarkdownGenerator(
+        inlineSyntaxList: buildMathInlineSyntaxes(),
+        generators: buildMathSpanNodeGenerators(),
+      ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
   }
 
-  PreConfig _buildPreConfig(ThemeData theme, {required bool isDark}) {
+  PreConfig _buildPreConfig(ThemeData theme) {
     final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+
+    // Start from the active body text style so code blocks inherit
+    // the same fontSize baseline the rest of the reading column uses
+    // (respecting system font scaling), then override the parts that
+    // are specific to code: the monospace stack, a slightly taller
+    // line height, and the code colour.
+    final baseBodyStyle =
+        theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
+    final codeTextStyle = baseBodyStyle.copyWith(
+      // Font resolution rules on every Flutter platform (Android, iOS,
+      // desktop, web): the engine tries `fontFamily` first and only
+      // walks `fontFamilyFallback` if nothing matches. `'monospace'`
+      // is a valid system alias on Android, so putting it first would
+      // cause the engine to stop there and never consider the
+      // specific faces below. The stack must therefore run from most
+      // specific to least specific, with the generic alias at the end.
+      //
+      // `'JetBrains Mono'` uses the canonical family name with a
+      // space — matches the font when we eventually bundle it.
+      fontFamily: 'JetBrains Mono',
+      fontFamilyFallback: const [
+        'Menlo',
+        'Consolas',
+        'Roboto Mono',
+        'monospace',
+      ],
+      height: 1.45,
+      color: scheme.onSurface,
+    );
+
     return PreConfig(
       decoration: BoxDecoration(
         color:
@@ -57,18 +97,7 @@ class MarkdownView extends StatelessWidget {
       ),
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.symmetric(vertical: 12),
-      textStyle: TextStyle(
-        fontFamily: 'monospace',
-        fontFamilyFallback: const [
-          'JetBrainsMono',
-          'Menlo',
-          'Consolas',
-          'Roboto Mono',
-        ],
-        fontSize: 14,
-        height: 1.45,
-        color: scheme.onSurface,
-      ),
+      textStyle: codeTextStyle,
       styleNotMatched: TextStyle(color: scheme.onSurface),
       theme: isDark ? hl_dark.atomOneDarkTheme : hl_light.atomOneLightTheme,
     );

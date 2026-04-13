@@ -23,4 +23,14 @@ import 'package:logger/logger.dart';
 /// `ref.read(appLoggerProvider)` for one-shot reads (typical inside
 /// callbacks and async handlers) or `ref.watch(appLoggerProvider)`
 /// inside widgets that should rebuild on override changes.
-final appLoggerProvider = Provider<Logger>((ref) => Logger());
+///
+/// The provider registers `logger.close()` with `ref.onDispose` so
+/// that any output sinks (file handles, remote transports, etc.)
+/// added in the future — or plugged in by test overrides — are
+/// released when the container tears the provider down, not left
+/// dangling until the VM exits.
+final appLoggerProvider = Provider<Logger>((ref) {
+  final logger = Logger();
+  ref.onDispose(logger.close);
+  return logger;
+});

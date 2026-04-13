@@ -25,10 +25,13 @@ void main() {
   const parser = MarkdownParser();
 
   Document parseFixture(String name) {
-    final source = File('test/fixtures/markdown/$name').readAsStringSync();
+    // Read as raw bytes so non-ASCII fixtures survive the parser's
+    // UTF-8 decoder. `String.codeUnits` returns UTF-16 units and
+    // would corrupt any multibyte glyph.
+    final bytes = File('test/fixtures/markdown/$name').readAsBytesSync();
     return parser.parse(
       id: DocumentId('test/fixtures/markdown/$name'),
-      bytes: source.codeUnits,
+      bytes: bytes,
     );
   }
 
