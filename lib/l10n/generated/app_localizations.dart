@@ -212,6 +212,36 @@ abstract class AppLocalizations {
   /// **'Search in document'**
   String get viewerSearchHint;
 
+  /// Title shown on an admonition rendered from a GitHub alert of kind `note`, e.g. `> [!NOTE]`.
+  ///
+  /// In en, this message translates to:
+  /// **'Note'**
+  String get admonitionNoteTitle;
+
+  /// Title shown on an admonition rendered from a GitHub alert of kind `tip`.
+  ///
+  /// In en, this message translates to:
+  /// **'Tip'**
+  String get admonitionTipTitle;
+
+  /// Title shown on an admonition rendered from a GitHub alert of kind `important`.
+  ///
+  /// In en, this message translates to:
+  /// **'Important'**
+  String get admonitionImportantTitle;
+
+  /// Title shown on an admonition rendered from a GitHub alert of kind `warning`.
+  ///
+  /// In en, this message translates to:
+  /// **'Warning'**
+  String get admonitionWarningTitle;
+
+  /// Title shown on an admonition rendered from a GitHub alert of kind `caution`.
+  ///
+  /// In en, this message translates to:
+  /// **'Caution'**
+  String get admonitionCautionTitle;
+
   /// Label shown next to the spinner while a markdown document is being read and parsed.
   ///
   /// In en, this message translates to:

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart' as hl_dark;
 import 'package:flutter_highlight/themes/atom-one-light.dart' as hl_light;
+import 'package:markdown/markdown.dart' as md;
 import 'package:markdown_viewer/features/viewer/data/parsers/math_syntax.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
+import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_view.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/math_view.dart';
 import 'package:markdown_widget/markdown_widget.dart';
 
@@ -26,10 +28,14 @@ import 'package:markdown_widget/markdown_widget.dart';
 ///   and rendered by the `SpanNodeGenerator`s in
 ///   [buildMathSpanNodeGenerators]. Malformed input renders an
 ///   inline error placeholder without crashing the document.
+/// - GitHub-style admonitions (`> [!NOTE]`, `> [!WARNING]`, …) via
+///   `package:markdown`'s built-in [md.AlertBlockSyntax] on the
+///   parser side plus [buildAdmonitionSpanNodeGenerators] on the
+///   rendering side, producing themed [AdmonitionView] containers.
 ///
-/// Custom block builders for mermaid and admonitions land in later
-/// phases by extending the same [MarkdownGenerator] with more
-/// syntaxes and more `SpanNodeGeneratorWithTag` entries.
+/// A custom block builder for mermaid lands in the next phase by
+/// extending the same [MarkdownGenerator] with one more
+/// `SpanNodeGeneratorWithTag` entry for fenced `mermaid` blocks.
 class MarkdownView extends StatelessWidget {
   const MarkdownView({required this.document, super.key});
 
@@ -48,8 +54,12 @@ class MarkdownView extends StatelessWidget {
       data: document.source,
       config: config,
       markdownGenerator: MarkdownGenerator(
+        blockSyntaxList: const [md.AlertBlockSyntax()],
         inlineSyntaxList: buildMathInlineSyntaxes(),
-        generators: buildMathSpanNodeGenerators(),
+        generators: [
+          ...buildMathSpanNodeGenerators(),
+          ...buildAdmonitionSpanNodeGenerators(),
+        ],
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
