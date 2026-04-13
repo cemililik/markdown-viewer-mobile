@@ -65,78 +65,145 @@ $mermaidJs
     return;
   }
 
-  // Walk the rendered SVG and inline every computed style the
-  // flutter_svg renderer can understand, then drop the source
-  // `<style>` blocks. `flutter_svg` has no support for `<style>`
-  // CSS selectors, so without this the `fill` / `stroke` /
-  // `font-*` declarations mermaid stamps on
-  // `#mermaid-N .node rect { ... }` selectors never reach the
-  // paint — every rect falls back to default black and the
-  // diagram is unreadable. `getComputedStyle` runs inside the
-  // WebView's real CSS engine, so it resolves inheritance, CSS
-  // specificity, and `!important` correctly.
-  var FLAT_PROPS = [
-    'fill', 'fill-opacity', 'fill-rule',
-    'stroke', 'stroke-width', 'stroke-opacity',
-    'stroke-dasharray', 'stroke-linecap', 'stroke-linejoin',
-    'font-family', 'font-size', 'font-weight', 'font-style',
-    'text-anchor', 'dominant-baseline', 'opacity'
-  ];
+  // Inline every presentation-affecting CSS property from the
+  // mermaid-authored `<style>` blocks into the matching SVG
+  // elements, then drop the style blocks. `flutter_svg` has no
+  // support for `<style>` CSS selectors at all — without this the
+  // `fill` / `stroke` / `font-*` declarations mermaid stamps on
+  // `#mermaid-N .node rect { ... }` selectors never reach paint
+  // and every rect falls back to default black. Every text element
+  // loses its colour the same way.
+  //
+  // The first iteration of this helper used `getComputedStyle`,
+  // which is the obvious path — let the WebView's CSS engine
+  // resolve every rule and read back the computed value. That
+  // worked in desktop Safari but failed silently on iOS WebKit:
+  // the returned values were the SVG defaults (fill=black,
+  // stroke=black, no font) instead of the mermaid rules, so the
+  // flattened SVG was indistinguishable from the broken raw one.
+  //
+  // This version parses the `<style>` block contents with a
+  // minimal regex-based CSS tokeniser and applies each rule to
+  // elements found via `querySelectorAll` on the SVG root. It
+  // does not depend on iOS WebKit's style-resolution quirks and
+  // works identically across every platform.
+  var FLAT_PROPS = {
+    'fill': 1, 'fill-opacity': 1, 'fill-rule': 1,
+    'stroke': 1, 'stroke-width': 1, 'stroke-opacity': 1,
+    'stroke-dasharray': 1, 'stroke-linecap': 1, 'stroke-linejoin': 1,
+    'font-family': 1, 'font-size': 1, 'font-weight': 1, 'font-style': 1,
+    'text-anchor': 1, 'dominant-baseline': 1, 'opacity': 1,
+    'color': 1
+  };
   function flattenSvgStyles(svgString) {
     var host = document.createElement('div');
     host.style.position = 'absolute';
     host.style.left = '-10000px';
     host.style.top = '-10000px';
-    host.innerHTML = svgString;
     document.body.appendChild(host);
     try {
+      host.innerHTML = svgString;
       var root = host.querySelector('svg');
       if (!root) {
         return svgString;
       }
-      // Keep the original viewBox / width / height so AspectRatio
-      // in the Flutter side still lines up.
-      var walker = [root];
-      while (walker.length > 0) {
-        var node = walker.pop();
-        if (node.nodeType !== 1) continue;
-        var cs = window.getComputedStyle(node);
-        for (var i = 0; i < FLAT_PROPS.length; i++) {
-          var prop = FLAT_PROPS[i];
-          var value = cs.getPropertyValue(prop);
-          if (!value) continue;
-          value = value.trim();
-          if (value === '' || value === 'auto') continue;
-          // Do not overwrite an already-explicit attribute —
-          // `fill="url(#grad)"` or similar from mermaid must
-          // survive unchanged.
-          if (node.hasAttribute(prop)) continue;
-          node.setAttribute(prop, value);
-        }
-        // `text` and `tspan` elements often rely on inherited
-        // `color` rather than `fill`; set `fill` explicitly so
-        // flutter_svg picks the right text colour.
-        var tag = node.tagName && node.tagName.toLowerCase();
-        if ((tag === 'text' || tag === 'tspan') && !node.hasAttribute('fill')) {
-          var textFill = cs.getPropertyValue('fill') || cs.getPropertyValue('color');
-          if (textFill) {
-            node.setAttribute('fill', textFill.trim());
+
+      var styleNodes = root.querySelectorAll('style');
+      // Parse every `selector { declarations }` rule from every
+      // `<style>` block. We collect them into a flat list before
+      // applying so a rule can target elements we have already
+      // visited.
+      var RULE_RE = /([^{}]+)\\{([^{}]+)\\}/g;
+      var rules = [];
+      for (var sidx = 0; sidx < styleNodes.length; sidx++) {
+        var cssText = styleNodes[sidx].textContent || '';
+        RULE_RE.lastIndex = 0;
+        var match;
+        while ((match = RULE_RE.exec(cssText)) !== null) {
+          var rawSelector = match[1].trim();
+          var body = match[2];
+          if (!rawSelector || !body) continue;
+          var props = {};
+          var decls = body.split(';');
+          for (var di = 0; di < decls.length; di++) {
+            var decl = decls[di].trim();
+            if (!decl) continue;
+            var colon = decl.indexOf(':');
+            if (colon <= 0) continue;
+            var key = decl.substring(0, colon).trim().toLowerCase();
+            if (!FLAT_PROPS[key]) continue;
+            var value = decl.substring(colon + 1).trim();
+            value = value.replace(/\\s*!important\\s*\$/i, '').trim();
+            if (value && value !== 'inherit' && value !== 'initial') {
+              props[key] = value;
+            }
+          }
+          if (Object.keys(props).length === 0) continue;
+          // Split comma-separated selectors into independent
+          // rules — `.a, .b { fill: red; }` is two rules for our
+          // purposes.
+          var selectors = rawSelector.split(',');
+          for (var seli = 0; seli < selectors.length; seli++) {
+            var sel = selectors[seli].trim();
+            if (!sel) continue;
+            // Mermaid scopes every rule with `#mermaid-N` to stop
+            // rules from bleeding out of the SVG into the host
+            // page. That scoping ID is the SVG root's own id and
+            // makes querySelectorAll-from-root weird on some
+            // engines, so strip the leading `#id ` prefix and use
+            // the inner part directly. Selectors that are only
+            // `#id` get dropped — there is no element inside the
+            // SVG matching them.
+            sel = sel.replace(/^#[\\w-]+(?:\\s+|\$)/, '').trim();
+            if (!sel) continue;
+            var matched;
+            try {
+              matched = root.querySelectorAll(sel);
+            } catch (e) {
+              // Ignore selectors querySelectorAll rejects
+              // (non-standard pseudos from mermaid, malformed
+              // input, …) — there is no graceful fallback and
+              // missing one rule is better than crashing the
+              // whole flatten pass.
+              continue;
+            }
+            rules.push({ elements: matched, props: props });
           }
         }
-        var children = node.children;
-        for (var j = 0; j < children.length; j++) {
-          walker.push(children[j]);
+      }
+
+      for (var ri = 0; ri < rules.length; ri++) {
+        var rule = rules[ri];
+        for (var ei = 0; ei < rule.elements.length; ei++) {
+          var el = rule.elements[ei];
+          for (var prop in rule.props) {
+            if (!Object.prototype.hasOwnProperty.call(rule.props, prop)) continue;
+            // SVG presentation attributes use `fill` for text
+            // colour, not `color`. Translate on the fly so text
+            // elements still pick up mermaid's text-colour rules.
+            var attrName = prop;
+            if (prop === 'color') {
+              var tag = el.tagName && el.tagName.toLowerCase();
+              if (tag !== 'text' && tag !== 'tspan' && tag !== 'g') continue;
+              attrName = 'fill';
+            }
+            // Do not overwrite an already-explicit attribute —
+            // `fill="url(#grad)"` or an inline style wins.
+            if (el.hasAttribute(attrName)) continue;
+            el.setAttribute(attrName, rule.props[prop]);
+          }
         }
       }
-      // Remove `<style>` blocks — their contents are now inlined
-      // as presentation attributes, and leaving them around just
-      // confuses `flutter_svg`'s CSS-ignorant parser.
-      var styles = root.querySelectorAll('style');
-      for (var k = 0; k < styles.length; k++) {
-        styles[k].parentNode.removeChild(styles[k]);
+
+      // Now remove the `<style>` blocks. Leaving them around just
+      // confuses `flutter_svg`'s CSS-ignorant parser, and every
+      // rule they contain has been inlined above.
+      for (var stri = 0; stri < styleNodes.length; stri++) {
+        var sn = styleNodes[stri];
+        if (sn.parentNode) sn.parentNode.removeChild(sn);
       }
       return new XMLSerializer().serializeToString(root);
-    } catch (e) {
+    } catch (err) {
       // Flattening is a best-effort pass — if anything goes wrong
       // (obscure SVG shape, serializer failure), fall back to the
       // original SVG so the user at least sees mermaid's own
