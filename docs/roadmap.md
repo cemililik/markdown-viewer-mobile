@@ -20,7 +20,7 @@ gantt
     1.3 Code + GFM verify    :done, p13, after p12, 1d
     1.4 LaTeX math           :done, p14, after p13, 1d
     1.5 Admonitions          :done, p15, after p14, 1d
-    1.6 Mermaid diagrams     :active, p16, after p15, 1d
+    1.6 Mermaid diagrams     :done, p16, after p15, 1d
 
     section Phase 2
     Advanced Blocks polish   :p2, after p16, 7d
@@ -66,6 +66,9 @@ gantt
 both themes. ✅ `flutter analyze` clean, smoke test passing.
 
 ## Phase 1 — MVP Rendering
+
+**Status**: ✅ Completed 2026-04-13 — all six slices shipped. Manual
+on-device validation pass is the gate to declaring Phase 2 ready.
 
 **Goal**: Open a file and render every block type we promise, correctly
 and legibly, on both themes. Phase 1 is split into six thin slices so
@@ -163,10 +166,7 @@ blockquote alerts and render themed containers.
 
 ### Phase 1.6 — Mermaid diagrams
 
-**Status**: 🟡 Partial — runtime, sandbox, fixtures, unit + widget
-tests landed. Real-WebView integration test and the < 800 ms perf
-measurement ride into a follow-up commit alongside the iPhone test
-findings.
+**Status**: ✅ Completed 2026-04-13
 
 **Goal**: Render mermaid fenced code blocks as inline SVGs through a
 sandboxed, pre-warmed `InAppWebView`. This is the heaviest slice in
@@ -192,10 +192,16 @@ Phase 1 and may span multiple commits.
 - [x] Fixtures: flowchart, sequence diagram, class diagram, state
       diagram, ER diagram, gantt, a broken mermaid source
 - [x] Widget + unit tests including the broken-source case
-- [ ] Real-WebView integration test (deferred — needs a device /
-      simulator harness)
-- [ ] Performance measurement against the < 800 ms typical budget
-      (deferred — manual on-device measurement)
+- [x] Real-WebView integration test
+      (`integration_test/mermaid_render_test.dart`) drives the
+      production `HeadlessMermaidJsChannel` end-to-end: bundled
+      asset load, real flowchart → SVG round-trip, broken source →
+      typed failure with recovery, cache hit on repeat render, every
+      diagram type from the fixture rendering successfully
+- [x] Performance measurement against the < 800 ms typical budget —
+      the integration test asserts `prewarm + first render < 800 ms`
+      and prints the actual cold-path duration so future regressions
+      have a data point
 
 **Exit criteria**: Every mermaid diagram type from
 [features.md](features.md) renders on both themes; the renderer
