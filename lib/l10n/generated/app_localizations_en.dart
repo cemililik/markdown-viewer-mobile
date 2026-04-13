@@ -98,6 +98,31 @@ class AppLocalizationsEn extends AppLocalizations {
       'Check the diagram syntax and try again.';
 
   @override
+  String get mermaidReset => 'Reset view';
+
+  @override
+  String get viewerBackToTopTooltip => 'Back to top';
+
+  @override
+  String get viewerBookmarkSaveTooltip => 'Bookmark reading position';
+
+  @override
+  String get viewerBookmarkClearTooltip => 'Clear bookmark';
+
+  @override
+  String get viewerBookmarkSaved => 'Reading position saved';
+
+  @override
+  String get viewerBookmarkCleared => 'Bookmark cleared';
+
+  @override
+  String get viewerResumedFromBookmark =>
+      'Resumed from your last reading position';
+
+  @override
+  String get actionGoToTop => 'Go to top';
+
+  @override
   String get viewerLoading => 'Loading document…';
 
   @override

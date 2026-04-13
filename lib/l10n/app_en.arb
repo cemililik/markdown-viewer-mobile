@@ -115,6 +115,38 @@
   "@mermaidRenderErrorBody": {
     "description": "Body of the inline error placeholder shown when a mermaid diagram fails to render."
   },
+  "mermaidReset": "Reset view",
+  "@mermaidReset": {
+    "description": "Tooltip / semantic label for the button that resets a panned or zoomed mermaid diagram back to its default position."
+  },
+  "viewerBackToTopTooltip": "Back to top",
+  "@viewerBackToTopTooltip": {
+    "description": "Tooltip for the floating action button that scrolls a markdown document back to the very top."
+  },
+  "viewerBookmarkSaveTooltip": "Bookmark reading position",
+  "@viewerBookmarkSaveTooltip": {
+    "description": "Tooltip for the viewer AppBar action that saves the current reading position so it can be resumed later."
+  },
+  "viewerBookmarkClearTooltip": "Clear bookmark",
+  "@viewerBookmarkClearTooltip": {
+    "description": "Tooltip for the viewer AppBar action that clears a previously saved reading position."
+  },
+  "viewerBookmarkSaved": "Reading position saved",
+  "@viewerBookmarkSaved": {
+    "description": "Snackbar confirmation shown after the user saves a bookmark at the current scroll position."
+  },
+  "viewerBookmarkCleared": "Bookmark cleared",
+  "@viewerBookmarkCleared": {
+    "description": "Snackbar confirmation shown after the user clears a previously saved bookmark."
+  },
+  "viewerResumedFromBookmark": "Resumed from your last reading position",
+  "@viewerResumedFromBookmark": {
+    "description": "Snackbar shown when a document opens and the viewer automatically restores the scroll position from a saved bookmark."
+  },
+  "actionGoToTop": "Go to top",
+  "@actionGoToTop": {
+    "description": "Snackbar action button label used to scroll back to the beginning of the document (e.g. after an auto-restore snackbar)."
+  },
   "viewerLoading": "Loading document…",
   "@viewerLoading": {
     "description": "Label shown next to the spinner while a markdown document is being read and parsed."

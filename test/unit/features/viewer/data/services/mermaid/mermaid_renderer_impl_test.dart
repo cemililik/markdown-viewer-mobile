@@ -144,7 +144,7 @@ void main() {
     });
 
     test(
-      'should prepend the mermaid dark init directive when theme is dark',
+      'should prepend a non-empty initDirective verbatim to the source',
       () async {
         final channel = _FakeChannel();
         final renderer = MermaidRendererImpl(
@@ -153,26 +153,51 @@ void main() {
         );
         await renderer.prewarm();
 
+        const directive =
+            '%%{init: {"theme":"base","themeVariables":{"primaryColor":"#aabbcc"}}}%%\n';
         channel.scriptResult('flowchart LR; A-->B', 'svg');
-        await renderer.render(
-          'flowchart LR; A-->B',
-          theme: MermaidDiagramTheme.dark,
-        );
+        await renderer.render('flowchart LR; A-->B', initDirective: directive);
 
         expect(channel.observedSources, hasLength(1));
         expect(
           channel.observedSources.single,
-          startsWith("%%{init: {'theme':'dark'}}%%\n"),
+          startsWith(directive),
           reason:
-              'The renderer must prepend the dark init directive to the '
-              'user source so mermaid.js picks the dark palette without '
-              'us having to call mermaid.initialize a second time on '
-              'the sandbox page.',
+              'The renderer must prepend the caller-supplied init '
+              'directive verbatim so mermaid.js picks up the requested '
+              'theme variables without us having to re-call '
+              'mermaid.initialize on the sandbox page.',
         );
       },
     );
 
-    test('should place light and dark renders of the same source in distinct '
+    test(
+      'should pass the source through untouched when initDirective is empty',
+      () async {
+        final channel = _FakeChannel();
+        final renderer = MermaidRendererImpl(
+          channel: channel,
+          mermaidJs: '/* fake */',
+        );
+        await renderer.prewarm();
+
+        const userSource =
+            '%%{init: {"theme":"forest"}}%%\nflowchart LR; A-->B';
+        channel.scriptResult('flowchart LR; A-->B', 'svg');
+        await renderer.render(userSource);
+
+        expect(channel.observedSources, hasLength(1));
+        expect(
+          channel.observedSources.single,
+          equals(userSource),
+          reason:
+              'An empty initDirective means "do not override" — the '
+              'user-authored directive must reach mermaid.js untouched.',
+        );
+      },
+    );
+
+    test('should give two distinct initDirectives for the same source distinct '
         'cache slots', () async {
       final channel = _FakeChannel();
       final renderer = MermaidRendererImpl(
@@ -182,19 +207,24 @@ void main() {
       await renderer.prewarm();
 
       channel.scriptResult('flowchart LR; X-->Y', 'svg');
-      await renderer.render('flowchart LR; X-->Y');
       await renderer.render(
         'flowchart LR; X-->Y',
-        theme: MermaidDiagramTheme.dark,
+        initDirective:
+            '%%{init: {"theme":"base","themeVariables":{"primaryColor":"#111111"}}}%%\n',
+      );
+      await renderer.render(
+        'flowchart LR; X-->Y',
+        initDirective:
+            '%%{init: {"theme":"base","themeVariables":{"primaryColor":"#eeeeee"}}}%%\n',
       );
 
       expect(
         channel.renderCallCount,
         2,
         reason:
-            'Light and dark variants of the same source must be rendered '
-            'separately — their cache keys differ because the theme '
-            'directive is baked into the hashed source.',
+            'Two different init directives over the same source must '
+            'occupy distinct cache slots because the directive is part '
+            'of the hashed input.',
       );
     });
   });

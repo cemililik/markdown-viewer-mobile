@@ -112,7 +112,64 @@ void main() {
     );
 
     testWidgets(
-      'passes MermaidDiagramTheme.defaultTheme to the renderer in light mode',
+      'threads a Material 3 themeVariables init directive into render() '
+      'when the source has no init of its own',
+      (tester) async {
+        final renderer = _CannedMermaidRenderer(
+          const MermaidRenderSuccess(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60"></svg>',
+          ),
+        );
+
+        await tester.pumpWidget(harness(renderer: renderer));
+        await tester.pumpAndSettle();
+
+        expect(renderer.observedDirectives, isNotEmpty);
+        final directive = renderer.observedDirectives.first;
+        expect(directive, contains('"theme":"base"'));
+        expect(directive, contains('"themeVariables"'));
+        expect(directive, contains('"primaryColor"'));
+      },
+    );
+
+    testWidgets(
+      'differentiates light and dark renders via different init directives',
+      (tester) async {
+        final lightRenderer = _CannedMermaidRenderer(
+          const MermaidRenderSuccess(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60"></svg>',
+          ),
+        );
+        await tester.pumpWidget(
+          harness(renderer: lightRenderer, brightness: Brightness.light),
+        );
+        await tester.pumpAndSettle();
+
+        final darkRenderer = _CannedMermaidRenderer(
+          const MermaidRenderSuccess(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60"></svg>',
+          ),
+        );
+        await tester.pumpWidget(
+          harness(renderer: darkRenderer, brightness: Brightness.dark),
+        );
+        await tester.pumpAndSettle();
+
+        expect(lightRenderer.observedDirectives, isNotEmpty);
+        expect(darkRenderer.observedDirectives, isNotEmpty);
+        expect(
+          lightRenderer.observedDirectives.first,
+          isNot(equals(darkRenderer.observedDirectives.first)),
+          reason:
+              'Light and dark ColorSchemes must produce different '
+              'init directives so the renderer cache buckets them '
+              'separately.',
+        );
+      },
+    );
+
+    testWidgets(
+      'passes an empty init directive when the user source already has one',
       (tester) async {
         final renderer = _CannedMermaidRenderer(
           const MermaidRenderSuccess(
@@ -121,40 +178,38 @@ void main() {
         );
 
         await tester.pumpWidget(
-          harness(renderer: renderer, brightness: Brightness.light),
+          ProviderScope(
+            overrides: [mermaidRendererProvider.overrideWithValue(renderer)],
+            child: MaterialApp(
+              localizationsDelegates: const [
+                AppLocalizations.delegate,
+                GlobalMaterialLocalizations.delegate,
+                GlobalWidgetsLocalizations.delegate,
+                GlobalCupertinoLocalizations.delegate,
+              ],
+              supportedLocales: AppLocalizations.supportedLocales,
+              theme: ThemeData(useMaterial3: true),
+              home: const Scaffold(
+                body: MermaidBlock(
+                  code: "%%{init: {'theme':'forest'}}%%\nflowchart LR; A-->B",
+                ),
+              ),
+            ),
+          ),
         );
         await tester.pumpAndSettle();
 
+        expect(renderer.observedDirectives, isNotEmpty);
         expect(
-          renderer.observedThemes,
-          contains(MermaidDiagramTheme.defaultTheme),
+          renderer.observedDirectives.first,
+          isEmpty,
+          reason:
+              'A user-authored init directive must be respected — the '
+              'MermaidBlock must NOT prepend its own ColorScheme '
+              'override.',
         );
       },
     );
-
-    testWidgets('passes MermaidDiagramTheme.dark to the renderer in dark mode', (
-      tester,
-    ) async {
-      final renderer = _CannedMermaidRenderer(
-        const MermaidRenderSuccess(
-          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60"></svg>',
-        ),
-      );
-
-      await tester.pumpWidget(
-        harness(renderer: renderer, brightness: Brightness.dark),
-      );
-      await tester.pumpAndSettle();
-
-      expect(
-        renderer.observedThemes,
-        contains(MermaidDiagramTheme.dark),
-        reason:
-            'MermaidBlock must read Theme.of(context).brightness and pass '
-            'the matching MermaidDiagramTheme so the rendered SVG has '
-            'the correct palette.',
-      );
-    });
 
     testWidgets(
       'wraps the rendered SVG in an InteractiveViewer with an AspectRatio '
@@ -213,7 +268,8 @@ class _CannedMermaidRenderer implements MermaidRenderer {
   _CannedMermaidRenderer(this.result);
 
   final MermaidRenderResult result;
-  final List<MermaidDiagramTheme> observedThemes = [];
+  final List<String> observedDirectives = [];
+  final List<String> observedSources = [];
 
   @override
   Future<void> prewarm() async {}
@@ -221,9 +277,10 @@ class _CannedMermaidRenderer implements MermaidRenderer {
   @override
   Future<MermaidRenderResult> render(
     String source, {
-    MermaidDiagramTheme theme = MermaidDiagramTheme.defaultTheme,
+    String initDirective = '',
   }) async {
-    observedThemes.add(theme);
+    observedDirectives.add(initDirective);
+    observedSources.add(source);
     return result;
   }
 
@@ -249,7 +306,7 @@ class _PendingMermaidRenderer implements MermaidRenderer {
   @override
   Future<MermaidRenderResult> render(
     String source, {
-    MermaidDiagramTheme theme = MermaidDiagramTheme.defaultTheme,
+    String initDirective = '',
   }) {
     final completer = Completer<MermaidRenderResult>();
     _pending.add(completer);

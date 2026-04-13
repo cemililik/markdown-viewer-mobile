@@ -6,8 +6,10 @@ import 'package:markdown_viewer/features/settings/application/settings_providers
 import 'package:markdown_viewer/features/settings/data/settings_store.dart';
 import 'package:markdown_viewer/features/viewer/application/document_repository_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
+import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
 import 'package:markdown_viewer/features/viewer/data/parsers/markdown_parser.dart';
 import 'package:markdown_viewer/features/viewer/data/repositories/document_repository_impl.dart';
+import 'package:markdown_viewer/features/viewer/data/repositories/reading_position_store_impl.dart';
 import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_renderer_impl.dart';
 import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,9 +22,12 @@ Future<void> main() async {
   // Preload SharedPreferences so the settings controllers can seed
   // their initial state synchronously — otherwise the very first
   // frame would render with the default light theme / system locale
-  // regardless of what the user last picked.
+  // regardless of what the user last picked. The same instance also
+  // backs the reading-position store so its synchronous `read` can
+  // run inside a post-frame callback without an extra disk hop.
   final prefs = await SharedPreferences.getInstance();
   final settingsStore = SettingsStore(prefs);
+  final readingPositionStore = ReadingPositionStoreImpl(prefs);
 
   final mermaidRenderer = await _buildMermaidRenderer();
 
@@ -44,6 +49,7 @@ Future<void> main() async {
           return mermaidRenderer;
         }),
         settingsStoreProvider.overrideWithValue(settingsStore),
+        readingPositionStoreProvider.overrideWithValue(readingPositionStore),
       ],
       child: const MarkdownViewerApp(),
     ),

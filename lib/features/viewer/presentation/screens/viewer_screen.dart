@@ -6,15 +6,20 @@ import 'package:markdown_viewer/core/errors/failure.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/core/widgets/error_view.dart';
 import 'package:markdown_viewer/core/widgets/loading_view.dart';
+import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/viewer_document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
+import 'package:markdown_viewer/features/viewer/domain/entities/reading_position.dart';
 import 'package:markdown_viewer/features/viewer/presentation/failure_message_mapper.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/markdown_view.dart';
 import 'package:path/path.dart' as p;
 
 /// Screen that loads and renders a single markdown document.
 ///
-/// Consumes [viewerDocumentProvider] for the given [documentId] and
+/// Owns the document scroll controller so the back-to-top FAB and
+/// the reading-position bookmark feature can read offsets and
+/// drive smooth scroll animations. Consumes
+/// [viewerDocumentProvider] for the given [documentId] and
 /// dispatches on its [AsyncValue] state:
 ///
 /// - **loading** — shared [LoadingView] with a localized label
@@ -22,20 +27,139 @@ import 'package:path/path.dart' as p;
 ///   invalidates the provider to kick off a fresh load
 /// - **data**    — [MarkdownView] renders the parsed document
 ///
-/// The app bar title uses the file's basename (e.g. `README.md`) or a
-/// localized fallback during loading. The presentation layer never
-/// reaches into the data layer — it only talks to the application
-/// provider, which is the contract enforced by
-/// `docs/standards/architecture-standards.md`.
-class ViewerScreen extends ConsumerWidget {
+/// On the first build of the data state the screen checks the
+/// [ReadingPositionStore] for a saved position. If one exists the
+/// scroll controller animates to that offset inside a post-frame
+/// callback and a snackbar lets the user jump back to the top in
+/// case the auto-restore was unwanted.
+class ViewerScreen extends ConsumerStatefulWidget {
   const ViewerScreen({required this.documentId, super.key});
 
   final DocumentId documentId;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ViewerScreen> createState() => _ViewerScreenState();
+}
+
+class _ViewerScreenState extends ConsumerState<ViewerScreen> {
+  static const double _backToTopThreshold = 200;
+
+  final ScrollController _scrollController = ScrollController();
+  late final ValueNotifier<bool> _isBookmarked;
+  bool _showBackToTop = false;
+  bool _restoreAttempted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+    // Seed the bookmark indicator from persisted state so the AppBar
+    // icon reflects the truth on the very first build.
+    final saved = ProviderScope.containerOf(
+      context,
+      listen: false,
+    ).read(readingPositionStoreProvider).read(widget.documentId);
+    _isBookmarked = ValueNotifier<bool>(saved != null);
+  }
+
+  void _onScroll() {
+    final shouldShow = _scrollController.offset > _backToTopThreshold;
+    if (shouldShow != _showBackToTop) {
+      setState(() => _showBackToTop = shouldShow);
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController
+      ..removeListener(_onScroll)
+      ..dispose();
+    _isBookmarked.dispose();
+    super.dispose();
+  }
+
+  void _scrollToTop() {
+    if (!_scrollController.hasClients) {
+      return;
+    }
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _maybeRestoreReadingPosition() {
+    if (_restoreAttempted) {
+      return;
+    }
+    _restoreAttempted = true;
+    final saved = ref
+        .read(readingPositionStoreProvider)
+        .read(widget.documentId);
+    if (saved == null || saved.offset <= 0) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_scrollController.hasClients) {
+        return;
+      }
+      final maxOffset = _scrollController.position.maxScrollExtent;
+      final target = saved.offset.clamp(0.0, maxOffset);
+      _scrollController.animateTo(
+        target,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeOutCubic,
+      );
+      final l10n = context.l10n;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          duration: const Duration(seconds: 4),
+          content: Text(l10n.viewerResumedFromBookmark),
+          action: SnackBarAction(
+            label: l10n.actionGoToTop,
+            onPressed: _scrollToTop,
+          ),
+        ),
+      );
+    });
+  }
+
+  Future<void> _toggleBookmark() async {
     final l10n = context.l10n;
-    final async = ref.watch(viewerDocumentProvider(documentId));
+    final messenger = ScaffoldMessenger.of(context);
+    final store = ref.read(readingPositionStoreProvider);
+    if (_isBookmarked.value) {
+      _isBookmarked.value = false;
+      await store.clear(widget.documentId);
+      if (!mounted) {
+        return;
+      }
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.viewerBookmarkCleared)),
+      );
+      return;
+    }
+    final offset =
+        _scrollController.hasClients ? _scrollController.offset : 0.0;
+    _isBookmarked.value = true;
+    await store.write(
+      ReadingPosition(
+        documentId: widget.documentId,
+        offset: offset,
+        savedAt: DateTime.now(),
+      ),
+    );
+    if (!mounted) {
+      return;
+    }
+    messenger.showSnackBar(SnackBar(content: Text(l10n.viewerBookmarkSaved)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final async = ref.watch(viewerDocumentProvider(widget.documentId));
 
     return Scaffold(
       appBar: AppBar(
@@ -53,8 +177,36 @@ class ViewerScreen extends ConsumerWidget {
             }
           },
         ),
-        title: Text(_titleFor(documentId, l10n.viewerUnnamedDocument)),
+        title: Text(_titleFor(widget.documentId, l10n.viewerUnnamedDocument)),
+        actions: [
+          ValueListenableBuilder<bool>(
+            valueListenable: _isBookmarked,
+            builder: (context, bookmarked, _) {
+              return IconButton(
+                icon: Icon(
+                  bookmarked ? Icons.bookmark : Icons.bookmark_outline,
+                ),
+                tooltip:
+                    bookmarked
+                        ? l10n.viewerBookmarkClearTooltip
+                        : l10n.viewerBookmarkSaveTooltip,
+                onPressed: _toggleBookmark,
+              );
+            },
+          ),
+        ],
       ),
+      floatingActionButton: AnimatedScale(
+        duration: const Duration(milliseconds: 180),
+        curve: Curves.easeOutCubic,
+        scale: _showBackToTop ? 1 : 0,
+        child: FloatingActionButton.small(
+          tooltip: l10n.viewerBackToTopTooltip,
+          onPressed: _scrollToTop,
+          child: const Icon(Icons.arrow_upward),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       body: async.when(
         loading: () => LoadingView(label: l10n.viewerLoading),
         error: (error, stackTrace) {
@@ -68,10 +220,21 @@ class ViewerScreen extends ConsumerWidget {
           return ErrorView(
             message: mapFailureToViewerMessage(failure, l10n),
             retryLabel: l10n.actionRetry,
-            onRetry: () => ref.invalidate(viewerDocumentProvider(documentId)),
+            onRetry:
+                () => ref.invalidate(viewerDocumentProvider(widget.documentId)),
           );
         },
-        data: (document) => MarkdownView(document: document),
+        data: (document) {
+          // Try to restore the saved position the first time we
+          // reach the data state for this document. The flag inside
+          // [_maybeRestoreReadingPosition] makes the body re-build
+          // safe across rebuilds triggered by scroll listeners.
+          _maybeRestoreReadingPosition();
+          return MarkdownView(
+            document: document,
+            controller: _scrollController,
+          );
+        },
       ),
     );
   }

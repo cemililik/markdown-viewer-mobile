@@ -272,6 +272,54 @@ abstract class AppLocalizations {
   /// **'Check the diagram syntax and try again.'**
   String get mermaidRenderErrorBody;
 
+  /// Tooltip / semantic label for the button that resets a panned or zoomed mermaid diagram back to its default position.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset view'**
+  String get mermaidReset;
+
+  /// Tooltip for the floating action button that scrolls a markdown document back to the very top.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to top'**
+  String get viewerBackToTopTooltip;
+
+  /// Tooltip for the viewer AppBar action that saves the current reading position so it can be resumed later.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookmark reading position'**
+  String get viewerBookmarkSaveTooltip;
+
+  /// Tooltip for the viewer AppBar action that clears a previously saved reading position.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear bookmark'**
+  String get viewerBookmarkClearTooltip;
+
+  /// Snackbar confirmation shown after the user saves a bookmark at the current scroll position.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading position saved'**
+  String get viewerBookmarkSaved;
+
+  /// Snackbar confirmation shown after the user clears a previously saved bookmark.
+  ///
+  /// In en, this message translates to:
+  /// **'Bookmark cleared'**
+  String get viewerBookmarkCleared;
+
+  /// Snackbar shown when a document opens and the viewer automatically restores the scroll position from a saved bookmark.
+  ///
+  /// In en, this message translates to:
+  /// **'Resumed from your last reading position'**
+  String get viewerResumedFromBookmark;
+
+  /// Snackbar action button label used to scroll back to the beginning of the document (e.g. after an auto-restore snackbar).
+  ///
+  /// In en, this message translates to:
+  /// **'Go to top'**
+  String get actionGoToTop;
+
   /// Label shown next to the spinner while a markdown document is being read and parsed.
   ///
   /// In en, this message translates to:
