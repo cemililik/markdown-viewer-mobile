@@ -14,6 +14,7 @@ void main() {
   Widget harness({
     required MermaidRenderer renderer,
     Locale locale = const Locale('en'),
+    Brightness brightness = Brightness.light,
   }) {
     return ProviderScope(
       overrides: [mermaidRendererProvider.overrideWithValue(renderer)],
@@ -26,7 +27,11 @@ void main() {
           GlobalCupertinoLocalizations.delegate,
         ],
         supportedLocales: AppLocalizations.supportedLocales,
-        theme: ThemeData(useMaterial3: true),
+        theme: ThemeData(
+          useMaterial3: true,
+          brightness: brightness,
+          colorSchemeSeed: Colors.blue,
+        ),
         home: const Scaffold(body: MermaidBlock(code: 'flowchart LR; A-->B')),
       ),
     );
@@ -105,6 +110,102 @@ void main() {
         expect(find.text('Diyagram görüntülenemedi'), findsOneWidget);
       },
     );
+
+    testWidgets(
+      'passes MermaidDiagramTheme.defaultTheme to the renderer in light mode',
+      (tester) async {
+        final renderer = _CannedMermaidRenderer(
+          const MermaidRenderSuccess(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60"></svg>',
+          ),
+        );
+
+        await tester.pumpWidget(
+          harness(renderer: renderer, brightness: Brightness.light),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          renderer.observedThemes,
+          contains(MermaidDiagramTheme.defaultTheme),
+        );
+      },
+    );
+
+    testWidgets('passes MermaidDiagramTheme.dark to the renderer in dark mode', (
+      tester,
+    ) async {
+      final renderer = _CannedMermaidRenderer(
+        const MermaidRenderSuccess(
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60"></svg>',
+        ),
+      );
+
+      await tester.pumpWidget(
+        harness(renderer: renderer, brightness: Brightness.dark),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        renderer.observedThemes,
+        contains(MermaidDiagramTheme.dark),
+        reason:
+            'MermaidBlock must read Theme.of(context).brightness and pass '
+            'the matching MermaidDiagramTheme so the rendered SVG has '
+            'the correct palette.',
+      );
+    });
+
+    testWidgets(
+      'wraps the rendered SVG in an InteractiveViewer with an AspectRatio '
+      'parent driven by the SVG viewBox',
+      (tester) async {
+        final renderer = _CannedMermaidRenderer(
+          const MermaidRenderSuccess(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50"></svg>',
+          ),
+        );
+
+        await tester.pumpWidget(harness(renderer: renderer));
+        await tester.pumpAndSettle();
+
+        expect(find.byType(InteractiveViewer), findsOneWidget);
+
+        final aspectRatio = tester.widget<AspectRatio>(
+          find.ancestor(
+            of: find.byType(InteractiveViewer),
+            matching: find.byType(AspectRatio),
+          ),
+        );
+        expect(
+          aspectRatio.aspectRatio,
+          closeTo(4.0, 1e-9),
+          reason: 'viewBox 200x50 should produce aspectRatio 4.0',
+        );
+      },
+    );
+
+    testWidgets(
+      'falls back to a 16:9 aspect ratio when the SVG has no viewBox',
+      (tester) async {
+        final renderer = _CannedMermaidRenderer(
+          const MermaidRenderSuccess(
+            '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
+          ),
+        );
+
+        await tester.pumpWidget(harness(renderer: renderer));
+        await tester.pumpAndSettle();
+
+        final aspectRatio = tester.widget<AspectRatio>(
+          find.ancestor(
+            of: find.byType(InteractiveViewer),
+            matching: find.byType(AspectRatio),
+          ),
+        );
+        expect(aspectRatio.aspectRatio, closeTo(16 / 9, 1e-9));
+      },
+    );
   });
 }
 
@@ -112,12 +213,19 @@ class _CannedMermaidRenderer implements MermaidRenderer {
   _CannedMermaidRenderer(this.result);
 
   final MermaidRenderResult result;
+  final List<MermaidDiagramTheme> observedThemes = [];
 
   @override
   Future<void> prewarm() async {}
 
   @override
-  Future<MermaidRenderResult> render(String source) async => result;
+  Future<MermaidRenderResult> render(
+    String source, {
+    MermaidDiagramTheme theme = MermaidDiagramTheme.defaultTheme,
+  }) async {
+    observedThemes.add(theme);
+    return result;
+  }
 
   @override
   Future<void> dispose() async {}
@@ -139,7 +247,10 @@ class _PendingMermaidRenderer implements MermaidRenderer {
   Future<void> prewarm() async {}
 
   @override
-  Future<MermaidRenderResult> render(String source) {
+  Future<MermaidRenderResult> render(
+    String source, {
+    MermaidDiagramTheme theme = MermaidDiagramTheme.defaultTheme,
+  }) {
     final completer = Completer<MermaidRenderResult>();
     _pending.add(completer);
     return completer.future;

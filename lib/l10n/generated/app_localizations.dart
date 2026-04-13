@@ -194,6 +194,18 @@ abstract class AppLocalizations {
   /// **'System default'**
   String get settingsLanguageSystem;
 
+  /// Label for the English option in the settings language selector.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get settingsLanguageEnglish;
+
+  /// Label for the Turkish option in the settings language selector.
+  ///
+  /// In en, this message translates to:
+  /// **'Turkish'**
+  String get settingsLanguageTurkish;
+
   /// Section title for the reading font size selector.
   ///
   /// In en, this message translates to:

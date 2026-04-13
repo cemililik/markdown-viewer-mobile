@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/errors/failure.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/core/widgets/error_view.dart';
@@ -37,6 +39,20 @@ class ViewerScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        // Explicit leading button: on a push-navigated viewer the
+        // default `leading` from [AppBar] would already show one,
+        // but deep links (`/viewer?path=…`) land directly on this
+        // route with an empty stack. `canPop()` falls through to a
+        // `go` back to the library so the user is never stranded.
+        leading: BackButton(
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go(LibraryRoute.location());
+            }
+          },
+        ),
         title: Text(_titleFor(documentId, l10n.viewerUnnamedDocument)),
       ),
       body: async.when(

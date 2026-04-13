@@ -58,6 +58,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLanguageSystem => 'System default';
 
   @override
+  String get settingsLanguageEnglish => 'English';
+
+  @override
+  String get settingsLanguageTurkish => 'Turkish';
+
+  @override
   String get settingsFontSizeTitle => 'Font size';
 
   @override

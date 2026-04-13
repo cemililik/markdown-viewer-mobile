@@ -61,6 +61,14 @@
   "@settingsLanguageSystem": {
     "description": "Option in the language selector that follows the OS language."
   },
+  "settingsLanguageEnglish": "English",
+  "@settingsLanguageEnglish": {
+    "description": "Label for the English option in the settings language selector."
+  },
+  "settingsLanguageTurkish": "Turkish",
+  "@settingsLanguageTurkish": {
+    "description": "Label for the Turkish option in the settings language selector."
+  },
 
   "settingsFontSizeTitle": "Font size",
   "@settingsFontSizeTitle": {

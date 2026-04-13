@@ -58,6 +58,12 @@ class AppLocalizationsTr extends AppLocalizations {
   String get settingsLanguageSystem => 'Sistem varsayılanı';
 
   @override
+  String get settingsLanguageEnglish => 'İngilizce';
+
+  @override
+  String get settingsLanguageTurkish => 'Türkçe';
+
+  @override
   String get settingsFontSizeTitle => 'Yazı tipi boyutu';
 
   @override

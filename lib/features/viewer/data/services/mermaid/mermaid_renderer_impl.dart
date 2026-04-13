@@ -110,7 +110,10 @@ class MermaidRendererImpl implements MermaidRenderer {
   }
 
   @override
-  Future<MermaidRenderResult> render(String source) async {
+  Future<MermaidRenderResult> render(
+    String source, {
+    MermaidDiagramTheme theme = MermaidDiagramTheme.defaultTheme,
+  }) async {
     if (_disposed) {
       return const MermaidRenderFailure('Renderer has been disposed');
     }
@@ -118,7 +121,16 @@ class MermaidRendererImpl implements MermaidRenderer {
       return MermaidRenderFailure(_permanentFailure!);
     }
 
-    final key = sha256.convert(utf8.encode(source)).toString();
+    // Prepend the mermaid init directive so the JS side renders
+    // with the right palette without us having to re-call
+    // `mermaid.initialize` (which would need global state on the
+    // sandbox page and invite race conditions). The directive is
+    // part of the source that gets hashed, so light and dark
+    // variants of the same diagram automatically occupy different
+    // cache slots.
+    final themedSource =
+        "%%{init: {'theme':'${theme.directiveName}'}}%%\n$source";
+    final key = sha256.convert(utf8.encode(themedSource)).toString();
 
     final cached = _cache.get(key);
     if (cached != null) {
@@ -132,7 +144,9 @@ class MermaidRendererImpl implements MermaidRenderer {
 
     final completer = Completer<MermaidRenderResult>();
     _inFlight[key] = completer;
-    _queue.add(_PendingRender(key: key, source: source, completer: completer));
+    _queue.add(
+      _PendingRender(key: key, source: themedSource, completer: completer),
+    );
     unawaited(_pump());
     return completer.future;
   }

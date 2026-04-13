@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -14,7 +16,16 @@ class LibraryScreen extends ConsumerWidget {
     final l10n = context.l10n;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l10n.navLibrary)),
+      appBar: AppBar(
+        title: Text(l10n.navLibrary),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings_outlined),
+            tooltip: l10n.navSettings,
+            onPressed: () => context.push(SettingsRoute.location()),
+          ),
+        ],
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),
@@ -107,6 +118,12 @@ class LibraryScreen extends ConsumerWidget {
       return;
     }
 
-    context.go(ViewerRoute.location(path));
+    // `push` (not `go`) so the viewer sits on top of the library
+    // stack and the user can tap back to come home. `go` would
+    // replace the library entry and strand the user inside the
+    // viewer with no back affordance. The push future completes
+    // when the user pops the viewer; we intentionally do not wait
+    // on it — nothing in this handler should run post-pop.
+    unawaited(context.push(ViewerRoute.location(path)));
   }
 }

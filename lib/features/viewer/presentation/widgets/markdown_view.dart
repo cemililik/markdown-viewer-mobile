@@ -90,13 +90,16 @@ class MarkdownView extends StatelessWidget {
     // `MarkdownConfig.copy(configs: [...])` is a **merge**, not a
     // replacement: it writes each entry in the supplied list into
     // the existing tag→config map and then constructs a new
-    // MarkdownConfig from the full merged set. Passing only our
-    // PreConfig therefore overrides the `pre` slot while every
-    // other dark variant (HConfig, BlockquoteConfig, PConfig, …)
-    // pre-loaded by `MarkdownConfig.darkConfig` survives unchanged.
-    // See `MarkdownConfig.copy` in
+    // MarkdownConfig from the full merged set. Passing our
+    // PreConfig + TableConfig therefore overrides only those two
+    // slots while every other dark variant (HConfig,
+    // BlockquoteConfig, PConfig, …) pre-loaded by
+    // `MarkdownConfig.darkConfig` survives unchanged. See
+    // `MarkdownConfig.copy` in
     // `package:markdown_widget/config/configs.dart`.
-    final config = base.copy(configs: [_buildPreConfig(theme)]);
+    final config = base.copy(
+      configs: [_buildPreConfig(theme), _buildTableConfig()],
+    );
 
     return MarkdownWidget(
       data: document.source,
@@ -166,6 +169,28 @@ class MarkdownView extends StatelessWidget {
         }
         return child;
       },
+    );
+  }
+
+  /// Wraps every rendered markdown table in a horizontal
+  /// [SingleChildScrollView] so multi-column tables remain
+  /// reachable on narrow mobile screens. Without this the default
+  /// `Table` widget clips any column that cannot fit the reading
+  /// column width, and there is no way for the user to reach the
+  /// hidden cells.
+  ///
+  /// `ClampingScrollPhysics` cancels the iOS overscroll bounce on
+  /// the horizontal axis so it does not fight with the outer
+  /// `ListView`'s vertical scroll — otherwise dragging diagonally
+  /// feels like a tug-of-war between the two scrollables.
+  TableConfig _buildTableConfig() {
+    return TableConfig(
+      wrapper:
+          (table) => SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const ClampingScrollPhysics(),
+            child: table,
+          ),
     );
   }
 }

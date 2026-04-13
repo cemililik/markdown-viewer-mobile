@@ -2,17 +2,27 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/app/app.dart';
+import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
+import 'package:markdown_viewer/features/settings/data/settings_store.dart';
 import 'package:markdown_viewer/features/viewer/application/document_repository_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
 import 'package:markdown_viewer/features/viewer/data/parsers/markdown_parser.dart';
 import 'package:markdown_viewer/features/viewer/data/repositories/document_repository_impl.dart';
 import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_renderer_impl.dart';
 import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
-  // Required so we can load asset bundles and run the mermaid
-  // pre-warm before the first frame.
+  // Required so we can load asset bundles, hit SharedPreferences,
+  // and run the mermaid pre-warm before the first frame.
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Preload SharedPreferences so the settings controllers can seed
+  // their initial state synchronously — otherwise the very first
+  // frame would render with the default light theme / system locale
+  // regardless of what the user last picked.
+  final prefs = await SharedPreferences.getInstance();
+  final settingsStore = SettingsStore(prefs);
 
   final mermaidRenderer = await _buildMermaidRenderer();
 
@@ -21,9 +31,8 @@ Future<void> main() async {
       // Composition root — this is the only place in the app that is
       // allowed to reach into `features/**/data/` and hand a concrete
       // implementation to an application-layer port. Every other file
-      // depends on the abstract [documentRepositoryProvider] /
-      // [mermaidRendererProvider] declared in the application layer,
-      // so data implementations can be swapped (tests, fakes,
+      // depends on the abstract providers declared in the application
+      // layer, so data implementations can be swapped (tests, fakes,
       // integration harnesses) without touching application or
       // presentation code.
       overrides: [
@@ -34,6 +43,7 @@ Future<void> main() async {
           ref.onDispose(mermaidRenderer.dispose);
           return mermaidRenderer;
         }),
+        settingsStoreProvider.overrideWithValue(settingsStore),
       ],
       child: const MarkdownViewerApp(),
     ),

@@ -142,24 +142,88 @@ void main() {
       expect(result, isA<MermaidRenderFailure>());
       expect((result as MermaidRenderFailure).message, contains('disposed'));
     });
+
+    test(
+      'should prepend the mermaid dark init directive when theme is dark',
+      () async {
+        final channel = _FakeChannel();
+        final renderer = MermaidRendererImpl(
+          channel: channel,
+          mermaidJs: '/* fake */',
+        );
+        await renderer.prewarm();
+
+        channel.scriptResult('flowchart LR; A-->B', 'svg');
+        await renderer.render(
+          'flowchart LR; A-->B',
+          theme: MermaidDiagramTheme.dark,
+        );
+
+        expect(channel.observedSources, hasLength(1));
+        expect(
+          channel.observedSources.single,
+          startsWith("%%{init: {'theme':'dark'}}%%\n"),
+          reason:
+              'The renderer must prepend the dark init directive to the '
+              'user source so mermaid.js picks the dark palette without '
+              'us having to call mermaid.initialize a second time on '
+              'the sandbox page.',
+        );
+      },
+    );
+
+    test('should place light and dark renders of the same source in distinct '
+        'cache slots', () async {
+      final channel = _FakeChannel();
+      final renderer = MermaidRendererImpl(
+        channel: channel,
+        mermaidJs: '/* fake */',
+      );
+      await renderer.prewarm();
+
+      channel.scriptResult('flowchart LR; X-->Y', 'svg');
+      await renderer.render('flowchart LR; X-->Y');
+      await renderer.render(
+        'flowchart LR; X-->Y',
+        theme: MermaidDiagramTheme.dark,
+      );
+
+      expect(
+        channel.renderCallCount,
+        2,
+        reason:
+            'Light and dark variants of the same source must be rendered '
+            'separately — their cache keys differ because the theme '
+            'directive is baked into the hashed source.',
+      );
+    });
   });
 }
 
 /// Fake [MermaidJsChannel] that lets a test pre-register canned
-/// results keyed by source string. Each `render` call looks up the
-/// source in [_replies] and posts the matching reply via the
-/// `onResult` callback registered in [initialize].
+/// results keyed by source substring. Each `render` call looks up
+/// the first scripted key that the observed source contains and
+/// posts the matching reply via the `onResult` callback registered
+/// in [initialize].
+///
+/// Matching by substring (rather than exact equality) is deliberate:
+/// [MermaidRendererImpl] prepends a `%%{init: {...}}%%` directive
+/// to every source before handing it to the channel, so an exact
+/// match on the raw user source would fail. Tests script with the
+/// original source and still find the right reply regardless of
+/// the directive the impl stamps on top.
 class _FakeChannel implements MermaidJsChannel {
   void Function(Map<String, Object?> message)? _onResult;
-  final Map<String, _ScriptedReply> _replies = <String, _ScriptedReply>{};
+  final List<_ScriptedReply> _replies = <_ScriptedReply>[];
+  final List<String> observedSources = <String>[];
   int renderCallCount = 0;
 
-  void scriptResult(String source, String svg) {
-    _replies[source] = _ScriptedReply(svg: svg);
+  void scriptResult(String sourceContains, String svg) {
+    _replies.add(_ScriptedReply(match: sourceContains, svg: svg));
   }
 
-  void scriptError(String source, String error) {
-    _replies[source] = _ScriptedReply(error: error);
+  void scriptError(String sourceContains, String error) {
+    _replies.add(_ScriptedReply(match: sourceContains, error: error));
   }
 
   @override
@@ -173,7 +237,11 @@ class _FakeChannel implements MermaidJsChannel {
   @override
   Future<void> render({required String id, required String source}) async {
     renderCallCount += 1;
-    final reply = _replies[source];
+    observedSources.add(source);
+    final reply = _replies.firstWhere(
+      (r) => source.contains(r.match),
+      orElse: () => _ScriptedReply(match: '', error: 'no scripted reply'),
+    );
     final callback = _onResult;
     if (callback == null) {
       return;
@@ -181,10 +249,6 @@ class _FakeChannel implements MermaidJsChannel {
     // Schedule the reply on the next microtask so the call site has
     // a chance to await the matching completer.
     scheduleMicrotask(() {
-      if (reply == null) {
-        callback({'id': id, 'error': 'no scripted reply for source'});
-        return;
-      }
       if (reply.error != null) {
         callback({'id': id, 'error': reply.error});
         return;
@@ -200,8 +264,11 @@ class _FakeChannel implements MermaidJsChannel {
 }
 
 class _ScriptedReply {
-  _ScriptedReply({this.svg, this.error});
+  _ScriptedReply({required this.match, this.svg, this.error});
 
+  /// Substring that must appear in the observed source for this
+  /// reply to be considered a match.
+  final String match;
   final String? svg;
   final String? error;
 }

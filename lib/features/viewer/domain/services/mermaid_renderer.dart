@@ -30,14 +30,40 @@ abstract interface class MermaidRenderer {
   /// the rest of the document still loads.
   Future<void> prewarm();
 
-  /// Renders [source] and returns either an SVG string or a typed
-  /// failure. Identical sources should hit a cache instead of
-  /// re-running the underlying renderer.
-  Future<MermaidRenderResult> render(String source);
+  /// Renders [source] under [theme] and returns either an SVG string
+  /// or a typed failure. Identical `(source, theme)` pairs should
+  /// hit a cache instead of re-running the underlying renderer, but
+  /// the same source under different themes must NOT collide —
+  /// light and dark variants are distinct renders with distinct
+  /// SVG output.
+  Future<MermaidRenderResult> render(
+    String source, {
+    MermaidDiagramTheme theme = MermaidDiagramTheme.defaultTheme,
+  });
 
   /// Releases any resources held by the renderer. Called by the
   /// composition root when the [ProviderContainer] disposes.
   Future<void> dispose();
+}
+
+/// Which mermaid theme to render with. Maps directly to the
+/// `%%{init: {'theme':'<name>'}}%%` directive that mermaid parses
+/// at the top of any diagram source, so the dart side can flip
+/// palettes without calling `mermaid.initialize` again in the
+/// sandboxed WebView.
+///
+/// Only two values: `defaultTheme` covers Flutter light mode
+/// (mermaid's default white-background palette) and `dark` covers
+/// Flutter dark mode (mermaid's "dark" preset, high-contrast
+/// strokes on transparent background).
+enum MermaidDiagramTheme {
+  defaultTheme('default'),
+  dark('dark');
+
+  const MermaidDiagramTheme(this.directiveName);
+
+  /// Name used in the `%%{init: {'theme':'<name>'}}%%` directive.
+  final String directiveName;
 }
 
 /// Sealed result of a single [MermaidRenderer.render] call.
