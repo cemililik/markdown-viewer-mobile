@@ -66,11 +66,10 @@ class _MermaidBlockState extends ConsumerState<MermaidBlock> {
 
   void _maybeRerender() {
     final scheme = Theme.of(context).colorScheme;
-    final brightness = Theme.of(context).brightness;
     final directive =
         _sourceHasOwnDirective(widget.code)
             ? ''
-            : buildMermaidInitDirective(scheme, brightness);
+            : buildMermaidInitDirective(scheme);
 
     if (_future != null && _renderedDirective == directive) {
       return;
@@ -124,12 +123,13 @@ class _MermaidBlockState extends ConsumerState<MermaidBlock> {
 /// that honours user-supplied `themeVariables`. The `default` and
 /// `dark` presets silently drop most overrides.
 ///
-/// [brightness] is currently only used to decide a few contrast
-/// fallbacks (task text colour in gantt charts that have to read
-/// on top of a filled bar); the rest of the palette comes from
-/// [scheme] directly so it follows both dynamic-colour seed changes
-/// and light ⇄ dark flips.
-String buildMermaidInitDirective(ColorScheme scheme, Brightness brightness) {
+/// Light vs dark mode is expressed entirely through [scheme]: both
+/// `scheme.onPrimaryContainer` and the other `on*` roles already
+/// flip between light and dark palettes, so every task-text /
+/// contrast-sensitive variable in the map below picks up the
+/// right value automatically without a separate `Brightness`
+/// argument.
+String buildMermaidInitDirective(ColorScheme scheme) {
   String hex(Color color) {
     final r = (color.r * 255).round() & 0xff;
     final g = (color.g * 255).round() & 0xff;

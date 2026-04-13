@@ -50,10 +50,15 @@ class ReadingPositionStoreImpl implements ReadingPositionStore {
         offset: offset,
         savedAt: savedAt,
       );
-    } on FormatException {
-      // A corrupt entry should not poison the reader. Treat it as
-      // "no bookmark" so the document opens normally; the next
-      // explicit save overwrites the bad blob.
+    } on Object {
+      // A corrupt / legacy entry should not poison the reader.
+      // Beyond `FormatException` from `jsonDecode`, the explicit
+      // `as Map<String, dynamic>` cast can throw `TypeError` if
+      // the stored shape has drifted, and a hand-edited entry
+      // could theoretically trip any number of other exceptions.
+      // Treat every failure as "no bookmark" so the document
+      // opens normally; the next explicit save overwrites the
+      // bad blob.
       return null;
     }
   }
@@ -68,9 +73,8 @@ class ReadingPositionStoreImpl implements ReadingPositionStore {
   }
 
   @override
-  Future<void> clear(DocumentId documentId) {
-    return _prefs.remove(_keyFor(documentId)).then((_) {});
-  }
+  Future<void> clear(DocumentId documentId) =>
+      _prefs.remove(_keyFor(documentId));
 
   static String _keyFor(DocumentId documentId) {
     final hash = sha256.convert(utf8.encode(documentId.value)).toString();

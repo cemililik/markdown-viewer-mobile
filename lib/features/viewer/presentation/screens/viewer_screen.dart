@@ -55,11 +55,14 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     super.initState();
     _scrollController.addListener(_onScroll);
     // Seed the bookmark indicator from persisted state so the AppBar
-    // icon reflects the truth on the very first build.
-    final saved = ProviderScope.containerOf(
-      context,
-      listen: false,
-    ).read(readingPositionStoreProvider).read(widget.documentId);
+    // icon reflects the truth on the very first build. `ref` is a
+    // `late final` on `ConsumerState` backed by the element's
+    // `context as WidgetRef`, so reading a provider here is the
+    // idiomatic path in Riverpod 3 — no need to reach into
+    // `ProviderScope.containerOf` manually.
+    final saved = ref
+        .read(readingPositionStoreProvider)
+        .read(widget.documentId);
     _isBookmarked = ValueNotifier<bool>(saved != null);
   }
 
@@ -156,7 +159,13 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// short confirmation messages and keeps the snackbar from
   /// lingering over the back-to-top FAB.
   void _showLocalizedSnackBar(String Function(AppLocalizations l10n) resolve) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context);
+    // Dismiss any already-visible snackbar so rapid tap sequences
+    // (e.g. bookmark → unbookmark → bookmark) show immediate
+    // feedback for the latest action instead of queueing behind
+    // stale confirmations.
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
       SnackBar(
         duration: const Duration(seconds: 3),
         content: Builder(builder: (context) => Text(resolve(context.l10n))),
@@ -204,14 +213,22 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
           ),
         ],
       ),
-      floatingActionButton: AnimatedScale(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        scale: _showBackToTop ? 1 : 0,
-        child: FloatingActionButton.small(
-          tooltip: l10n.viewerBackToTopTooltip,
-          onPressed: _scrollToTop,
-          child: const Icon(Icons.arrow_upward),
+      // `IgnorePointer` guard because `AnimatedScale(scale: 0)` still
+      // participates in hit-testing at its original bounds — without
+      // the guard, invisible taps near the bottom-right of the
+      // viewport would fire `_scrollToTop` even when the FAB is not
+      // supposed to be there.
+      floatingActionButton: IgnorePointer(
+        ignoring: !_showBackToTop,
+        child: AnimatedScale(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          scale: _showBackToTop ? 1 : 0,
+          child: FloatingActionButton.small(
+            tooltip: l10n.viewerBackToTopTooltip,
+            onPressed: _scrollToTop,
+            child: const Icon(Icons.arrow_upward),
+          ),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,

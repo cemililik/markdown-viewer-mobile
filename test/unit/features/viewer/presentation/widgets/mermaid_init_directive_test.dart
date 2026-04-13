@@ -26,20 +26,14 @@ void main() {
 
     test('wraps the payload in the mermaid init directive sigil and ends with '
         'a newline so the actual diagram source starts on a fresh line', () {
-      final directive = buildMermaidInitDirective(
-        lightScheme,
-        Brightness.light,
-      );
+      final directive = buildMermaidInitDirective(lightScheme);
 
       expect(directive, startsWith('%%{init: '));
       expect(directive, endsWith('%%\n'));
     });
 
     test('pins theme to "base" so themeVariables overrides take effect', () {
-      final directive = buildMermaidInitDirective(
-        lightScheme,
-        Brightness.light,
-      );
+      final directive = buildMermaidInitDirective(lightScheme);
       final payload =
           jsonDecode(stripWrapper(directive)) as Map<String, dynamic>;
 
@@ -48,10 +42,7 @@ void main() {
     });
 
     test('every variable value is a #RRGGBB hex string', () {
-      final directive = buildMermaidInitDirective(
-        lightScheme,
-        Brightness.light,
-      );
+      final directive = buildMermaidInitDirective(lightScheme);
       final payload =
           jsonDecode(stripWrapper(directive)) as Map<String, dynamic>;
       final vars = payload['themeVariables'] as Map<String, dynamic>;
@@ -70,10 +61,7 @@ void main() {
 
     test('covers every diagram type the viewer fixture exercises (flowchart, '
         'sequence, class, state, gantt, ER)', () {
-      final directive = buildMermaidInitDirective(
-        lightScheme,
-        Brightness.light,
-      );
+      final directive = buildMermaidInitDirective(lightScheme);
       final payload =
           jsonDecode(stripWrapper(directive)) as Map<String, dynamic>;
       final vars = payload['themeVariables'] as Map<String, dynamic>;
@@ -99,14 +87,8 @@ void main() {
 
     test('produces a different palette for light vs dark schemes built from '
         'the same seed', () {
-      final lightDirective = buildMermaidInitDirective(
-        lightScheme,
-        Brightness.light,
-      );
-      final darkDirective = buildMermaidInitDirective(
-        darkScheme,
-        Brightness.dark,
-      );
+      final lightDirective = buildMermaidInitDirective(lightScheme);
+      final darkDirective = buildMermaidInitDirective(darkScheme);
 
       expect(
         lightDirective,

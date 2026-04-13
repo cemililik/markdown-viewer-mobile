@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -77,7 +78,22 @@ Future<MermaidRenderer> _buildMermaidRenderer() async {
     final renderer = MermaidRendererImpl.production(mermaidJs: mermaidJs);
     await renderer.prewarm();
     return renderer;
-  } catch (_) {
+  } catch (error, stackTrace) {
+    // Surface the cause in debug / profile builds so a dev who
+    // forgot `tool/fetch_mermaid.sh` (or hit a transient WebView
+    // initialisation glitch) sees why diagrams aren't working
+    // instead of silently getting the empty-JS fallback. `debugPrint`
+    // + `kDebugMode` keeps release builds silent so the user never
+    // sees raw stack traces, matching the project's logging
+    // policy in `docs/standards/error-handling-standards.md`.
+    if (kDebugMode) {
+      debugPrint(
+        'Failed to load assets/mermaid/mermaid.min.js — falling back '
+        'to an empty renderer so the rest of the document still '
+        'loads. Error: $error',
+      );
+      debugPrint(stackTrace.toString());
+    }
     return MermaidRendererImpl.production(mermaidJs: '');
   }
 }
