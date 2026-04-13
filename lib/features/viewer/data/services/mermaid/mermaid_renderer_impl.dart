@@ -89,13 +89,29 @@ class MermaidRendererImpl implements MermaidRenderer {
   /// containing this message.
   String? _permanentFailure;
 
+  /// In-flight prewarm future so concurrent callers — a user-level
+  /// `prewarm()` from the composition root running in parallel with
+  /// the lazy prewarm inside [_pump] — share a single channel
+  /// `initialize()` call instead of racing and issuing two.
+  Future<void>? _prewarmInFlight;
+
   int _nextRequestSeq = 0;
 
   @override
-  Future<void> prewarm() async {
+  Future<void> prewarm() {
     if (_initialized || _permanentFailure != null) {
-      return;
+      return Future<void>.value();
     }
+    final inflight = _prewarmInFlight;
+    if (inflight != null) {
+      return inflight;
+    }
+    final future = _runPrewarm();
+    _prewarmInFlight = future;
+    return future;
+  }
+
+  Future<void> _runPrewarm() async {
     try {
       await _channel.initialize(
         html: buildMermaidHtml(mermaidJs: _mermaidJs),
@@ -106,6 +122,8 @@ class MermaidRendererImpl implements MermaidRenderer {
       _permanentFailure = e.message;
     } catch (e) {
       _permanentFailure = 'Unexpected mermaid renderer init error: $e';
+    } finally {
+      _prewarmInFlight = null;
     }
   }
 

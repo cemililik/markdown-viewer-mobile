@@ -197,6 +197,55 @@ void main() {
       },
     );
 
+    test(
+      'should queue a render() call issued before prewarm() completes, '
+      'initialise once, then drain the request against the real channel',
+      () async {
+        final channel = _DelayedInitializingChannel();
+        final renderer = MermaidRendererImpl(
+          channel: channel,
+          mermaidJs: '/* fake */',
+        );
+
+        // Kick off prewarm without awaiting it — the channel's
+        // initialise future is pending, so the renderer is stuck
+        // between "uninitialised" and "ready".
+        final prewarmFuture = renderer.prewarm();
+
+        channel.scriptResult('flowchart LR; A-->B', 'early-svg');
+        // Fire a render() while initialisation is still in flight.
+        // The renderer's internal _pump must queue the request and
+        // only drain it after the channel becomes ready.
+        final renderFuture = renderer.render('flowchart LR; A-->B');
+
+        // Release the channel's initialise future so both the
+        // outstanding prewarm AND the pending render can make
+        // forward progress.
+        channel.completeInitialize();
+
+        await prewarmFuture;
+        final result = await renderFuture;
+
+        expect(result, isA<MermaidRenderSuccess>());
+        expect((result as MermaidRenderSuccess).svg, 'early-svg');
+        expect(
+          channel.initializeCallCount,
+          1,
+          reason:
+              'Concurrent prewarm / render must share a single channel '
+              'initialisation, not race and issue two.',
+        );
+        expect(
+          channel.renderCallCount,
+          1,
+          reason:
+              'The render request must be drained exactly once against '
+              'the channel, after the pump notices initialisation is '
+              'complete.',
+        );
+      },
+    );
+
     test('should give two distinct initDirectives for the same source distinct '
         'cache slots', () async {
       final channel = _FakeChannel();
@@ -322,6 +371,62 @@ class _FailingChannel implements MermaidJsChannel {
   @override
   Future<void> render({required String id, required String source}) async {
     renderCallCount += 1;
+  }
+
+  @override
+  Future<void> dispose() async {}
+}
+
+/// Channel whose [initialize] returns a [Future] that only resolves
+/// when the test calls [completeInitialize]. Used to simulate a
+/// slow WebView warm-up so we can land a `render()` call while
+/// the renderer is still mid-initialisation and verify the queue
+/// drains correctly once the channel becomes ready.
+final class _DelayedInitializingChannel implements MermaidJsChannel {
+  final Completer<void> _initCompleter = Completer<void>();
+  void Function(Map<String, Object?> message)? _onResult;
+  final List<_ScriptedReply> _replies = <_ScriptedReply>[];
+  int initializeCallCount = 0;
+  int renderCallCount = 0;
+
+  void completeInitialize() {
+    if (!_initCompleter.isCompleted) {
+      _initCompleter.complete();
+    }
+  }
+
+  void scriptResult(String sourceContains, String svg) {
+    _replies.add(_ScriptedReply(match: sourceContains, svg: svg));
+  }
+
+  @override
+  Future<void> initialize({
+    required String html,
+    required void Function(Map<String, Object?> message) onResult,
+  }) {
+    initializeCallCount += 1;
+    _onResult = onResult;
+    return _initCompleter.future;
+  }
+
+  @override
+  Future<void> render({required String id, required String source}) async {
+    renderCallCount += 1;
+    final reply = _replies.firstWhere(
+      (r) => source.contains(r.match),
+      orElse: () => _ScriptedReply(match: '', error: 'no scripted reply'),
+    );
+    final callback = _onResult;
+    if (callback == null) {
+      return;
+    }
+    scheduleMicrotask(() {
+      if (reply.error != null) {
+        callback({'id': id, 'error': reply.error});
+        return;
+      }
+      callback({'id': id, 'svg': reply.svg});
+    });
   }
 
   @override

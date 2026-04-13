@@ -27,14 +27,35 @@ import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_js
 class HeadlessMermaidJsChannel implements MermaidJsChannel {
   HeadlessInAppWebView? _view;
 
+  /// In-flight initialise future. The first caller starts the work
+  /// and stores its [Future] here; every concurrent caller awaits
+  /// the same future so they all block until the WebView is truly
+  /// ready, instead of racing through on a "_view != null" early
+  /// return that would let them call `render()` before the page
+  /// has emitted the `__ready__` handshake.
+  Future<void>? _initializing;
+
   @override
   Future<void> initialize({
     required String html,
     required void Function(Map<String, Object?> message) onResult,
-  }) async {
+  }) {
     if (_view != null) {
-      return;
+      return Future<void>.value();
     }
+    final inflight = _initializing;
+    if (inflight != null) {
+      return inflight;
+    }
+    final future = _runInitialize(html: html, onResult: onResult);
+    _initializing = future;
+    return future;
+  }
+
+  Future<void> _runInitialize({
+    required String html,
+    required void Function(Map<String, Object?> message) onResult,
+  }) async {
     final ready = Completer<void>();
 
     final view = HeadlessInAppWebView(
@@ -89,15 +110,34 @@ class HeadlessMermaidJsChannel implements MermaidJsChannel {
       },
     );
 
-    _view = view;
     try {
       await view.run();
+      await ready.future;
     } catch (e) {
+      // Tear the partially-created view down before bubbling the
+      // failure up — without this, _view stays null but the
+      // platform side might still hold the live HeadlessInAppWebView,
+      // and a future retry would leak it. Any exception from the
+      // disposal itself is swallowed because we are already in an
+      // error path and the original cause matters more.
+      try {
+        await view.dispose();
+      } catch (_) {
+        // Intentionally suppressed.
+      }
+      _initializing = null;
+      if (e is MermaidJsChannelException) {
+        rethrow;
+      }
       throw MermaidJsChannelException(
         'HeadlessInAppWebView failed to start: $e',
       );
     }
-    await ready.future;
+
+    // Only assign `_view` once the page has actually reached the
+    // ready handshake; before that, `render()` would be unsafe.
+    _view = view;
+    _initializing = null;
   }
 
   @override

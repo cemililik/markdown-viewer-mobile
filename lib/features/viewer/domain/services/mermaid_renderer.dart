@@ -23,11 +23,19 @@ abstract interface class MermaidRenderer {
   /// before [prewarm] completes is allowed — the implementation must
   /// queue the request behind initialisation rather than failing.
   ///
-  /// Returning normally means the renderer is ready. Throwing means
-  /// it is permanently unusable; the composition root catches the
-  /// error and substitutes a fallback that returns
-  /// [MermaidRenderFailure] for every subsequent [render] call so
-  /// the rest of the document still loads.
+  /// **Resilient by contract: this never throws.** A failed
+  /// initialisation (missing asset, WebView platform binding
+  /// unavailable, mermaid global not present after script load,
+  /// …) flips the renderer into a permanent-failure state where
+  /// every subsequent [render] call returns a
+  /// [MermaidRenderFailure] with the original cause. The rest of
+  /// the document keeps loading and the user sees the inline
+  /// "diagram could not be rendered" placeholder instead of a
+  /// crashed app.
+  ///
+  /// Calling [prewarm] more than once is a no-op once the
+  /// renderer has either initialised successfully or recorded a
+  /// permanent failure.
   Future<void> prewarm();
 
   /// Renders [source] and returns either an SVG string or a typed

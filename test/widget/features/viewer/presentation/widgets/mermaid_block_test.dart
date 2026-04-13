@@ -240,6 +240,52 @@ void main() {
       },
     );
 
+    testWidgets('rebuilds and re-renders when the MermaidBlock.code prop changes', (
+      tester,
+    ) async {
+      final renderer = _CodeAwareMermaidRenderer({
+        'flowchart LR; A-->B':
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60" data-marker="svg-a"></svg>',
+        'flowchart LR; C-->D':
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60" data-marker="svg-b"></svg>',
+      });
+
+      Widget buildWith(String code) => ProviderScope(
+        overrides: [mermaidRendererProvider.overrideWithValue(renderer)],
+        child: MaterialApp(
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: AppLocalizations.supportedLocales,
+          theme: ThemeData(useMaterial3: true),
+          home: Scaffold(body: MermaidBlock(code: code)),
+        ),
+      );
+
+      await tester.pumpWidget(buildWith('flowchart LR; A-->B'));
+      await tester.pumpAndSettle();
+
+      expect(renderer.observedSources, ['flowchart LR; A-->B']);
+      expect(find.byWidgetPredicate((w) => w is SvgPicture), findsOneWidget);
+
+      // Swap the code prop to a different diagram — didUpdateWidget
+      // must notice the change, re-enter the renderer, and the new
+      // SVG marker should reach the painted tree.
+      await tester.pumpWidget(buildWith('flowchart LR; C-->D'));
+      await tester.pumpAndSettle();
+
+      expect(
+        renderer.observedSources,
+        ['flowchart LR; A-->B', 'flowchart LR; C-->D'],
+        reason:
+            'didUpdateWidget must call render() again with the new '
+            'code so the displayed SVG reflects the updated source.',
+      );
+    });
+
     testWidgets(
       'falls back to a 16:9 aspect ratio when the SVG has no viewBox',
       (tester) async {
@@ -282,6 +328,36 @@ class _CannedMermaidRenderer implements MermaidRenderer {
     observedDirectives.add(initDirective);
     observedSources.add(source);
     return result;
+  }
+
+  @override
+  Future<void> dispose() async {}
+}
+
+/// Fake [MermaidRenderer] that hands back a scripted SVG keyed by
+/// source string and records every observed source. Used by the
+/// didUpdateWidget test to prove a `MermaidBlock.code` change
+/// re-enters the renderer with the new source.
+class _CodeAwareMermaidRenderer implements MermaidRenderer {
+  _CodeAwareMermaidRenderer(this._scripted);
+
+  final Map<String, String> _scripted;
+  final List<String> observedSources = <String>[];
+
+  @override
+  Future<void> prewarm() async {}
+
+  @override
+  Future<MermaidRenderResult> render(
+    String source, {
+    String initDirective = '',
+  }) async {
+    observedSources.add(source);
+    final svg = _scripted[source];
+    if (svg == null) {
+      return const MermaidRenderFailure('no scripted svg for source');
+    }
+    return MermaidRenderSuccess(svg);
   }
 
   @override

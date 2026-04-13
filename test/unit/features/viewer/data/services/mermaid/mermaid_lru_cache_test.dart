@@ -79,13 +79,13 @@ void main() {
     });
 
     test('should reject a non-positive capacity at construction', () {
-      expect(
-        () => MermaidLruCache(capacity: 0),
-        throwsA(isA<AssertionError>()),
-      );
+      // ArgumentError (not AssertionError) so release builds also
+      // refuse to construct an unusable cache; release mode strips
+      // asserts entirely.
+      expect(() => MermaidLruCache(capacity: 0), throwsA(isA<ArgumentError>()));
       expect(
         () => MermaidLruCache(capacity: -1),
-        throwsA(isA<AssertionError>()),
+        throwsA(isA<ArgumentError>()),
       );
     });
   });

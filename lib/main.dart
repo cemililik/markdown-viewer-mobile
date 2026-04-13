@@ -59,14 +59,16 @@ Future<void> main() async {
 /// Loads the bundled mermaid runtime, constructs a production
 /// [MermaidRendererImpl], and pre-warms its sandboxed WebView.
 ///
-/// The asset load and pre-warm are both wrapped in a try/catch: if
-/// either fails (asset missing because `tool/fetch_mermaid.sh` was
-/// not run, WebView platform binding unavailable, etc.) we still
-/// return a usable renderer instance — its internal "permanent
-/// failure" flag will route every subsequent render to a typed
-/// [MermaidRenderFailure] so the rest of the document continues to
-/// load. A diagram-less reading experience is strictly better than
-/// a crashed app.
+/// `prewarm` itself is non-throwing per the contract in
+/// `mermaid_renderer.dart` — a failed initialisation just flips the
+/// renderer into permanent-failure mode and every subsequent render
+/// returns a typed [MermaidRenderFailure]. The try/catch here only
+/// covers the `rootBundle.loadString` call, which can throw when
+/// the asset is genuinely missing (e.g. a dev forgot to run
+/// `tool/fetch_mermaid.sh`). In that case we still return a usable
+/// renderer instance constructed with an empty JS payload so the
+/// rest of the document continues to load — a diagram-less reading
+/// experience is strictly better than a crashed app.
 Future<MermaidRenderer> _buildMermaidRenderer() async {
   try {
     final mermaidJs = await rootBundle.loadString(

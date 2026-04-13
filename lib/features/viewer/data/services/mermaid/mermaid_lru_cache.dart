@@ -16,8 +16,19 @@
 /// - Pure Dart and stateless beyond the map — unit-testable in
 ///   isolation without pumping a widget or spinning up a WebView.
 class MermaidLruCache {
-  MermaidLruCache({required this.capacity})
-    : assert(capacity > 0, 'MermaidLruCache.capacity must be positive');
+  MermaidLruCache({required this.capacity}) {
+    if (capacity <= 0) {
+      // ArgumentError (not an assert) so a release build still
+      // refuses to construct an unusable cache. An assert would be
+      // stripped in release mode and silently turn every put into
+      // an instant eviction.
+      throw ArgumentError.value(
+        capacity,
+        'capacity',
+        'MermaidLruCache.capacity must be positive',
+      );
+    }
+  }
 
   final int capacity;
   final Map<String, String> _entries = <String, String>{};
