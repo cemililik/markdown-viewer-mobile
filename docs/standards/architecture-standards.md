@@ -5,6 +5,12 @@ rules or a custom dependency-check test.
 
 ## Layer Dependency Rules
 
+The table below governs **inter-layer** imports inside this project.
+Third-party Dart packages (e.g. `package:markdown`, `package:dio`,
+`package:riverpod_annotation`) are *external* to the layer model and
+are not constrained by these rules — only the framework / UI rules
+listed beneath the table apply to them.
+
 | From ↓ To → | Domain | Application | Data | Presentation |
 |-------------|:------:|:-----------:|:----:|:------------:|
 | Domain      | yes    | no          | no   | no           |
@@ -12,9 +18,31 @@ rules or a custom dependency-check test.
 | Data        | yes    | no          | yes  | no           |
 | Presentation| yes    | yes         | no   | yes          |
 
-- **Presentation must not import from `data/`**
-- **Domain must not import `package:flutter/*`**
+Framework rules (apply on top of the inter-layer table):
+
+- **Presentation must not import from `data/`.**
+- **Domain must not import `package:flutter/*`** and must not import
+  any UI framework (`flutter_riverpod`, `material.dart`,
+  `widgets.dart`, …). Pure Dart packages such as `riverpod`,
+  `meta`, `collection` are allowed.
 - **Application must not import `package:flutter/*` except `compute`**
+  and must not import Material / Cupertino widget libraries. Other
+  third-party Dart packages are allowed because the application
+  layer is where parser configuration, repository ports' generated
+  bindings, and Riverpod providers live — all of which routinely
+  depend on packages like `markdown`, `riverpod_annotation`, and
+  `flutter_riverpod` (the project-wide DI framework chosen in
+  [ADR-0002](../decisions/0002-state-management-riverpod.md)).
+- **Data may import any third-party Dart or Flutter package** it
+  needs to talk to the outside world (file system, HTTP, database,
+  WebView, etc.).
+
+The Dart-package allowance is what lets, for example,
+`lib/features/viewer/application/markdown_extensions/math_syntax.dart`
+import `package:markdown` to extend its parser with a custom block
+syntax: the file is still application-layer code (it configures the
+parser, it does not call into it), and `package:markdown` is a pure
+Dart library, not a Flutter UI dependency.
 
 ## Feature Boundaries
 

@@ -8,31 +8,11 @@ void main() {
     test(
       'should call Logger.close exactly once when the container disposes',
       () {
-        // The production provider lives in lib/core/logging/logger.dart
-        // as:
-        //
-        //   final appLoggerProvider = Provider<Logger>((ref) {
-        //     final logger = Logger();
-        //     ref.onDispose(logger.close);
-        //     return logger;
-        //   });
-        //
-        // We cannot use `overrideWithValue` here because that
-        // bypasses the builder body entirely — the
-        // `ref.onDispose(logger.close)` line never runs in an
-        // override-with-value scope, so a test built that way would
-        // always observe `closeCount == 0` and tell us nothing about
-        // the production behaviour.
-        //
-        // Instead we use `overrideWith` (function form) and mirror
-        // the production builder exactly, swapping in a logger we
-        // can observe. The assertion then verifies the *dispose
-        // contract* the production code relies on: when a
-        // ProviderContainer that holds this provider is disposed,
-        // the logger registered via `ref.onDispose` is closed
-        // exactly once. Any future change that drops the onDispose
-        // call from the production builder must duplicate the same
-        // mistake here, which a routine review would catch.
+        // Mirrors the production builder via `overrideWith` (function
+        // form) instead of `overrideWithValue`, because the latter
+        // bypasses the builder body and never runs the production
+        // `ref.onDispose(logger.close)` line — meaning a test built
+        // that way could not observe the dispose contract at all.
         final logger = _CountingCloseLogger();
         final container = ProviderContainer(
           overrides: [
@@ -43,21 +23,13 @@ void main() {
           ],
         );
 
-        // Touch the provider so the container actually holds a
-        // subscription on it — an unread provider is never built
-        // and never registers an onDispose callback.
-        final resolved = container.read(appLoggerProvider);
-        expect(resolved, same(logger));
+        // Read the provider so the container actually holds a
+        // subscription on it; an unread provider is never built.
+        expect(container.read(appLoggerProvider), same(logger));
 
         container.dispose();
 
-        expect(
-          logger.closeCount,
-          1,
-          reason:
-              'Disposing the container must call close() on the '
-              'logger exactly once.',
-        );
+        expect(logger.closeCount, 1);
       },
     );
 

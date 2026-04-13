@@ -164,12 +164,35 @@ Prose after.
       expect(plainTextOf(displays.single), contains(r'\nabla^2 u'));
     });
 
-    test(r'should reject an empty `$$$$` block', () {
+    test(r'should reject an empty `$$$$` block AND preserve the literal '
+        'characters as paragraph text', () {
+      // Regression guard: an empty math block must NOT advance the
+      // BlockParser when it returns null. If it does, the line is
+      // silently consumed and the user's `$$$$` characters
+      // disappear from the rendered output. The fix in
+      // DisplayMathBlockSyntax.parse defers `parser.advance()`
+      // until after the empty-body check; this assertion locks
+      // the behaviour in by checking that the original four
+      // dollar signs survive as a paragraph text node.
       final nodes = parse(r'$$$$');
 
-      final displays = findByTag(nodes, mathBlockTag);
+      // No display block emitted.
+      expect(findByTag(nodes, mathBlockTag), isEmpty);
 
-      expect(displays, isEmpty);
+      // The line falls through to the paragraph syntax. A real
+      // `<p>` element wraps a Text child whose value is the raw
+      // `$$$$` we typed.
+      final paragraphs = findByTag(nodes, 'p');
+      expect(
+        paragraphs,
+        hasLength(1),
+        reason: 'Empty math block must fall through to a paragraph',
+      );
+      expect(
+        plainTextOf(paragraphs.single),
+        r'$$$$',
+        reason: 'The four literal dollar signs must survive as text',
+      );
     });
 
     test(

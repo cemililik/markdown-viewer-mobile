@@ -45,6 +45,18 @@ class DisplayMathBlockSyntax extends md.BlockSyntax {
   /// for clarity.
   static final RegExp _opening = RegExp(r'^\s*\$\$');
 
+  /// Captures `$$ body $$` on a single line, with optional
+  /// surrounding whitespace and a body that may not contain another
+  /// `$$`. The explicit anchors (`^` / `$`) make the intent
+  /// obvious: the entire line must consist of a single math fence
+  /// and nothing else, so a stray `$$x$$ commentary` mid-paragraph
+  /// is rejected and falls through to the paragraph syntax.
+  static final RegExp _singleLine = RegExp(r'^\s*\$\$(.*?)\$\$\s*$');
+
+  /// Matches a line that contains nothing but a `$$` opener / closer
+  /// (with optional surrounding whitespace).
+  static final RegExp _bareFence = RegExp(r'^\s*\$\$\s*$');
+
   @override
   RegExp get pattern => _opening;
 
@@ -55,30 +67,33 @@ class DisplayMathBlockSyntax extends md.BlockSyntax {
 
   @override
   md.Node? parse(md.BlockParser parser) {
-    final firstLine = parser.current.content.trimRight();
-    final firstTrimmed = firstLine.trimLeft();
+    final currentLine = parser.current.content;
 
     // ---- Single-line form: `$$ … $$` on one line ------------------
-    if (firstTrimmed.length >= 4 &&
-        firstTrimmed.startsWith(r'$$') &&
-        firstTrimmed.endsWith(r'$$')) {
-      final body = firstTrimmed.substring(2, firstTrimmed.length - 2).trim();
-      parser.advance();
+    final singleMatch = _singleLine.firstMatch(currentLine);
+    if (singleMatch != null) {
+      final body = singleMatch.group(1)!.trim();
       if (body.isEmpty) {
-        // Refuse to emit an empty math block — let the line fall
-        // through to the next syntax (paragraph), where it will
-        // render as literal `$$$$` text.
+        // Empty body. Do **not** advance the parser — return null
+        // so the BlockParser tries the next syntax for this same
+        // position. The paragraph syntax will eventually consume
+        // the line as literal `$$$$` text. Advancing here would
+        // silently drop the line; a null return without advance
+        // is the documented contract for "I changed my mind, try
+        // someone else" (see BlockParser._parseLines, which marks
+        // the syntax as never-match for the position when `parse`
+        // returns null *and* the position has not moved).
         return null;
       }
+      parser.advance();
       return md.Element.text(mathBlockTag, body);
     }
 
-    // ---- Multi-line form: `$$` on its own line, then body, then `$$`
-    if (firstTrimmed != r'$$') {
-      // A line that starts with `$$` but is neither the single-line
-      // form nor a bare `$$` opener (e.g. `$$ inline garbage`) is
-      // not display math at all. Bail and let downstream syntaxes
-      // decide what to do with the line.
+    // ---- Multi-line form: bare `$$` opener on its own line --------
+    if (!_bareFence.hasMatch(currentLine)) {
+      // The line starts with `$$` but is neither the single-line
+      // form nor a bare opener (e.g. `$$ inline garbage`). Bail
+      // without advancing so paragraph syntax handles it.
       return null;
     }
     parser.advance();
@@ -86,7 +101,7 @@ class DisplayMathBlockSyntax extends md.BlockSyntax {
     final bodyLines = <String>[];
     while (!parser.isDone) {
       final line = parser.current.content;
-      if (line.trim() == r'$$') {
+      if (_bareFence.hasMatch(line)) {
         parser.advance();
         break;
       }
@@ -95,11 +110,18 @@ class DisplayMathBlockSyntax extends md.BlockSyntax {
     }
     // If the closing `$$` was missing before EOF we still emit the
     // body that was collected — the renderer's onErrorFallback will
-    // then show a placeholder. Returning null here would silently
-    // drop the user's content, which is a worse failure mode.
+    // show a placeholder. Returning null here would silently drop
+    // the user's content, which is a worse failure mode than a
+    // misformatted display block.
 
     final body = bodyLines.join('\n').trim();
     if (body.isEmpty) {
+      // Multi-line empty body (`$$\n$$` with nothing between) —
+      // the opener and closer have already been advanced past, so
+      // returning null silently drops them. Acceptable here because
+      // no user-visible content is being lost (unlike the
+      // single-line `$$$$` case above, which contains the four
+      // dollar signs the user typed and must survive as text).
       return null;
     }
     return md.Element.text(mathBlockTag, body);
