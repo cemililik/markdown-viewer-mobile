@@ -39,6 +39,12 @@ dependencies:
   # ADR-0004
   markdown: ^7.2.2
   markdown_widget: ^2.3.2+8
+  # `flutter_highlight` is the syntax-highlight library that
+  # `markdown_widget` uses internally for fenced code blocks. We depend
+  # on it directly so MarkdownView can pin a specific theme map
+  # (`atomOneLight` / `atomOneDark`) on its custom PreConfig instead of
+  # relying on the package's a11y defaults.
+  flutter_highlight: ^0.7.0
   re_highlight: ^0.0.3
   flutter_highlighting: ^0.9.0
 

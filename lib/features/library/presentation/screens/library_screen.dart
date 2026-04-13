@@ -42,7 +42,7 @@ class LibraryScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: 32),
                 FilledButton.icon(
-                  onPressed: () => _pickAndOpenFile(context),
+                  onPressed: () => _pickAndOpenFile(context, ref),
                   icon: const Icon(Icons.folder_open_outlined),
                   label: Text(l10n.actionOpenFile),
                 ),
@@ -60,9 +60,13 @@ class LibraryScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _pickAndOpenFile(BuildContext context) async {
+  Future<void> _pickAndOpenFile(BuildContext context, WidgetRef ref) async {
     final l10n = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
+    // Read the logger eagerly so the closure does not capture `ref`
+    // across the await — Riverpod widget refs are tied to the element
+    // lifecycle and cannot be safely used after a context.mounted gap.
+    final logger = ref.read(appLoggerProvider);
 
     FilePickerResult? result;
     try {
@@ -74,7 +78,7 @@ class LibraryScreen extends ConsumerWidget {
       // file_picker can surface platform-channel errors, plugin init
       // failures, or platform-specific exceptions. None of them should
       // crash the app — log the failure and show a localized snackbar.
-      appLogger.e('File picker failed', error: error, stackTrace: stackTrace);
+      logger.e('File picker failed', error: error, stackTrace: stackTrace);
       if (!context.mounted) {
         return;
       }
