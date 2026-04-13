@@ -134,6 +134,186 @@ abstract class AppLocalizations {
   /// **'Open a markdown file or sync a repository to get started.'**
   String get libraryEmptyMessage;
 
+  /// Section header above the list of recently opened markdown documents on the library home screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent documents'**
+  String get libraryRecentTitle;
+
+  /// Action shown next to the Recent documents section header that wipes the recent list.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear all'**
+  String get libraryRecentClearAll;
+
+  /// Title of the confirmation dialog before wiping the entire recent documents list.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear recent documents?'**
+  String get libraryRecentClearConfirmTitle;
+
+  /// Body of the confirmation dialog before wiping the entire recent documents list.
+  ///
+  /// In en, this message translates to:
+  /// **'This removes every entry from the Recent documents list. The files themselves are not deleted.'**
+  String get libraryRecentClearConfirmBody;
+
+  /// Long-press / context menu action to remove a single document from the Recent documents list.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from recents'**
+  String get libraryRecentRemove;
+
+  /// Snackbar shown after a single recent document entry is removed.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed from recents'**
+  String get libraryRecentRemoved;
+
+  /// Snackbar shown when the user taps a recent document whose underlying file no longer exists.
+  ///
+  /// In en, this message translates to:
+  /// **'This file is no longer available — removed from recents.'**
+  String get libraryRecentFileMissing;
+
+  /// Relative time label for documents opened less than a minute ago.
+  ///
+  /// In en, this message translates to:
+  /// **'Just now'**
+  String get libraryRecentJustNow;
+
+  /// Plural relative time label for documents opened a few minutes ago.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 minute ago} other{{count} minutes ago}}'**
+  String libraryRecentMinutesAgo(int count);
+
+  /// Plural relative time label for documents opened a few hours ago.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 hour ago} other{{count} hours ago}}'**
+  String libraryRecentHoursAgo(int count);
+
+  /// Relative time label for documents opened roughly one day ago.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get libraryRecentYesterday;
+
+  /// Plural relative time label for documents opened several days ago.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, other{{count} days ago}}'**
+  String libraryRecentDaysAgo(int count);
+
+  /// Fallback relative time label for documents opened more than a week ago.
+  ///
+  /// In en, this message translates to:
+  /// **'A while back'**
+  String get libraryRecentLongAgo;
+
+  /// Library home screen greeting shown between 05:00 and 11:59 local time.
+  ///
+  /// In en, this message translates to:
+  /// **'Good morning'**
+  String get libraryGreetingMorning;
+
+  /// Library home screen greeting shown between 12:00 and 17:59 local time.
+  ///
+  /// In en, this message translates to:
+  /// **'Good afternoon'**
+  String get libraryGreetingAfternoon;
+
+  /// Library home screen greeting shown between 18:00 and 04:59 local time.
+  ///
+  /// In en, this message translates to:
+  /// **'Good evening'**
+  String get libraryGreetingEvening;
+
+  /// Library greeting subtitle shown when the user has never opened a document.
+  ///
+  /// In en, this message translates to:
+  /// **'No recent documents yet'**
+  String get libraryGreetingSubtitleEmpty;
+
+  /// Library greeting subtitle showing the number of recent documents.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 recent document} other{{count} recent documents}}'**
+  String libraryGreetingSubtitle(int count);
+
+  /// Placeholder shown inside the library search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Search recents'**
+  String get librarySearchHint;
+
+  /// Tooltip on the clear-search icon inside the library search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get librarySearchClear;
+
+  /// Empty state shown below the search field when the current query matches zero recents.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching documents'**
+  String get librarySearchNoResults;
+
+  /// Header above the section holding user-pinned recent documents.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinned'**
+  String get libraryRecentPinnedSection;
+
+  /// Group header for documents opened on the current calendar day.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get libraryRecentGroupToday;
+
+  /// Group header for documents opened on the previous calendar day.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get libraryRecentGroupYesterday;
+
+  /// Group header for documents opened within the last seven days but not today or yesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier this week'**
+  String get libraryRecentGroupThisWeek;
+
+  /// Group header for documents opened more than a week ago.
+  ///
+  /// In en, this message translates to:
+  /// **'Earlier'**
+  String get libraryRecentGroupEarlier;
+
+  /// Long-press / context menu action to pin a recent document to the top of the library.
+  ///
+  /// In en, this message translates to:
+  /// **'Pin to top'**
+  String get libraryRecentPin;
+
+  /// Long-press / context menu action to unpin a previously pinned recent document.
+  ///
+  /// In en, this message translates to:
+  /// **'Unpin'**
+  String get libraryRecentUnpin;
+
+  /// Snackbar shown after a recent document is pinned.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinned to top'**
+  String get libraryRecentPinnedSnack;
+
+  /// Snackbar shown after a pinned recent document is unpinned.
+  ///
+  /// In en, this message translates to:
+  /// **'Removed pin'**
+  String get libraryRecentUnpinnedSnack;
+
   /// Button label that opens a file picker on the device.
   ///
   /// In en, this message translates to:

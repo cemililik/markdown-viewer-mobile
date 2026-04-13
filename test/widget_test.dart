@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/app/app.dart';
+import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
+import 'package:markdown_viewer/features/library/data/repositories/recent_documents_store_impl.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/settings/data/settings_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,6 +24,9 @@ void main() {
         ProviderScope(
           overrides: [
             settingsStoreProvider.overrideWithValue(SettingsStore(prefs)),
+            recentDocumentsStoreProvider.overrideWithValue(
+              RecentDocumentsStoreImpl(prefs),
+            ),
           ],
           child: const MarkdownViewerApp(),
         ),

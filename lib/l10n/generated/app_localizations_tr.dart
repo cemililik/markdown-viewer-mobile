@@ -28,6 +28,129 @@ class AppLocalizationsTr extends AppLocalizations {
       'Başlamak için bir markdown dosyası açın veya bir depoyu senkronize edin.';
 
   @override
+  String get libraryRecentTitle => 'Son açılan dökümanlar';
+
+  @override
+  String get libraryRecentClearAll => 'Tümünü temizle';
+
+  @override
+  String get libraryRecentClearConfirmTitle => 'Son dökümanlar silinsin mi?';
+
+  @override
+  String get libraryRecentClearConfirmBody =>
+      'Bu işlem son açılanlar listesindeki tüm girdileri siler. Dosyaların kendileri silinmez.';
+
+  @override
+  String get libraryRecentRemove => 'Listeden kaldır';
+
+  @override
+  String get libraryRecentRemoved => 'Listeden kaldırıldı';
+
+  @override
+  String get libraryRecentFileMissing =>
+      'Bu dosya artık mevcut değil — listeden kaldırıldı.';
+
+  @override
+  String get libraryRecentJustNow => 'Az önce';
+
+  @override
+  String libraryRecentMinutesAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count dakika önce',
+      one: '1 dakika önce',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String libraryRecentHoursAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count saat önce',
+      one: '1 saat önce',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get libraryRecentYesterday => 'Dün';
+
+  @override
+  String libraryRecentDaysAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count gün önce',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get libraryRecentLongAgo => 'Bir süre önce';
+
+  @override
+  String get libraryGreetingMorning => 'Günaydın';
+
+  @override
+  String get libraryGreetingAfternoon => 'İyi günler';
+
+  @override
+  String get libraryGreetingEvening => 'İyi akşamlar';
+
+  @override
+  String get libraryGreetingSubtitleEmpty => 'Henüz son açılan belge yok';
+
+  @override
+  String libraryGreetingSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count son belge',
+      one: '1 son belge',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get librarySearchHint => 'Son belgelerde ara';
+
+  @override
+  String get librarySearchClear => 'Aramayı temizle';
+
+  @override
+  String get librarySearchNoResults => 'Eşleşen belge yok';
+
+  @override
+  String get libraryRecentPinnedSection => 'Sabitlenenler';
+
+  @override
+  String get libraryRecentGroupToday => 'Bugün';
+
+  @override
+  String get libraryRecentGroupYesterday => 'Dün';
+
+  @override
+  String get libraryRecentGroupThisWeek => 'Bu hafta içinde';
+
+  @override
+  String get libraryRecentGroupEarlier => 'Daha önce';
+
+  @override
+  String get libraryRecentPin => 'Yukarı sabitle';
+
+  @override
+  String get libraryRecentUnpin => 'Sabitlemeyi kaldır';
+
+  @override
+  String get libraryRecentPinnedSnack => 'Yukarı sabitlendi';
+
+  @override
+  String get libraryRecentUnpinnedSnack => 'Sabitleme kaldırıldı';
+
+  @override
   String get actionOpenFile => 'Dosya aç';
 
   @override

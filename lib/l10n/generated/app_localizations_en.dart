@@ -28,6 +28,129 @@ class AppLocalizationsEn extends AppLocalizations {
       'Open a markdown file or sync a repository to get started.';
 
   @override
+  String get libraryRecentTitle => 'Recent documents';
+
+  @override
+  String get libraryRecentClearAll => 'Clear all';
+
+  @override
+  String get libraryRecentClearConfirmTitle => 'Clear recent documents?';
+
+  @override
+  String get libraryRecentClearConfirmBody =>
+      'This removes every entry from the Recent documents list. The files themselves are not deleted.';
+
+  @override
+  String get libraryRecentRemove => 'Remove from recents';
+
+  @override
+  String get libraryRecentRemoved => 'Removed from recents';
+
+  @override
+  String get libraryRecentFileMissing =>
+      'This file is no longer available — removed from recents.';
+
+  @override
+  String get libraryRecentJustNow => 'Just now';
+
+  @override
+  String libraryRecentMinutesAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count minutes ago',
+      one: '1 minute ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String libraryRecentHoursAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count hours ago',
+      one: '1 hour ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get libraryRecentYesterday => 'Yesterday';
+
+  @override
+  String libraryRecentDaysAgo(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count days ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get libraryRecentLongAgo => 'A while back';
+
+  @override
+  String get libraryGreetingMorning => 'Good morning';
+
+  @override
+  String get libraryGreetingAfternoon => 'Good afternoon';
+
+  @override
+  String get libraryGreetingEvening => 'Good evening';
+
+  @override
+  String get libraryGreetingSubtitleEmpty => 'No recent documents yet';
+
+  @override
+  String libraryGreetingSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count recent documents',
+      one: '1 recent document',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get librarySearchHint => 'Search recents';
+
+  @override
+  String get librarySearchClear => 'Clear search';
+
+  @override
+  String get librarySearchNoResults => 'No matching documents';
+
+  @override
+  String get libraryRecentPinnedSection => 'Pinned';
+
+  @override
+  String get libraryRecentGroupToday => 'Today';
+
+  @override
+  String get libraryRecentGroupYesterday => 'Yesterday';
+
+  @override
+  String get libraryRecentGroupThisWeek => 'Earlier this week';
+
+  @override
+  String get libraryRecentGroupEarlier => 'Earlier';
+
+  @override
+  String get libraryRecentPin => 'Pin to top';
+
+  @override
+  String get libraryRecentUnpin => 'Unpin';
+
+  @override
+  String get libraryRecentPinnedSnack => 'Pinned to top';
+
+  @override
+  String get libraryRecentUnpinnedSnack => 'Removed pin';
+
+  @override
   String get actionOpenFile => 'Open file';
 
   @override

@@ -1,0 +1,102 @@
+import 'dart:convert';
+
+import 'package:markdown_viewer/features/library/domain/entities/recent_document.dart';
+import 'package:markdown_viewer/features/library/domain/repositories/recent_documents_store.dart';
+import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// `SharedPreferences`-backed [RecentDocumentsStore].
+///
+/// The list is encoded as a single JSON array under the key
+/// [_storageKey]. Each entry is shaped as:
+///
+/// ```json
+/// {
+///   "path": "<String>",
+///   "openedAt": "<ISO-8601 String>",
+///   "pinned": <bool, default false>,
+///   "preview": "<String, optional>"
+/// }
+/// ```
+///
+/// Stored most-recent-first so the controller can hand the list
+/// straight to the UI without a re-sort on every read. Legacy
+/// entries that were written before the `pinned` and `preview`
+/// fields existed are still accepted — the reader treats missing
+/// fields as `false` / `null` so upgrading from an older build
+/// does not wipe the user's recents.
+///
+/// Reads are synchronous against the already-loaded
+/// [SharedPreferences] instance the composition root injects. A
+/// corrupt blob (manually edited prefs, schema drift, partially
+/// written value) is treated as "no recents" rather than thrown
+/// — the home screen falls back to the empty state, the next
+/// successful open repopulates the list.
+class RecentDocumentsStoreImpl implements RecentDocumentsStore {
+  RecentDocumentsStoreImpl(this._prefs);
+
+  final SharedPreferences _prefs;
+
+  static const String _storageKey = 'library.recentDocuments';
+
+  @override
+  List<RecentDocument> read() {
+    final raw = _prefs.getString(_storageKey);
+    if (raw == null || raw.isEmpty) {
+      return const <RecentDocument>[];
+    }
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) {
+        return const <RecentDocument>[];
+      }
+      final entries = <RecentDocument>[];
+      for (final item in decoded) {
+        if (item is! Map) continue;
+        final path = item['path'];
+        final openedAtRaw = item['openedAt'];
+        if (path is! String || path.isEmpty) continue;
+        if (openedAtRaw is! String) continue;
+        final openedAt = DateTime.tryParse(openedAtRaw);
+        if (openedAt == null) continue;
+        final pinnedRaw = item['pinned'];
+        final previewRaw = item['preview'];
+        entries.add(
+          RecentDocument(
+            documentId: DocumentId(path),
+            openedAt: openedAt,
+            isPinned: pinnedRaw is bool ? pinnedRaw : false,
+            preview:
+                previewRaw is String && previewRaw.isNotEmpty
+                    ? previewRaw
+                    : null,
+          ),
+        );
+      }
+      return entries;
+    } on Object {
+      // Corrupt entry should not poison the home screen — see the
+      // matching pattern in ReadingPositionStoreImpl.read.
+      return const <RecentDocument>[];
+    }
+  }
+
+  @override
+  Future<void> write(List<RecentDocument> documents) {
+    final encoded = jsonEncode(
+      documents.map((doc) {
+        final map = <String, Object>{
+          'path': doc.documentId.value,
+          'openedAt': doc.openedAt.toUtc().toIso8601String(),
+          'pinned': doc.isPinned,
+        };
+        final preview = doc.preview;
+        if (preview != null && preview.isNotEmpty) {
+          map['preview'] = preview;
+        }
+        return map;
+      }).toList(),
+    );
+    return _prefs.setString(_storageKey, encoded);
+  }
+}

@@ -61,6 +61,24 @@ abstract final class AppTheme {
         behavior: SnackBarBehavior.fixed,
         elevation: 3,
       ),
+      // Reading-column scrollbar: thin (4 dp), rounded, hidden by
+      // default and only fading in while the reader is actually
+      // scrolling. The thumb uses `outline` over a transparent
+      // track so it sits as a quiet hint along the right edge
+      // rather than a chrome stripe — exactly the "subtle, not
+      // too obtrusive" affordance the home / viewer screens want.
+      scrollbarTheme: ScrollbarThemeData(
+        thumbVisibility: const WidgetStatePropertyAll(false),
+        trackVisibility: const WidgetStatePropertyAll(false),
+        thickness: const WidgetStatePropertyAll(4),
+        radius: const Radius.circular(2),
+        thumbColor: WidgetStatePropertyAll(
+          scheme.outline.withValues(alpha: 0.55),
+        ),
+        crossAxisMargin: 2,
+        mainAxisMargin: 4,
+        interactive: true,
+      ),
     );
   }
 }

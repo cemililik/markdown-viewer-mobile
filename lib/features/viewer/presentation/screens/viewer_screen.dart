@@ -6,6 +6,8 @@ import 'package:markdown_viewer/core/errors/failure.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/core/widgets/error_view.dart';
 import 'package:markdown_viewer/core/widgets/loading_view.dart';
+import 'package:markdown_viewer/features/library/application/preview_extractor.dart';
+import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/viewer_document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
@@ -176,6 +178,25 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    // Touch the recent-documents list as soon as the document
+    // transitions to the data state. Listening here (rather than
+    // hooking into `LibraryScreen._pickAndOpenFile`) means every
+    // entry point — file picker, deep links via go_router,
+    // future folder explorer, even in-doc cross-links — records
+    // through one funnel.
+    ref.listen<AsyncValue<Document>>(
+      viewerDocumentProvider(widget.documentId),
+      (previous, next) {
+        next.whenData((document) {
+          ref
+              .read(recentDocumentsControllerProvider.notifier)
+              .touch(
+                widget.documentId,
+                preview: extractPreviewSnippet(document.source),
+              );
+        });
+      },
+    );
     final async = ref.watch(viewerDocumentProvider(widget.documentId));
 
     return Scaffold(
