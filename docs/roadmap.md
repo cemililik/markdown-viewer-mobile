@@ -25,9 +25,10 @@ gantt
     1.8 Folder explorer      :done, p18, after p17, 1d
     1.9 Source picker model  :done, p19, after p18, 1d
     1.10 iOS bookmark bridge :done, p110, after p19, 1d
+    1.11 Bookmark tap/remove :done, p111, after p110, 1d
 
     section Phase 2
-    Advanced Blocks polish   :p2, after p110, 7d
+    Advanced Blocks polish   :p2, after p111, 7d
 
     section Phase 3
     Reading Experience       :p3, after p2, 14d
@@ -564,6 +565,80 @@ A v2 follow-up could persist the source URI alongside the
 cache path so re-materialisation is automatic, but for a
 typical reading session the cache stays warm and the user
 never notices.
+
+### Phase 1.11 — Bookmark tap semantics + long-press remove
+
+**Status**: ✅ Completed 2026-04-14
+
+**Goal**: Rework the reading-position bookmark so tap always
+does "save the current position" instead of toggling between
+save and clear. The iPhone re-test surfaced a concrete
+mismatch: after the viewer auto-restores a saved position and
+the user keeps reading to a new spot, tapping the bookmark
+icon would *clear* the existing position, which is the
+opposite of what the user intended. Phase 1.11 lands the
+refined semantics (option A from the UX conversation).
+
+- [x] **Tap = save / update**: the AppBar bookmark always
+      writes the current scroll offset, whether or not a prior
+      position was saved. The icon stays filled when a
+      position exists. A snackbar branches on "was there a
+      prior position?": first save → "Reading position saved",
+      overwrite → "Reading position updated". The store is
+      never cleared by a tap.
+- [x] **Long-press = menu**: `InkResponse` on a 48×48 dp
+      touch target with both `onTap` and `onLongPress` wired
+      (`IconButton` does not expose `onLongPress`, and
+      wrapping it in a `GestureDetector` loses long-press
+      events to the inner tap recognizer in the gesture
+      arena). Long-press opens a Material 3 bottom sheet
+      with two actions:
+      - "Go to saved position" animates the scroll back to
+        the saved offset using the same 600 ms easeOutCubic
+        motion as the first-frame auto-restore
+        (`_animateToSavedPosition` factored out so both paths
+        share one motion spec).
+      - "Remove bookmark" clears the store, flips the icon
+        outlined, and shows the "Bookmark cleared" snackbar.
+      - Long-press on a doc that has no saved position
+        short-circuits to the save path so the menu never
+        renders a useless pair of disabled entries.
+- [x] **First-ever coach mark**: the very first time the user
+      saves a bookmark — across all documents — the
+      confirmation snackbar appends a second italic line
+      "Long-press the bookmark icon to remove it." and
+      extends from 3 s to 5 s. Tracked via a
+      `settings.bookmarkHintSeen` boolean on SettingsStore
+      (`readHasSeenBookmarkHint` / `markBookmarkHintSeen`)
+      so every subsequent save falls back to the plain
+      one-line confirmation.
+- [x] **Tooltip + accessibility**: the tap tooltip always
+      says "Save or update reading position" /
+      "Kaldığın yeri kaydet veya güncelle" since tap is no
+      longer a clear affordance. The old
+      `viewerBookmarkClearTooltip` key is removed.
+- [x] **L10n: 4 new keys + 1 removed** (en + tr):
+      `viewerBookmarkUpdated`, `viewerBookmarkLongPressHint`,
+      `viewerBookmarkMenuGoTo`, `viewerBookmarkMenuRemove`;
+      `viewerBookmarkClearTooltip` dropped.
+- [x] **Tests (+6)**:
+      - Tap on an already-saved doc shows the "Updated" copy
+        and leaves the store populated.
+      - First-ever save includes the long-press hint.
+      - Subsequent saves (flag already seen) skip the hint.
+      - Long-press on a saved bookmark opens the Go to /
+        Remove menu; tapping Remove clears the store, flips
+        the icon outlined, and surfaces the cleared snackbar.
+      - SettingsStore `readHasSeenBookmarkHint` defaults to
+        `false` on a fresh install.
+      - SettingsStore `markBookmarkHintSeen` persists so a
+        reopened store reads back `true`.
+- [x] **Viewer screen test harness upgrade**: a mocked
+      SharedPreferences is seeded per test, and the harness
+      now overrides `settingsStoreProvider` +
+      `recentDocumentsStoreProvider` so the new read-settings
+      hop inside `_saveBookmark` does not trip an
+      unimplemented provider.
 
 **Phase 1 exit criteria**: A typical README (`test/fixtures/markdown/
 typical.md` + a math-heavy doc + a mermaid-heavy doc) renders
