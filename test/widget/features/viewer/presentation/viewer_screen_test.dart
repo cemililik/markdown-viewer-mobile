@@ -386,28 +386,25 @@ void main() {
       },
     );
 
-    testWidgets(
-      'tapping the search action swaps the title for the search bar',
-      (tester) async {
-        await tester.pumpWidget(
-          await harness(const _ImmediateDocumentRepository(sampleDocument)),
-        );
-        await tester.pumpAndSettle();
+    testWidgets('tapping the search action opens the bottom search bar', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        await harness(const _ImmediateDocumentRepository(sampleDocument)),
+      );
+      await tester.pumpAndSettle();
 
-        // Title shows the basename before search opens.
-        expect(find.text('example.md'), findsOneWidget);
+      // Title shows the basename before search opens.
+      expect(find.text('example.md'), findsOneWidget);
 
-        await tester.tap(find.byTooltip('Search in document'));
-        await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Search in document'));
+      await tester.pumpAndSettle();
 
-        // Title is replaced by the search TextField with the
-        // localized hint, and the close button is now in the
-        // leading slot.
-        expect(find.text('Search in document'), findsWidgets);
-        expect(find.text('example.md'), findsNothing);
-        expect(find.byTooltip('Close search'), findsOneWidget);
-      },
-    );
+      // The AppBar title stays; the bottom search bar slides in
+      // with a close button and a search hint in the text field.
+      expect(find.text('example.md'), findsOneWidget);
+      expect(find.byTooltip('Close search'), findsOneWidget);
+    });
 
     testWidgets(
       'typing a query that matches the source shows the 1-based counter',
