@@ -21,6 +21,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get navRepoSync => 'Sync';
 
   @override
+  String get libraryRecentsEmptyTitle => 'No recent documents';
+
+  @override
+  String get libraryRecentsEmptySubtitle =>
+      'Browse a saved source or open a new file.';
+
+  @override
+  String get libraryRecentsEmptySources => 'Your sources';
+
+  @override
   String get libraryEmptyTitle => 'No documents yet';
 
   @override
@@ -245,7 +255,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get libraryAddSourceRepoSubtitle =>
-      'Pull markdown files from a git repository (coming soon)';
+      'Pull markdown files from a git repository';
 
   @override
   String get actionOpenFile => 'Open file';
@@ -514,6 +524,88 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncStart => 'Start sync';
 
   @override
+  String get syncDiscovering => 'Discovering files…';
+
+  @override
+  String get syncSyncAnotherButton => 'Sync another';
+
+  @override
+  String get syncOpenInLibrary => 'Open in library';
+
+  @override
+  String syncStatsIncremental(int downloaded, int unchanged) {
+    return '$downloaded updated · $unchanged unchanged';
+  }
+
+  @override
+  String get syncUpdateRepo => 'Update';
+
+  @override
+  String get syncPatToggle => 'Add personal access token (optional)';
+
+  @override
+  String get syncPatLabel => 'Personal access token';
+
+  @override
+  String get syncPatHint => 'ghp_xxxxxxxxxxxxxxxxxxxx';
+
+  @override
+  String get syncPatSubtitle =>
+      'Increases the rate limit to 5,000 requests/hour and enables private repositories.';
+
+  @override
+  String get syncPatSecurityNote =>
+      'Your token is stored in your device\'s secure keychain. It is never sent to our servers and is used only to access the repository you specify.';
+
+  @override
+  String get syncPatHowToButton => 'How do I get a token?';
+
+  @override
+  String get syncPatHowToTitle => 'Getting a GitHub token';
+
+  @override
+  String get syncPatHowToStep1 =>
+      'Open github.com → Settings → Developer settings → Personal access tokens';
+
+  @override
+  String get syncPatHowToStep2 =>
+      'Choose Fine-grained tokens, then tap Generate new token';
+
+  @override
+  String get syncPatHowToStep3 =>
+      'Set a name, expiration date, and select your target repository';
+
+  @override
+  String get syncPatHowToStep4 =>
+      'Under Permissions → Repository permissions → Contents, choose Read-only';
+
+  @override
+  String get syncPatHowToStep5 =>
+      'Tap Generate token, then copy and paste it into this field';
+
+  @override
+  String get syncPatHowToPermissionNote =>
+      'Only Contents: Read-only is needed — do not grant write or admin permissions.';
+
+  @override
+  String get syncPatHowToClose => 'Got it';
+
+  @override
+  String get syncPatClearButton => 'Clear token';
+
+  @override
+  String get syncPatCleared => 'Token cleared';
+
+  @override
+  String get syncRemoveRepo => 'Remove synced repository';
+
+  @override
+  String get syncRemovedRepoSnack => 'Repository removed';
+
+  @override
+  String get syncRefreshTooltip => 'Re-sync';
+
+  @override
   String syncFilesFound(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -535,6 +627,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncPartial => 'Some files could not be downloaded.';
+
+  @override
+  String get syncLastSyncedJustNow => 'Synced just now';
+
+  @override
+  String syncLastSyncedMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Synced $count min ago',
+      one: 'Synced 1 min ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String syncLastSyncedHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Synced $count hours ago',
+      one: 'Synced 1 hour ago',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String syncLastSyncedDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Synced $count days ago',
+      one: 'Synced yesterday',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get errorRateLimited =>

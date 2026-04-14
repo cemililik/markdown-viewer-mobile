@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/core/logging/logger.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
@@ -59,8 +61,11 @@ class _AddSourceSheetBody extends ConsumerWidget {
               icon: Icons.cloud_download_outlined,
               title: l10n.libraryActionMenuSyncRepo,
               subtitle: l10n.libraryAddSourceRepoSubtitle,
-              enabled: false,
-              onTap: null,
+              enabled: true,
+              onTap: () {
+                Navigator.of(context).maybePop();
+                context.push(RepoSyncRoute.location());
+              },
             ),
           ],
         ),

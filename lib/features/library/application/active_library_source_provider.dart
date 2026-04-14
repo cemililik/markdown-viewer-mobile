@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_source.dart';
+import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
+import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
 
 /// Notifier that owns the currently selected library source.
 ///
@@ -20,10 +22,7 @@ import 'package:markdown_viewer/features/library/domain/entities/library_source.
 class ActiveLibrarySourceController extends Notifier<LibrarySource> {
   @override
   LibrarySource build() {
-    // Watch the folder list so a removed folder resets us to
-    // Recents. We listen with `fireImmediately: false` because
-    // the initial build already sees a consistent state — the
-    // listener only matters for subsequent changes.
+    // Watch the folder list so a removed folder resets us to Recents.
     ref.listen(libraryFoldersControllerProvider, (previous, next) {
       final current = state;
       if (current is FolderSource) {
@@ -35,6 +34,21 @@ class ActiveLibrarySourceController extends Notifier<LibrarySource> {
         }
       }
     });
+
+    // Watch the synced-repos list so a deleted repo also resets to Recents.
+    ref.listen(syncedReposProvider, (previous, next) {
+      final current = state;
+      if (current is SyncedRepoSource) {
+        final repos = next.value ?? <SyncedRepo>[];
+        final stillExists = repos.any(
+          (SyncedRepo r) => r.id == current.syncedRepo.id,
+        );
+        if (!stillExists) {
+          state = const RecentsSource();
+        }
+      }
+    });
+
     return const RecentsSource();
   }
 
@@ -48,6 +62,12 @@ class ActiveLibrarySourceController extends Notifier<LibrarySource> {
   /// the drawer when the user taps a folder tile.
   void selectFolder(LibraryFolder folder) {
     state = FolderSource(folder);
+  }
+
+  /// Selects a synced repository as the active source. Called from
+  /// the drawer when the user taps a synced-repo tile.
+  void selectSyncedRepo(SyncedRepo repo) {
+    state = SyncedRepoSource(repo);
   }
 }
 

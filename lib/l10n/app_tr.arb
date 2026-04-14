@@ -7,6 +7,9 @@
   "navSettings": "Ayarlar",
   "navRepoSync": "Senkronizasyon",
 
+  "libraryRecentsEmptyTitle": "Son açılan belge yok",
+  "libraryRecentsEmptySubtitle": "Kayıtlı bir kaynağa göz atın veya yeni bir dosya açın.",
+  "libraryRecentsEmptySources": "Kaynaklarınız",
   "libraryEmptyTitle": "Henüz doküman yok",
   "libraryEmptyMessage": "Başlamak için bir markdown dosyası açın veya bir depoyu senkronize edin.",
   "libraryRecentTitle": "Son açılan dökümanlar",
@@ -85,7 +88,7 @@
   },
   "libraryFolderSourceSearchLoading": "Klasör taranıyor…",
   "libraryAddSourceFolderSubtitle": "Bu cihazdan bir dizin ekle",
-  "libraryAddSourceRepoSubtitle": "Bir git deposundan markdown dosyalarını çek (yakında)",
+  "libraryAddSourceRepoSubtitle": "Bir git deposundan markdown dosyalarını çek",
 
   "actionOpenFile": "Dosya aç",
   "actionSyncRepo": "Depoyu senkronize et",
@@ -193,10 +196,59 @@
 
   "syncUrlHint": "Herkese açık bir GitHub URL'si yapıştırın",
   "syncStart": "Senkronizasyonu başlat",
+  "syncDiscovering": "Dosyalar keşfediliyor…",
+  "syncSyncAnotherButton": "Başka depo",
+  "syncPatToggle": "Kişisel erişim belirteci ekle (opsiyonel)",
+  "syncPatLabel": "Kişisel erişim belirteci",
+  "syncPatHint": "ghp_xxxxxxxxxxxxxxxxxxxx",
+  "syncPatSubtitle": "İstek limitini saatte 5.000'e çıkarır ve özel depolara erişim sağlar.",
+  "syncPatSecurityNote": "Tokeniniz cihazınızın güvenli anahtarlığında saklanır. Sunucularımıza hiçbir zaman iletilmez ve yalnızca belirttiğiniz depoya erişmek için kullanılır.",
+  "syncPatHowToButton": "Token nasıl alınır?",
+  "syncPatHowToTitle": "GitHub token alma",
+  "syncPatHowToStep1": "github.com → Ayarlar → Geliştirici ayarları → Kişisel erişim belirteçleri sayfasını açın",
+  "syncPatHowToStep2": "Hassas belirteçler'i seçin, ardından Yeni belirteç oluştur'a tıklayın",
+  "syncPatHowToStep3": "Bir ad, son kullanma tarihi ve hedef deponuzu seçin",
+  "syncPatHowToStep4": "İzinler → Depo izinleri → İçerik bölümünde Salt okunur'u seçin",
+  "syncPatHowToStep5": "Belirteç oluştur'a tıklayın, kopyalayıp bu alana yapıştırın",
+  "syncPatHowToPermissionNote": "Yalnızca İçerik: Salt okunur izni gereklidir — yazma veya yönetici izni vermeyin.",
+  "syncPatHowToClose": "Anladım",
+  "syncPatClearButton": "Belirteci temizle",
+  "syncPatCleared": "Belirteç silindi",
+  "syncUpdateRepo": "Güncelle",
+  "syncOpenInLibrary": "Kütüphanede aç",
+  "syncStatsIncremental": "{downloaded} güncellendi · {unchanged} değişmedi",
+  "@syncStatsIncremental": {
+    "placeholders": {
+      "downloaded": { "type": "int", "example": "3" },
+      "unchanged":  { "type": "int", "example": "47" }
+    }
+  },
+  "syncRemoveRepo": "Senkronize depoyu kaldır",
+  "syncRemovedRepoSnack": "Depo kaldırıldı",
+  "syncRefreshTooltip": "Yeniden senkronize et",
   "syncFilesFound": "{count, plural, =0{Markdown dosyası bulunamadı} =1{1 markdown dosyası bulundu} other{{count} markdown dosyası bulundu}}",
   "syncProgress": "{total} dosyadan {current} tanesi indiriliyor",
   "syncCompleted": "Senkronizasyon tamamlandı",
   "syncPartial": "Bazı dosyalar indirilemedi.",
+  "syncLastSyncedJustNow": "Az önce senkronize edildi",
+  "syncLastSyncedMinutes": "{count, plural, =1{1 dk önce senkronize edildi} other{{count} dk önce senkronize edildi}}",
+  "@syncLastSyncedMinutes": {
+    "placeholders": {
+      "count": { "type": "int", "example": "5" }
+    }
+  },
+  "syncLastSyncedHours": "{count, plural, =1{1 saat önce senkronize edildi} other{{count} saat önce senkronize edildi}}",
+  "@syncLastSyncedHours": {
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  },
+  "syncLastSyncedDays": "{count, plural, =1{Dün senkronize edildi} other{{count} gün önce senkronize edildi}}",
+  "@syncLastSyncedDays": {
+    "placeholders": {
+      "count": { "type": "int", "example": "2" }
+    }
+  },
 
   "errorRateLimited": "GitHub istek limitine ulaşıldı. Ayarlar'dan kişisel erişim belirteci ekleyin veya daha sonra tekrar deneyin.",
   "errorRepoNotFound": "Depo veya yol bulunamadı. URL'yi kontrol edip tekrar deneyin.",

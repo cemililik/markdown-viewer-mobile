@@ -122,6 +122,24 @@ abstract class AppLocalizations {
   /// **'Sync'**
   String get navRepoSync;
 
+  /// Heading shown when the user has cleared their recents but still has folder or repo sources available.
+  ///
+  /// In en, this message translates to:
+  /// **'No recent documents'**
+  String get libraryRecentsEmptyTitle;
+
+  /// Subtitle beneath libraryRecentsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse a saved source or open a new file.'**
+  String get libraryRecentsEmptySubtitle;
+
+  /// Section header above the list of saved sources in the recents-empty-with-sources state.
+  ///
+  /// In en, this message translates to:
+  /// **'Your sources'**
+  String get libraryRecentsEmptySources;
+
   /// Title shown when the library has no files.
   ///
   /// In en, this message translates to:
@@ -485,7 +503,7 @@ abstract class AppLocalizations {
   /// Subtitle beneath the Sync repository tile in the Add source bottom sheet.
   ///
   /// In en, this message translates to:
-  /// **'Pull markdown files from a git repository (coming soon)'**
+  /// **'Pull markdown files from a git repository'**
   String get libraryAddSourceRepoSubtitle;
 
   /// Button label that opens a file picker on the device.
@@ -992,6 +1010,150 @@ abstract class AppLocalizations {
   /// **'Start sync'**
   String get syncStart;
 
+  /// Status message shown while the Trees API call is in-flight.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovering files…'**
+  String get syncDiscovering;
+
+  /// Button shown after a successful sync to reset the screen and sync a different repo.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync another'**
+  String get syncSyncAnotherButton;
+
+  /// Button in the sync result card that navigates to the synced repo in the library.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in library'**
+  String get syncOpenInLibrary;
+
+  /// Result card detail line on a re-sync showing how many files were actually downloaded vs skipped (SHA match).
+  ///
+  /// In en, this message translates to:
+  /// **'{downloaded} updated · {unchanged} unchanged'**
+  String syncStatsIncremental(int downloaded, int unchanged);
+
+  /// Long-press / context menu action to re-sync an already-synced repository.
+  ///
+  /// In en, this message translates to:
+  /// **'Update'**
+  String get syncUpdateRepo;
+
+  /// Expansion toggle that reveals the GitHub PAT input field.
+  ///
+  /// In en, this message translates to:
+  /// **'Add personal access token (optional)'**
+  String get syncPatToggle;
+
+  /// Label for the GitHub PAT text field.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal access token'**
+  String get syncPatLabel;
+
+  /// Placeholder text inside the PAT field showing the expected token format.
+  ///
+  /// In en, this message translates to:
+  /// **'ghp_xxxxxxxxxxxxxxxxxxxx'**
+  String get syncPatHint;
+
+  /// Caption beneath the PAT field explaining its purpose.
+  ///
+  /// In en, this message translates to:
+  /// **'Increases the rate limit to 5,000 requests/hour and enables private repositories.'**
+  String get syncPatSubtitle;
+
+  /// Security disclosure note shown in the PAT section reassuring the user about local-only storage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your token is stored in your device\'s secure keychain. It is never sent to our servers and is used only to access the repository you specify.'**
+  String get syncPatSecurityNote;
+
+  /// Tappable link in the PAT security note that opens the how-to dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'How do I get a token?'**
+  String get syncPatHowToButton;
+
+  /// Title of the dialog explaining how to create a GitHub Personal Access Token.
+  ///
+  /// In en, this message translates to:
+  /// **'Getting a GitHub token'**
+  String get syncPatHowToTitle;
+
+  /// Step 1 in the GitHub PAT how-to dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Open github.com → Settings → Developer settings → Personal access tokens'**
+  String get syncPatHowToStep1;
+
+  /// Step 2 in the GitHub PAT how-to dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose Fine-grained tokens, then tap Generate new token'**
+  String get syncPatHowToStep2;
+
+  /// Step 3 in the GitHub PAT how-to dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Set a name, expiration date, and select your target repository'**
+  String get syncPatHowToStep3;
+
+  /// Step 4 in the GitHub PAT how-to dialog — specifies the minimum required scope.
+  ///
+  /// In en, this message translates to:
+  /// **'Under Permissions → Repository permissions → Contents, choose Read-only'**
+  String get syncPatHowToStep4;
+
+  /// Step 5 in the GitHub PAT how-to dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap Generate token, then copy and paste it into this field'**
+  String get syncPatHowToStep5;
+
+  /// Highlighted note in the PAT how-to dialog emphasising minimum required permissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Only Contents: Read-only is needed — do not grant write or admin permissions.'**
+  String get syncPatHowToPermissionNote;
+
+  /// Dismiss button in the PAT how-to dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Got it'**
+  String get syncPatHowToClose;
+
+  /// Tooltip on the clear icon inside the PAT input field.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear token'**
+  String get syncPatClearButton;
+
+  /// Snackbar shown after the stored PAT is deleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Token cleared'**
+  String get syncPatCleared;
+
+  /// Long-press / context menu action to remove a synced repo from the library drawer.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove synced repository'**
+  String get syncRemoveRepo;
+
+  /// Snackbar shown after a synced repository is removed.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository removed'**
+  String get syncRemovedRepoSnack;
+
+  /// Tooltip on the refresh icon shown next to a synced repo in the library drawer.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-sync'**
+  String get syncRefreshTooltip;
+
   /// Plural message showing how many .md files were discovered in a repo.
   ///
   /// In en, this message translates to:
@@ -1015,6 +1177,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Some files could not be downloaded.'**
   String get syncPartial;
+
+  /// Subtitle on a synced-repo drawer tile when the last sync was under a minute ago.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced just now'**
+  String get syncLastSyncedJustNow;
+
+  /// Subtitle on a synced-repo drawer tile: minutes since last sync.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Synced 1 min ago} other{Synced {count} min ago}}'**
+  String syncLastSyncedMinutes(int count);
+
+  /// Subtitle on a synced-repo drawer tile: hours since last sync.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Synced 1 hour ago} other{Synced {count} hours ago}}'**
+  String syncLastSyncedHours(int count);
+
+  /// Subtitle on a synced-repo drawer tile: days since last sync.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Synced yesterday} other{Synced {count} days ago}}'**
+  String syncLastSyncedDays(int count);
 
   /// User-facing message when the GitHub API responds with 403 due to rate limiting.
   ///

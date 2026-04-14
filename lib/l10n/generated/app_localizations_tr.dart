@@ -21,6 +21,16 @@ class AppLocalizationsTr extends AppLocalizations {
   String get navRepoSync => 'Senkronizasyon';
 
   @override
+  String get libraryRecentsEmptyTitle => 'Son açılan belge yok';
+
+  @override
+  String get libraryRecentsEmptySubtitle =>
+      'Kayıtlı bir kaynağa göz atın veya yeni bir dosya açın.';
+
+  @override
+  String get libraryRecentsEmptySources => 'Kaynaklarınız';
+
+  @override
   String get libraryEmptyTitle => 'Henüz doküman yok';
 
   @override
@@ -243,7 +253,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get libraryAddSourceRepoSubtitle =>
-      'Bir git deposundan markdown dosyalarını çek (yakında)';
+      'Bir git deposundan markdown dosyalarını çek';
 
   @override
   String get actionOpenFile => 'Dosya aç';
@@ -509,6 +519,88 @@ class AppLocalizationsTr extends AppLocalizations {
   String get syncStart => 'Senkronizasyonu başlat';
 
   @override
+  String get syncDiscovering => 'Dosyalar keşfediliyor…';
+
+  @override
+  String get syncSyncAnotherButton => 'Başka depo';
+
+  @override
+  String get syncOpenInLibrary => 'Kütüphanede aç';
+
+  @override
+  String syncStatsIncremental(int downloaded, int unchanged) {
+    return '$downloaded güncellendi · $unchanged değişmedi';
+  }
+
+  @override
+  String get syncUpdateRepo => 'Güncelle';
+
+  @override
+  String get syncPatToggle => 'Kişisel erişim belirteci ekle (opsiyonel)';
+
+  @override
+  String get syncPatLabel => 'Kişisel erişim belirteci';
+
+  @override
+  String get syncPatHint => 'ghp_xxxxxxxxxxxxxxxxxxxx';
+
+  @override
+  String get syncPatSubtitle =>
+      'İstek limitini saatte 5.000\'e çıkarır ve özel depolara erişim sağlar.';
+
+  @override
+  String get syncPatSecurityNote =>
+      'Tokeniniz cihazınızın güvenli anahtarlığında saklanır. Sunucularımıza hiçbir zaman iletilmez ve yalnızca belirttiğiniz depoya erişmek için kullanılır.';
+
+  @override
+  String get syncPatHowToButton => 'Token nasıl alınır?';
+
+  @override
+  String get syncPatHowToTitle => 'GitHub token alma';
+
+  @override
+  String get syncPatHowToStep1 =>
+      'github.com → Ayarlar → Geliştirici ayarları → Kişisel erişim belirteçleri sayfasını açın';
+
+  @override
+  String get syncPatHowToStep2 =>
+      'Hassas belirteçler\'i seçin, ardından Yeni belirteç oluştur\'a tıklayın';
+
+  @override
+  String get syncPatHowToStep3 =>
+      'Bir ad, son kullanma tarihi ve hedef deponuzu seçin';
+
+  @override
+  String get syncPatHowToStep4 =>
+      'İzinler → Depo izinleri → İçerik bölümünde Salt okunur\'u seçin';
+
+  @override
+  String get syncPatHowToStep5 =>
+      'Belirteç oluştur\'a tıklayın, kopyalayıp bu alana yapıştırın';
+
+  @override
+  String get syncPatHowToPermissionNote =>
+      'Yalnızca İçerik: Salt okunur izni gereklidir — yazma veya yönetici izni vermeyin.';
+
+  @override
+  String get syncPatHowToClose => 'Anladım';
+
+  @override
+  String get syncPatClearButton => 'Belirteci temizle';
+
+  @override
+  String get syncPatCleared => 'Belirteç silindi';
+
+  @override
+  String get syncRemoveRepo => 'Senkronize depoyu kaldır';
+
+  @override
+  String get syncRemovedRepoSnack => 'Depo kaldırıldı';
+
+  @override
+  String get syncRefreshTooltip => 'Yeniden senkronize et';
+
+  @override
   String syncFilesFound(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
@@ -530,6 +622,42 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get syncPartial => 'Bazı dosyalar indirilemedi.';
+
+  @override
+  String get syncLastSyncedJustNow => 'Az önce senkronize edildi';
+
+  @override
+  String syncLastSyncedMinutes(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count dk önce senkronize edildi',
+      one: '1 dk önce senkronize edildi',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String syncLastSyncedHours(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count saat önce senkronize edildi',
+      one: '1 saat önce senkronize edildi',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String syncLastSyncedDays(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count gün önce senkronize edildi',
+      one: 'Dün senkronize edildi',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get errorRateLimited =>

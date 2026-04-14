@@ -79,3 +79,47 @@ final class UnknownFailure extends Failure {
   const UnknownFailure({required super.message, super.cause})
     : super(name: 'UnknownFailure');
 }
+
+// ── Repo sync failures ─────────────────────────────────────────────────────
+
+/// The device has no network connectivity. The operation cannot
+/// be retried until connectivity is restored.
+final class NetworkUnavailableFailure extends Failure {
+  const NetworkUnavailableFailure({required super.message, super.cause})
+    : super(name: 'NetworkUnavailableFailure');
+}
+
+/// The remote provider responded with a rate-limit error (HTTP 403
+/// with an exhausted quota). The user should add a PAT or wait.
+final class RateLimitedFailure extends Failure {
+  const RateLimitedFailure({required super.message, super.cause})
+    : super(name: 'RateLimitedFailure');
+}
+
+/// The repository or sub-path was not found on the remote provider
+/// (HTTP 404). The user should check the URL.
+final class RepoNotFoundFailure extends Failure {
+  const RepoNotFoundFailure({required super.message, super.cause})
+    : super(name: 'RepoNotFoundFailure');
+}
+
+/// Sync completed but at least one file could not be downloaded.
+/// The successfully downloaded files have been persisted; the
+/// caller may surface a warning rather than an error.
+final class PartialSyncFailure extends Failure {
+  const PartialSyncFailure({
+    required super.message,
+    super.cause,
+    required this.syncedCount,
+    required this.failedCount,
+  }) : super(name: 'PartialSyncFailure');
+
+  final int syncedCount;
+  final int failedCount;
+}
+
+/// The pasted URL does not match any registered sync provider.
+final class UnsupportedProviderFailure extends Failure {
+  const UnsupportedProviderFailure({required super.message, super.cause})
+    : super(name: 'UnsupportedProviderFailure');
+}
