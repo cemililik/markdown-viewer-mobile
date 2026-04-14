@@ -292,7 +292,7 @@ void main() {
 
         expect(find.text('Reading position saved'), findsOneWidget);
         expect(
-          find.text('Long-press the bookmark icon to remove it.'),
+          find.text('Long-press the bookmark icon for options.'),
           findsOneWidget,
         );
       },
@@ -316,7 +316,7 @@ void main() {
 
         expect(find.text('Reading position saved'), findsOneWidget);
         expect(
-          find.text('Long-press the bookmark icon to remove it.'),
+          find.text('Long-press the bookmark icon for options.'),
           findsNothing,
         );
       },
