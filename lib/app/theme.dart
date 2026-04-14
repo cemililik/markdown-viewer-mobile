@@ -21,6 +21,52 @@ abstract final class AppTheme {
     return _build(scheme);
   }
 
+  /// Warm parchment theme for extended reading sessions. Uses ink-and-paper
+  /// tones derived from traditional sepia photography and aged paper — easier
+  /// on the eyes than a bright white background and less disorienting than
+  /// a full dark theme in a lit room.
+  ///
+  /// Ignores the platform dynamic colour palette intentionally: the warm
+  /// tonality would be broken by arbitrary device accent colours.
+  static ThemeData sepia() {
+    const scheme = ColorScheme(
+      brightness: Brightness.light,
+      primary: Color(0xFF8B6334),
+      onPrimary: Color(0xFFFFF8ED),
+      primaryContainer: Color(0xFFFFDDB6),
+      onPrimaryContainer: Color(0xFF2B1700),
+      secondary: Color(0xFF74562F),
+      onSecondary: Color(0xFFFFFFFF),
+      secondaryContainer: Color(0xFFFFDCB5),
+      onSecondaryContainer: Color(0xFF2B1600),
+      tertiary: Color(0xFF5C6428),
+      onTertiary: Color(0xFFFFFFFF),
+      tertiaryContainer: Color(0xFFE1EBA1),
+      onTertiaryContainer: Color(0xFF1A1F00),
+      error: Color(0xFFB3261E),
+      onError: Color(0xFFFFFFFF),
+      errorContainer: Color(0xFFF9DEDC),
+      onErrorContainer: Color(0xFF410E0B),
+      // Warm parchment surface hierarchy
+      surface: Color(0xFFF5ECD7),
+      onSurface: Color(0xFF3C2A14),
+      surfaceContainerLowest: Color(0xFFFAF5EC),
+      surfaceContainerLow: Color(0xFFF3EBD9),
+      surfaceContainer: Color(0xFFEFE5CF),
+      surfaceContainerHigh: Color(0xFFE8D9C3),
+      surfaceContainerHighest: Color(0xFFE0D0BA),
+      onSurfaceVariant: Color(0xFF6B4F2C),
+      outline: Color(0xFF8B7355),
+      outlineVariant: Color(0xFFC8B89A),
+      shadow: Color(0xFF000000),
+      scrim: Color(0xFF000000),
+      inverseSurface: Color(0xFF3C2A14),
+      onInverseSurface: Color(0xFFF5ECD7),
+      inversePrimary: Color(0xFFFFB96C),
+    );
+    return _build(scheme);
+  }
+
   static ThemeData _build(ColorScheme scheme) {
     return ThemeData(
       colorScheme: scheme,

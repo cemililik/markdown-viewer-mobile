@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
+import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
 import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
 
 /// Slides the reading-comfort knobs the user is most likely to
@@ -82,19 +83,24 @@ class _ViewerReadingPanelBody extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 6),
-            SegmentedButton<ThemeMode>(
+            SegmentedButton<AppThemeMode>(
+              showSelectedIcon: false,
               segments: [
                 ButtonSegment(
-                  value: ThemeMode.system,
+                  value: AppThemeMode.system,
                   label: Text(l10n.settingsThemeSystem),
                 ),
                 ButtonSegment(
-                  value: ThemeMode.light,
+                  value: AppThemeMode.light,
                   label: Text(l10n.settingsThemeLight),
                 ),
                 ButtonSegment(
-                  value: ThemeMode.dark,
+                  value: AppThemeMode.dark,
                   label: Text(l10n.settingsThemeDark),
+                ),
+                ButtonSegment(
+                  value: AppThemeMode.sepia,
+                  label: Text(l10n.settingsThemeSepia),
                 ),
               ],
               selected: {themeMode},

@@ -269,7 +269,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsThemeDark => 'Dark';
 
   @override
-  String get settingsThemeSystem => 'System default';
+  String get settingsThemeSystem => 'System';
+
+  @override
+  String get settingsThemeSepia => 'Sepia';
 
   @override
   String get settingsLanguageTitle => 'Language';
@@ -405,6 +408,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsReadingLineHeightAiry => 'Airy';
+
+  @override
+  String get settingsDisplayTitle => 'Display';
+
+  @override
+  String get settingsKeepScreenOnTitle => 'Keep screen on';
+
+  @override
+  String get settingsKeepScreenOnSubtitle => 'Prevents sleep while reading';
 
   @override
   String get settingsResetButton => 'Reset to defaults';

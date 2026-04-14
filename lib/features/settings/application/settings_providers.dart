@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/features/settings/data/settings_store.dart';
 import 'package:markdown_viewer/features/settings/domain/app_locale.dart';
+import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
 import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
 
 /// Application-layer binding for the [SettingsStore] port. Thrown by
@@ -17,7 +17,7 @@ final settingsStoreProvider = Provider<SettingsStore>((ref) {
   );
 });
 
-/// Notifier that owns the user's chosen [ThemeMode]. The initial
+/// Notifier that owns the user's chosen [AppThemeMode]. The initial
 /// value is seeded from the injected [SettingsStore] on first build
 /// so [MaterialApp] renders the correct theme on the very first
 /// frame — no flash of wrong theme after launch.
@@ -25,28 +25,26 @@ final settingsStoreProvider = Provider<SettingsStore>((ref) {
 /// Mutations go through [set], which updates the in-memory state
 /// synchronously and fires a persistence write in the background.
 /// The UI does not wait on disk I/O.
-class ThemeModeController extends Notifier<ThemeMode> {
+class ThemeModeController extends Notifier<AppThemeMode> {
   @override
-  ThemeMode build() {
+  AppThemeMode build() {
     final store = ref.watch(settingsStoreProvider);
-    return store.readThemeMode();
+    return store.readAppThemeMode();
   }
 
-  void set(ThemeMode mode) {
+  void set(AppThemeMode mode) {
     if (state == mode) {
       return;
     }
     state = mode;
-    // Fire-and-forget: `writeThemeMode` returns a Future we
-    // deliberately drop so setting a theme feels instantaneous. A
-    // failed write surfaces on the next app launch as the old value
-    // — acceptable for a cosmetic preference.
-    ref.read(settingsStoreProvider).writeThemeMode(mode).ignore();
+    ref.read(settingsStoreProvider).writeAppThemeMode(mode).ignore();
   }
 }
 
 final themeModeControllerProvider =
-    NotifierProvider<ThemeModeController, ThemeMode>(ThemeModeController.new);
+    NotifierProvider<ThemeModeController, AppThemeMode>(
+      ThemeModeController.new,
+    );
 
 /// Notifier that owns the user's chosen [AppLocale]. Mirrors
 /// [ThemeModeController]'s shape so the composition root can
@@ -128,3 +126,23 @@ final readingSettingsControllerProvider =
     NotifierProvider<ReadingSettingsController, ReadingSettings>(
       ReadingSettingsController.new,
     );
+
+/// Notifier that owns whether the screen should stay awake while
+/// the viewer is open. Mutations are synchronous in-memory and fire
+/// a background prefs write — same shape as the other controllers.
+class KeepScreenOnController extends Notifier<bool> {
+  @override
+  bool build() {
+    final store = ref.watch(settingsStoreProvider);
+    return store.readKeepScreenOn();
+  }
+
+  void set(bool value) {
+    if (state == value) return;
+    state = value;
+    ref.read(settingsStoreProvider).writeKeepScreenOn(value).ignore();
+  }
+}
+
+final keepScreenOnControllerProvider =
+    NotifierProvider<KeepScreenOnController, bool>(KeepScreenOnController.new);

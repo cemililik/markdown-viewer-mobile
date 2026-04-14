@@ -1,15 +1,14 @@
-import 'package:flutter/material.dart' show ThemeMode;
 import 'package:markdown_viewer/features/settings/domain/app_locale.dart';
+import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
 import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Thin `SharedPreferences` wrapper that persists the two settings
-/// the user can tweak: theme mode and locale choice.
+/// Thin `SharedPreferences` wrapper that persists all user settings.
 ///
-/// Kept intentionally boring — two keys, two codecs, no
-/// serialisation library. Each method on the store is synchronous
-/// against the already-loaded preferences instance so controllers
-/// can seed their initial state without awaiting I/O.
+/// Kept intentionally boring — one key per setting, simple codecs, no
+/// serialisation library. Each method is synchronous against the
+/// already-loaded preferences instance so controllers can seed their
+/// initial state without awaiting I/O.
 class SettingsStore {
   SettingsStore(this._prefs);
 
@@ -21,28 +20,20 @@ class SettingsStore {
   static const String _readingFontScaleKey = 'settings.readingFontScale';
   static const String _readingWidthKey = 'settings.readingWidth';
   static const String _readingLineHeightKey = 'settings.readingLineHeight';
+  static const String _keepScreenOnKey = 'settings.keepScreenOn';
 
-  /// Returns the persisted [ThemeMode] or [ThemeMode.system] when
-  /// nothing has been stored yet.
-  ThemeMode readThemeMode() {
-    final raw = _prefs.getString(_themeModeKey);
-    switch (raw) {
-      case 'light':
-        return ThemeMode.light;
-      case 'dark':
-        return ThemeMode.dark;
-      case 'system':
-      case null:
-      default:
-        return ThemeMode.system;
-    }
+  /// Returns the persisted [AppThemeMode] or [AppThemeMode.system] when
+  /// nothing has been stored yet. The prefs key and tag strings are
+  /// intentionally identical to the legacy `ThemeMode` tags (`'light'`,
+  /// `'dark'`, `'system'`) so existing prefs survive the migration.
+  AppThemeMode readAppThemeMode() {
+    return AppThemeMode.fromTag(_prefs.getString(_themeModeKey));
   }
 
-  /// Persists [mode] using the short string keys above. Returns the
-  /// underlying [Future] so callers can `ignore()` it or await it;
-  /// production code uses fire-and-forget.
-  Future<void> writeThemeMode(ThemeMode mode) {
-    return _prefs.setString(_themeModeKey, _themeModeTag(mode));
+  /// Persists [mode] using stable tag strings. Returns the underlying
+  /// [Future] so callers can `ignore()` it or await it.
+  Future<void> writeAppThemeMode(AppThemeMode mode) {
+    return _prefs.setString(_themeModeKey, mode.tag);
   }
 
   /// Returns the persisted [AppLocale] or [AppLocale.system] when
@@ -103,14 +94,15 @@ class SettingsStore {
     await _prefs.setString(_readingLineHeightKey, settings.lineHeight.tag);
   }
 
-  static String _themeModeTag(ThemeMode mode) {
-    switch (mode) {
-      case ThemeMode.light:
-        return 'light';
-      case ThemeMode.dark:
-        return 'dark';
-      case ThemeMode.system:
-        return 'system';
-    }
+  /// Returns whether the screen should stay on while the viewer is
+  /// open. Defaults to `false` so a fresh install matches the OS
+  /// default of allowing the screen to sleep.
+  bool readKeepScreenOn() {
+    return _prefs.getBool(_keepScreenOnKey) ?? false;
+  }
+
+  /// Persists the keep-screen-on preference.
+  Future<void> writeKeepScreenOn(bool value) {
+    return _prefs.setBool(_keepScreenOnKey, value);
   }
 }

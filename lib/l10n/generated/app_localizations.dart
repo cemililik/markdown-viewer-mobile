@@ -530,11 +530,17 @@ abstract class AppLocalizations {
   /// **'Dark'**
   String get settingsThemeDark;
 
-  /// No description provided for @settingsThemeSystem.
+  /// Option in the theme selector that follows the OS light/dark preference.
   ///
   /// In en, this message translates to:
-  /// **'System default'**
+  /// **'System'**
   String get settingsThemeSystem;
+
+  /// Option in the theme selector that applies a warm parchment colour scheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Sepia'**
+  String get settingsThemeSepia;
 
   /// Section title for the language selector in settings.
   ///
@@ -793,6 +799,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Airy'**
   String get settingsReadingLineHeightAiry;
+
+  /// Section header above display-related controls on the settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Display'**
+  String get settingsDisplayTitle;
+
+  /// Label for the switch that prevents the screen from sleeping while the viewer is open.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep screen on'**
+  String get settingsKeepScreenOnTitle;
+
+  /// Subtitle beneath the keep-screen-on switch explaining when it is active.
+  ///
+  /// In en, this message translates to:
+  /// **'Prevents sleep while reading'**
+  String get settingsKeepScreenOnSubtitle;
 
   /// Settings screen action that restores theme, language, and reading comfort to their initial values.
   ///

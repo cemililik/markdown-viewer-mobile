@@ -267,7 +267,10 @@ class AppLocalizationsTr extends AppLocalizations {
   String get settingsThemeDark => 'Koyu';
 
   @override
-  String get settingsThemeSystem => 'Sistem varsayılanı';
+  String get settingsThemeSystem => 'Sistem';
+
+  @override
+  String get settingsThemeSepia => 'Sepya';
 
   @override
   String get settingsLanguageTitle => 'Dil';
@@ -402,6 +405,16 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get settingsReadingLineHeightAiry => 'Ferah';
+
+  @override
+  String get settingsDisplayTitle => 'Görünüm';
+
+  @override
+  String get settingsKeepScreenOnTitle => 'Ekranı açık tut';
+
+  @override
+  String get settingsKeepScreenOnSubtitle =>
+      'Okurken ekran kilidi devreye girmez';
 
   @override
   String get settingsResetButton => 'Varsayılana sıfırla';

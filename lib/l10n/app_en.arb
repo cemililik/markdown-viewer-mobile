@@ -308,7 +308,14 @@
   },
   "settingsThemeLight": "Light",
   "settingsThemeDark": "Dark",
-  "settingsThemeSystem": "System default",
+  "settingsThemeSystem": "System",
+  "@settingsThemeSystem": {
+    "description": "Option in the theme selector that follows the OS light/dark preference."
+  },
+  "settingsThemeSepia": "Sepia",
+  "@settingsThemeSepia": {
+    "description": "Option in the theme selector that applies a warm parchment colour scheme."
+  },
 
   "settingsLanguageTitle": "Language",
   "@settingsLanguageTitle": {
@@ -492,6 +499,19 @@
   "settingsReadingLineHeightAiry": "Airy",
   "@settingsReadingLineHeightAiry": {
     "description": "Loosest line height preset with the most breathing room between lines."
+  },
+
+  "settingsDisplayTitle": "Display",
+  "@settingsDisplayTitle": {
+    "description": "Section header above display-related controls on the settings screen."
+  },
+  "settingsKeepScreenOnTitle": "Keep screen on",
+  "@settingsKeepScreenOnTitle": {
+    "description": "Label for the switch that prevents the screen from sleeping while the viewer is open."
+  },
+  "settingsKeepScreenOnSubtitle": "Prevents sleep while reading",
+  "@settingsKeepScreenOnSubtitle": {
+    "description": "Subtitle beneath the keep-screen-on switch explaining when it is active."
   },
 
   "settingsResetButton": "Reset to defaults",
