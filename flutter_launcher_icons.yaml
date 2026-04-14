@@ -1,0 +1,24 @@
+flutter_launcher_icons:
+  # ── iOS ─────────────────────────────────────────────────────────────
+  # Flat icon — iOS applies its own rounded-corner mask at display time.
+  # App Store Connect also expects a flat 1024×1024 without alpha.
+  ios: true
+  image_path_ios: "assets/icon/icon.png"
+  remove_alpha_ios: true
+
+  # ── Android ─────────────────────────────────────────────────────────
+  android: "launcher_icon"
+  min_sdk_android: 21
+
+  # Legacy mipmap densities (API < 26): flat icon with dark background.
+  image_path_android: "assets/icon/icon.png"
+
+  # Adaptive icon (API 26+): foreground layer with transparent corners
+  # composited by the system over the brand-colour background.
+  # Background colour sampled from the icon's dark navy field: #0B1B34.
+  adaptive_icon_background: "#0B1B34"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+
+  # Web & desktop — not in scope for v1 but here for completeness.
+  web:
+    generate: false

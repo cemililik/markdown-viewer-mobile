@@ -866,7 +866,10 @@ comfortable on phone and tablet.
       screen exposes a "Share as PDF" action that renders the current
       document via `pw.MarkdownWidget`. Mermaid diagrams show a
       placeholder pending rasterization support (Phase 5).
-- [ ] App icons, store assets
+- [x] App icons — `flutter_launcher_icons` generates all densities
+      from `assets/icon/icon.png` (1024×1024); Android adaptive icon
+      uses transparent foreground + `#0B1B34` background; iOS flat RGB
+      1024×1024 (no alpha) for App Store Connect
 - [ ] Accessibility audit pass
 
 ## Phase 4.5 — Repo Sync
