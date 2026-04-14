@@ -404,6 +404,34 @@ class AppLocalizationsTr extends AppLocalizations {
   String get settingsReadingLineHeightAiry => 'Ferah';
 
   @override
+  String get settingsResetButton => 'Varsayılana sıfırla';
+
+  @override
+  String get settingsResetConfirmTitle => 'Ayarlar sıfırlansın mı?';
+
+  @override
+  String get settingsResetConfirmBody =>
+      'Tema, dil ve okuma rahatlığı ayarları varsayılan değerlerine döner. Son açılanlar, işaretler ve klasörler etkilenmez.';
+
+  @override
+  String get settingsResetConfirmAction => 'Sıfırla';
+
+  @override
+  String get settingsResetSnack => 'Ayarlar varsayılana döndürüldü';
+
+  @override
+  String get viewerReadingPanelOpenTooltip => 'Okuma ayarları';
+
+  @override
+  String get viewerReadingPanelTitle => 'Okuma';
+
+  @override
+  String get viewerReadingPanelResetButton => 'Okuma ayarlarını sıfırla';
+
+  @override
+  String get viewerReadingPanelAllSettings => 'Tüm ayarlar';
+
+  @override
   String get viewerResumedFromBookmark => 'Son okuduğun yerden devam ediliyor';
 
   @override

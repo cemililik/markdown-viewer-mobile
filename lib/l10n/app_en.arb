@@ -493,6 +493,44 @@
   "@settingsReadingLineHeightAiry": {
     "description": "Loosest line height preset with the most breathing room between lines."
   },
+
+  "settingsResetButton": "Reset to defaults",
+  "@settingsResetButton": {
+    "description": "Settings screen action that restores theme, language, and reading comfort to their initial values."
+  },
+  "settingsResetConfirmTitle": "Reset settings?",
+  "@settingsResetConfirmTitle": {
+    "description": "Title of the confirmation dialog before wiping every user preference back to the platform defaults."
+  },
+  "settingsResetConfirmBody": "Theme, language, and reading comfort settings will all return to their defaults. Recents, bookmarks, and folders are not affected.",
+  "@settingsResetConfirmBody": {
+    "description": "Body of the confirmation dialog explaining what reset touches and what it leaves alone."
+  },
+  "settingsResetConfirmAction": "Reset",
+  "@settingsResetConfirmAction": {
+    "description": "Confirm button on the reset dialog."
+  },
+  "settingsResetSnack": "Settings reset to defaults",
+  "@settingsResetSnack": {
+    "description": "Snackbar shown after a successful reset."
+  },
+
+  "viewerReadingPanelOpenTooltip": "Reading settings",
+  "@viewerReadingPanelOpenTooltip": {
+    "description": "Tooltip on the viewer AppBar action that opens the Aa reading-comfort bottom sheet."
+  },
+  "viewerReadingPanelTitle": "Reading",
+  "@viewerReadingPanelTitle": {
+    "description": "Header text shown at the top of the viewer reading-comfort bottom sheet."
+  },
+  "viewerReadingPanelResetButton": "Reset reading defaults",
+  "@viewerReadingPanelResetButton": {
+    "description": "Bottom sheet action that resets just the three reading knobs (font scale, width, line spacing) to their defaults, without touching theme or language."
+  },
+  "viewerReadingPanelAllSettings": "All settings",
+  "@viewerReadingPanelAllSettings": {
+    "description": "Bottom sheet link that pushes the full settings screen so the user can reach preferences not exposed in the reading panel (e.g. language)."
+  },
   "viewerResumedFromBookmark": "Resumed from your last reading position",
   "@viewerResumedFromBookmark": {
     "description": "Snackbar shown when a document opens and the viewer automatically restores the scroll position from a saved bookmark."

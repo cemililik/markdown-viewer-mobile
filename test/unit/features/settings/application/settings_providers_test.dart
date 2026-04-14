@@ -181,5 +181,39 @@ void main() {
       expect(state.lineHeight, ReadingLineHeight.airy);
       expect(state.fontScale, ReadingSettings.defaults.fontScale);
     });
+
+    test('resetToDefaults restores all three knobs and persists', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final store = SettingsStore(prefs);
+      final container = ProviderContainer(
+        overrides: [settingsStoreProvider.overrideWithValue(store)],
+      );
+      addTearDown(container.dispose);
+
+      // Mutate every knob away from its default first.
+      container
+          .read(readingSettingsControllerProvider.notifier)
+          .setFontScale(1.4);
+      container
+          .read(readingSettingsControllerProvider.notifier)
+          .setWidth(ReadingWidth.wide);
+      container
+          .read(readingSettingsControllerProvider.notifier)
+          .setLineHeight(ReadingLineHeight.airy);
+
+      container
+          .read(readingSettingsControllerProvider.notifier)
+          .resetToDefaults();
+
+      final state = container.read(readingSettingsControllerProvider);
+      expect(state.fontScale, ReadingSettings.defaults.fontScale);
+      expect(state.width, ReadingSettings.defaults.width);
+      expect(state.lineHeight, ReadingSettings.defaults.lineHeight);
+      await Future<void>.delayed(Duration.zero);
+      expect(
+        store.readReadingSettings().fontScale,
+        ReadingSettings.defaults.fontScale,
+      );
+    });
   });
 }

@@ -86,9 +86,57 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(),
           _SectionHeader(title: l10n.settingsReadingTitle),
           _ReadingSettingsSection(settings: readingSettings),
+          const Divider(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: const Icon(Icons.restart_alt),
+                label: Text(l10n.settingsResetButton),
+                onPressed: () => _confirmReset(context, ref),
+              ),
+            ),
+          ),
         ],
       ),
     );
+  }
+
+  /// Shows a confirmation dialog before wiping every user
+  /// preference back to the platform defaults. Reset is always
+  /// destructive — even if the user wanted it, an accidental
+  /// tap on the wrong button would feel like data loss — so
+  /// the dialog is mandatory rather than a quick snackbar
+  /// undo.
+  Future<void> _confirmReset(BuildContext context, WidgetRef ref) async {
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: Text(l10n.settingsResetConfirmTitle),
+            content: Text(l10n.settingsResetConfirmBody),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(l10n.actionCancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(l10n.settingsResetConfirmAction),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    ref.read(themeModeControllerProvider.notifier).set(ThemeMode.system);
+    ref.read(localeControllerProvider.notifier).set(AppLocale.system);
+    ref.read(readingSettingsControllerProvider.notifier).resetToDefaults();
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(l10n.settingsResetSnack)));
   }
 }
 

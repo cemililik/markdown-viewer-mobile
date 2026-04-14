@@ -61,6 +61,7 @@ void main() {
     DocumentRepository repo, {
     ReadingPositionStore? readingPositionStore,
     Map<String, Object>? settingsPrefs,
+    RecentDocumentsStore? recentsStore,
   }) async {
     // Seed a fresh mocked SharedPreferences per test so the
     // one-shot bookmark hint flag starts in its "unseen" state
@@ -75,7 +76,7 @@ void main() {
         ),
         settingsStoreProvider.overrideWithValue(SettingsStore(prefs)),
         recentDocumentsStoreProvider.overrideWithValue(
-          _InMemoryRecentDocumentsStore(),
+          recentsStore ?? _InMemoryRecentDocumentsStore(),
         ),
       ],
       child: const MaterialApp(
@@ -322,7 +323,7 @@ void main() {
     );
 
     testWidgets(
-      'AppBar shows search, TOC and bookmark actions in the data state',
+      'AppBar shows search, TOC, reading-panel and bookmark actions in the data state',
       (tester) async {
         await tester.pumpWidget(
           await harness(const _ImmediateDocumentRepository(sampleDocument)),
@@ -331,6 +332,57 @@ void main() {
 
         expect(find.byTooltip('Search in document'), findsOneWidget);
         expect(find.byTooltip('Table of contents'), findsOneWidget);
+        expect(find.byTooltip('Reading settings'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'tapping the reading settings action opens the Aa bottom sheet',
+      (tester) async {
+        await tester.pumpWidget(
+          await harness(const _ImmediateDocumentRepository(sampleDocument)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('Reading settings'));
+        await tester.pumpAndSettle();
+
+        // Sheet header + the All settings affordance both appear.
+        expect(find.text('Reading'), findsOneWidget);
+        expect(find.text('All settings'), findsOneWidget);
+        expect(find.text('Reset reading defaults'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'AppBar title falls back to the recents display name for folder-sourced files',
+      (tester) async {
+        // Seed the recents store with a folder-sourced entry
+        // whose path is an opaque sha256 cache blob and whose
+        // display name carries the original filename. The
+        // viewer should pick the display name even though the
+        // route documentId points at the cache path.
+        final recentsStore = _InMemoryRecentDocumentsStore();
+        await recentsStore.write([
+          RecentDocument(
+            documentId: const DocumentId('/tmp/example.md'),
+            openedAt: DateTime.utc(2026, 4, 14),
+            displayName: 'pretty-name.md',
+          ),
+        ]);
+
+        await tester.pumpWidget(
+          await harness(
+            const _ImmediateDocumentRepository(sampleDocument),
+            recentsStore: recentsStore,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('pretty-name.md'), findsOneWidget);
+        // The basename of the route documentId must NOT show
+        // — the lookup should override it.
+        expect(find.text('example.md'), findsNothing);
       },
     );
 

@@ -109,6 +109,19 @@ class ReadingSettingsController extends Notifier<ReadingSettings> {
     state = state.copyWith(lineHeight: lineHeight);
     ref.read(settingsStoreProvider).writeReadingSettings(state).ignore();
   }
+
+  /// Restores all three reading knobs to [ReadingSettings.defaults].
+  /// Used by the "Reset reading defaults" affordance in the
+  /// reading panel and the settings screen.
+  void resetToDefaults() {
+    if (state.fontScale == ReadingSettings.defaults.fontScale &&
+        state.width == ReadingSettings.defaults.width &&
+        state.lineHeight == ReadingSettings.defaults.lineHeight) {
+      return;
+    }
+    state = ReadingSettings.defaults;
+    ref.read(settingsStoreProvider).writeReadingSettings(state).ignore();
+  }
 }
 
 final readingSettingsControllerProvider =

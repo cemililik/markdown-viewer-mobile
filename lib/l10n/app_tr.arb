@@ -155,6 +155,17 @@
   "settingsReadingLineHeightCompact": "Sıkı",
   "settingsReadingLineHeightStandard": "Standart",
   "settingsReadingLineHeightAiry": "Ferah",
+
+  "settingsResetButton": "Varsayılana sıfırla",
+  "settingsResetConfirmTitle": "Ayarlar sıfırlansın mı?",
+  "settingsResetConfirmBody": "Tema, dil ve okuma rahatlığı ayarları varsayılan değerlerine döner. Son açılanlar, işaretler ve klasörler etkilenmez.",
+  "settingsResetConfirmAction": "Sıfırla",
+  "settingsResetSnack": "Ayarlar varsayılana döndürüldü",
+
+  "viewerReadingPanelOpenTooltip": "Okuma ayarları",
+  "viewerReadingPanelTitle": "Okuma",
+  "viewerReadingPanelResetButton": "Okuma ayarlarını sıfırla",
+  "viewerReadingPanelAllSettings": "Tüm ayarlar",
   "viewerResumedFromBookmark": "Son okuduğun yerden devam ediliyor",
   "actionGoToTop": "Başa dön",
   "viewerLoading": "Doküman yükleniyor…",

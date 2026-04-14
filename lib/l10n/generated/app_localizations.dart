@@ -794,6 +794,60 @@ abstract class AppLocalizations {
   /// **'Airy'**
   String get settingsReadingLineHeightAiry;
 
+  /// Settings screen action that restores theme, language, and reading comfort to their initial values.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to defaults'**
+  String get settingsResetButton;
+
+  /// Title of the confirmation dialog before wiping every user preference back to the platform defaults.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset settings?'**
+  String get settingsResetConfirmTitle;
+
+  /// Body of the confirmation dialog explaining what reset touches and what it leaves alone.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme, language, and reading comfort settings will all return to their defaults. Recents, bookmarks, and folders are not affected.'**
+  String get settingsResetConfirmBody;
+
+  /// Confirm button on the reset dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get settingsResetConfirmAction;
+
+  /// Snackbar shown after a successful reset.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings reset to defaults'**
+  String get settingsResetSnack;
+
+  /// Tooltip on the viewer AppBar action that opens the Aa reading-comfort bottom sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading settings'**
+  String get viewerReadingPanelOpenTooltip;
+
+  /// Header text shown at the top of the viewer reading-comfort bottom sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading'**
+  String get viewerReadingPanelTitle;
+
+  /// Bottom sheet action that resets just the three reading knobs (font scale, width, line spacing) to their defaults, without touching theme or language.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset reading defaults'**
+  String get viewerReadingPanelResetButton;
+
+  /// Bottom sheet link that pushes the full settings screen so the user can reach preferences not exposed in the reading panel (e.g. language).
+  ///
+  /// In en, this message translates to:
+  /// **'All settings'**
+  String get viewerReadingPanelAllSettings;
+
   /// Snackbar shown when a document opens and the viewer automatically restores the scroll position from a saved bookmark.
   ///
   /// In en, this message translates to:

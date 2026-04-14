@@ -17,6 +17,7 @@ import 'package:markdown_viewer/features/viewer/presentation/failure_message_map
 import 'package:markdown_viewer/features/viewer/presentation/widgets/in_doc_search_bar.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/markdown_view.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/toc_drawer.dart';
+import 'package:markdown_viewer/features/viewer/presentation/widgets/viewer_reading_panel.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:path/path.dart' as p;
 
@@ -543,6 +544,20 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     );
     final async = ref.watch(viewerDocumentProvider(widget.documentId));
     final readingSettings = ref.watch(readingSettingsControllerProvider);
+    // Prefer the display name the recents controller stamped at
+    // open time over the basename of the document path. For
+    // folder-sourced files the basename is a sha256 cache blob,
+    // and using it as the AppBar title leaks an opaque hash to
+    // the user. For everything else the lookup misses and we
+    // fall through to the basename via `_titleFor`.
+    final recents = ref.watch(recentDocumentsControllerProvider);
+    String? recentDisplayName;
+    for (final entry in recents) {
+      if (entry.documentId.value == widget.documentId.value) {
+        recentDisplayName = entry.displayName;
+        break;
+      }
+    }
 
     // The TOC drawer needs a non-null document to render. In
     // the loading / error states there is nothing to list, so
@@ -598,7 +613,11 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                   )
                   : Text(
                     key: const ValueKey('doc-title'),
-                    _titleFor(widget.documentId, l10n.viewerUnnamedDocument),
+                    recentDisplayName ??
+                        _titleFor(
+                          widget.documentId,
+                          l10n.viewerUnnamedDocument,
+                        ),
                   ),
         ),
         actions:
@@ -620,6 +639,21 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                                   ? null
                                   : () => Scaffold.of(context).openEndDrawer(),
                         ),
+                  ),
+                  // "Aa" reading-comfort panel. Lives between the
+                  // TOC action and the bookmark so the cluster
+                  // reads "navigate, customize, save" left-to-
+                  // right and the bookmark stays the rightmost
+                  // anchor of the AppBar — its tap target is
+                  // already in the user's muscle memory from
+                  // earlier phases.
+                  IconButton(
+                    icon: const Icon(Icons.text_format),
+                    tooltip: l10n.viewerReadingPanelOpenTooltip,
+                    onPressed:
+                        dataDocument == null
+                            ? null
+                            : () => showViewerReadingPanel(context, ref),
                   ),
                   ValueListenableBuilder<bool>(
                     valueListenable: _isBookmarked,

@@ -407,6 +407,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsReadingLineHeightAiry => 'Airy';
 
   @override
+  String get settingsResetButton => 'Reset to defaults';
+
+  @override
+  String get settingsResetConfirmTitle => 'Reset settings?';
+
+  @override
+  String get settingsResetConfirmBody =>
+      'Theme, language, and reading comfort settings will all return to their defaults. Recents, bookmarks, and folders are not affected.';
+
+  @override
+  String get settingsResetConfirmAction => 'Reset';
+
+  @override
+  String get settingsResetSnack => 'Settings reset to defaults';
+
+  @override
+  String get viewerReadingPanelOpenTooltip => 'Reading settings';
+
+  @override
+  String get viewerReadingPanelTitle => 'Reading';
+
+  @override
+  String get viewerReadingPanelResetButton => 'Reset reading defaults';
+
+  @override
+  String get viewerReadingPanelAllSettings => 'All settings';
+
+  @override
   String get viewerResumedFromBookmark =>
       'Resumed from your last reading position';
 
