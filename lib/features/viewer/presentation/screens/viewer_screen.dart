@@ -14,10 +14,10 @@ import 'package:markdown_viewer/features/viewer/application/viewer_document.dart
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/reading_position.dart';
 import 'package:markdown_viewer/features/viewer/presentation/failure_message_mapper.dart';
-import 'package:markdown_viewer/features/viewer/presentation/widgets/in_doc_search_bar.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/markdown_view.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/toc_drawer.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/viewer_reading_panel.dart';
+import 'package:markdown_viewer/features/viewer/presentation/widgets/viewer_search_bar.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
@@ -97,12 +97,6 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   bool _searchActive = false;
   List<int> _searchMatches = const <int>[];
   int _currentMatchIndex = 0;
-
-  /// Cached result of [_matchContext] for the current match index.
-  /// Recomputed only when [_searchMatches] or [_currentMatchIndex]
-  /// changes — not on every scroll-driven rebuild.
-  ({String lineText, int startInLine, int endInLine, int lineIndex})?
-  _cachedMatchContext;
 
   @override
   void initState() {
@@ -395,33 +389,38 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     );
   }
 
-  /// Enters in-document search mode: swaps the AppBar title
-  /// for the [InDocSearchBar] and focuses the text field so
-  /// the keyboard comes up on the next frame.
+  /// Activates the bottom search bar and scrolls the SliverAppBar back
+  /// into view so the document title stays visible while searching.
   void _openSearch() {
     setState(() {
       _searchActive = true;
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _searchFocusNode.requestFocus();
+      if (!mounted) return;
+      // Float the SliverAppBar back in so the reader always sees the
+      // document title while the search bar is open at the bottom.
+      _nestedKey.currentState?.outerController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+      );
+      _searchFocusNode.requestFocus();
     });
   }
 
-  /// Exits search mode, clears the query, and drops the match
-  /// list so the next open starts from a clean slate.
+  /// Closes the bottom search bar and resets all search state.
   void _closeSearch() {
     setState(() {
       _searchActive = false;
       _searchController.clear();
       _searchMatches = const <int>[];
       _currentMatchIndex = 0;
-      _cachedMatchContext = null;
     });
     _searchFocusNode.unfocus();
   }
 
-  /// Recomputes the match list for [query] against the active
-  /// document's source. Case-insensitive substring scan.
+  /// Recomputes the match list for [query] against [document.source].
+  /// Case-insensitive substring scan; auto-jumps to the first match.
   void _onSearchQueryChanged(String query, Document document) {
     final trimmed = query.trim();
     if (trimmed.isEmpty) {
@@ -442,90 +441,28 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     setState(() {
       _searchMatches = matches;
       _currentMatchIndex = 0;
-      _cachedMatchContext =
-          matches.isEmpty
-              ? null
-              : _matchContext(
-                source: document.source,
-                offset: matches.first,
-                queryLength: trimmed.length,
-              );
     });
     if (matches.isNotEmpty) {
       _jumpToMatch(matches.first, document);
     }
   }
 
-  /// Advances the current match index and scrolls to the new
-  /// match. Wraps around so the last match's "next" jumps back
-  /// to the first.
+  /// Advances to the next match, wrapping around at the end.
   void _nextMatch(Document document) {
     if (_searchMatches.isEmpty) return;
     final nextIndex = (_currentMatchIndex + 1) % _searchMatches.length;
-    setState(() {
-      _currentMatchIndex = nextIndex;
-      _cachedMatchContext = _matchContext(
-        source: document.source,
-        offset: _searchMatches[nextIndex],
-        queryLength: _searchController.text.trim().length,
-      );
-    });
+    setState(() => _currentMatchIndex = nextIndex);
     _jumpToMatch(_searchMatches[nextIndex], document);
   }
 
+  /// Retreats to the previous match, wrapping around at the start.
   void _previousMatch(Document document) {
     if (_searchMatches.isEmpty) return;
-    final length = _searchMatches.length;
-    final prevIndex = (_currentMatchIndex - 1 + length) % length;
-    setState(() {
-      _currentMatchIndex = prevIndex;
-      _cachedMatchContext = _matchContext(
-        source: document.source,
-        offset: _searchMatches[prevIndex],
-        queryLength: _searchController.text.trim().length,
-      );
-    });
+    final prevIndex =
+        (_currentMatchIndex - 1 + _searchMatches.length) %
+        _searchMatches.length;
+    setState(() => _currentMatchIndex = prevIndex);
     _jumpToMatch(_searchMatches[prevIndex], document);
-  }
-
-  /// Builds the `PreferredSize` bar that sits under the AppBar
-  /// while search is active.
-  PreferredSizeWidget _buildSearchContextHint() {
-    return PreferredSize(
-      preferredSize: const Size.fromHeight(36),
-      child: _SearchContextHint(context: _cachedMatchContext),
-    );
-  }
-
-  /// Returns the line in `document.source` that contains
-  /// [offset], along with the start/end positions of the match
-  /// relative to the line start.
-  ({String lineText, int startInLine, int endInLine, int lineIndex})?
-  _matchContext({
-    required String source,
-    required int offset,
-    required int queryLength,
-  }) {
-    if (offset < 0 || offset >= source.length) return null;
-    var lineStart = 0;
-    var lineIndex = 0;
-    for (var i = 0; i < offset; i += 1) {
-      if (source.codeUnitAt(i) == 0x0A) {
-        lineIndex += 1;
-        lineStart = i + 1;
-      }
-    }
-    var lineEnd = source.indexOf('\n', offset);
-    if (lineEnd == -1) lineEnd = source.length;
-    final lineText = source.substring(lineStart, lineEnd);
-    final startInLine = offset - lineStart;
-    final endInLine = (startInLine + queryLength).clamp(0, lineText.length);
-    return (
-      lineText: lineText,
-      startInLine: startInLine,
-      endInLine: endInLine,
-      lineIndex: lineIndex,
-    );
   }
 
   /// Scrolls to an approximate offset based on the fraction of
@@ -669,118 +606,76 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
               // Explicit leading: on a push-navigated viewer the
               // default back button already shows, but deep links
               // land with an empty stack — `canPop` falls through
-              // to the library. Hidden while search is active.
-              leading:
-                  _searchActive
-                      ? null
-                      : BackButton(
-                        onPressed: () {
-                          if (context.canPop()) {
-                            context.pop();
-                          } else {
-                            context.go(LibraryRoute.location());
-                          }
-                        },
-                      ),
-              // AnimatedSwitcher flips the title slot between the
-              // document name and the in-doc search field.
-              title: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                switchInCurve: Curves.easeOutCubic,
-                switchOutCurve: Curves.easeInCubic,
-                child:
-                    _searchActive && dataDocument != null
-                        ? InDocSearchBar(
-                          key: const ValueKey('search-bar'),
-                          controller: _searchController,
-                          focusNode: _searchFocusNode,
-                          matchCount: _searchMatches.length,
-                          currentMatchIndex: _currentMatchIndex,
-                          onQueryChanged:
-                              (query) =>
-                                  _onSearchQueryChanged(query, dataDocument),
-                          onPrevious: () => _previousMatch(dataDocument),
-                          onNext: () => _nextMatch(dataDocument),
-                          onClose: _closeSearch,
-                        )
-                        : Text(
-                          key: const ValueKey('doc-title'),
-                          recentDisplayName ??
-                              _titleFor(
-                                widget.documentId,
-                                l10n.viewerUnnamedDocument,
-                              ),
-                        ),
+              // to the library.
+              leading: BackButton(
+                onPressed: () {
+                  if (context.canPop()) {
+                    context.pop();
+                  } else {
+                    context.go(LibraryRoute.location());
+                  }
+                },
               ),
-              actions:
-                  _searchActive
-                      ? const <Widget>[]
-                      : [
-                        IconButton(
-                          icon: const Icon(Icons.share_outlined),
-                          tooltip: l10n.viewerShareTooltip,
-                          onPressed:
-                              dataDocument == null
-                                  ? null
-                                  : () => _shareDocument(dataDocument),
+              title: Text(
+                recentDisplayName ??
+                    _titleFor(widget.documentId, l10n.viewerUnnamedDocument),
+              ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.share_outlined),
+                  tooltip: l10n.viewerShareTooltip,
+                  onPressed:
+                      dataDocument == null
+                          ? null
+                          : () => _shareDocument(dataDocument),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.search),
+                  tooltip: l10n.viewerSearchOpenTooltip,
+                  onPressed: dataDocument == null ? null : _openSearch,
+                ),
+                Builder(
+                  builder:
+                      (context) => IconButton(
+                        icon: const Icon(Icons.format_list_bulleted),
+                        tooltip: l10n.viewerTocOpenTooltip,
+                        onPressed:
+                            dataDocument == null
+                                ? null
+                                : () => Scaffold.of(context).openEndDrawer(),
+                      ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.text_format),
+                  tooltip: l10n.viewerReadingPanelOpenTooltip,
+                  onPressed:
+                      dataDocument == null
+                          ? null
+                          : () => showViewerReadingPanel(context),
+                ),
+                ValueListenableBuilder<bool>(
+                  valueListenable: _isBookmarked,
+                  builder: (context, bookmarked, _) {
+                    return Tooltip(
+                      message: l10n.viewerBookmarkSaveTooltip,
+                      child: InkResponse(
+                        onTap: _saveBookmark,
+                        onLongPress: _showBookmarkMenu,
+                        radius: 24,
+                        child: SizedBox(
+                          width: 48,
+                          height: 48,
+                          child: Icon(
+                            bookmarked
+                                ? Icons.bookmark
+                                : Icons.bookmark_outline,
+                          ),
                         ),
-                        IconButton(
-                          icon: const Icon(Icons.search),
-                          tooltip: l10n.viewerSearchOpenTooltip,
-                          onPressed: dataDocument == null ? null : _openSearch,
-                        ),
-                        Builder(
-                          builder:
-                              (context) => IconButton(
-                                icon: const Icon(Icons.format_list_bulleted),
-                                tooltip: l10n.viewerTocOpenTooltip,
-                                onPressed:
-                                    dataDocument == null
-                                        ? null
-                                        : () =>
-                                            Scaffold.of(
-                                              context,
-                                            ).openEndDrawer(),
-                              ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.text_format),
-                          tooltip: l10n.viewerReadingPanelOpenTooltip,
-                          onPressed:
-                              dataDocument == null
-                                  ? null
-                                  : () => showViewerReadingPanel(context),
-                        ),
-                        ValueListenableBuilder<bool>(
-                          valueListenable: _isBookmarked,
-                          builder: (context, bookmarked, _) {
-                            return Tooltip(
-                              message: l10n.viewerBookmarkSaveTooltip,
-                              child: InkResponse(
-                                onTap: _saveBookmark,
-                                onLongPress: _showBookmarkMenu,
-                                radius: 24,
-                                child: SizedBox(
-                                  width: 48,
-                                  height: 48,
-                                  child: Icon(
-                                    bookmarked
-                                        ? Icons.bookmark
-                                        : Icons.bookmark_outline,
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-              bottom:
-                  (_searchActive &&
-                          dataDocument != null &&
-                          _searchMatches.isNotEmpty &&
-                          _searchController.text.isNotEmpty)
-                      ? _buildSearchContextHint()
-                      : null,
+                      ),
+                    );
+                  },
+                ),
+              ],
             ),
           ];
         },
@@ -805,16 +700,54 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
           data: (document) {
             _maybeRestoreReadingPosition();
             _ensureBlockKeys(document);
-            // controller: null → SingleChildScrollView uses the
-            // primary scroll controller that NestedScrollView
-            // injects, coordinating the body scroll with the
-            // floating SliverAppBar automatically.
-            return MarkdownView(
-              document: document,
-              controller: null,
-              blockKeys: _blockKeys,
-              readingSettings: readingSettings,
-              onLinkTap: (href) => _onLinkTap(href, document),
+            final queryLength = _searchController.text.trim().length;
+            return Column(
+              children: [
+                Expanded(
+                  // controller: null → SingleChildScrollView inside
+                  // MarkdownView uses the primary scroll controller
+                  // that NestedScrollView injects, coordinating body
+                  // scroll with the floating SliverAppBar.
+                  child: MarkdownView(
+                    document: document,
+                    controller: null,
+                    blockKeys: _blockKeys,
+                    readingSettings: readingSettings,
+                    onLinkTap: (href) => _onLinkTap(href, document),
+                    searchHighlight:
+                        (_searchActive && _searchMatches.isNotEmpty)
+                            ? SearchHighlightState(
+                              matchOffsets: _searchMatches,
+                              queryLength: queryLength,
+                              currentMatchIndex: _currentMatchIndex,
+                            )
+                            : null,
+                  ),
+                ),
+                // AnimatedSize drives the slide-in / slide-out of the
+                // bottom search bar. Height collapses to zero when
+                // search is inactive so the document fills the full
+                // viewport; expands to the bar's natural height when
+                // the user opens search.
+                AnimatedSize(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  child:
+                      _searchActive
+                          ? ViewerSearchBar(
+                            controller: _searchController,
+                            focusNode: _searchFocusNode,
+                            matchCount: _searchMatches.length,
+                            currentMatchIndex: _currentMatchIndex,
+                            onQueryChanged:
+                                (q) => _onSearchQueryChanged(q, document),
+                            onPrevious: () => _previousMatch(document),
+                            onNext: () => _nextMatch(document),
+                            onClose: _closeSearch,
+                          )
+                          : const SizedBox.shrink(),
+                ),
+              ],
             );
           },
         ),
@@ -830,77 +763,3 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
 
 /// Two-entry menu surfaced by the bookmark long-press.
 enum _BookmarkMenuAction { goTo, remove }
-
-/// Contextual line preview shown under the AppBar while search
-/// is active.
-class _SearchContextHint extends StatelessWidget {
-  const _SearchContextHint({required this.context});
-
-  final ({String lineText, int startInLine, int endInLine, int lineIndex})?
-  context;
-
-  static const int _preWindow = 32;
-  static const int _postWindow = 48;
-
-  @override
-  Widget build(BuildContext buildContext) {
-    final theme = Theme.of(buildContext);
-    final scheme = theme.colorScheme;
-    final ctx = context;
-    if (ctx == null) {
-      return Container(height: 36, color: scheme.surfaceContainerHigh);
-    }
-    final lineText = ctx.lineText;
-    final start = ctx.startInLine.clamp(0, lineText.length);
-    final end = ctx.endInLine.clamp(start, lineText.length);
-
-    final beforeRaw = lineText.substring(0, start);
-    final match = lineText.substring(start, end);
-    final afterRaw = lineText.substring(end);
-
-    final before =
-        beforeRaw.length > _preWindow
-            ? '…${beforeRaw.substring(beforeRaw.length - _preWindow)}'
-            : beforeRaw;
-    final after =
-        afterRaw.length > _postWindow
-            ? '${afterRaw.substring(0, _postWindow)}…'
-            : afterRaw;
-
-    final baseStyle = theme.textTheme.bodySmall?.copyWith(
-      color: scheme.onSurfaceVariant,
-    );
-
-    return Container(
-      width: double.infinity,
-      color: scheme.surfaceContainerHigh,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: RichText(
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        text: TextSpan(
-          style: baseStyle,
-          children: [
-            TextSpan(
-              text: 'L${ctx.lineIndex + 1}  ',
-              style: baseStyle?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: scheme.primary,
-              ),
-            ),
-            TextSpan(text: before),
-            TextSpan(
-              text: match,
-              style: baseStyle?.copyWith(
-                fontWeight: FontWeight.w800,
-                color: scheme.onSecondaryContainer,
-                backgroundColor: scheme.secondaryContainer,
-              ),
-            ),
-            TextSpan(text: after),
-          ],
-        ),
-      ),
-    );
-  }
-}
