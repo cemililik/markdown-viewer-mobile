@@ -61,6 +61,7 @@ class RecentDocumentsStoreImpl implements RecentDocumentsStore {
         if (openedAt == null) continue;
         final pinnedRaw = item['pinned'];
         final previewRaw = item['preview'];
+        final displayNameRaw = item['displayName'];
         entries.add(
           RecentDocument(
             documentId: DocumentId(path),
@@ -69,6 +70,10 @@ class RecentDocumentsStoreImpl implements RecentDocumentsStore {
             preview:
                 previewRaw is String && previewRaw.isNotEmpty
                     ? previewRaw
+                    : null,
+            displayName:
+                displayNameRaw is String && displayNameRaw.isNotEmpty
+                    ? displayNameRaw
                     : null,
           ),
         );
@@ -93,6 +98,10 @@ class RecentDocumentsStoreImpl implements RecentDocumentsStore {
         final preview = doc.preview;
         if (preview != null && preview.isNotEmpty) {
           map['preview'] = preview;
+        }
+        final displayName = doc.displayName;
+        if (displayName != null && displayName.isNotEmpty) {
+          map['displayName'] = displayName;
         }
         return map;
       }).toList(),

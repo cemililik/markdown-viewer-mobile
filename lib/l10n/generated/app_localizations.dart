@@ -662,10 +662,10 @@ abstract class AppLocalizations {
   /// **'Bookmark cleared'**
   String get viewerBookmarkCleared;
 
-  /// Secondary coach-mark line appended to the first-ever bookmark save confirmation, teaching the user that long-press opens the remove menu.
+  /// Secondary coach-mark line appended to the first-ever bookmark save confirmation, teaching the user that long-press opens an options menu.
   ///
   /// In en, this message translates to:
-  /// **'Long-press the bookmark icon to remove it.'**
+  /// **'Long-press the bookmark icon for options.'**
   String get viewerBookmarkLongPressHint;
 
   /// Bottom sheet action that animates the scroll back to the previously saved reading position.
@@ -679,6 +679,174 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Remove bookmark'**
   String get viewerBookmarkMenuRemove;
+
+  /// Tooltip on the viewer AppBar action that opens the right-side TOC drawer.
+  ///
+  /// In en, this message translates to:
+  /// **'Table of contents'**
+  String get viewerTocOpenTooltip;
+
+  /// Placeholder shown inside the TOC drawer when the active document has no headings the parser could extract.
+  ///
+  /// In en, this message translates to:
+  /// **'No headings in this document'**
+  String get viewerTocEmpty;
+
+  /// Tooltip on the viewer AppBar action that replaces the title with the in-document search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Search in document'**
+  String get viewerSearchOpenTooltip;
+
+  /// Tooltip on the close button that returns the viewer AppBar to its document-title state.
+  ///
+  /// In en, this message translates to:
+  /// **'Close search'**
+  String get viewerSearchCloseTooltip;
+
+  /// Tooltip on the chevron that jumps to the previous in-document search match.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous match'**
+  String get viewerSearchPreviousTooltip;
+
+  /// Tooltip on the chevron that jumps to the next in-document search match.
+  ///
+  /// In en, this message translates to:
+  /// **'Next match'**
+  String get viewerSearchNextTooltip;
+
+  /// Counter shown next to the in-document search field: 1-based current match index over total matches.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} / {total}'**
+  String viewerSearchMatchCount(int current, int total);
+
+  /// Inline label shown next to the in-document search field when the current query matches no lines.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get viewerSearchNoResults;
+
+  /// Section header above the reading comfort controls on the settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading'**
+  String get settingsReadingTitle;
+
+  /// Label above the font size slider in the reading comfort section.
+  ///
+  /// In en, this message translates to:
+  /// **'Font size'**
+  String get settingsReadingFontScaleTitle;
+
+  /// Format string for the font size slider's current value, e.g. '115%'.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}%'**
+  String settingsReadingFontScaleValue(int percent);
+
+  /// Label above the reading-column width segmented button.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading width'**
+  String get settingsReadingWidthTitle;
+
+  /// Reading width preset that caps the column at roughly 680 dp for long-form prose.
+  ///
+  /// In en, this message translates to:
+  /// **'Comfortable'**
+  String get settingsReadingWidthComfortable;
+
+  /// Reading width preset that caps the column at roughly 840 dp so code blocks breathe on tablets.
+  ///
+  /// In en, this message translates to:
+  /// **'Wide'**
+  String get settingsReadingWidthWide;
+
+  /// Reading width preset that removes the cap and lets the column stretch to the full viewport width.
+  ///
+  /// In en, this message translates to:
+  /// **'Full'**
+  String get settingsReadingWidthFull;
+
+  /// Label above the line-height segmented button.
+  ///
+  /// In en, this message translates to:
+  /// **'Line spacing'**
+  String get settingsReadingLineHeightTitle;
+
+  /// Line height preset that tightens paragraph line spacing for dense layouts.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact'**
+  String get settingsReadingLineHeightCompact;
+
+  /// Default line height preset matching Material 3 body-medium.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get settingsReadingLineHeightStandard;
+
+  /// Loosest line height preset with the most breathing room between lines.
+  ///
+  /// In en, this message translates to:
+  /// **'Airy'**
+  String get settingsReadingLineHeightAiry;
+
+  /// Settings screen action that restores theme, language, and reading comfort to their initial values.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to defaults'**
+  String get settingsResetButton;
+
+  /// Title of the confirmation dialog before wiping every user preference back to the platform defaults.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset settings?'**
+  String get settingsResetConfirmTitle;
+
+  /// Body of the confirmation dialog explaining what reset touches and what it leaves alone.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme, language, and reading comfort settings will all return to their defaults. Recents, bookmarks, and folders are not affected.'**
+  String get settingsResetConfirmBody;
+
+  /// Confirm button on the reset dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset'**
+  String get settingsResetConfirmAction;
+
+  /// Snackbar shown after a successful reset.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings reset to defaults'**
+  String get settingsResetSnack;
+
+  /// Tooltip on the viewer AppBar action that opens the Aa reading-comfort bottom sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading settings'**
+  String get viewerReadingPanelOpenTooltip;
+
+  /// Header text shown at the top of the viewer reading-comfort bottom sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading'**
+  String get viewerReadingPanelTitle;
+
+  /// Bottom sheet action that resets just the three reading knobs (font scale, width, line spacing) to their defaults, without touching theme or language.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset reading defaults'**
+  String get viewerReadingPanelResetButton;
+
+  /// Bottom sheet link that pushes the full settings screen so the user can reach preferences not exposed in the reading panel (e.g. language).
+  ///
+  /// In en, this message translates to:
+  /// **'All settings'**
+  String get viewerReadingPanelAllSettings;
 
   /// Snackbar shown when a document opens and the viewer automatically restores the scroll position from a saved bookmark.
   ///

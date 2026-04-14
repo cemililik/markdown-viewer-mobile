@@ -49,15 +49,19 @@ void main() {
   const sampleDocument = Document(
     id: id,
     source: '# Example\n\nBody text.',
-    headings: [HeadingRef(level: 1, text: 'Example', anchor: 'example')],
+    headings: [
+      HeadingRef(level: 1, text: 'Example', anchor: 'example', blockIndex: 0),
+    ],
     lineCount: 3,
     byteSize: 22,
+    topLevelBlockCount: 2,
   );
 
   Future<Widget> harness(
     DocumentRepository repo, {
     ReadingPositionStore? readingPositionStore,
     Map<String, Object>? settingsPrefs,
+    RecentDocumentsStore? recentsStore,
   }) async {
     // Seed a fresh mocked SharedPreferences per test so the
     // one-shot bookmark hint flag starts in its "unseen" state
@@ -72,7 +76,7 @@ void main() {
         ),
         settingsStoreProvider.overrideWithValue(SettingsStore(prefs)),
         recentDocumentsStoreProvider.overrideWithValue(
-          _InMemoryRecentDocumentsStore(),
+          recentsStore ?? _InMemoryRecentDocumentsStore(),
         ),
       ],
       child: const MaterialApp(
@@ -288,7 +292,7 @@ void main() {
 
         expect(find.text('Reading position saved'), findsOneWidget);
         expect(
-          find.text('Long-press the bookmark icon to remove it.'),
+          find.text('Long-press the bookmark icon for options.'),
           findsOneWidget,
         );
       },
@@ -312,9 +316,152 @@ void main() {
 
         expect(find.text('Reading position saved'), findsOneWidget);
         expect(
-          find.text('Long-press the bookmark icon to remove it.'),
+          find.text('Long-press the bookmark icon for options.'),
           findsNothing,
         );
+      },
+    );
+
+    testWidgets(
+      'AppBar shows search, TOC, reading-panel and bookmark actions in the data state',
+      (tester) async {
+        await tester.pumpWidget(
+          await harness(const _ImmediateDocumentRepository(sampleDocument)),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byTooltip('Search in document'), findsOneWidget);
+        expect(find.byTooltip('Table of contents'), findsOneWidget);
+        expect(find.byTooltip('Reading settings'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'tapping the reading settings action opens the Aa bottom sheet',
+      (tester) async {
+        await tester.pumpWidget(
+          await harness(const _ImmediateDocumentRepository(sampleDocument)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('Reading settings'));
+        await tester.pumpAndSettle();
+
+        // Sheet header + the All settings affordance both appear.
+        expect(find.text('Reading'), findsOneWidget);
+        expect(find.text('All settings'), findsOneWidget);
+        expect(find.text('Reset reading defaults'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'AppBar title falls back to the recents display name for folder-sourced files',
+      (tester) async {
+        // Seed the recents store with a folder-sourced entry
+        // whose path is an opaque sha256 cache blob and whose
+        // display name carries the original filename. The
+        // viewer should pick the display name even though the
+        // route documentId points at the cache path.
+        final recentsStore = _InMemoryRecentDocumentsStore();
+        await recentsStore.write([
+          RecentDocument(
+            documentId: const DocumentId('/tmp/example.md'),
+            openedAt: DateTime.utc(2026, 4, 14),
+            displayName: 'pretty-name.md',
+          ),
+        ]);
+
+        await tester.pumpWidget(
+          await harness(
+            const _ImmediateDocumentRepository(sampleDocument),
+            recentsStore: recentsStore,
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.text('pretty-name.md'), findsOneWidget);
+        // The basename of the route documentId must NOT show
+        // — the lookup should override it.
+        expect(find.text('example.md'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'tapping the search action swaps the title for the search bar',
+      (tester) async {
+        await tester.pumpWidget(
+          await harness(const _ImmediateDocumentRepository(sampleDocument)),
+        );
+        await tester.pumpAndSettle();
+
+        // Title shows the basename before search opens.
+        expect(find.text('example.md'), findsOneWidget);
+
+        await tester.tap(find.byTooltip('Search in document'));
+        await tester.pumpAndSettle();
+
+        // Title is replaced by the search TextField with the
+        // localized hint, and the close button is now in the
+        // leading slot.
+        expect(find.text('Search in document'), findsWidgets);
+        expect(find.text('example.md'), findsNothing);
+        expect(find.byTooltip('Close search'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'typing a query that matches the source shows the 1-based counter',
+      (tester) async {
+        await tester.pumpWidget(
+          await harness(const _ImmediateDocumentRepository(sampleDocument)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('Search in document'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), 'Body');
+        await tester.pumpAndSettle();
+
+        // The sample source is '# Example\n\nBody text.' — one
+        // match for 'Body', so the counter reads '1 / 1'.
+        expect(find.text('1 / 1'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'typing a query that matches nothing shows the localized empty label',
+      (tester) async {
+        await tester.pumpWidget(
+          await harness(const _ImmediateDocumentRepository(sampleDocument)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('Search in document'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), 'zzz');
+        await tester.pumpAndSettle();
+
+        expect(find.text('No matches'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'tapping the TOC action opens the right drawer with the heading',
+      (tester) async {
+        await tester.pumpWidget(
+          await harness(const _ImmediateDocumentRepository(sampleDocument)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('Table of contents'));
+        await tester.pumpAndSettle();
+
+        // Drawer header + the single heading from the sample
+        // document are visible now.
+        expect(find.text('Contents'), findsOneWidget);
+        expect(find.text('Example'), findsWidgets);
       },
     );
 

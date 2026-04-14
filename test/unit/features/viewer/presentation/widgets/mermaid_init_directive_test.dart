@@ -41,14 +41,23 @@ void main() {
       expect(payload['themeVariables'], isA<Map<String, dynamic>>());
     });
 
-    test('every variable value is a #RRGGBB hex string', () {
+    test('every colour variable value is a #RRGGBB hex string', () {
       final directive = buildMermaidInitDirective(lightScheme);
       final payload =
           jsonDecode(stripWrapper(directive)) as Map<String, dynamic>;
       final vars = payload['themeVariables'] as Map<String, dynamic>;
 
+      // A short list of variables that are NOT colours by
+      // contract — typography knobs like `fontSize` carry CSS
+      // length values (`16px`) and the hex check would
+      // legitimately reject them. Everything else must be a
+      // 6-digit hex colour because mermaid rejects named
+      // colours and `rgba(...)` strings.
+      const nonColourKeys = <String>{'fontSize', 'fontFamily'};
+
       final hexPattern = RegExp(r'^#[0-9a-fA-F]{6}$');
       for (final entry in vars.entries) {
+        if (nonColourKeys.contains(entry.key)) continue;
         expect(
           entry.value,
           matches(hexPattern),
@@ -57,6 +66,31 @@ void main() {
               'rejects named colours and transparent hex).',
         );
       }
+    });
+
+    test('mindmap branch palette covers the cScale slots used by mermaid', () {
+      final directive = buildMermaidInitDirective(lightScheme);
+      final payload =
+          jsonDecode(stripWrapper(directive)) as Map<String, dynamic>;
+      final vars = payload['themeVariables'] as Map<String, dynamic>;
+
+      // Mermaid mindmap reads its branch fills from `cScale<i>`
+      // and the matching label colours from `cScaleLabel<i>`.
+      // The peer colours for the connecting lines come from
+      // `cScalePeer<i>`. We seed all three series for the
+      // first twelve slots so deep mindmaps still get themed.
+      for (var i = 0; i < 12; i += 1) {
+        expect(
+          vars,
+          containsPair('cScale$i', isA<String>()),
+          reason:
+              'cScale$i must be set so mindmap branch $i picks '
+              'up the project palette',
+        );
+        expect(vars, containsPair('cScaleLabel$i', isA<String>()));
+        expect(vars, containsPair('cScalePeer$i', isA<String>()));
+      }
+      expect(vars, containsPair('fontSize', '16px'));
     });
 
     test('covers every diagram type the viewer fixture exercises (flowchart, '

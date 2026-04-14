@@ -1,24 +1,13 @@
 import 'package:flutter/services.dart';
 
-/// The result of a successful native folder pick: both the raw
-/// filesystem path (for display) and the base64-encoded security-
-/// scoped bookmark (for every subsequent access).
+/// Result of a successful native folder pick.
+///
+/// [path] is for display only; [bookmark] is the opaque iOS security-scoped
+/// bookmark required for all subsequent access.
 class NativeFolderPick {
   const NativeFolderPick({required this.path, required this.bookmark});
 
-  /// Absolute path on disk of the directory the user picked. Used
-  /// exclusively for display and as the dedupe key in the folder
-  /// list — it is never handed to `dart:io` because that path is
-  /// not readable without the security scope claim that only the
-  /// native side can re-establish from the bookmark.
   final String path;
-
-  /// Base64-encoded `Data` blob representing a `.minimalBookmark`
-  /// NSURL bookmark. Persisted alongside the folder entry and
-  /// passed back to [NativeLibraryFoldersChannel.listDirectory]
-  /// every time the drawer or folder body needs to enumerate the
-  /// folder. Opaque to Dart — the bytes are meaningful only to
-  /// the iOS `URL(resolvingBookmarkData:)` initializer.
   final String bookmark;
 }
 
@@ -59,25 +48,9 @@ class NativeFolderAccessDeniedException implements Exception {
   String toString() => 'NativeFolderAccessDeniedException: $message';
 }
 
-/// Dart-side wrapper around the iOS `LibraryFoldersChannel`
-/// method channel defined in `ios/Runner/LibraryFoldersChannel.swift`.
-///
-/// Responsibilities:
-///
-/// - Own the single [MethodChannel] instance shared across the app.
-/// - Serialize + deserialize the channel payloads so every other
-///   layer works with typed Dart objects instead of raw `Map<String,
-///   dynamic>` blobs.
-/// - Translate platform `FlutterError` codes into sentinel exception
-///   types the folder enumerator and the widget layer can
-///   pattern-match against.
-///
-/// The channel is only available on iOS. Callers decide via
-/// `Platform.isIOS` whether to hit the channel or fall back to
-/// the dart:io-backed implementation — this class itself does not
-/// sniff the platform so it stays cheap to unit test with a fake
-/// `MethodChannel` and does not pull `dart:io` into Dart-only
-/// layers.
+/// Dart-side wrapper around the `dev.markdownviewer/library_folders`
+/// method channel. Deserializes payloads into typed objects and maps
+/// platform error codes to sentinel exception types.
 class NativeLibraryFoldersChannel {
   NativeLibraryFoldersChannel({MethodChannel? channel})
     : _channel =
@@ -95,20 +68,18 @@ class NativeLibraryFoldersChannel {
     if (raw == null) return null;
     final path = raw['path'] as String?;
     final bookmark = raw['bookmark'] as String?;
-    if (path == null || bookmark == null) return null;
+    if (path == null || bookmark == null) {
+      throw FormatException(
+        'pickDirectory: native payload missing required keys '
+        '"path" or "bookmark": $raw',
+      );
+    }
     return NativeFolderPick(path: path, bookmark: bookmark);
   }
 
-  /// Enumerates the immediate `.md` / `.markdown` children and
-  /// subdirectories of the bookmarked folder.
-  ///
-  /// When [subPath] is non-null, the native side claims the
-  /// security scope from the bookmarked root and then lists
-  /// `subPath` — which must sit inside the bookmarked tree — so
-  /// the drawer can drill into nested directories without having
-  /// to re-bookmark every level. `sub-URLs` inherit the parent's
-  /// scope as long as the root scope is active, which is why one
-  /// root bookmark covers an arbitrarily deep hierarchy.
+  /// Lists the immediate `.md` / `.markdown` children and
+  /// subdirectories of the bookmarked folder. When [subPath] is
+  /// non-null it must be inside the bookmarked tree.
   Future<List<NativeFolderEntry>> listDirectory(
     String bookmark, {
     String? subPath,
@@ -144,17 +115,8 @@ class NativeLibraryFoldersChannel {
     }
   }
 
-  /// Reads the contents of [path] (which must live under the
-  /// tree the [bookmark] was created against) and returns the
-  /// raw bytes. Used by [materializeFolderFile] to copy the
-  /// bytes into the app cache so the existing viewer code path
-  /// (`File(...).readAsBytes`) can read the document with no
-  /// SAF / security-scope awareness of its own.
-  ///
-  /// On iOS, [path] is the filesystem path returned by the
-  /// document picker; on Android, [path] is the stringified
-  /// content URI of a child document inside the bookmarked
-  /// tree.
+  /// Reads the bytes of [path], which must live inside the tree
+  /// identified by [bookmark].
   Future<Uint8List> readFileBytes({
     required String bookmark,
     required String path,

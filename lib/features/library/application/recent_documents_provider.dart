@@ -60,14 +60,18 @@ class RecentDocumentsController extends Notifier<List<RecentDocument>> {
   /// stamps it with `DateTime.now()`.
   ///
   /// If [preview] is non-null, the fresh entry carries it as the
-  /// snippet shown on the library tile. Existing pinned state
-  /// for the same path is preserved so re-opening a pinned entry
-  /// does not silently unpin it.
+  /// snippet shown on the library tile. If [displayName] is
+  /// non-null, it becomes the tile title (used by folder-sourced
+  /// files whose cache path basename is an opaque sha256 hash).
+  /// Existing pinned state, preview, and display name are all
+  /// preserved when the corresponding argument is `null`, so a
+  /// plain re-open never wipes metadata a previous touch already
+  /// recorded.
   ///
   /// The unpinned tail is capped at [_maxUnpinnedRecents] entries;
   /// pinned entries are exempt from the cap so the user can keep
   /// more than twenty favourites at the top of the library.
-  void touch(DocumentId documentId, {String? preview}) {
+  void touch(DocumentId documentId, {String? preview, String? displayName}) {
     final now = DateTime.now();
     final existing = state
         .where((entry) => entry.documentId.value == documentId.value)
@@ -81,6 +85,7 @@ class RecentDocumentsController extends Notifier<List<RecentDocument>> {
       openedAt: now,
       isPinned: existing?.isPinned ?? false,
       preview: preview ?? existing?.preview,
+      displayName: displayName ?? existing?.displayName,
     );
     state = _ordered(<RecentDocument>[fresh, ...without]);
     ref.read(recentDocumentsStoreProvider).write(state).ignore();

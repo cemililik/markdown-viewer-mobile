@@ -396,9 +396,9 @@
   "@viewerBookmarkCleared": {
     "description": "Snackbar confirmation shown after the user clears a previously saved bookmark via the long-press menu."
   },
-  "viewerBookmarkLongPressHint": "Long-press the bookmark icon to remove it.",
+  "viewerBookmarkLongPressHint": "Long-press the bookmark icon for options.",
   "@viewerBookmarkLongPressHint": {
-    "description": "Secondary coach-mark line appended to the first-ever bookmark save confirmation, teaching the user that long-press opens the remove menu."
+    "description": "Secondary coach-mark line appended to the first-ever bookmark save confirmation, teaching the user that long-press opens an options menu."
   },
   "viewerBookmarkMenuGoTo": "Go to saved position",
   "@viewerBookmarkMenuGoTo": {
@@ -407,6 +407,129 @@
   "viewerBookmarkMenuRemove": "Remove bookmark",
   "@viewerBookmarkMenuRemove": {
     "description": "Bottom sheet action that clears the saved reading position for the active document."
+  },
+
+  "viewerTocOpenTooltip": "Table of contents",
+  "@viewerTocOpenTooltip": {
+    "description": "Tooltip on the viewer AppBar action that opens the right-side TOC drawer."
+  },
+  "viewerTocEmpty": "No headings in this document",
+  "@viewerTocEmpty": {
+    "description": "Placeholder shown inside the TOC drawer when the active document has no headings the parser could extract."
+  },
+  "viewerSearchOpenTooltip": "Search in document",
+  "@viewerSearchOpenTooltip": {
+    "description": "Tooltip on the viewer AppBar action that replaces the title with the in-document search field."
+  },
+  "viewerSearchCloseTooltip": "Close search",
+  "@viewerSearchCloseTooltip": {
+    "description": "Tooltip on the close button that returns the viewer AppBar to its document-title state."
+  },
+  "viewerSearchPreviousTooltip": "Previous match",
+  "@viewerSearchPreviousTooltip": {
+    "description": "Tooltip on the chevron that jumps to the previous in-document search match."
+  },
+  "viewerSearchNextTooltip": "Next match",
+  "@viewerSearchNextTooltip": {
+    "description": "Tooltip on the chevron that jumps to the next in-document search match."
+  },
+  "viewerSearchMatchCount": "{current} / {total}",
+  "@viewerSearchMatchCount": {
+    "description": "Counter shown next to the in-document search field: 1-based current match index over total matches.",
+    "placeholders": {
+      "current": { "type": "int", "example": "3" },
+      "total": { "type": "int", "example": "12" }
+    }
+  },
+  "viewerSearchNoResults": "No matches",
+  "@viewerSearchNoResults": {
+    "description": "Inline label shown next to the in-document search field when the current query matches no lines."
+  },
+
+  "settingsReadingTitle": "Reading",
+  "@settingsReadingTitle": {
+    "description": "Section header above the reading comfort controls on the settings screen."
+  },
+  "settingsReadingFontScaleTitle": "Font size",
+  "@settingsReadingFontScaleTitle": {
+    "description": "Label above the font size slider in the reading comfort section."
+  },
+  "settingsReadingFontScaleValue": "{percent}%",
+  "@settingsReadingFontScaleValue": {
+    "description": "Format string for the font size slider's current value, e.g. '115%'.",
+    "placeholders": {
+      "percent": { "type": "int", "example": "115" }
+    }
+  },
+  "settingsReadingWidthTitle": "Reading width",
+  "@settingsReadingWidthTitle": {
+    "description": "Label above the reading-column width segmented button."
+  },
+  "settingsReadingWidthComfortable": "Comfortable",
+  "@settingsReadingWidthComfortable": {
+    "description": "Reading width preset that caps the column at roughly 680 dp for long-form prose."
+  },
+  "settingsReadingWidthWide": "Wide",
+  "@settingsReadingWidthWide": {
+    "description": "Reading width preset that caps the column at roughly 840 dp so code blocks breathe on tablets."
+  },
+  "settingsReadingWidthFull": "Full",
+  "@settingsReadingWidthFull": {
+    "description": "Reading width preset that removes the cap and lets the column stretch to the full viewport width."
+  },
+  "settingsReadingLineHeightTitle": "Line spacing",
+  "@settingsReadingLineHeightTitle": {
+    "description": "Label above the line-height segmented button."
+  },
+  "settingsReadingLineHeightCompact": "Compact",
+  "@settingsReadingLineHeightCompact": {
+    "description": "Line height preset that tightens paragraph line spacing for dense layouts."
+  },
+  "settingsReadingLineHeightStandard": "Standard",
+  "@settingsReadingLineHeightStandard": {
+    "description": "Default line height preset matching Material 3 body-medium."
+  },
+  "settingsReadingLineHeightAiry": "Airy",
+  "@settingsReadingLineHeightAiry": {
+    "description": "Loosest line height preset with the most breathing room between lines."
+  },
+
+  "settingsResetButton": "Reset to defaults",
+  "@settingsResetButton": {
+    "description": "Settings screen action that restores theme, language, and reading comfort to their initial values."
+  },
+  "settingsResetConfirmTitle": "Reset settings?",
+  "@settingsResetConfirmTitle": {
+    "description": "Title of the confirmation dialog before wiping every user preference back to the platform defaults."
+  },
+  "settingsResetConfirmBody": "Theme, language, and reading comfort settings will all return to their defaults. Recents, bookmarks, and folders are not affected.",
+  "@settingsResetConfirmBody": {
+    "description": "Body of the confirmation dialog explaining what reset touches and what it leaves alone."
+  },
+  "settingsResetConfirmAction": "Reset",
+  "@settingsResetConfirmAction": {
+    "description": "Confirm button on the reset dialog."
+  },
+  "settingsResetSnack": "Settings reset to defaults",
+  "@settingsResetSnack": {
+    "description": "Snackbar shown after a successful reset."
+  },
+
+  "viewerReadingPanelOpenTooltip": "Reading settings",
+  "@viewerReadingPanelOpenTooltip": {
+    "description": "Tooltip on the viewer AppBar action that opens the Aa reading-comfort bottom sheet."
+  },
+  "viewerReadingPanelTitle": "Reading",
+  "@viewerReadingPanelTitle": {
+    "description": "Header text shown at the top of the viewer reading-comfort bottom sheet."
+  },
+  "viewerReadingPanelResetButton": "Reset reading defaults",
+  "@viewerReadingPanelResetButton": {
+    "description": "Bottom sheet action that resets just the three reading knobs (font scale, width, line spacing) to their defaults, without touching theme or language."
+  },
+  "viewerReadingPanelAllSettings": "All settings",
+  "@viewerReadingPanelAllSettings": {
+    "description": "Bottom sheet link that pushes the full settings screen so the user can reach preferences not exposed in the reading panel (e.g. language)."
   },
   "viewerResumedFromBookmark": "Resumed from your last reading position",
   "@viewerResumedFromBookmark": {

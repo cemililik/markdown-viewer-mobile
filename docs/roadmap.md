@@ -28,10 +28,11 @@ gantt
     1.11 Bookmark tap/remove :done, p111, after p110, 1d
 
     section Phase 2
-    Advanced Blocks polish   :p2, after p111, 7d
+    Advanced Blocks polish   :p2, after p31, 7d
 
     section Phase 3
-    Reading Experience       :p3, after p2, 14d
+    3.1 TOC + search + type  :done, p31, after p111, 1d
+    Reading Experience rest  :p3, after p2, 14d
 
     section Phase 4
     Platform Integration     :p4, after p3, 7d
@@ -72,7 +73,7 @@ both themes. ✅ `flutter analyze` clean, smoke test passing.
 
 ## Phase 1 — MVP Rendering
 
-**Status**: ✅ Completed 2026-04-13 — all six slices shipped. Manual
+**Status**: ✅ Completed 2026-04-14 — all eleven slices (1.1–1.11) shipped. Manual
 on-device validation pass is the gate to declaring Phase 2 ready.
 
 **Goal**: Open a file and render every block type we promise, correctly
@@ -580,7 +581,7 @@ opposite of what the user intended. Phase 1.11 lands the
 refined semantics (option A from the UX conversation).
 
 - [x] **Tap = save / update**: the AppBar bookmark always
-      writes the current scroll offset, whether or not a prior
+      writes the current scroll offset, whether a prior
       position was saved. The icon stays filled when a
       position exists. A snackbar branches on "was there a
       prior position?": first save → "Reading position saved",
@@ -667,11 +668,136 @@ reference devices in [platform-support.md](platform-support.md).
 
 **Goal**: Polish the reading UX.
 
-- [ ] Table of contents drawer
-- [ ] In-document search with match highlighting
-- [ ] Font size and family settings
-- [ ] Reading width preference
+### Phase 3.1 — TOC + in-doc search + reading comfort settings
+
+**Status**: ✅ Completed 2026-04-14
+
+**Goal**: Close the "technical reading" gap surfaced in the
+UX rethink — the app now renders markdown but has no way to
+navigate a long README or tune the reading comfort. Phase 3.1
+lands the three features the user prioritized in one commit:
+
+- [x] **Parser block-index tracking**: the markdown parser now
+      walks top-level nodes and stamps each extracted
+      `HeadingRef` with the enclosing top-level block index
+      (including headings nested inside blockquotes or
+      container blocks, which inherit their parent's block
+      index). `Document` carries a new `topLevelBlockCount`
+      field so the viewer can allocate exactly one
+      `GlobalKey` per block for `Scrollable.ensureVisible`.
+- [x] **MarkdownView block keys**: each rendered top-level
+      widget is wrapped in a `KeyedSubtree` keyed by its
+      block index when the caller hands in a key map. Used
+      for pixel-perfect TOC jumps without offset measuring.
+- [x] **TocDrawer** (new right-side `Drawer`): lists every
+      heading with progressive indent per level (H1 flat, H2
+      +12 dp, H3 +24 dp, …). Tap closes the drawer and fires
+      `onHeadingSelected`; the viewer looks up the matching
+      `GlobalKey` and runs `Scrollable.ensureVisible` with a
+      450 ms easeOutCubic animation pinning the block at the
+      top of the viewport. Empty-document state renders a
+      localized "No headings in this document" hint.
+- [x] **In-doc search bar** (new `InDocSearchBar`): replaces
+      the AppBar title via `AnimatedSwitcher` when search mode
+      is active. Tooltip-aware close button, bare `TextField`
+      with the `viewerSearchHint` placeholder, a 1-based
+      match counter (`3 / 12`), and `chevron_up` /
+      `chevron_down` buttons that wrap around the match list.
+      No inline highlighting in the rendered document — match
+      offsets map to a fraction of the total source length
+      and the viewer scrolls to that fraction of
+      `maxScrollExtent`. MVP limitation called out in the
+      code comments; inline highlighting via a forked
+      markdown_widget text builder is tracked as a follow-up.
+- [x] **ViewerScreen wiring**: AppBar gains search + TOC
+      actions (in addition to the existing bookmark toggle),
+      the end drawer holds the `TocDrawer`, and search mode
+      hides the back button + bookmark + TOC actions while
+      the bar is expanded so the layout stays readable on a
+      narrow AppBar. `_blockKeys` is re-computed on every
+      block-count change so a retry that loaded a shorter doc
+      doesn't keep stale keys pointing at missing widgets.
+- [x] **Reading comfort settings**: three new knobs
+      (`fontScale`, `readingWidth`, `readingLineHeight`)
+      exposed as a single `ReadingSettings` value type +
+      `ReadingSettingsController` `Notifier`. Persisted as
+      three separate `SharedPreferences` keys so rolling back
+      one after a bug doesn't clobber the others. Settings
+      screen gains a new "Reading" section with:
+      - a `Slider` for font scale (0.85× → 1.5× in 5%
+        steps, live percentage readout)
+      - a `SegmentedButton` for reading width
+        (Comfortable 680 dp, Wide 840 dp, Full unlimited)
+      - a `SegmentedButton` for line height
+        (Compact 1.35, Standard 1.55, Airy 1.8)
+- [x] **MarkdownView reading settings application**:
+      - Font scale wraps the content in a `MediaQuery` that
+        clamps `TextScaler` to the user's chosen factor,
+        stacking over the system's dynamic type setting.
+      - Reading width caps the `Column` via a `Center` +
+        `ConstrainedBox(maxWidth: ...)` on wide viewports;
+        narrow phones collapse every preset to the full
+        width automatically.
+      - Line height feeds into `PConfig.textStyle.height`
+        through `MarkdownConfig.copy([..., pConfig])`, so
+        paragraph text responds immediately without
+        rebuilding `_markdownGenerator`.
+- [x] **L10n**: 19 new keys across en + tr (TOC title +
+      empty state, search open/close/prev/next tooltips,
+      match counter + no-results, reading settings section
+      header, font scale label + formatted value, reading
+      width segmented labels, line height segmented labels).
+- [x] **Tests (+22)**:
+      - Parser: every heading gets the enclosing top-level
+        block index; nested headings inside a blockquote
+        carry the container's block index.
+      - SettingsStore: reading settings roundtrip; clamping
+        an out-of-range font scale on write and read.
+      - ReadingSettingsController: seed from defaults,
+        setFontScale updates + persists + clamps, setWidth
+        and setLineHeight update independently.
+      - TocDrawer widget: renders every heading; tapping
+        closes the drawer and fires the callback with the
+        tapped heading; empty document shows the localized
+        hint.
+      - InDocSearchBar widget: empty query hides the
+        counter; non-empty query shows "3 / 12"; zero
+        results shows the localized empty label; chevrons
+        are disabled while matchCount is zero; tap fires
+        the next/prev callbacks.
+      - ViewerScreen: AppBar shows search + TOC + bookmark
+        in the data state; tapping search swaps the title
+        for the search bar; typing a query that matches the
+        source shows the 1-based counter; typing a query
+        with zero matches shows the localized empty label;
+        tapping the TOC action opens the end drawer and
+        renders the document's headings.
+
+**Goal (rest of Phase 3)**: Polish the remaining reading UX.
+
+- [ ] Immersive scroll (AppBar + FAB auto-hide on scroll)
+- [ ] Sepia reading theme
+- [ ] Keep-screen-on toggle
+- [ ] Text selection + copy + share
+- [ ] In-doc anchor links
+- [ ] Footnote popup sheets
+- [ ] Reading time estimate
+- [ ] Haptic feedback on jump / save / back-to-top
+- [ ] Swipe between adjacent files
 - [ ] Share-intent import handling
+- [x] **Table of contents drawer** — shipped in Phase 3.1 as
+      a right-side drawer tied to the `format_list_bulleted`
+      AppBar action. See Phase 3.1 above for the full checklist.
+- [x] **In-document search** — shipped in Phase 3.1 as an
+      `AnimatedSwitcher`-driven AppBar title replacement with
+      a 1-based match counter and chevron navigation. Inline
+      match highlighting in the rendered widget tree is an
+      explicit follow-up.
+- [x] **Font size and reading width settings** — shipped in
+      Phase 3.1 as a new "Reading" section on the settings
+      screen. Three knobs (font scale, reading width cap,
+      line height) applied to `MarkdownView` via a single
+      `ReadingSettings` value + notifier.
 - [x] **Recent files** — shipped early in Phase 1.7 via
       `RecentDocumentsStore` (SharedPreferences instead of drift,
       since the dataset stays small and a sync read keeps the

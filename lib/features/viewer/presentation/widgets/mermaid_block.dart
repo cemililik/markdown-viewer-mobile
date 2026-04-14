@@ -9,7 +9,7 @@ import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_pro
 import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_view.dart';
 
-/// Renders a single mermaid fenced code block as an inline SVG.
+/// Renders a single mermaid fenced code block as a PNG bitmap.
 ///
 /// Hooked into [MarkdownView] via `PreConfig.wrapper`. The widget
 /// owns no parsing logic — it reads the active Material 3
@@ -32,7 +32,7 @@ import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_
 /// same visual language as a `> [!WARNING]` admonition. Pending
 /// state shows a low-key spinner sized to roughly a typical
 /// diagram footprint so the surrounding text does not jump when
-/// the SVG arrives.
+/// the bitmap arrives.
 class MermaidBlock extends ConsumerStatefulWidget {
   const MermaidBlock({required this.code, super.key});
 
@@ -81,7 +81,31 @@ class _MermaidBlockState extends ConsumerState<MermaidBlock> {
   }
 
   static bool _sourceHasOwnDirective(String source) {
-    return source.trimLeft().startsWith('%%{init:');
+    // Skip an optional leading YAML frontmatter block (--- ... ---) before
+    // checking for a %%{init: directive, because mermaid source can legally
+    // start with frontmatter followed by the init block.
+    var scanFrom = 0;
+    if (source.trimLeft().startsWith('---')) {
+      final firstNl = source.indexOf('\n');
+      if (firstNl > 0) {
+        final opener = source.substring(0, firstNl).trimRight();
+        if (opener == '---') {
+          var cursor = firstNl + 1;
+          while (cursor < source.length) {
+            final nextNl = source.indexOf('\n', cursor);
+            final lineEnd = nextNl < 0 ? source.length : nextNl;
+            final line = source.substring(cursor, lineEnd).trimRight();
+            if (line == '---' || line == '...') {
+              scanFrom = nextNl < 0 ? source.length : nextNl + 1;
+              break;
+            }
+            if (nextNl < 0) break;
+            cursor = nextNl + 1;
+          }
+        }
+      }
+    }
+    return source.substring(scanFrom).trimLeft().startsWith('%%{init:');
   }
 
   @override
@@ -241,6 +265,74 @@ String buildMermaidInitDirective(ColorScheme scheme) {
     'relationColor': outline,
     'relationLabelColor': onSurface,
     'relationLabelBackground': surfaceContainer,
+
+    // ── Mindmap ───────────────────────────────────────────────────
+    //
+    // Mermaid's mindmap renderer cycles its branch fills through
+    // a `cScale<i>` palette and reads the matching label colours
+    // from `cScaleLabel<i>`. The defaults from `theme: "base"`
+    // produce washed-out pastels that are nearly unreadable on
+    // the dark Material 3 surface, so we override the first
+    // twelve slots (mindmaps rarely go past three levels — the
+    // extra slots cover wide root nodes with many children) with
+    // the project's container palette plus their matching `on*`
+    // text colours.
+    //
+    // The cycle is `primary → secondary → tertiary → surfaceHigh`
+    // so that no single branch family dominates and every level
+    // has paired text contrast that flips with light / dark
+    // theme automatically. The fourth slot is the neutral
+    // surface high so a fourth-level branch reads as "more of
+    // the same hierarchy" rather than as a fourth distinct
+    // semantic colour.
+    'cScale0': primaryContainer,
+    'cScale1': secondaryContainer,
+    'cScale2': tertiaryContainer,
+    'cScale3': surfaceContainerHigh,
+    'cScale4': primaryContainer,
+    'cScale5': secondaryContainer,
+    'cScale6': tertiaryContainer,
+    'cScale7': surfaceContainerHigh,
+    'cScale8': primaryContainer,
+    'cScale9': secondaryContainer,
+    'cScale10': tertiaryContainer,
+    'cScale11': surfaceContainerHigh,
+    'cScaleLabel0': onPrimaryContainer,
+    'cScaleLabel1': onSecondaryContainer,
+    'cScaleLabel2': onTertiaryContainer,
+    'cScaleLabel3': onSurface,
+    'cScaleLabel4': onPrimaryContainer,
+    'cScaleLabel5': onSecondaryContainer,
+    'cScaleLabel6': onTertiaryContainer,
+    'cScaleLabel7': onSurface,
+    'cScaleLabel8': onPrimaryContainer,
+    'cScaleLabel9': onSecondaryContainer,
+    'cScaleLabel10': onTertiaryContainer,
+    'cScaleLabel11': onSurface,
+    // Mindmap also uses `cScalePeer<i>` for the connecting
+    // lines between a branch and its children. Routing those
+    // through the matching `*Border*` (primary / secondary / …)
+    // colours keeps the line tied to the visual family of the
+    // branch it sprouts from.
+    'cScalePeer0': primary,
+    'cScalePeer1': secondary,
+    'cScalePeer2': tertiary,
+    'cScalePeer3': outline,
+    'cScalePeer4': primary,
+    'cScalePeer5': secondary,
+    'cScalePeer6': tertiary,
+    'cScalePeer7': outline,
+    'cScalePeer8': primary,
+    'cScalePeer9': secondary,
+    'cScalePeer10': tertiary,
+    'cScalePeer11': outline,
+    // Bump the global mermaid font from its default 14 px to
+    // 16 px so mindmap labels stay legible after the
+    // `useMaxWidth: true` SVG gets scaled into a phone column.
+    // 16 px is the same baseline the project uses for body
+    // text, so mindmap text matches the surrounding paragraph
+    // sizing instead of looking smaller.
+    'fontSize': '16px',
   };
 
   // Mermaid accepts JSON syntax inside the init directive, so we
@@ -320,6 +412,18 @@ class _MermaidImageState extends State<_MermaidImage>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+  }
+
+  @override
+  void didUpdateWidget(_MermaidImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.pngBytes, widget.pngBytes) ||
+        oldWidget.width != widget.width ||
+        oldWidget.height != widget.height) {
+      // A new bitmap arrived (re-render or theme flip) — discard the
+      // previous pan/zoom so the fresh diagram is shown at identity.
+      _transform.value = Matrix4.identity();
+    }
   }
 
   void _onTransformChanged() {

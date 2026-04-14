@@ -104,7 +104,7 @@ void main() {
         () => const FolderEnumeratorImpl().enumerate(
           LibraryFolder(path: missing, addedAt: DateTime.utc(2026, 4, 14)),
         ),
-        throwsA(isA<Object>()),
+        throwsA(isA<FileSystemException>()),
       );
     });
 
@@ -203,7 +203,7 @@ void main() {
         () => const FolderEnumeratorImpl().enumerateRecursive(
           LibraryFolder(path: missing, addedAt: DateTime.utc(2026, 4, 14)),
         ),
-        throwsA(isA<Object>()),
+        throwsA(isA<FileSystemException>()),
       );
     });
   });

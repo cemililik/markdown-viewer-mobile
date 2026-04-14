@@ -337,13 +337,102 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewerBookmarkLongPressHint =>
-      'Long-press the bookmark icon to remove it.';
+      'Long-press the bookmark icon for options.';
 
   @override
   String get viewerBookmarkMenuGoTo => 'Go to saved position';
 
   @override
   String get viewerBookmarkMenuRemove => 'Remove bookmark';
+
+  @override
+  String get viewerTocOpenTooltip => 'Table of contents';
+
+  @override
+  String get viewerTocEmpty => 'No headings in this document';
+
+  @override
+  String get viewerSearchOpenTooltip => 'Search in document';
+
+  @override
+  String get viewerSearchCloseTooltip => 'Close search';
+
+  @override
+  String get viewerSearchPreviousTooltip => 'Previous match';
+
+  @override
+  String get viewerSearchNextTooltip => 'Next match';
+
+  @override
+  String viewerSearchMatchCount(int current, int total) {
+    return '$current / $total';
+  }
+
+  @override
+  String get viewerSearchNoResults => 'No matches';
+
+  @override
+  String get settingsReadingTitle => 'Reading';
+
+  @override
+  String get settingsReadingFontScaleTitle => 'Font size';
+
+  @override
+  String settingsReadingFontScaleValue(int percent) {
+    return '$percent%';
+  }
+
+  @override
+  String get settingsReadingWidthTitle => 'Reading width';
+
+  @override
+  String get settingsReadingWidthComfortable => 'Comfortable';
+
+  @override
+  String get settingsReadingWidthWide => 'Wide';
+
+  @override
+  String get settingsReadingWidthFull => 'Full';
+
+  @override
+  String get settingsReadingLineHeightTitle => 'Line spacing';
+
+  @override
+  String get settingsReadingLineHeightCompact => 'Compact';
+
+  @override
+  String get settingsReadingLineHeightStandard => 'Standard';
+
+  @override
+  String get settingsReadingLineHeightAiry => 'Airy';
+
+  @override
+  String get settingsResetButton => 'Reset to defaults';
+
+  @override
+  String get settingsResetConfirmTitle => 'Reset settings?';
+
+  @override
+  String get settingsResetConfirmBody =>
+      'Theme, language, and reading comfort settings will all return to their defaults. Recents, bookmarks, and folders are not affected.';
+
+  @override
+  String get settingsResetConfirmAction => 'Reset';
+
+  @override
+  String get settingsResetSnack => 'Settings reset to defaults';
+
+  @override
+  String get viewerReadingPanelOpenTooltip => 'Reading settings';
+
+  @override
+  String get viewerReadingPanelTitle => 'Reading';
+
+  @override
+  String get viewerReadingPanelResetButton => 'Reset reading defaults';
+
+  @override
+  String get viewerReadingPanelAllSettings => 'All settings';
 
   @override
   String get viewerResumedFromBookmark =>

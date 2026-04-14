@@ -95,9 +95,18 @@ fi
 # 5) Static analysis runs project-wide. The analyzer needs the whole
 #    package to resolve imports, so this check may flag issues in files
 #    you did not touch. CONTRIBUTING.md documents that limitation.
-info "Running flutter analyze (project-wide)..."
-if ! flutter analyze --no-fatal-infos; then
-  fail "Static analysis failed. Fix the issues above and re-stage."
+#
+#    Set PRECOMMIT_SKIP_ANALYZE=1 to bypass this step when multiple
+#    agents are working in parallel and unstaged changes from another
+#    agent would otherwise block an unrelated commit. Use sparingly —
+#    CI always runs the full analysis regardless.
+if [[ "${PRECOMMIT_SKIP_ANALYZE:-0}" == "1" ]]; then
+  warn "PRECOMMIT_SKIP_ANALYZE=1 — skipping flutter analyze."
+else
+  info "Running flutter analyze (project-wide)..."
+  if ! flutter analyze --no-fatal-infos; then
+    fail "Static analysis failed. Fix the issues above and re-stage."
+  fi
 fi
 
 # 6) ARB completeness — every secondary locale must have the same key

@@ -18,8 +18,8 @@ import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer
 ///
 /// 1. The bundled mermaid asset loads and the sandbox initialises
 ///    cleanly.
-/// 2. A real flowchart source renders to a non-empty SVG string
-///    that starts with `<svg`.
+/// 2. A real flowchart source renders to a non-empty PNG bitmap and
+///    the output is validated by checking the PNG signature bytes.
 /// 3. A deliberately broken diagram surfaces as a typed
 ///    [MermaidRenderFailure] without crashing the renderer.
 /// 4. The cache short-circuits a repeat render — the second call

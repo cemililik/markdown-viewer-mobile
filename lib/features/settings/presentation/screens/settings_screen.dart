@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/settings/domain/app_locale.dart';
+import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
 
 /// Screen offering the two v1 personalisation knobs: theme mode and
 /// language. Lives on its own `/settings` route pushed from the
@@ -23,64 +24,242 @@ class SettingsScreen extends ConsumerWidget {
     final l10n = context.l10n;
     final themeMode = ref.watch(themeModeControllerProvider);
     final locale = ref.watch(localeControllerProvider);
+    final readingSettings = ref.watch(readingSettingsControllerProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.navSettings)),
       body: ListView(
         children: [
           _SectionHeader(title: l10n.settingsThemeTitle),
-          RadioGroup<ThemeMode>(
-            groupValue: themeMode,
-            onChanged: (value) {
-              if (value != null) {
-                ref.read(themeModeControllerProvider.notifier).set(value);
-              }
-            },
-            child: Column(
-              children: [
-                RadioListTile<ThemeMode>(
-                  title: Text(l10n.settingsThemeSystem),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            child: SegmentedButton<ThemeMode>(
+              segments: [
+                ButtonSegment(
                   value: ThemeMode.system,
+                  label: Text(l10n.settingsThemeSystem),
                 ),
-                RadioListTile<ThemeMode>(
-                  title: Text(l10n.settingsThemeLight),
+                ButtonSegment(
                   value: ThemeMode.light,
+                  label: Text(l10n.settingsThemeLight),
                 ),
-                RadioListTile<ThemeMode>(
-                  title: Text(l10n.settingsThemeDark),
+                ButtonSegment(
                   value: ThemeMode.dark,
+                  label: Text(l10n.settingsThemeDark),
                 ),
               ],
+              selected: {themeMode},
+              onSelectionChanged: (selection) {
+                ref
+                    .read(themeModeControllerProvider.notifier)
+                    .set(selection.first);
+              },
             ),
           ),
           const Divider(),
           _SectionHeader(title: l10n.settingsLanguageTitle),
-          RadioGroup<AppLocale>(
-            groupValue: locale,
-            onChanged: (value) {
-              if (value != null) {
-                ref.read(localeControllerProvider.notifier).set(value);
-              }
-            },
-            child: Column(
-              children: [
-                RadioListTile<AppLocale>(
-                  title: Text(l10n.settingsLanguageSystem),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            child: SegmentedButton<AppLocale>(
+              segments: [
+                ButtonSegment(
                   value: AppLocale.system,
+                  label: Text(l10n.settingsLanguageSystem),
                 ),
-                RadioListTile<AppLocale>(
-                  title: Text(l10n.settingsLanguageEnglish),
+                ButtonSegment(
                   value: AppLocale.english,
+                  label: Text(l10n.settingsLanguageEnglish),
                 ),
-                RadioListTile<AppLocale>(
-                  title: Text(l10n.settingsLanguageTurkish),
+                ButtonSegment(
                   value: AppLocale.turkish,
+                  label: Text(l10n.settingsLanguageTurkish),
                 ),
               ],
+              selected: {locale},
+              onSelectionChanged: (selection) {
+                ref
+                    .read(localeControllerProvider.notifier)
+                    .set(selection.first);
+              },
+            ),
+          ),
+          const Divider(),
+          _SectionHeader(title: l10n.settingsReadingTitle),
+          _ReadingSettingsSection(settings: readingSettings),
+          const Divider(),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton.icon(
+                icon: const Icon(Icons.restart_alt),
+                label: Text(l10n.settingsResetButton),
+                onPressed: () => _confirmReset(context, ref),
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  /// Shows a confirmation dialog before wiping every user
+  /// preference back to the platform defaults. Reset is always
+  /// destructive — even if the user wanted it, an accidental
+  /// tap on the wrong button would feel like data loss — so
+  /// the dialog is mandatory rather than a quick snackbar
+  /// undo.
+  Future<void> _confirmReset(BuildContext context, WidgetRef ref) async {
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder:
+          (dialogContext) => AlertDialog(
+            title: Text(l10n.settingsResetConfirmTitle),
+            content: Text(l10n.settingsResetConfirmBody),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(l10n.actionCancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(l10n.settingsResetConfirmAction),
+              ),
+            ],
+          ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    ref.read(themeModeControllerProvider.notifier).set(ThemeMode.system);
+    ref.read(localeControllerProvider.notifier).set(AppLocale.system);
+    ref.read(readingSettingsControllerProvider.notifier).resetToDefaults();
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(l10n.settingsResetSnack)));
+  }
+}
+
+/// Reading-comfort section of the settings screen: font scale
+/// slider + reading width segmented button + line height
+/// segmented button. Each control wires straight to
+/// [ReadingSettingsController] so a drag / tap re-renders the
+/// viewer body through Riverpod without a manual invalidation.
+class _ReadingSettingsSection extends ConsumerWidget {
+  const _ReadingSettingsSection({required this.settings});
+
+  final ReadingSettings settings;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final theme = Theme.of(context);
+    final controller = ref.read(readingSettingsControllerProvider.notifier);
+
+    final percent = (settings.fontScale * 100).round();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.settingsReadingFontScaleTitle,
+                  style: theme.textTheme.bodyLarge,
+                ),
+              ),
+              Text(
+                l10n.settingsReadingFontScaleValue(percent),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Slider(
+            value: settings.fontScale,
+            min: ReadingSettings.minFontScale,
+            max: ReadingSettings.maxFontScale,
+            // Step in 5% increments so the live preview snaps to
+            // readable values instead of turning into a
+            // fractional pixel mess — users generally want
+            // "115%", not "114.73%".
+            divisions:
+                ((ReadingSettings.maxFontScale - ReadingSettings.minFontScale) /
+                        0.05)
+                    .round(),
+            label: '$percent%',
+            onChanged: controller.setFontScale,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+          child: Text(
+            l10n.settingsReadingWidthTitle,
+            style: theme.textTheme.bodyLarge,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: SegmentedButton<ReadingWidth>(
+            segments: [
+              ButtonSegment(
+                value: ReadingWidth.comfortable,
+                label: Text(l10n.settingsReadingWidthComfortable),
+              ),
+              ButtonSegment(
+                value: ReadingWidth.wide,
+                label: Text(l10n.settingsReadingWidthWide),
+              ),
+              ButtonSegment(
+                value: ReadingWidth.full,
+                label: Text(l10n.settingsReadingWidthFull),
+              ),
+            ],
+            selected: {settings.width},
+            onSelectionChanged: (selection) {
+              controller.setWidth(selection.first);
+            },
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 6),
+          child: Text(
+            l10n.settingsReadingLineHeightTitle,
+            style: theme.textTheme.bodyLarge,
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: SegmentedButton<ReadingLineHeight>(
+            segments: [
+              ButtonSegment(
+                value: ReadingLineHeight.compact,
+                label: Text(l10n.settingsReadingLineHeightCompact),
+              ),
+              ButtonSegment(
+                value: ReadingLineHeight.standard,
+                label: Text(l10n.settingsReadingLineHeightStandard),
+              ),
+              ButtonSegment(
+                value: ReadingLineHeight.airy,
+                label: Text(l10n.settingsReadingLineHeightAiry),
+              ),
+            ],
+            selected: {settings.lineHeight},
+            onSelectionChanged: (selection) {
+              controller.setLineHeight(selection.first);
+            },
+          ),
+        ),
+      ],
     );
   }
 }

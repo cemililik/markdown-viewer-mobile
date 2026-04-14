@@ -7,6 +7,7 @@ import 'package:markdown_viewer/features/viewer/data/services/mermaid/headless_m
 import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_html_template.dart';
 import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_js_channel.dart';
 import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_lru_cache.dart';
+import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_utils.dart';
 import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
 
 /// WebView-backed [MermaidRenderer] implementation.
@@ -19,9 +20,11 @@ import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer
 /// Behaviour:
 ///
 /// 1. **SHA-256-keyed LRU cache.** Identical sources hit the cache
-///    and short-circuit the JS bridge entirely. The key is the
-///    hex SHA-256 of the source string; the value is the rendered
-///    SVG. Cache size is bounded (default 64) per ADR-0005.
+///    and short-circuit the JS bridge entirely, returning cached
+///    PNG bytes. The key is the hex SHA-256 of the source string;
+///    the value is a [_CachedBitmap] containing PNG bytes and
+///    natural dimensions. Cache size is bounded (default 64) per
+///    ADR-0005.
 /// 2. **In-flight collapse.** Two concurrent `render()` calls for
 ///    the same source share a single `Completer` instead of
 ///    issuing two JS evals.
@@ -310,8 +313,8 @@ class MermaidRendererImpl implements MermaidRenderer {
       );
       return;
     }
-    final width = _asPositiveDouble(message['width']);
-    final height = _asPositiveDouble(message['height']);
+    final width = asPositiveDouble(message['width']);
+    final height = asPositiveDouble(message['height']);
     if (width == null || height == null) {
       completer.complete(
         const MermaidRenderFailure(
@@ -332,21 +335,6 @@ class MermaidRendererImpl implements MermaidRenderer {
         height: bitmap.height,
       ),
     );
-  }
-
-  /// Coerces a JSON-bridged number into a positive [double].
-  /// The `flutter_inappwebview` bridge sometimes hands integers
-  /// back to Dart as [int] and decimals as [double]; both need to
-  /// end up as doubles with a sanity-bounded value so we do not
-  /// cache a zero-sized bitmap that would crash layout.
-  static double? _asPositiveDouble(Object? raw) {
-    if (raw is num) {
-      final value = raw.toDouble();
-      if (value > 0 && value.isFinite) {
-        return value;
-      }
-    }
-    return null;
   }
 
   String? _keyForCompleter(Completer<MermaidRenderResult> completer) {
@@ -415,10 +403,11 @@ class MermaidRendererImpl implements MermaidRenderer {
       return null;
     }
     final firstNewline = source.indexOf('\n');
-    if (firstNewline < 0 || firstNewline > 4) {
-      // `---\n` is four bytes; anything longer means the first
-      // line is `---junk` or similar, not a real frontmatter
-      // opener.
+    if (firstNewline < 0 || firstNewline > 32) {
+      // The opener must be `---` followed immediately by a newline
+      // (index 3 for LF, 4 for CRLF) or optional trailing whitespace.
+      // A limit of 32 accommodates any reasonable whitespace while
+      // still rejecting `---junk` lines that are not real openers.
       return null;
     }
     final openerLine = source.substring(0, firstNewline).trimRight();

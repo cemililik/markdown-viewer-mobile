@@ -14,6 +14,7 @@ final class RecentDocument {
     required this.openedAt,
     this.isPinned = false,
     this.preview,
+    this.displayName,
   });
 
   /// Identity of the document the user opened. The path inside is
@@ -42,6 +43,21 @@ final class RecentDocument {
   /// parent-folder + relative-time subtitle.
   final String? preview;
 
+  /// Optional override for the title the tile shows. Populated
+  /// when a file was opened from a folder source and its bytes
+  /// were materialised into the app cache — in that case the
+  /// cache path's basename is a SHA-256 hash, which is not a
+  /// useful thing to show the user. The display name carries the
+  /// original filename from the folder enumeration so the tile
+  /// still reads "readme.md" instead of
+  /// "b311fa8502d7d0a19b4d8…".
+  ///
+  /// `null` for files opened directly via the file picker or
+  /// deep links — those already have a human-readable basename
+  /// on the filesystem path, and falling back to
+  /// `p.basename(documentId.value)` is the right answer.
+  final String? displayName;
+
   /// Returns a copy of this entry with any combination of fields
   /// replaced. Mirrors the `copyWith` shape we would get from
   /// freezed without pulling in the codegen dep.
@@ -50,12 +66,14 @@ final class RecentDocument {
     DateTime? openedAt,
     bool? isPinned,
     String? preview,
+    String? displayName,
   }) {
     return RecentDocument(
       documentId: documentId ?? this.documentId,
       openedAt: openedAt ?? this.openedAt,
       isPinned: isPinned ?? this.isPinned,
       preview: preview ?? this.preview,
+      displayName: displayName ?? this.displayName,
     );
   }
 }
