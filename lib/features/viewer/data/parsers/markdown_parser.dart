@@ -24,13 +24,14 @@ final class MarkdownParser {
   /// exception reaches application code.
   Document parse({required DocumentId id, required List<int> bytes}) {
     final source = _decode(bytes);
-    final headings = _extractHeadings(source);
+    final parsed = _parseStructure(source);
     return Document(
       id: id,
       source: source,
-      headings: headings,
+      headings: parsed.headings,
       lineCount: _countLines(source),
       byteSize: bytes.length,
+      topLevelBlockCount: parsed.topLevelBlockCount,
     );
   }
 
@@ -56,7 +57,7 @@ final class MarkdownParser {
     return '\n'.allMatches(source).length + (source.endsWith('\n') ? 0 : 1);
   }
 
-  List<HeadingRef> _extractHeadings(String source) {
+  _ParsedStructure _parseStructure(String source) {
     final document = md.Document(
       extensionSet: md.ExtensionSet.gitHubFlavored,
       encodeHtml: true,
@@ -64,19 +65,41 @@ final class MarkdownParser {
     final nodes = document.parseLines(const LineSplitter().convert(source));
     final out = <HeadingRef>[];
     final seenAnchors = <String, int>{};
-    _walkForHeadings(nodes, out, seenAnchors);
-    return List.unmodifiable(out);
+    // Walk top-level blocks once and, for every heading found
+    // (either the block itself or nested inside a container),
+    // stamp the outer top-level index. The TOC drawer uses this
+    // index to look up a `GlobalKey` on the rendered widget and
+    // drive `Scrollable.ensureVisible`.
+    for (var i = 0; i < nodes.length; i += 1) {
+      final node = nodes[i];
+      if (node is! md.Element) continue;
+      _walkForHeadings(
+        nodes: [node],
+        blockIndex: i,
+        out: out,
+        seenAnchors: seenAnchors,
+      );
+    }
+    return _ParsedStructure(
+      headings: List.unmodifiable(out),
+      topLevelBlockCount: nodes.length,
+    );
   }
 
   /// Depth-first walk that collects heading elements from anywhere in
   /// the parsed AST, not just top-level nodes. Headings can legally
   /// appear inside blockquotes, list items, and other container blocks;
   /// a top-level-only scan would silently drop them from the TOC.
-  void _walkForHeadings(
-    List<md.Node> nodes,
-    List<HeadingRef> out,
-    Map<String, int> seenAnchors,
-  ) {
+  ///
+  /// Every heading found is stamped with [blockIndex] — the index of
+  /// the enclosing top-level block — so the viewer can map from
+  /// `HeadingRef` back to a widget key on the render side.
+  void _walkForHeadings({
+    required List<md.Node> nodes,
+    required int blockIndex,
+    required List<HeadingRef> out,
+    required Map<String, int> seenAnchors,
+  }) {
     for (final node in nodes) {
       if (node is! md.Element) {
         continue;
@@ -86,12 +109,24 @@ final class MarkdownParser {
         final text = _plainText(node);
         if (text.isNotEmpty) {
           final anchor = _uniqueAnchor(text, seenAnchors);
-          out.add(HeadingRef(level: level, text: text, anchor: anchor));
+          out.add(
+            HeadingRef(
+              level: level,
+              text: text,
+              anchor: anchor,
+              blockIndex: blockIndex,
+            ),
+          );
         }
       }
       final children = node.children;
       if (children != null && children.isNotEmpty) {
-        _walkForHeadings(children, out, seenAnchors);
+        _walkForHeadings(
+          nodes: children,
+          blockIndex: blockIndex,
+          out: out,
+          seenAnchors: seenAnchors,
+        );
       }
     }
   }
@@ -152,4 +187,19 @@ final class MarkdownParser {
     final trimmed = deduped.replaceAll(RegExp(r'^-+|-+$'), '');
     return trimmed.isEmpty ? 'section' : trimmed;
   }
+}
+
+/// Internal tuple returned by [MarkdownParser._parseStructure] so
+/// the public [MarkdownParser.parse] method stays a single AST
+/// walk — one pass collects headings with their enclosing block
+/// index AND the top-level block count used by the viewer to
+/// wire its per-block `GlobalKey`s.
+class _ParsedStructure {
+  const _ParsedStructure({
+    required this.headings,
+    required this.topLevelBlockCount,
+  });
+
+  final List<HeadingRef> headings;
+  final int topLevelBlockCount;
 }

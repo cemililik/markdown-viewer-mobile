@@ -680,6 +680,120 @@ abstract class AppLocalizations {
   /// **'Remove bookmark'**
   String get viewerBookmarkMenuRemove;
 
+  /// Tooltip on the viewer AppBar action that opens the right-side TOC drawer.
+  ///
+  /// In en, this message translates to:
+  /// **'Table of contents'**
+  String get viewerTocOpenTooltip;
+
+  /// Placeholder shown inside the TOC drawer when the active document has no headings the parser could extract.
+  ///
+  /// In en, this message translates to:
+  /// **'No headings in this document'**
+  String get viewerTocEmpty;
+
+  /// Tooltip on the viewer AppBar action that replaces the title with the in-document search field.
+  ///
+  /// In en, this message translates to:
+  /// **'Search in document'**
+  String get viewerSearchOpenTooltip;
+
+  /// Tooltip on the close button that returns the viewer AppBar to its document-title state.
+  ///
+  /// In en, this message translates to:
+  /// **'Close search'**
+  String get viewerSearchCloseTooltip;
+
+  /// Tooltip on the chevron that jumps to the previous in-document search match.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous match'**
+  String get viewerSearchPreviousTooltip;
+
+  /// Tooltip on the chevron that jumps to the next in-document search match.
+  ///
+  /// In en, this message translates to:
+  /// **'Next match'**
+  String get viewerSearchNextTooltip;
+
+  /// Counter shown next to the in-document search field: 1-based current match index over total matches.
+  ///
+  /// In en, this message translates to:
+  /// **'{current} / {total}'**
+  String viewerSearchMatchCount(int current, int total);
+
+  /// Inline label shown next to the in-document search field when the current query matches no lines.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get viewerSearchNoResults;
+
+  /// Section header above the reading comfort controls on the settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading'**
+  String get settingsReadingTitle;
+
+  /// Label above the font size slider in the reading comfort section.
+  ///
+  /// In en, this message translates to:
+  /// **'Font size'**
+  String get settingsReadingFontScaleTitle;
+
+  /// Format string for the font size slider's current value, e.g. '115%'.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}%'**
+  String settingsReadingFontScaleValue(int percent);
+
+  /// Label above the reading-column width segmented button.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading width'**
+  String get settingsReadingWidthTitle;
+
+  /// Reading width preset that caps the column at roughly 680 dp for long-form prose.
+  ///
+  /// In en, this message translates to:
+  /// **'Comfortable'**
+  String get settingsReadingWidthComfortable;
+
+  /// Reading width preset that caps the column at roughly 840 dp so code blocks breathe on tablets.
+  ///
+  /// In en, this message translates to:
+  /// **'Wide'**
+  String get settingsReadingWidthWide;
+
+  /// Reading width preset that removes the cap and lets the column stretch to the full viewport width.
+  ///
+  /// In en, this message translates to:
+  /// **'Full'**
+  String get settingsReadingWidthFull;
+
+  /// Label above the line-height segmented button.
+  ///
+  /// In en, this message translates to:
+  /// **'Line spacing'**
+  String get settingsReadingLineHeightTitle;
+
+  /// Line height preset that tightens paragraph line spacing for dense layouts.
+  ///
+  /// In en, this message translates to:
+  /// **'Compact'**
+  String get settingsReadingLineHeightCompact;
+
+  /// Default line height preset matching Material 3 body-medium.
+  ///
+  /// In en, this message translates to:
+  /// **'Standard'**
+  String get settingsReadingLineHeightStandard;
+
+  /// Loosest line height preset with the most breathing room between lines.
+  ///
+  /// In en, this message translates to:
+  /// **'Airy'**
+  String get settingsReadingLineHeightAiry;
+
   /// Snackbar shown when a document opens and the viewer automatically restores the scroll position from a saved bookmark.
   ///
   /// In en, this message translates to:

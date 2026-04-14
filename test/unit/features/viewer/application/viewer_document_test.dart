@@ -15,9 +15,12 @@ void main() {
   const sampleDocument = Document(
     id: id,
     source: '# Example',
-    headings: [HeadingRef(level: 1, text: 'Example', anchor: 'example')],
+    headings: [
+      HeadingRef(level: 1, text: 'Example', anchor: 'example', blockIndex: 0),
+    ],
     lineCount: 1,
     byteSize: 9,
+    topLevelBlockCount: 1,
   );
 
   ProviderContainer makeContainer(DocumentRepository repo) {

@@ -123,6 +123,38 @@
   "viewerBookmarkLongPressHint": "Kaldırmak için ikona uzun bas.",
   "viewerBookmarkMenuGoTo": "Kaldığın yere dön",
   "viewerBookmarkMenuRemove": "İşareti kaldır",
+
+  "viewerTocOpenTooltip": "İçindekiler",
+  "viewerTocEmpty": "Bu belgede başlık yok",
+  "viewerSearchOpenTooltip": "Belgede ara",
+  "viewerSearchCloseTooltip": "Aramayı kapat",
+  "viewerSearchPreviousTooltip": "Önceki eşleşme",
+  "viewerSearchNextTooltip": "Sonraki eşleşme",
+  "viewerSearchMatchCount": "{current} / {total}",
+  "@viewerSearchMatchCount": {
+    "placeholders": {
+      "current": { "type": "int", "example": "3" },
+      "total": { "type": "int", "example": "12" }
+    }
+  },
+  "viewerSearchNoResults": "Eşleşme yok",
+
+  "settingsReadingTitle": "Okuma",
+  "settingsReadingFontScaleTitle": "Yazı boyutu",
+  "settingsReadingFontScaleValue": "%{percent}",
+  "@settingsReadingFontScaleValue": {
+    "placeholders": {
+      "percent": { "type": "int", "example": "115" }
+    }
+  },
+  "settingsReadingWidthTitle": "Okuma genişliği",
+  "settingsReadingWidthComfortable": "Rahat",
+  "settingsReadingWidthWide": "Geniş",
+  "settingsReadingWidthFull": "Tam",
+  "settingsReadingLineHeightTitle": "Satır aralığı",
+  "settingsReadingLineHeightCompact": "Sıkı",
+  "settingsReadingLineHeightStandard": "Standart",
+  "settingsReadingLineHeightAiry": "Ferah",
   "viewerResumedFromBookmark": "Son okuduğun yerden devam ediliyor",
   "actionGoToTop": "Başa dön",
   "viewerLoading": "Doküman yükleniyor…",

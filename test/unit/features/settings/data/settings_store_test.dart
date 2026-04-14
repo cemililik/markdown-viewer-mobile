@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/features/settings/data/settings_store.dart';
 import 'package:markdown_viewer/features/settings/domain/app_locale.dart';
+import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -105,5 +106,54 @@ void main() {
         expect(reopened.readHasSeenBookmarkHint(), isTrue);
       },
     );
+
+    test(
+      'readReadingSettings returns the defaults on a fresh install',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = SettingsStore(prefs);
+
+        final read = store.readReadingSettings();
+        expect(read.fontScale, ReadingSettings.defaults.fontScale);
+        expect(read.width, ReadingSettings.defaults.width);
+        expect(read.lineHeight, ReadingSettings.defaults.lineHeight);
+      },
+    );
+
+    test('writeReadingSettings round-trips the three knobs together', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final store = SettingsStore(prefs);
+
+      await store.writeReadingSettings(
+        const ReadingSettings(
+          fontScale: 1.15,
+          width: ReadingWidth.wide,
+          lineHeight: ReadingLineHeight.airy,
+        ),
+      );
+      final reopened = SettingsStore(prefs);
+      final read = reopened.readReadingSettings();
+
+      expect(read.fontScale, closeTo(1.15, 1e-9));
+      expect(read.width, ReadingWidth.wide);
+      expect(read.lineHeight, ReadingLineHeight.airy);
+    });
+
+    test('writeReadingSettings clamps an out-of-range font scale to the '
+        'supported window', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final store = SettingsStore(prefs);
+
+      await store.writeReadingSettings(
+        const ReadingSettings(
+          fontScale: 3.0,
+          width: ReadingWidth.comfortable,
+          lineHeight: ReadingLineHeight.standard,
+        ),
+      );
+      final read = store.readReadingSettings();
+
+      expect(read.fontScale, ReadingSettings.maxFontScale);
+    });
   });
 }

@@ -26,6 +26,17 @@ abstract class HeadingRef with _$HeadingRef {
     /// URL-safe slug used as the anchor target. Produced by
     /// lowercasing [text] and collapsing runs of non-word characters.
     required String anchor,
+
+    /// Zero-based index of the top-level markdown block that
+    /// contains this heading. Used by the TOC drawer to look up
+    /// a widget-side `GlobalKey` and drive
+    /// `Scrollable.ensureVisible` without measuring offsets by
+    /// hand. When a heading appears nested inside a container
+    /// block (blockquote, list item, admonition), this is the
+    /// index of that top-level container — scrolling to the
+    /// container is close enough for the reader to find the
+    /// heading.
+    required int blockIndex,
   }) = _HeadingRef;
 }
 
@@ -56,5 +67,17 @@ abstract class Document with _$Document {
 
     /// Byte length of the original file on disk, before UTF-8 decoding.
     required int byteSize,
+
+    /// Number of top-level markdown blocks the parser produced.
+    /// Used by the viewer to assign one `GlobalKey` per block and
+    /// by the TOC drawer + in-doc search to `Scrollable.ensureVisible`
+    /// the correct block without pixel measuring.
+    ///
+    /// When the render layer's widget count disagrees with this
+    /// number the viewer falls back to approximate fraction-based
+    /// scrolling rather than crashing — a regression in
+    /// `markdown_widget`'s block count per render would silently
+    /// produce a degraded TOC, not a broken viewer.
+    required int topLevelBlockCount,
   }) = _Document;
 }

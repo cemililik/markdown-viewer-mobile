@@ -2,6 +2,7 @@ import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/features/settings/data/settings_store.dart';
 import 'package:markdown_viewer/features/settings/domain/app_locale.dart';
+import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
 
 /// Application-layer binding for the [SettingsStore] port. Thrown by
 /// default so a missing composition-root override (tests that forget
@@ -69,3 +70,48 @@ class LocaleController extends Notifier<AppLocale> {
 final localeControllerProvider = NotifierProvider<LocaleController, AppLocale>(
   LocaleController.new,
 );
+
+/// Notifier that owns the user's [ReadingSettings]. The three
+/// knobs (font scale, reading width cap, line height) live in
+/// one notifier so a widget that cares about the reading layout
+/// can rebuild once when any of them change, rather than three
+/// times through three providers.
+///
+/// Mutations go through granular setters that short-circuit when
+/// the incoming value matches the current state — `Slider`
+/// callbacks fire continuously during a drag, and we do not
+/// want to schedule a prefs write on every pointer event.
+class ReadingSettingsController extends Notifier<ReadingSettings> {
+  @override
+  ReadingSettings build() {
+    final store = ref.watch(settingsStoreProvider);
+    return store.readReadingSettings();
+  }
+
+  void setFontScale(double value) {
+    final clamped = value.clamp(
+      ReadingSettings.minFontScale,
+      ReadingSettings.maxFontScale,
+    );
+    if ((clamped - state.fontScale).abs() < 1e-6) return;
+    state = state.copyWith(fontScale: clamped);
+    ref.read(settingsStoreProvider).writeReadingSettings(state).ignore();
+  }
+
+  void setWidth(ReadingWidth width) {
+    if (width == state.width) return;
+    state = state.copyWith(width: width);
+    ref.read(settingsStoreProvider).writeReadingSettings(state).ignore();
+  }
+
+  void setLineHeight(ReadingLineHeight lineHeight) {
+    if (lineHeight == state.lineHeight) return;
+    state = state.copyWith(lineHeight: lineHeight);
+    ref.read(settingsStoreProvider).writeReadingSettings(state).ignore();
+  }
+}
+
+final readingSettingsControllerProvider =
+    NotifierProvider<ReadingSettingsController, ReadingSettings>(
+      ReadingSettingsController.new,
+    );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart' show ThemeMode;
 import 'package:markdown_viewer/features/settings/domain/app_locale.dart';
+import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Thin `SharedPreferences` wrapper that persists the two settings
@@ -17,6 +18,9 @@ class SettingsStore {
   static const String _themeModeKey = 'settings.themeMode';
   static const String _localeTagKey = 'settings.localeTag';
   static const String _bookmarkHintSeenKey = 'settings.bookmarkHintSeen';
+  static const String _readingFontScaleKey = 'settings.readingFontScale';
+  static const String _readingWidthKey = 'settings.readingWidth';
+  static const String _readingLineHeightKey = 'settings.readingLineHeight';
 
   /// Returns the persisted [ThemeMode] or [ThemeMode.system] when
   /// nothing has been stored yet.
@@ -69,6 +73,41 @@ class SettingsStore {
   /// save confirmation.
   Future<void> markBookmarkHintSeen() {
     return _prefs.setBool(_bookmarkHintSeenKey, true);
+  }
+
+  /// Returns the persisted [ReadingSettings], or
+  /// [ReadingSettings.defaults] for any field that has not been
+  /// written yet. The three reading knobs are stored as
+  /// separate keys (not a single JSON blob) so rolling back a
+  /// single slider after a bug does not require clearing the
+  /// other two.
+  ReadingSettings readReadingSettings() {
+    final scaleRaw = _prefs.getDouble(_readingFontScaleKey);
+    final widthTag = _prefs.getString(_readingWidthKey);
+    final lineHeightTag = _prefs.getString(_readingLineHeightKey);
+    final clampedScale = (scaleRaw ?? ReadingSettings.defaults.fontScale).clamp(
+      ReadingSettings.minFontScale,
+      ReadingSettings.maxFontScale,
+    );
+    return ReadingSettings(
+      fontScale: clampedScale,
+      width: ReadingWidth.fromTag(widthTag),
+      lineHeight: ReadingLineHeight.fromTag(lineHeightTag),
+    );
+  }
+
+  /// Persists [settings]. The font scale is clamped to the
+  /// `[minFontScale, maxFontScale]` range so an out-of-bounds
+  /// value from a future migration or a direct prefs edit
+  /// cannot wedge the reading layout at an unreadable size.
+  Future<void> writeReadingSettings(ReadingSettings settings) async {
+    final clampedScale = settings.fontScale.clamp(
+      ReadingSettings.minFontScale,
+      ReadingSettings.maxFontScale,
+    );
+    await _prefs.setDouble(_readingFontScaleKey, clampedScale);
+    await _prefs.setString(_readingWidthKey, settings.width.tag);
+    await _prefs.setString(_readingLineHeightKey, settings.lineHeight.tag);
   }
 
   static String _themeModeTag(ThemeMode mode) {

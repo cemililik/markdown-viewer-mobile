@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart' as hl_dark;
 import 'package:flutter_highlight/themes/atom-one-light.dart' as hl_light;
 import 'package:markdown/markdown.dart' as md;
+import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
 import 'package:markdown_viewer/features/viewer/application/markdown_extensions/math_syntax.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_view.dart';
@@ -75,7 +76,13 @@ final MarkdownGenerator _markdownGenerator = MarkdownGenerator(
 ///   the rendering contract and `docs/standards/security-standards.md`
 ///   §WebView Rules for the sandbox configuration.
 class MarkdownView extends StatelessWidget {
-  const MarkdownView({required this.document, this.controller, super.key});
+  const MarkdownView({
+    required this.document,
+    this.controller,
+    this.blockKeys,
+    this.readingSettings = ReadingSettings.defaults,
+    super.key,
+  });
 
   final Document document;
 
@@ -88,6 +95,24 @@ class MarkdownView extends StatelessWidget {
   /// future caller that just wants to render a document without
   /// the scroll-bound features.
   final ScrollController? controller;
+
+  /// Optional map from top-level block index to a `GlobalKey`
+  /// that should wrap that block's rendered widget. Used by
+  /// `ViewerScreen` to drive the TOC drawer's jump-to-heading
+  /// via `Scrollable.ensureVisible` without having to measure
+  /// offsets by hand.
+  ///
+  /// When the map is empty or `null`, every widget renders
+  /// without any extra wrapping — unit tests and non-scrolling
+  /// callers stay on the legacy path.
+  final Map<int, GlobalKey>? blockKeys;
+
+  /// Reading comfort settings (font scale, reading width cap,
+  /// line height) that shape how the document renders. Held at
+  /// this layer rather than read from a provider so
+  /// `MarkdownView` remains testable without a `ProviderScope`
+  /// and so the viewer can drive it from its own `ref.watch`.
+  final ReadingSettings readingSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -107,8 +132,18 @@ class MarkdownView extends StatelessWidget {
     // `MarkdownConfig.darkConfig` survives unchanged. See
     // `MarkdownConfig.copy` in
     // `package:markdown_widget/config/configs.dart`.
+    final basePConfig = base.p;
+    final pConfigWithLineHeight = PConfig(
+      textStyle: basePConfig.textStyle.copyWith(
+        height: readingSettings.lineHeight.multiplier,
+      ),
+    );
     final config = base.copy(
-      configs: [_buildPreConfig(theme), _buildTableConfig()],
+      configs: [
+        _buildPreConfig(theme),
+        _buildTableConfig(),
+        pConfigWithLineHeight,
+      ],
     );
 
     // We render through `MarkdownGenerator.buildWidgets(...)` (rather
@@ -121,6 +156,23 @@ class MarkdownView extends StatelessWidget {
       document.source,
       config: config,
     );
+
+    // Wrap each block widget in a KeyedSubtree if the viewer
+    // handed us a GlobalKey for that index. The key lets
+    // Scrollable.ensureVisible target the rendered widget
+    // without any pixel measuring on our side — which is how
+    // the TOC drawer jumps to a heading and the in-doc search
+    // lands on the block that contains the current match.
+    final keys = blockKeys;
+    final columnChildren = <Widget>[];
+    for (var i = 0; i < widgets.length; i += 1) {
+      final key = keys?[i];
+      if (key != null) {
+        columnChildren.add(KeyedSubtree(key: key, child: widgets[i]));
+      } else {
+        columnChildren.add(widgets[i]);
+      }
+    }
 
     // The `Scrollbar` wrapper picks up the app-wide
     // `ScrollbarThemeData` (see `lib/app/theme.dart`): a thin
@@ -147,14 +199,44 @@ class MarkdownView extends StatelessWidget {
     // frame we can revisit with explicit `itemExtentBuilder` or
     // a slot-sliced variant, but typical docs are a few dozen
     // blocks where this cost is invisible.
-    return Scrollbar(
-      controller: controller,
-      child: SingleChildScrollView(
+    //
+    // The `MediaQuery` override applies the reading font scale
+    // on top of whatever the system's dynamic type setting
+    // already provides, so a user who keeps the system default
+    // (1.0x) and picks 1.15x in settings lands at 1.15x — and a
+    // user with 1.3x system dynamic type and 1.15x in-app lands
+    // at roughly 1.5x, matching other reader apps that stack
+    // user preference over accessibility.
+    //
+    // The `ConstrainedBox` caps the column at the user's chosen
+    // reading width on wide viewports. On a narrow phone every
+    // `ReadingWidth` option collapses to the full viewport, so
+    // the cap is only meaningful in landscape / tablet /
+    // side-by-side layouts.
+    final mq = MediaQuery.of(context);
+    return MediaQuery(
+      data: mq.copyWith(
+        textScaler: mq.textScaler.clamp(
+          minScaleFactor: readingSettings.fontScale,
+          maxScaleFactor: readingSettings.fontScale,
+        ),
+      ),
+      child: Scrollbar(
         controller: controller,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: widgets,
+        child: SingleChildScrollView(
+          controller: controller,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: readingSettings.width.maxWidth,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: columnChildren,
+              ),
+            ),
+          ),
         ),
       ),
     );

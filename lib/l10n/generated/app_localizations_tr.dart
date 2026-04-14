@@ -343,6 +343,67 @@ class AppLocalizationsTr extends AppLocalizations {
   String get viewerBookmarkMenuRemove => 'İşareti kaldır';
 
   @override
+  String get viewerTocOpenTooltip => 'İçindekiler';
+
+  @override
+  String get viewerTocEmpty => 'Bu belgede başlık yok';
+
+  @override
+  String get viewerSearchOpenTooltip => 'Belgede ara';
+
+  @override
+  String get viewerSearchCloseTooltip => 'Aramayı kapat';
+
+  @override
+  String get viewerSearchPreviousTooltip => 'Önceki eşleşme';
+
+  @override
+  String get viewerSearchNextTooltip => 'Sonraki eşleşme';
+
+  @override
+  String viewerSearchMatchCount(int current, int total) {
+    return '$current / $total';
+  }
+
+  @override
+  String get viewerSearchNoResults => 'Eşleşme yok';
+
+  @override
+  String get settingsReadingTitle => 'Okuma';
+
+  @override
+  String get settingsReadingFontScaleTitle => 'Yazı boyutu';
+
+  @override
+  String settingsReadingFontScaleValue(int percent) {
+    return '%$percent';
+  }
+
+  @override
+  String get settingsReadingWidthTitle => 'Okuma genişliği';
+
+  @override
+  String get settingsReadingWidthComfortable => 'Rahat';
+
+  @override
+  String get settingsReadingWidthWide => 'Geniş';
+
+  @override
+  String get settingsReadingWidthFull => 'Tam';
+
+  @override
+  String get settingsReadingLineHeightTitle => 'Satır aralığı';
+
+  @override
+  String get settingsReadingLineHeightCompact => 'Sıkı';
+
+  @override
+  String get settingsReadingLineHeightStandard => 'Standart';
+
+  @override
+  String get settingsReadingLineHeightAiry => 'Ferah';
+
+  @override
   String get viewerResumedFromBookmark => 'Son okuduğun yerden devam ediliyor';
 
   @override

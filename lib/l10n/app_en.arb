@@ -408,6 +408,91 @@
   "@viewerBookmarkMenuRemove": {
     "description": "Bottom sheet action that clears the saved reading position for the active document."
   },
+
+  "viewerTocOpenTooltip": "Table of contents",
+  "@viewerTocOpenTooltip": {
+    "description": "Tooltip on the viewer AppBar action that opens the right-side TOC drawer."
+  },
+  "viewerTocEmpty": "No headings in this document",
+  "@viewerTocEmpty": {
+    "description": "Placeholder shown inside the TOC drawer when the active document has no headings the parser could extract."
+  },
+  "viewerSearchOpenTooltip": "Search in document",
+  "@viewerSearchOpenTooltip": {
+    "description": "Tooltip on the viewer AppBar action that replaces the title with the in-document search field."
+  },
+  "viewerSearchCloseTooltip": "Close search",
+  "@viewerSearchCloseTooltip": {
+    "description": "Tooltip on the close button that returns the viewer AppBar to its document-title state."
+  },
+  "viewerSearchPreviousTooltip": "Previous match",
+  "@viewerSearchPreviousTooltip": {
+    "description": "Tooltip on the chevron that jumps to the previous in-document search match."
+  },
+  "viewerSearchNextTooltip": "Next match",
+  "@viewerSearchNextTooltip": {
+    "description": "Tooltip on the chevron that jumps to the next in-document search match."
+  },
+  "viewerSearchMatchCount": "{current} / {total}",
+  "@viewerSearchMatchCount": {
+    "description": "Counter shown next to the in-document search field: 1-based current match index over total matches.",
+    "placeholders": {
+      "current": { "type": "int", "example": "3" },
+      "total": { "type": "int", "example": "12" }
+    }
+  },
+  "viewerSearchNoResults": "No matches",
+  "@viewerSearchNoResults": {
+    "description": "Inline label shown next to the in-document search field when the current query matches no lines."
+  },
+
+  "settingsReadingTitle": "Reading",
+  "@settingsReadingTitle": {
+    "description": "Section header above the reading comfort controls on the settings screen."
+  },
+  "settingsReadingFontScaleTitle": "Font size",
+  "@settingsReadingFontScaleTitle": {
+    "description": "Label above the font size slider in the reading comfort section."
+  },
+  "settingsReadingFontScaleValue": "{percent}%",
+  "@settingsReadingFontScaleValue": {
+    "description": "Format string for the font size slider's current value, e.g. '115%'.",
+    "placeholders": {
+      "percent": { "type": "int", "example": "115" }
+    }
+  },
+  "settingsReadingWidthTitle": "Reading width",
+  "@settingsReadingWidthTitle": {
+    "description": "Label above the reading-column width segmented button."
+  },
+  "settingsReadingWidthComfortable": "Comfortable",
+  "@settingsReadingWidthComfortable": {
+    "description": "Reading width preset that caps the column at roughly 680 dp for long-form prose."
+  },
+  "settingsReadingWidthWide": "Wide",
+  "@settingsReadingWidthWide": {
+    "description": "Reading width preset that caps the column at roughly 840 dp so code blocks breathe on tablets."
+  },
+  "settingsReadingWidthFull": "Full",
+  "@settingsReadingWidthFull": {
+    "description": "Reading width preset that removes the cap and lets the column stretch to the full viewport width."
+  },
+  "settingsReadingLineHeightTitle": "Line spacing",
+  "@settingsReadingLineHeightTitle": {
+    "description": "Label above the line-height segmented button."
+  },
+  "settingsReadingLineHeightCompact": "Compact",
+  "@settingsReadingLineHeightCompact": {
+    "description": "Line height preset that tightens paragraph line spacing for dense layouts."
+  },
+  "settingsReadingLineHeightStandard": "Standard",
+  "@settingsReadingLineHeightStandard": {
+    "description": "Default line height preset matching Material 3 body-medium."
+  },
+  "settingsReadingLineHeightAiry": "Airy",
+  "@settingsReadingLineHeightAiry": {
+    "description": "Loosest line height preset with the most breathing room between lines."
+  },
   "viewerResumedFromBookmark": "Resumed from your last reading position",
   "@viewerResumedFromBookmark": {
     "description": "Snackbar shown when a document opens and the viewer automatically restores the scroll position from a saved bookmark."

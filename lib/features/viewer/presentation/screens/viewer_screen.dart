@@ -14,7 +14,9 @@ import 'package:markdown_viewer/features/viewer/application/viewer_document.dart
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/reading_position.dart';
 import 'package:markdown_viewer/features/viewer/presentation/failure_message_mapper.dart';
+import 'package:markdown_viewer/features/viewer/presentation/widgets/in_doc_search_bar.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/markdown_view.dart';
+import 'package:markdown_viewer/features/viewer/presentation/widgets/toc_drawer.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:path/path.dart' as p;
 
@@ -53,6 +55,29 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   bool _showBackToTop = false;
   bool _restoreAttempted = false;
 
+  /// GlobalKeys attached to each rendered top-level block. Keyed
+  /// by block index. Populated lazily on the first data state
+  /// and re-allocated if the provider later returns a document
+  /// with a different block count (e.g. after a retry that
+  /// reloaded a changed file on disk). The TOC drawer + in-doc
+  /// search both look up keys here before driving
+  /// `Scrollable.ensureVisible`.
+  final Map<int, GlobalKey> _blockKeys = {};
+  int _blockKeysLength = 0;
+
+  /// In-document search state. `_searchActive` flips the AppBar
+  /// title slot between the document basename and the
+  /// [InDocSearchBar]; `_searchMatches` is a flat list of
+  /// source character offsets that match the current query,
+  /// used to drive the counter and prev/next chevrons; the
+  /// text controller + focus node are owned here so the field
+  /// survives rebuilds while the viewer loads more bytes.
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocusNode = FocusNode();
+  bool _searchActive = false;
+  List<int> _searchMatches = const <int>[];
+  int _currentMatchIndex = 0;
+
   @override
   void initState() {
     super.initState();
@@ -82,6 +107,8 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       ..removeListener(_onScroll)
       ..dispose();
     _isBookmarked.dispose();
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     super.dispose();
   }
 
@@ -272,6 +299,144 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     );
   }
 
+  /// Makes sure there is exactly one [GlobalKey] per top-level
+  /// block in [document]. Called from the data branch of
+  /// `build` so the keys stay aligned with whatever the parser
+  /// last returned — a retry that reloaded a shorter file
+  /// would otherwise leave dangling keys pointing at widgets
+  /// that no longer exist.
+  void _ensureBlockKeys(Document document) {
+    final needed = document.topLevelBlockCount;
+    if (_blockKeysLength == needed) return;
+    _blockKeys.clear();
+    for (var i = 0; i < needed; i += 1) {
+      _blockKeys[i] = GlobalKey(debugLabel: 'doc-block-$i');
+    }
+    _blockKeysLength = needed;
+  }
+
+  /// Animates the scroll so the block the heading sits in is
+  /// pinned near the top of the viewport. Uses
+  /// `Scrollable.ensureVisible` against the GlobalKey wrapped
+  /// around that block's rendered widget, so the jump is
+  /// pixel-perfect without any offset measuring on our side.
+  void _scrollToHeading(HeadingRef heading) {
+    final key = _blockKeys[heading.blockIndex];
+    final target = key?.currentContext;
+    if (target == null) return;
+    Scrollable.ensureVisible(
+      target,
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOutCubic,
+      // `alignment: 0` pins the heading at the top of the
+      // visible area, mirroring how browser anchor navigation
+      // feels. `alignmentPolicy: keepVisibleAtEnd` would glue
+      // the bottom of the block to the bottom of the viewport,
+      // which is the wrong reading flow for a "jump to
+      // section" gesture.
+      alignment: 0,
+    );
+  }
+
+  /// Enters in-document search mode: swaps the AppBar title
+  /// for the [InDocSearchBar] and focuses the text field so
+  /// the keyboard comes up on the next frame.
+  void _openSearch() {
+    setState(() {
+      _searchActive = true;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _searchFocusNode.requestFocus();
+    });
+  }
+
+  /// Exits search mode, clears the query, and drops the match
+  /// list so the next open starts from a clean slate.
+  void _closeSearch() {
+    setState(() {
+      _searchActive = false;
+      _searchController.clear();
+      _searchMatches = const <int>[];
+      _currentMatchIndex = 0;
+    });
+    _searchFocusNode.unfocus();
+  }
+
+  /// Recomputes the match list for [query] against the active
+  /// document's source. Case-insensitive substring scan — we
+  /// do not support regex in v1 because the input is a single
+  /// compact AppBar field and users expect plain-text search.
+  void _onSearchQueryChanged(String query, Document document) {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) {
+      setState(() {
+        _searchMatches = const <int>[];
+        _currentMatchIndex = 0;
+      });
+      return;
+    }
+    final matches = <int>[];
+    final lowerSource = document.source.toLowerCase();
+    final lowerQuery = trimmed.toLowerCase();
+    var index = lowerSource.indexOf(lowerQuery);
+    while (index != -1) {
+      matches.add(index);
+      index = lowerSource.indexOf(lowerQuery, index + 1);
+    }
+    setState(() {
+      _searchMatches = matches;
+      _currentMatchIndex = 0;
+    });
+    if (matches.isNotEmpty) {
+      _jumpToMatch(matches.first, document);
+    }
+  }
+
+  /// Advances the current match index and scrolls to the new
+  /// match. Wraps around so the last match's "next" jumps back
+  /// to the first — familiar from every browser find bar.
+  void _nextMatch(Document document) {
+    if (_searchMatches.isEmpty) return;
+    final nextIndex = (_currentMatchIndex + 1) % _searchMatches.length;
+    setState(() => _currentMatchIndex = nextIndex);
+    _jumpToMatch(_searchMatches[nextIndex], document);
+  }
+
+  void _previousMatch(Document document) {
+    if (_searchMatches.isEmpty) return;
+    final length = _searchMatches.length;
+    final prevIndex = (_currentMatchIndex - 1 + length) % length;
+    setState(() => _currentMatchIndex = prevIndex);
+    _jumpToMatch(_searchMatches[prevIndex], document);
+  }
+
+  /// Scrolls to an approximate offset based on the fraction of
+  /// the matched position in the source. Search match offsets
+  /// are character positions in the source string; we convert
+  /// to a fraction of `document.source.length` and apply that
+  /// fraction to `maxScrollExtent`.
+  ///
+  /// This is imprecise — a match in the first character of a
+  /// huge code block will land slightly off the block's
+  /// rendered top — but it is honest: the user sees the match
+  /// counter and the approximate landing, not a pixel-perfect
+  /// highlight. Inline match highlighting inside rendered
+  /// widgets would require forking `markdown_widget`'s text
+  /// builder, tracked as a follow-up.
+  void _jumpToMatch(int sourceOffset, Document document) {
+    if (!_scrollController.hasClients) return;
+    final total = document.source.length;
+    if (total == 0) return;
+    final maxOffset = _scrollController.position.maxScrollExtent;
+    final fraction = sourceOffset / total;
+    final target = (fraction * maxOffset).clamp(0.0, maxOffset);
+    _scrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   /// Shows a snackbar whose content reads its localized string on
   /// every rebuild, so an instant-apply locale change in settings
   /// flips the visible text while the snackbar is still on screen.
@@ -322,6 +487,15 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       },
     );
     final async = ref.watch(viewerDocumentProvider(widget.documentId));
+    final readingSettings = ref.watch(readingSettingsControllerProvider);
+
+    // The TOC drawer needs a non-null document to render. In
+    // the loading / error states there is nothing to list, so
+    // we fall back to a tiny placeholder drawer that shows the
+    // localized "No headings" empty state. Wiring it here
+    // avoids a conditional `endDrawer` on the Scaffold, which
+    // would retear the drawer animation between state flips.
+    final dataDocument = async.asData?.value;
 
     return Scaffold(
       appBar: AppBar(
@@ -330,49 +504,110 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
         // but deep links (`/viewer?path=…`) land directly on this
         // route with an empty stack. `canPop()` falls through to a
         // `go` back to the library so the user is never stranded.
-        leading: BackButton(
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go(LibraryRoute.location());
-            }
-          },
-        ),
-        title: Text(_titleFor(widget.documentId, l10n.viewerUnnamedDocument)),
-        actions: [
-          ValueListenableBuilder<bool>(
-            valueListenable: _isBookmarked,
-            builder: (context, bookmarked, _) {
-              // `IconButton` does not expose an `onLongPress`,
-              // and wrapping it in a `GestureDetector` loses
-              // long-press events to the inner tap recognizer
-              // inside the gesture arena. The reliable fix is
-              // an `InkResponse` sized to the standard 48×48 dp
-              // AppBar action touch target with both `onTap`
-              // and `onLongPress` wired. A surrounding
-              // `Tooltip` preserves the hover/long-press
-              // accessibility affordance that IconButton
-              // normally provides.
-              return Tooltip(
-                message: l10n.viewerBookmarkSaveTooltip,
-                child: InkResponse(
-                  onTap: _saveBookmark,
-                  onLongPress: _showBookmarkMenu,
-                  radius: 24,
-                  child: SizedBox(
-                    width: 48,
-                    height: 48,
-                    child: Icon(
-                      bookmarked ? Icons.bookmark : Icons.bookmark_outline,
-                    ),
-                  ),
+        // Hidden while search mode is active so the close button
+        // in the search bar owns the only dismissal path.
+        leading:
+            _searchActive
+                ? null
+                : BackButton(
+                  onPressed: () {
+                    if (context.canPop()) {
+                      context.pop();
+                    } else {
+                      context.go(LibraryRoute.location());
+                    }
+                  },
                 ),
-              );
-            },
-          ),
-        ],
+        // AnimatedSwitcher flips the title slot between the
+        // document basename and the in-doc search field so the
+        // transition looks intentional rather than a jarring
+        // rebuild. Duration matches Material 3's small-component
+        // transition guidance.
+        title: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          switchInCurve: Curves.easeOutCubic,
+          switchOutCurve: Curves.easeInCubic,
+          child:
+              _searchActive && dataDocument != null
+                  ? InDocSearchBar(
+                    key: const ValueKey('search-bar'),
+                    controller: _searchController,
+                    focusNode: _searchFocusNode,
+                    matchCount: _searchMatches.length,
+                    currentMatchIndex: _currentMatchIndex,
+                    onQueryChanged:
+                        (query) => _onSearchQueryChanged(query, dataDocument),
+                    onPrevious: () => _previousMatch(dataDocument),
+                    onNext: () => _nextMatch(dataDocument),
+                    onClose: _closeSearch,
+                  )
+                  : Text(
+                    key: const ValueKey('doc-title'),
+                    _titleFor(widget.documentId, l10n.viewerUnnamedDocument),
+                  ),
+        ),
+        actions:
+            _searchActive
+                ? const <Widget>[]
+                : [
+                  IconButton(
+                    icon: const Icon(Icons.search),
+                    tooltip: l10n.viewerSearchOpenTooltip,
+                    onPressed: dataDocument == null ? null : _openSearch,
+                  ),
+                  Builder(
+                    builder:
+                        (context) => IconButton(
+                          icon: const Icon(Icons.format_list_bulleted),
+                          tooltip: l10n.viewerTocOpenTooltip,
+                          onPressed:
+                              dataDocument == null
+                                  ? null
+                                  : () => Scaffold.of(context).openEndDrawer(),
+                        ),
+                  ),
+                  ValueListenableBuilder<bool>(
+                    valueListenable: _isBookmarked,
+                    builder: (context, bookmarked, _) {
+                      // `IconButton` does not expose an
+                      // `onLongPress`, and wrapping it in a
+                      // `GestureDetector` loses long-press events
+                      // to the inner tap recognizer inside the
+                      // gesture arena. The reliable fix is an
+                      // `InkResponse` sized to the standard
+                      // 48×48 dp AppBar action touch target with
+                      // both `onTap` and `onLongPress` wired. A
+                      // surrounding `Tooltip` preserves the
+                      // hover/long-press accessibility affordance
+                      // that IconButton normally provides.
+                      return Tooltip(
+                        message: l10n.viewerBookmarkSaveTooltip,
+                        child: InkResponse(
+                          onTap: _saveBookmark,
+                          onLongPress: _showBookmarkMenu,
+                          radius: 24,
+                          child: SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: Icon(
+                              bookmarked
+                                  ? Icons.bookmark
+                                  : Icons.bookmark_outline,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ],
       ),
+      endDrawer:
+          dataDocument == null
+              ? null
+              : TocDrawer(
+                document: dataDocument,
+                onHeadingSelected: _scrollToHeading,
+              ),
       // `IgnorePointer` guard because `AnimatedScale(scale: 0)` still
       // participates in hit-testing at its original bounds — without
       // the guard, invisible taps near the bottom-right of the
@@ -415,9 +650,17 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
           // [_maybeRestoreReadingPosition] makes the body re-build
           // safe across rebuilds triggered by scroll listeners.
           _maybeRestoreReadingPosition();
+          // Make sure every top-level block has a GlobalKey so the
+          // TOC drawer + in-doc search can land on it via
+          // `Scrollable.ensureVisible`. Recomputed only when the
+          // block count changes, so typical live rebuilds reuse
+          // the same keys and the widget tree stays stable.
+          _ensureBlockKeys(document);
           return MarkdownView(
             document: document,
             controller: _scrollController,
+            blockKeys: _blockKeys,
+            readingSettings: readingSettings,
           );
         },
       ),

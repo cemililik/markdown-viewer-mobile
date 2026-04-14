@@ -49,9 +49,12 @@ void main() {
   const sampleDocument = Document(
     id: id,
     source: '# Example\n\nBody text.',
-    headings: [HeadingRef(level: 1, text: 'Example', anchor: 'example')],
+    headings: [
+      HeadingRef(level: 1, text: 'Example', anchor: 'example', blockIndex: 0),
+    ],
     lineCount: 3,
     byteSize: 22,
+    topLevelBlockCount: 2,
   );
 
   Future<Widget> harness(
@@ -315,6 +318,98 @@ void main() {
           find.text('Long-press the bookmark icon to remove it.'),
           findsNothing,
         );
+      },
+    );
+
+    testWidgets(
+      'AppBar shows search, TOC and bookmark actions in the data state',
+      (tester) async {
+        await tester.pumpWidget(
+          await harness(const _ImmediateDocumentRepository(sampleDocument)),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.byTooltip('Search in document'), findsOneWidget);
+        expect(find.byTooltip('Table of contents'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'tapping the search action swaps the title for the search bar',
+      (tester) async {
+        await tester.pumpWidget(
+          await harness(const _ImmediateDocumentRepository(sampleDocument)),
+        );
+        await tester.pumpAndSettle();
+
+        // Title shows the basename before search opens.
+        expect(find.text('example.md'), findsOneWidget);
+
+        await tester.tap(find.byTooltip('Search in document'));
+        await tester.pumpAndSettle();
+
+        // Title is replaced by the search TextField with the
+        // localized hint, and the close button is now in the
+        // leading slot.
+        expect(find.text('Search in document'), findsWidgets);
+        expect(find.text('example.md'), findsNothing);
+        expect(find.byTooltip('Close search'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'typing a query that matches the source shows the 1-based counter',
+      (tester) async {
+        await tester.pumpWidget(
+          await harness(const _ImmediateDocumentRepository(sampleDocument)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('Search in document'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), 'Body');
+        await tester.pumpAndSettle();
+
+        // The sample source is '# Example\n\nBody text.' — one
+        // match for 'Body', so the counter reads '1 / 1'.
+        expect(find.text('1 / 1'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'typing a query that matches nothing shows the localized empty label',
+      (tester) async {
+        await tester.pumpWidget(
+          await harness(const _ImmediateDocumentRepository(sampleDocument)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('Search in document'));
+        await tester.pumpAndSettle();
+
+        await tester.enterText(find.byType(TextField), 'zzz');
+        await tester.pumpAndSettle();
+
+        expect(find.text('No matches'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'tapping the TOC action opens the right drawer with the heading',
+      (tester) async {
+        await tester.pumpWidget(
+          await harness(const _ImmediateDocumentRepository(sampleDocument)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byTooltip('Table of contents'));
+        await tester.pumpAndSettle();
+
+        // Drawer header + the single heading from the sample
+        // document are visible now.
+        expect(find.text('Contents'), findsOneWidget);
+        expect(find.text('Example'), findsWidgets);
       },
     );
 
