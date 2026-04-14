@@ -8,6 +8,7 @@ import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_view.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/math_view.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/mermaid_block.dart';
+import 'package:markdown_viewer/features/viewer/presentation/widgets/search_highlight_syntax.dart';
 import 'package:markdown_widget/markdown_widget.dart';
 
 /// Pre-built `MarkdownGenerator` reused for every render of every
@@ -69,6 +70,27 @@ Widget _buildTaskListCheckbox(bool checked) {
   );
 }
 
+/// Carries the active search state that [MarkdownView] needs to insert
+/// highlight markers into the rendered source.
+///
+/// When [matchOffsets] is non-empty [MarkdownView] builds a modified
+/// source string with PUA highlight markers and uses a search-mode
+/// [MarkdownGenerator] that includes the two highlight [InlineSyntax]
+/// and [SpanNodeGeneratorWithTag] entries. The match at
+/// [currentMatchIndex] is rendered with a stronger background colour
+/// ("current" highlight); every other match uses the "normal" colour.
+class SearchHighlightState {
+  const SearchHighlightState({
+    required this.matchOffsets,
+    required this.queryLength,
+    required this.currentMatchIndex,
+  });
+
+  final List<int> matchOffsets;
+  final int queryLength;
+  final int currentMatchIndex;
+}
+
 /// Renders a parsed [Document] using `markdown_widget`.
 ///
 /// `markdown_widget` already covers most of the surface we need for
@@ -105,6 +127,8 @@ class MarkdownView extends StatelessWidget {
     this.controller,
     this.blockKeys,
     this.readingSettings = ReadingSettings.defaults,
+    this.onLinkTap,
+    this.searchHighlight,
     super.key,
   });
 
@@ -138,6 +162,25 @@ class MarkdownView extends StatelessWidget {
   /// and so the viewer can drive it from its own `ref.watch`.
   final ReadingSettings readingSettings;
 
+  /// Optional handler for link taps.
+  ///
+  /// Receives the raw `href` value from the markdown link. The
+  /// caller is responsible for routing: anchor links (`#slug`)
+  /// should scroll within the document; external `http(s)://`
+  /// links should open a browser.
+  ///
+  /// When `null`, `markdown_widget`'s default behaviour fires —
+  /// it calls `url_launcher` for every link — so callers that
+  /// only care about external links can omit this.
+  final void Function(String href)? onLinkTap;
+
+  /// When non-null, enables inline search highlighting. [MarkdownView]
+  /// inserts PUA markers around every match before rendering and uses a
+  /// search-mode [MarkdownGenerator] that resolves those markers to
+  /// coloured [TextSpan] backgrounds. The current match gets a stronger
+  /// colour than the rest.
+  final SearchHighlightState? searchHighlight;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -167,6 +210,7 @@ class MarkdownView extends StatelessWidget {
         _buildPreConfig(theme),
         _buildTableConfig(),
         pConfigWithLineHeight,
+        if (onLinkTap != null) LinkConfig(onTap: onLinkTap),
         // Custom task-list checkbox renderer. The package's
         // default `InputNode` applies
         // `EdgeInsets.fromLTRB(2, (parentStyleHeight / 2) - 12, 2, 0)`
@@ -189,10 +233,52 @@ class MarkdownView extends StatelessWidget {
     // — it owns a private one internally. Owning the controller at
     // this layer is what lets [ViewerScreen] drive the back-to-top
     // FAB and the reading-position bookmark feature.
-    final widgets = _markdownGenerator.buildWidgets(
-      document.source,
-      config: config,
-    );
+    //
+    // When search is active the source is pre-processed to insert PUA
+    // highlight markers and a search-mode MarkdownGenerator that
+    // resolves those markers is used instead of the shared static one.
+    // Building a new MarkdownGenerator per active-search render is
+    // acceptable: the object is pure configuration with no layout or
+    // painting state, and rebuilds only happen when the user changes
+    // the query or advances through matches.
+    final highlight = searchHighlight;
+    final activeHighlight =
+        highlight != null && highlight.matchOffsets.isNotEmpty;
+
+    final sourceToRender =
+        activeHighlight
+            ? buildHighlightedSource(
+              source: document.source,
+              matchOffsets: highlight.matchOffsets,
+              queryLength: highlight.queryLength,
+              currentMatchIndex: highlight.currentMatchIndex,
+            )
+            : document.source;
+
+    final scheme = theme.colorScheme;
+    final generator =
+        activeHighlight
+            ? MarkdownGenerator(
+              blockSyntaxList: const [
+                DisplayMathBlockSyntax(),
+                md.AlertBlockSyntax(),
+              ],
+              inlineSyntaxList: [
+                ...buildMathInlineSyntaxes(),
+                ...buildSearchHighlightInlineSyntaxes(),
+              ],
+              generators: [
+                ...buildMathSpanNodeGenerators(),
+                ...buildAdmonitionSpanNodeGenerators(),
+                ...buildSearchHighlightGenerators(
+                  normalColor: scheme.primary.withAlpha(38),
+                  currentColor: scheme.primary.withAlpha(110),
+                ),
+              ],
+            )
+            : _markdownGenerator;
+
+    final widgets = generator.buildWidgets(sourceToRender, config: config);
 
     // Wrap each block widget in a KeyedSubtree if the viewer
     // handed us a GlobalKey for that index. The key lets
@@ -257,19 +343,21 @@ class MarkdownView extends StatelessWidget {
           mq.textScaler.scale(readingSettings.fontScale),
         ),
       ),
-      child: Scrollbar(
-        controller: controller,
-        child: SingleChildScrollView(
+      child: SelectionArea(
+        child: Scrollbar(
           controller: controller,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: readingSettings.width.maxWidth,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: columnChildren,
+          child: SingleChildScrollView(
+            controller: controller,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: readingSettings.width.maxWidth,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: columnChildren,
+                ),
               ),
             ),
           ),

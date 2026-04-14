@@ -346,6 +346,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get viewerBookmarkMenuRemove => 'İşareti kaldır';
 
   @override
+  String get viewerShareTooltip => 'Belgeyi paylaş';
+
+  @override
   String get viewerTocOpenTooltip => 'İçindekiler';
 
   @override

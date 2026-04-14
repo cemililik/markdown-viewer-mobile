@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:markdown_viewer/features/viewer/presentation/widgets/in_doc_search_bar.dart';
+import 'package:markdown_viewer/features/viewer/presentation/widgets/viewer_search_bar.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 
 void main() {
@@ -24,24 +24,26 @@ void main() {
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
-        appBar: AppBar(
-          title: InDocSearchBar(
-            controller: controller,
-            focusNode: focusNode,
-            matchCount: matchCount,
-            currentMatchIndex: currentMatchIndex,
-            onQueryChanged: onQueryChanged,
-            onPrevious: onPrevious,
-            onNext: onNext,
-            onClose: onClose,
-          ),
+        body: Column(
+          children: [
+            const Expanded(child: SizedBox.shrink()),
+            ViewerSearchBar(
+              controller: controller,
+              focusNode: focusNode,
+              matchCount: matchCount,
+              currentMatchIndex: currentMatchIndex,
+              onQueryChanged: onQueryChanged,
+              onPrevious: onPrevious,
+              onNext: onNext,
+              onClose: onClose,
+            ),
+          ],
         ),
-        body: const SizedBox.shrink(),
       ),
     );
   }
 
-  group('InDocSearchBar', () {
+  group('ViewerSearchBar', () {
     testWidgets('renders the field without a counter when the query is empty', (
       tester,
     ) async {
@@ -116,7 +118,7 @@ void main() {
       expect(find.text('No matches'), findsOneWidget);
     });
 
-    testWidgets('chevrons are disabled while matchCount is zero', (
+    testWidgets('nav buttons are disabled while matchCount is zero', (
       tester,
     ) async {
       final controller = TextEditingController(text: 'xyz');

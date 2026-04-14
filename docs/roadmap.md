@@ -707,8 +707,8 @@ lands the three features the user prioritized in one commit:
       offsets map to a fraction of the total source length
       and the viewer scrolls to that fraction of
       `maxScrollExtent`. MVP limitation called out in the
-      code comments; inline highlighting via a forked
-      markdown_widget text builder is tracked as a follow-up.
+      code comments; overhauled into a bottom bar with inline
+      highlighting in the Phase 3.2 search UX pass (see below).
 - [x] **ViewerScreen wiring**: AppBar gains search + TOC
       actions (in addition to the existing bookmark toggle),
       the end drawer holds the `TocDrawer`, and search mode
@@ -775,11 +775,11 @@ lands the three features the user prioritized in one commit:
 
 **Goal (rest of Phase 3)**: Polish the remaining reading UX.
 
-- [ ] Immersive scroll (AppBar + FAB auto-hide on scroll)
-- [ ] Sepia reading theme
-- [ ] Keep-screen-on toggle
-- [ ] Text selection + copy + share
-- [ ] In-doc anchor links
+- [x] Immersive scroll (AppBar + FAB auto-hide on scroll)
+- [x] Sepia reading theme
+- [x] Keep-screen-on toggle
+- [x] Text selection + copy + share
+- [x] In-doc anchor links
 - [ ] Footnote popup sheets
 - [ ] Reading time estimate
 - [ ] Haptic feedback on jump / save / back-to-top
@@ -788,11 +788,24 @@ lands the three features the user prioritized in one commit:
 - [x] **Table of contents drawer** — shipped in Phase 3.1 as
       a right-side drawer tied to the `format_list_bulleted`
       AppBar action. See Phase 3.1 above for the full checklist.
-- [x] **In-document search** — shipped in Phase 3.1 as an
-      `AnimatedSwitcher`-driven AppBar title replacement with
-      a 1-based match counter and chevron navigation. Inline
-      match highlighting in the rendered widget tree is an
-      explicit follow-up.
+- [x] **In-document search — search UX overhaul (Phase 3.2)**:
+      replaced the AppBar-title search bar with a bottom
+      `ViewerSearchBar` (browser find-in-page style) that
+      slides in via `AnimatedSize` at the base of the viewport.
+      The AppBar title stays clean; the search icon remains in
+      the AppBar but now opens the bottom bar. All matches are
+      highlighted inline in the rendered document: Unicode
+      PUA sentinels (`U+E000`–`U+E003`) are injected into the
+      markdown source via `buildHighlightedSource` before the
+      markdown pipeline runs; two custom `InlineSyntax` +
+      `SpanNode` pairs (`search_highlight_syntax.dart`) render
+      normal matches with a 15 % primary-colour background and
+      the current match with a 43 % background. Matches inside
+      fenced code blocks and inline code spans are skipped.
+      Opening search animates the SliverAppBar back into view
+      via `outerController.animateTo(0)`. Covered by 14 new
+      unit tests (`buildHighlightedSource` + `findCodeRanges`)
+      and 5 widget tests (`ViewerSearchBar`).
 - [x] **Font size and reading width settings** — shipped in
       Phase 3.1 as a new "Reading" section on the settings
       screen. Three knobs (font scale, reading width cap,

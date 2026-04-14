@@ -416,6 +416,10 @@
     "description": "Bottom sheet action that clears the saved reading position for the active document."
   },
 
+  "viewerShareTooltip": "Share document",
+  "@viewerShareTooltip": {
+    "description": "Tooltip on the viewer AppBar share action."
+  },
   "viewerTocOpenTooltip": "Table of contents",
   "@viewerTocOpenTooltip": {
     "description": "Tooltip on the viewer AppBar action that opens the right-side TOC drawer."
