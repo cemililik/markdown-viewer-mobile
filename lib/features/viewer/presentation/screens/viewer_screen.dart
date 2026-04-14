@@ -558,7 +558,10 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   }
 
   void _shareAsText(Document document) {
-    final title = _titleFor(widget.documentId, '');
+    final fallbackTitle = _titleFor(widget.documentId, '');
+    // Prefer the document's first H1 so hash-based filenames
+    // (files opened via share-intent) get a meaningful subject.
+    final title = extractPdfTitle(document.source, fallbackTitle);
     SharePlus.instance.share(
       ShareParams(text: document.source, subject: title),
     );

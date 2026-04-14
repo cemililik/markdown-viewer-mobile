@@ -27,6 +27,13 @@ Future<void> showAddSourceSheet(BuildContext context, WidgetRef ref) async {
   );
 }
 
+/// Opens the native directory picker directly, without the "Add source"
+/// selection sheet. Use this when the call-site already makes the
+/// user intent clear (e.g. the "Open folder" button on the empty state
+/// where "Sync repository" is already a separate affordance).
+Future<void> pickAndAddFolder(BuildContext context, WidgetRef ref) =>
+    _AddSourceSheetBody._pickFolder(context, ref);
+
 class _AddSourceSheetBody extends ConsumerWidget {
   const _AddSourceSheetBody();
 
@@ -54,7 +61,7 @@ class _AddSourceSheetBody extends ConsumerWidget {
               title: l10n.libraryActionMenuOpenFolder,
               subtitle: l10n.libraryAddSourceFolderSubtitle,
               enabled: true,
-              onTap: () => _pickAndAddFolder(context, ref),
+              onTap: () => _AddSourceSheetBody._pickFolder(context, ref),
             ),
             const SizedBox(height: 12),
             _AddSourceEntry(
@@ -73,7 +80,7 @@ class _AddSourceSheetBody extends ConsumerWidget {
     );
   }
 
-  Future<void> _pickAndAddFolder(BuildContext context, WidgetRef ref) async {
+  static Future<void> _pickFolder(BuildContext context, WidgetRef ref) async {
     final l10n = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     final logger = ref.read(appLoggerProvider);
