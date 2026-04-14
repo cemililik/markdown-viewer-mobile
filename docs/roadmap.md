@@ -21,9 +21,14 @@ gantt
     1.4 LaTeX math           :done, p14, after p13, 1d
     1.5 Admonitions          :done, p15, after p14, 1d
     1.6 Mermaid diagrams     :done, p16, after p15, 1d
+    1.7 UX polish (iPhone)   :done, p17, 2026-04-14, 1d
+    1.8 Folder explorer      :done, p18, after p17, 1d
+    1.9 Source picker model  :done, p19, after p18, 1d
+    1.10 iOS bookmark bridge :done, p110, after p19, 1d
+    1.11 Bookmark tap/remove :done, p111, after p110, 1d
 
     section Phase 2
-    Advanced Blocks polish   :p2, after p16, 7d
+    Advanced Blocks polish   :p2, after p111, 7d
 
     section Phase 3
     Reading Experience       :p3, after p2, 14d
@@ -208,6 +213,433 @@ Phase 1 and may span multiple commits.
 survives an instant theme flip; malformed diagrams never crash the
 viewer.
 
+### Phase 1.7 — Post-MVP UX polish (iPhone feedback)
+
+**Status**: ✅ Completed 2026-04-14
+
+**Goal**: Address the rough edges surfaced by the first iPhone
+test pass after declaring Phase 1 complete. Not an originally
+planned slice — added because the device session produced a tight
+list of high-impact follow-ups that were faster to ship as a
+focused pass than to defer to Phase 3. Several items from Phase 3
+were pulled forward as a side effect.
+
+- [x] Mermaid diagram theming via `themeVariables` (`theme: "base"`
+      pinned) wired to the active Material 3 `ColorScheme` so every
+      diagram type — flowchart, sequence, class, state, gantt, ER —
+      reads as if drawn by the app itself in light AND dark mode.
+      User-authored `%%{init: …}%%` directives pass through
+      untouched.
+- [x] Mermaid SVG → native WKWebView snapshot pipeline
+      (`controller.takeScreenshot`) replacing the SVG-string round
+      trip after `flutter_svg` choked on real-world CSS-laden
+      mermaid output. The renderer port now hands back PNG bytes +
+      intrinsic dimensions; cache key is `sha256(initDirective +
+      source)`.
+- [x] Pan + pinch + reset affordance on every mermaid block via
+      `InteractiveViewer` + a centre button that fades in once the
+      transformation matrix leaves identity and animates back via
+      `Matrix4Tween`.
+- [x] Reading-position bookmark (`ReadingPositionStore` port +
+      SharedPreferences impl keyed by sha256-hashed path) with an
+      AppBar toggle and a first-frame post-frame restore that
+      animates to the saved offset and shows a localized "Resumed
+      from bookmark" snackbar.
+- [x] Back-to-top FAB on `ViewerScreen`, fading in past 200 px of
+      scroll, animating back to offset 0 over 450 ms.
+- [x] `MarkdownView` switched from `MarkdownWidget` to
+      `MarkdownGenerator.buildWidgets(...)` + a host the screen
+      owns, so the viewer can hold the `ScrollController` the
+      back-to-top FAB and bookmark restore both need. The host is
+      `SingleChildScrollView` + `Column` (not `ListView.builder`)
+      to keep `maxScrollExtent` stable — the lazy-layout builder
+      produced visible thumb jitter on iPhone as new rows
+      measured in.
+- [x] Subtle theme-wide reading scrollbar
+      (`ScrollbarThemeData`: 4 dp thumb, hidden by default,
+      outline-tinted at 55% alpha) attached to the same controller
+      so there is one source of truth.
+- [x] Recent documents feature — full clean-architecture slice
+      under `lib/features/library/`: `RecentDocument` value type
+      with `isPinned` + `preview`, `RecentDocumentsStore` port,
+      SharedPreferences-backed impl with backward-compatible JSON,
+      `RecentDocumentsController` Notifier (touch / togglePin /
+      remove / clear, LRU cap 20 on the unpinned tail, pinned
+      entries exempt). The viewer's `ref.listen` records every
+      successful load through one funnel so deep links + future
+      folder explorer + cross-doc links all flow through the same
+      mutator.
+- [x] Library home screen redesign: greeting header (Good
+      morning / afternoon / evening + recent count), live search
+      filter (basename + parent folder + preview snippet),
+      pinned section, time-grouped recents (Today / Yesterday /
+      Earlier this week / Earlier), italic preview snippet line
+      on each tile, long-press bottom sheet with Pin / Unpin and
+      Remove from recents, no-results empty state.
+- [x] Preview snippet extractor (`extractPreviewSnippet`): walks
+      markdown source line by line, skips YAML frontmatter +
+      fenced code + headings + blockquotes + list markers, strips
+      inline markup, returns the first real prose paragraph
+      capped at 140 chars. Fed by the viewer on every successful
+      load so the home screen tile always carries the freshest
+      hint.
+- [x] L10n: 26 new keys across en + tr (mermaid reset, back-to-
+      top tooltip, bookmark / resume snackbars, library greeting
+      trio, search affordances, pinned section, time-group
+      headers, pin / unpin actions, relative time plurals).
+
+### Phase 1.8 — Folder explorer + multi-entry onboarding
+
+**Status**: ✅ Completed 2026-04-14
+
+**Goal**: Give the user a way to add arbitrary directories to
+the library and browse their markdown files inline, plus a
+unified "add documents" affordance on the populated home screen
+that no longer privileges Open file over Open folder / Sync
+repository. UX shape agreed with the user before coding: left
+drawer (not bottom nav), multi-root, speed dial instead of the
+extended FAB.
+
+- [x] Domain: `LibraryFolder` value type, `LibraryFoldersStore`
+      persistence port, `FolderEnumerator` service port with a
+      sealed `FolderEntry` hierarchy (`FolderFileEntry` /
+      `FolderSubdirEntry`) so the drawer's expansion tree has a
+      narrow contract to render against.
+- [x] Data: `LibraryFoldersStoreImpl` (SharedPreferences, JSON
+      array keyed `library.folders`, corrupt-blob tolerant,
+      malformed-entry skip); `FolderEnumeratorImpl` (dart:io,
+      filters hidden dot-entries, sorts subdirs-first then
+      case-insensitive alpha, case-insensitive `.md` /
+      `.markdown` extension match). The enumerator is the only
+      place inside the library feature that touches the
+      filesystem.
+- [x] Application: `LibraryFoldersController` Notifier with
+      `add(path) → bool` (false on duplicate), `remove(path)`
+      no-op on ghost paths, fire-and-forget persistence,
+      newest-first canonical ordering.
+- [x] UI: reusable `LibrarySpeedDial` widget — primary FAB
+      toggles `+` ↔ `×`, three mini-FABs with label chips scale
+      and fade in on a staggered delay, tap-outside barrier
+      closes the dial. Used on the populated library state with
+      entries for Open file, Open folder, and (disabled) Sync
+      repository.
+- [x] UI: `FolderExplorerDrawer` — Material 3 `Drawer` slid in
+      from the left of `LibraryScreen`, renders one
+      `ExpansionTile` per root, lazy loads children through
+      `folderEnumeratorProvider` the first time a node is
+      expanded, recurses one level per tap, shows inline
+      localized hints for empty folders or enumeration failures,
+      long-press-free remove button at the bottom of each root.
+- [x] UI: library empty state upgraded from two buttons to
+      three — Open file (filled), Open folder (tonal), Sync
+      repository (disabled outlined).
+- [x] UI: AppBar leading IconButton with a localized tooltip
+      opens the drawer. Tapping a leaf markdown file inside the
+      drawer closes the drawer and pushes `/viewer?path=…` so
+      the existing recent-documents `ref.listen` funnel records
+      the open without any extra wiring.
+- [x] L10n: 17 new keys across en + tr (drawer title + empty
+      state, add folder + picker failure / duplicate / cancel
+      snackbars, inline empty-folder / enumeration-failed
+      hints, long-press remove, speed dial entries + tooltips).
+- [x] Tests (+18): store round-trip + malformed-entry skip,
+      controller seed / add / dedupe / remove / ghost-no-op,
+      folder enumerator against a real tmp directory (md+
+      markdown detection, subdir ordering, dot-entry hiding,
+      non-markdown skip, empty directory, missing directory,
+      case-insensitive match), library widget empty-state
+      three-button layout, drawer hamburger opens drawer,
+      populated drawer renders one tile per persisted folder,
+      speed dial expands on FAB tap.
+
+**Known limitation (resolved in Phase 1.10)**: iOS
+security-scoped bookmarks AND Android Storage Access Framework
+content URIs were not wired in Phase 1.8, so a folder picked
+via `file_picker.getDirectoryPath` would fail on the first
+`Directory.list()` with "Permission denied" (iOS) or be
+unreadable by `dart:io` entirely (Android, since SAF returns
+`content://` URIs). Phase 1.10 ships native method-channel
+bridges on both platforms that capture the persistent
+permission grant at pick time and route every read back
+through the channel.
+
+### Phase 1.9 — Library source picker model
+
+**Status**: ✅ Completed 2026-04-14
+
+**Goal**: Rework the library screen around a single mental
+model: the drawer is a **source picker**, the body is the
+contents of whichever source is active. Phase 1.8 shipped the
+drawer as an expandable-tree widget, which conflated "pick a
+source" with "browse a folder" — tapping a folder in the
+drawer only expanded its own row without changing the main
+body, and the recents view was always the backdrop. The iPhone
+test surfaced the dissonance. Phase 1.9 lands the redesign
+agreed with the user (option C from the UX conversation) so
+synced repositories will slot into the same drawer list in
+Phase 4.5 without any redesign.
+
+- [x] Domain: sealed `LibrarySource` hierarchy with
+      `RecentsSource` and `FolderSource(LibraryFolder)`
+      branches. Built-in sources + user-added folders all live
+      in the same list — no special-casing.
+- [x] Application: `ActiveLibrarySourceController` Notifier.
+      In-memory state (not persisted), defaults to Recents on
+      cold start, `selectRecents` / `selectFolder` mutators.
+      Auto-falls back to Recents when the active folder is
+      removed via a `ref.listen` on
+      `libraryFoldersControllerProvider`, so the UI never
+      renders against a dangling folder.
+- [x] `FolderEnumerator.enumerateRecursive(path)` +
+      `FolderEnumeratorImpl._walk` for the flat search view —
+      walks the whole tree once, filters hidden dot-directories,
+      sorts results case-insensitively. Cached inside the
+      folder body for the lifetime of that folder source so
+      subsequent keystrokes filter the cached list without
+      re-walking.
+- [x] `SourcePickerDrawer` replaces the old
+      `FolderExplorerDrawer`. Flat list of sources: the
+      built-in Recents tile pinned at the top, a "Sources"
+      section header + one tile per user-added folder, and an
+      "+ Add source" button at the bottom that opens the
+      `AddSourceSheet` bottom sheet. Tapping a source sets the
+      active source and closes the drawer. Long-pressing a
+      folder tile offers "Remove folder" with a snackbar.
+      Selected source is visually highlighted.
+- [x] `AddSourceSheet` bottom sheet exposes "Add folder" (real)
+      and "Sync repository" (disabled, wired for Phase 4.5).
+      The sheet owns the folder-picker flow so neither the
+      drawer nor the library screen has to duplicate it.
+- [x] New `LibraryFolderBody` widget rendered when the active
+      source is a folder:
+      - **Browsing mode** (empty search): full-width lazy
+        `ExpansionTile` tree rooted at the folder, recursive
+        one level per expand. The cramped drawer tree is
+        promoted to the main viewport where deep hierarchies
+        are actually readable.
+      - **Search mode** (non-empty search): flat list of every
+        `.md` file anywhere under the root whose name matches
+        the query (case-insensitive substring). Results show
+        the filename + the path relative to the folder root so
+        two `readme.md` matches can be told apart. Search is
+        strictly scoped to the folder — recents never mix in.
+      - Cached recursive walk kicks off lazily on the first
+        non-empty search, so browsing a folder without
+        searching pays zero walk cost.
+- [x] `LibraryScreen` becomes a thin switcher: watches
+      `activeLibrarySourceProvider`, renders the recents body
+      on `RecentsSource` / the folder body on `FolderSource`,
+      and swaps the `AppBar` title between the localized
+      "Library" and a `folder_outlined` glyph + folder
+      basename. The leading AppBar icon is always a hamburger
+      ("open source picker"), never a context-sensitive back
+      arrow — a consistent shape regardless of source.
+- [x] Speed dial removed. Single extended `Open file` FAB on
+      every populated source (a one-purpose quick-picker that
+      does not persist a folder). The three-button onboarding
+      empty state kept the same layout since it already
+      exposed Open file + Open folder + Sync repo in priority
+      order.
+- [x] Pinning intentionally **stays a Recents-only concept**.
+      Folder browsing uses the filesystem hierarchy as its
+      structure; pinning a file inside a folder source would
+      fork the mental model.
+- [x] L10n: 14 new keys (source picker "Recents", "Sources"
+      section header, "Add source" / sheet title, folder-
+      scoped search hint / loading / empty / no-results / error
+      states, Add folder + Sync repo sheet subtitles).
+- [x] Tests (+11): active source provider
+      (default / select / fallback on folder removal),
+      `enumerateRecursive` against a real tmp directory
+      (recursive walk, dot-dir skip, empty folder, alpha
+      sort, missing directory), library widget integration
+      (hamburger opens source picker drawer with Recents +
+      Add source, drawer renders Sources section with a tile
+      per folder, selecting a folder swaps the body to the
+      folder-scoped search, extended Open file FAB on
+      populated Recents). Existing drawer + speed dial tests
+      updated or removed.
+
+### Phase 1.10 — Native folder picker bridge (iOS bookmarks + Android SAF)
+
+**Status**: ✅ Completed 2026-04-14
+
+**Goal**: Make folder browsing actually work end-to-end on
+both platforms. The first iPhone test of Phase 1.9 surfaced
+that the folder body always rendered the localized "Could not
+read this folder" error on a real Downloads pick — `file_picker`
+returns the path string but does not preserve the iOS
+security-scoped NSURL claim, so any later `Directory.list()`
+trips `PathAccessException(Permission denied)`. Android has
+the same shape with an even harder constraint: SAF tree URIs
+are `content://` strings that `dart:io`'s `File` and
+`Directory` cannot read at all.
+
+This phase replaces `file_picker.getDirectoryPath()` with
+custom native channels on both platforms and routes every
+folder read (listing + file bytes) back through them.
+
+- [x] **iOS native channel** (`ios/Runner/LibraryFoldersChannel.swift`):
+      Swift class registered from `AppDelegate.didInitialize`
+      that owns the full lifecycle of folder URLs.
+      `pickDirectory` shows `UIDocumentPickerViewController` in
+      `.folder` mode, claims the security scope on the chosen
+      URL, builds a `.minimalBookmark` `NSData` blob, releases
+      the scope, and returns `{path, bookmark}` to Dart.
+      `listDirectory(bookmark, subPath?)` resolves the
+      bookmark, claims the scope, and lists either the root or
+      a sub-path (sub-URLs inherit the scope automatically).
+      `listDirectoryRecursive` walks the tree natively for
+      search. `readFileBytes(bookmark, path)` reads file bytes
+      with the scope claimed and returns them as
+      `FlutterStandardTypedData`.
+- [x] **Android native channel** (`android/.../LibraryFoldersChannel.kt`):
+      Kotlin `FlutterPlugin` + `ActivityAware` registered from
+      `MainActivity.configureFlutterEngine`. `pickDirectory`
+      shows `ACTION_OPEN_DOCUMENT_TREE` and calls
+      `takePersistableUriPermission` so the granted access
+      survives a cold start, returning `{path: displayName,
+      bookmark: treeUri.toString()}`. `listDirectory` and
+      `listDirectoryRecursive` walk the tree through
+      `androidx.documentfile.DocumentFile.fromTreeUri(...)`.
+      `readFileBytes` streams bytes via
+      `ContentResolver.openInputStream`. The
+      `androidx.documentfile:documentfile:1.0.1` dependency
+      lands in `android/app/build.gradle.kts`. The Swift file
+      gets registered in `Runner.xcodeproj/project.pbxproj`.
+- [x] **Method channel contract**: identical method names,
+      argument shapes, and error codes (`BOOKMARK_STALE`,
+      `ACCESS_DENIED`, `LIST_FAILED`, `READ_FAILED`,
+      `INVALID_ARGS`, `NO_ROOT_VIEW` / `NO_ACTIVITY`) on both
+      platforms so the Dart wrapper does not branch.
+- [x] **Dart channel wrapper** (`NativeLibraryFoldersChannel`):
+      typed `pickDirectory` / `listDirectory` /
+      `listDirectoryRecursive` / `readFileBytes` methods,
+      sentinel exceptions (`NativeFolderBookmarkStaleException`,
+      `NativeFolderAccessDeniedException`) so the folder body
+      can map errors to localized messages. The wrapper is
+      cheap to fake in tests by injecting a `MethodChannel`.
+- [x] **`LibraryFolder` entity** grows an optional
+      `bookmark: String?` field. The store schema gains a
+      matching JSON field, backward-compatible with the
+      pre-1.10 entries (which would have failed on every
+      access anyway). `LibraryFoldersController.add(path,
+      {bookmark})` carries the bookmark through to persistence.
+- [x] **`FolderEnumeratorImpl`** dispatches by bookmark: a
+      non-empty bookmark goes to the native channel (with the
+      `subPath` argument for drill-down), an empty bookmark
+      stays on `dart:io` so unit tests can run without a
+      method-channel stub.
+- [x] **`FolderFileMaterializer`**: new application service
+      that copies a folder-sourced markdown file into
+      `<appCache>/library_folder_files/<sha256>.md` via the
+      native `readFileBytes` and returns the resulting
+      filesystem path. Keeps the viewer's existing
+      `File(...).readAsBytes` code path 100% unchanged — it
+      just gets a path it can read with plain `dart:io`. Used
+      by the folder body's tap handlers (browsing tree and
+      search match list) through a shared `openFolderEntry`
+      helper that surfaces a localized error snackbar on
+      failure. Cache slot keyed on the source path so repeat
+      taps overwrite the slot rather than fanning out — picks
+      up edits between sessions.
+- [x] **`AddSourceSheet`** is now platform-agnostic: both iOS
+      and Android route through `NativeLibraryFoldersChannel`.
+      `file_picker` is still used for the single-file picker
+      (Open file FAB) where neither bookmarking nor SAF apply.
+- [x] **Tests (+6)**: store round-trip of the bookmark field,
+      legacy entries without a bookmark stay readable,
+      controller `add` carries the bookmark, materializer
+      short-circuits when no bookmark is set, materializer
+      writes channel bytes into the cache and returns the
+      cache path, materializer preserves the `.markdown`
+      extension, repeat materialise lands at the same slot
+      and overwrites with the latest bytes.
+
+**Known limitation (out of scope for Phase 1.10)**: a folder-
+sourced file's reading-position bookmark and recents tile
+both reference the cache path, not the source URI. If the OS
+evicts the cache between sessions, tapping the recent hits
+the existing "missing file" self-clean and removes the entry.
+A v2 follow-up could persist the source URI alongside the
+cache path so re-materialisation is automatic, but for a
+typical reading session the cache stays warm and the user
+never notices.
+
+### Phase 1.11 — Bookmark tap semantics + long-press remove
+
+**Status**: ✅ Completed 2026-04-14
+
+**Goal**: Rework the reading-position bookmark so tap always
+does "save the current position" instead of toggling between
+save and clear. The iPhone re-test surfaced a concrete
+mismatch: after the viewer auto-restores a saved position and
+the user keeps reading to a new spot, tapping the bookmark
+icon would *clear* the existing position, which is the
+opposite of what the user intended. Phase 1.11 lands the
+refined semantics (option A from the UX conversation).
+
+- [x] **Tap = save / update**: the AppBar bookmark always
+      writes the current scroll offset, whether or not a prior
+      position was saved. The icon stays filled when a
+      position exists. A snackbar branches on "was there a
+      prior position?": first save → "Reading position saved",
+      overwrite → "Reading position updated". The store is
+      never cleared by a tap.
+- [x] **Long-press = menu**: `InkResponse` on a 48×48 dp
+      touch target with both `onTap` and `onLongPress` wired
+      (`IconButton` does not expose `onLongPress`, and
+      wrapping it in a `GestureDetector` loses long-press
+      events to the inner tap recognizer in the gesture
+      arena). Long-press opens a Material 3 bottom sheet
+      with two actions:
+      - "Go to saved position" animates the scroll back to
+        the saved offset using the same 600 ms easeOutCubic
+        motion as the first-frame auto-restore
+        (`_animateToSavedPosition` factored out so both paths
+        share one motion spec).
+      - "Remove bookmark" clears the store, flips the icon
+        outlined, and shows the "Bookmark cleared" snackbar.
+      - Long-press on a doc that has no saved position
+        short-circuits to the save path so the menu never
+        renders a useless pair of disabled entries.
+- [x] **First-ever coach mark**: the very first time the user
+      saves a bookmark — across all documents — the
+      confirmation snackbar appends a second italic line
+      "Long-press the bookmark icon to remove it." and
+      extends from 3 s to 5 s. Tracked via a
+      `settings.bookmarkHintSeen` boolean on SettingsStore
+      (`readHasSeenBookmarkHint` / `markBookmarkHintSeen`)
+      so every subsequent save falls back to the plain
+      one-line confirmation.
+- [x] **Tooltip + accessibility**: the tap tooltip always
+      says "Save or update reading position" /
+      "Kaldığın yeri kaydet veya güncelle" since tap is no
+      longer a clear affordance. The old
+      `viewerBookmarkClearTooltip` key is removed.
+- [x] **L10n: 4 new keys + 1 removed** (en + tr):
+      `viewerBookmarkUpdated`, `viewerBookmarkLongPressHint`,
+      `viewerBookmarkMenuGoTo`, `viewerBookmarkMenuRemove`;
+      `viewerBookmarkClearTooltip` dropped.
+- [x] **Tests (+6)**:
+      - Tap on an already-saved doc shows the "Updated" copy
+        and leaves the store populated.
+      - First-ever save includes the long-press hint.
+      - Subsequent saves (flag already seen) skip the hint.
+      - Long-press on a saved bookmark opens the Go to /
+        Remove menu; tapping Remove clears the store, flips
+        the icon outlined, and surfaces the cleared snackbar.
+      - SettingsStore `readHasSeenBookmarkHint` defaults to
+        `false` on a fresh install.
+      - SettingsStore `markBookmarkHintSeen` persists so a
+        reopened store reads back `true`.
+- [x] **Viewer screen test harness upgrade**: a mocked
+      SharedPreferences is seeded per test, and the harness
+      now overrides `settingsStoreProvider` +
+      `recentDocumentsStoreProvider` so the new read-settings
+      hop inside `_saveBookmark` does not trip an
+      unimplemented provider.
+
 **Phase 1 exit criteria**: A typical README (`test/fixtures/markdown/
 typical.md` + a math-heavy doc + a mermaid-heavy doc) renders
 pixel-correct vs GitHub's renderer with matching semantics;
@@ -235,13 +667,29 @@ reference devices in [platform-support.md](platform-support.md).
 
 **Goal**: Polish the reading UX.
 
-- Table of contents drawer
-- In-document search with match highlighting
-- Font size and family settings
-- Reading width preference
-- Share-intent import handling
-- Recent files (drift)
-- Favorites
+- [ ] Table of contents drawer
+- [ ] In-document search with match highlighting
+- [ ] Font size and family settings
+- [ ] Reading width preference
+- [ ] Share-intent import handling
+- [x] **Recent files** — shipped early in Phase 1.7 via
+      `RecentDocumentsStore` (SharedPreferences instead of drift,
+      since the dataset stays small and a sync read keeps the
+      first-frame hydration trivial).
+- [x] **Favorites** — shipped early in Phase 1.7 as the pinned
+      section of the recent-documents list. Long-press → "Pin to
+      top" promotes an entry into a dedicated section above the
+      time-grouped recents and exempts it from the LRU cap.
+- [x] **Reading-position bookmark** (was not on the original
+      Phase 3 list — added in Phase 1.7 after the iPhone test
+      pass surfaced the need).
+- [x] **Back-to-top FAB** (same — added in Phase 1.7).
+- [x] **Open folder + file-explorer drawer** — shipped in
+      Phase 1.8 as a left-side `NavigationDrawer` that slides
+      out from the library AppBar hamburger. Multi-root,
+      dedupe on add, long-press remove, lazy expansion, hidden
+      dot-files filtered. See Phase 1.8 below for the full
+      checklist.
 
 **Exit criteria**: A 10-minute reading session on a real document feels
 comfortable on phone and tablet.

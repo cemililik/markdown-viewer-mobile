@@ -16,6 +16,7 @@ class SettingsStore {
 
   static const String _themeModeKey = 'settings.themeMode';
   static const String _localeTagKey = 'settings.localeTag';
+  static const String _bookmarkHintSeenKey = 'settings.bookmarkHintSeen';
 
   /// Returns the persisted [ThemeMode] or [ThemeMode.system] when
   /// nothing has been stored yet.
@@ -51,6 +52,23 @@ class SettingsStore {
   /// "follow system".
   Future<void> writeLocale(AppLocale locale) {
     return _prefs.setString(_localeTagKey, locale.tag);
+  }
+
+  /// Whether the user has already seen the "long-press to remove"
+  /// coach-mark that the viewer shows once the first time they
+  /// save a reading-position bookmark. A one-shot UI flag that
+  /// lives here rather than in its own store because it is still
+  /// a per-user preference and the settings store is already the
+  /// `SharedPreferences`-wrapper seam every other flag uses.
+  bool readHasSeenBookmarkHint() {
+    return _prefs.getBool(_bookmarkHintSeenKey) ?? false;
+  }
+
+  /// Marks the bookmark long-press coach-mark as seen so the
+  /// viewer stops appending the hint line to every subsequent
+  /// save confirmation.
+  Future<void> markBookmarkHintSeen() {
+    return _prefs.setBool(_bookmarkHintSeenKey, true);
   }
 
   static String _themeModeTag(ThemeMode mode) {

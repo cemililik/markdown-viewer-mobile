@@ -314,6 +314,180 @@ abstract class AppLocalizations {
   /// **'Removed pin'**
   String get libraryRecentUnpinnedSnack;
 
+  /// Header of the folder explorer drawer slid in from the left of the library home screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Folders'**
+  String get libraryFoldersDrawerTitle;
+
+  /// Action that opens the platform directory picker to add a new library root.
+  ///
+  /// In en, this message translates to:
+  /// **'Add folder'**
+  String get libraryFoldersAdd;
+
+  /// Title shown inside the folder explorer drawer when the user has not added any library roots.
+  ///
+  /// In en, this message translates to:
+  /// **'No folders yet'**
+  String get libraryFoldersEmptyTitle;
+
+  /// Body shown inside the folder explorer drawer beneath libraryFoldersEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a folder of markdown files to browse them here.'**
+  String get libraryFoldersEmptyMessage;
+
+  /// Tooltip on the AppBar hamburger that opens the folder explorer drawer.
+  ///
+  /// In en, this message translates to:
+  /// **'Open folders'**
+  String get libraryFoldersOpenDrawerTooltip;
+
+  /// Snackbar shown after the user picks a directory to add as a library root.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder added'**
+  String get libraryFoldersAddedSnack;
+
+  /// Snackbar shown after the user removes a library root from the drawer.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder removed'**
+  String get libraryFoldersRemovedSnack;
+
+  /// Long-press / context menu action to remove a library root from the drawer.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove folder'**
+  String get libraryFoldersRemove;
+
+  /// Snackbar shown when the directory picker is dismissed without a selection.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder selection cancelled'**
+  String get libraryFoldersAddCancelled;
+
+  /// Snackbar shown when the platform directory picker fails to open.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the folder picker. Please try again.'**
+  String get libraryFoldersAddFailed;
+
+  /// Snackbar shown when the user tries to add a directory that is already a library root.
+  ///
+  /// In en, this message translates to:
+  /// **'This folder is already in the library.'**
+  String get libraryFoldersAlreadyAdded;
+
+  /// Inline label shown inside an expanded folder when listing its contents fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read this folder.'**
+  String get libraryFoldersEnumerationFailed;
+
+  /// Inline label shown inside an expanded folder when the directory holds no markdown files or subfolders.
+  ///
+  /// In en, this message translates to:
+  /// **'No markdown files in this folder'**
+  String get libraryFoldersEmptyFolder;
+
+  /// Speed dial entry that opens the platform file picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Open file'**
+  String get libraryActionMenuOpenFile;
+
+  /// Speed dial entry that opens the platform directory picker and adds the result as a library root.
+  ///
+  /// In en, this message translates to:
+  /// **'Open folder'**
+  String get libraryActionMenuOpenFolder;
+
+  /// Speed dial entry that triggers the repo sync flow (Phase 4.5 — currently disabled).
+  ///
+  /// In en, this message translates to:
+  /// **'Sync repository'**
+  String get libraryActionMenuSyncRepo;
+
+  /// Tooltip on the populated-state plus FAB that expands the speed dial menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Add documents'**
+  String get libraryActionMenuTooltip;
+
+  /// Tooltip on the populated-state FAB while the speed dial menu is open.
+  ///
+  /// In en, this message translates to:
+  /// **'Close menu'**
+  String get libraryActionMenuCloseTooltip;
+
+  /// Drawer entry that switches the library body back to the time-grouped recents view.
+  ///
+  /// In en, this message translates to:
+  /// **'Recents'**
+  String get librarySourceRecents;
+
+  /// Section header inside the drawer above the list of user-added folders (and future synced repositories).
+  ///
+  /// In en, this message translates to:
+  /// **'Sources'**
+  String get librarySourceSectionHeader;
+
+  /// Drawer bottom button that opens the Add source bottom sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Add source'**
+  String get libraryAddSourceButton;
+
+  /// Title of the Add source bottom sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a new source'**
+  String get libraryAddSourceSheetTitle;
+
+  /// Placeholder inside the folder source search field. Scoped to the active folder's name so the user knows the search is not over the whole library.
+  ///
+  /// In en, this message translates to:
+  /// **'Search in {folderName}'**
+  String libraryFolderSourceSearchHint(String folderName);
+
+  /// Empty state shown inside the folder source body when the folder has no markdown files at any depth.
+  ///
+  /// In en, this message translates to:
+  /// **'This folder has no markdown files'**
+  String get libraryFolderSourceEmpty;
+
+  /// Error state shown inside the folder source body when enumerating the folder throws.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read this folder. Check that it still exists on disk.'**
+  String get libraryFolderSourceError;
+
+  /// Empty state shown inside the folder source body when a recursive search query matches no files.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching files in {folderName}'**
+  String libraryFolderSourceSearchNoResults(String folderName);
+
+  /// Loading label shown while the folder source recursively walks its directory tree for the first time.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning folder…'**
+  String get libraryFolderSourceSearchLoading;
+
+  /// Subtitle beneath the Add folder tile in the Add source bottom sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a directory from this device'**
+  String get libraryAddSourceFolderSubtitle;
+
+  /// Subtitle beneath the Sync repository tile in the Add source bottom sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull markdown files from a git repository (coming soon)'**
+  String get libraryAddSourceRepoSubtitle;
+
   /// Button label that opens a file picker on the device.
   ///
   /// In en, this message translates to:
@@ -464,29 +638,47 @@ abstract class AppLocalizations {
   /// **'Back to top'**
   String get viewerBackToTopTooltip;
 
-  /// Tooltip for the viewer AppBar action that saves the current reading position so it can be resumed later.
+  /// Tooltip for the viewer AppBar bookmark action. Tapping it always writes the current scroll offset, whether a prior position was saved or not; the long-press menu handles removal.
   ///
   /// In en, this message translates to:
-  /// **'Bookmark reading position'**
+  /// **'Save or update reading position'**
   String get viewerBookmarkSaveTooltip;
 
-  /// Tooltip for the viewer AppBar action that clears a previously saved reading position.
-  ///
-  /// In en, this message translates to:
-  /// **'Clear bookmark'**
-  String get viewerBookmarkClearTooltip;
-
-  /// Snackbar confirmation shown after the user saves a bookmark at the current scroll position.
+  /// Snackbar confirmation shown after the user saves a bookmark at the current scroll position for the first time in a document.
   ///
   /// In en, this message translates to:
   /// **'Reading position saved'**
   String get viewerBookmarkSaved;
 
-  /// Snackbar confirmation shown after the user clears a previously saved bookmark.
+  /// Snackbar confirmation shown when the user taps bookmark on a document that already had a saved position, so the save acts as an update rather than a first write.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading position updated'**
+  String get viewerBookmarkUpdated;
+
+  /// Snackbar confirmation shown after the user clears a previously saved bookmark via the long-press menu.
   ///
   /// In en, this message translates to:
   /// **'Bookmark cleared'**
   String get viewerBookmarkCleared;
+
+  /// Secondary coach-mark line appended to the first-ever bookmark save confirmation, teaching the user that long-press opens the remove menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Long-press the bookmark icon to remove it.'**
+  String get viewerBookmarkLongPressHint;
+
+  /// Bottom sheet action that animates the scroll back to the previously saved reading position.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to saved position'**
+  String get viewerBookmarkMenuGoTo;
+
+  /// Bottom sheet action that clears the saved reading position for the active document.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove bookmark'**
+  String get viewerBookmarkMenuRemove;
 
   /// Snackbar shown when a document opens and the viewer automatically restores the scroll position from a saved bookmark.
   ///

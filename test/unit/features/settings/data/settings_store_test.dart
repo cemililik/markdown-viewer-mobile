@@ -82,5 +82,28 @@ void main() {
 
       expect(store.readLocale(), AppLocale.system);
     });
+
+    test(
+      'readHasSeenBookmarkHint defaults to false on a fresh install',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = SettingsStore(prefs);
+
+        expect(store.readHasSeenBookmarkHint(), isFalse);
+      },
+    );
+
+    test(
+      'markBookmarkHintSeen persists and makes the flag read back as true',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = SettingsStore(prefs);
+
+        expect(store.readHasSeenBookmarkHint(), isFalse);
+        await store.markBookmarkHintSeen();
+        final reopened = SettingsStore(prefs);
+        expect(reopened.readHasSeenBookmarkHint(), isTrue);
+      },
+    );
   });
 }

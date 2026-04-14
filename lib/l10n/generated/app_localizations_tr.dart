@@ -151,6 +151,101 @@ class AppLocalizationsTr extends AppLocalizations {
   String get libraryRecentUnpinnedSnack => 'Sabitleme kaldırıldı';
 
   @override
+  String get libraryFoldersDrawerTitle => 'Klasörler';
+
+  @override
+  String get libraryFoldersAdd => 'Klasör ekle';
+
+  @override
+  String get libraryFoldersEmptyTitle => 'Henüz klasör yok';
+
+  @override
+  String get libraryFoldersEmptyMessage =>
+      'İçinde markdown dosyaları olan bir klasör ekleyin, burada gezinin.';
+
+  @override
+  String get libraryFoldersOpenDrawerTooltip => 'Klasörleri aç';
+
+  @override
+  String get libraryFoldersAddedSnack => 'Klasör eklendi';
+
+  @override
+  String get libraryFoldersRemovedSnack => 'Klasör kaldırıldı';
+
+  @override
+  String get libraryFoldersRemove => 'Klasörü kaldır';
+
+  @override
+  String get libraryFoldersAddCancelled => 'Klasör seçimi iptal edildi';
+
+  @override
+  String get libraryFoldersAddFailed =>
+      'Klasör seçici açılamadı. Tekrar deneyin.';
+
+  @override
+  String get libraryFoldersAlreadyAdded => 'Bu klasör zaten kütüphanede.';
+
+  @override
+  String get libraryFoldersEnumerationFailed => 'Bu klasör okunamadı.';
+
+  @override
+  String get libraryFoldersEmptyFolder => 'Bu klasörde markdown dosyası yok';
+
+  @override
+  String get libraryActionMenuOpenFile => 'Dosya aç';
+
+  @override
+  String get libraryActionMenuOpenFolder => 'Klasör aç';
+
+  @override
+  String get libraryActionMenuSyncRepo => 'Depoyu senkronize et';
+
+  @override
+  String get libraryActionMenuTooltip => 'Belge ekle';
+
+  @override
+  String get libraryActionMenuCloseTooltip => 'Menüyü kapat';
+
+  @override
+  String get librarySourceRecents => 'Son açılanlar';
+
+  @override
+  String get librarySourceSectionHeader => 'Kaynaklar';
+
+  @override
+  String get libraryAddSourceButton => 'Kaynak ekle';
+
+  @override
+  String get libraryAddSourceSheetTitle => 'Yeni kaynak ekle';
+
+  @override
+  String libraryFolderSourceSearchHint(String folderName) {
+    return '$folderName içinde ara';
+  }
+
+  @override
+  String get libraryFolderSourceEmpty => 'Bu klasörde markdown dosyası yok';
+
+  @override
+  String get libraryFolderSourceError =>
+      'Bu klasör okunamadı. Diskte hâlâ olup olmadığını kontrol edin.';
+
+  @override
+  String libraryFolderSourceSearchNoResults(String folderName) {
+    return '$folderName içinde eşleşen dosya yok';
+  }
+
+  @override
+  String get libraryFolderSourceSearchLoading => 'Klasör taranıyor…';
+
+  @override
+  String get libraryAddSourceFolderSubtitle => 'Bu cihazdan bir dizin ekle';
+
+  @override
+  String get libraryAddSourceRepoSubtitle =>
+      'Bir git deposundan markdown dosyalarını çek (yakında)';
+
+  @override
   String get actionOpenFile => 'Dosya aç';
 
   @override
@@ -227,16 +322,25 @@ class AppLocalizationsTr extends AppLocalizations {
   String get viewerBackToTopTooltip => 'Başa dön';
 
   @override
-  String get viewerBookmarkSaveTooltip => 'Kaldığın yeri işaretle';
-
-  @override
-  String get viewerBookmarkClearTooltip => 'İşareti kaldır';
+  String get viewerBookmarkSaveTooltip => 'Kaldığın yeri kaydet veya güncelle';
 
   @override
   String get viewerBookmarkSaved => 'Kaldığın yer kaydedildi';
 
   @override
+  String get viewerBookmarkUpdated => 'Kaldığın yer güncellendi';
+
+  @override
   String get viewerBookmarkCleared => 'İşaret silindi';
+
+  @override
+  String get viewerBookmarkLongPressHint => 'Kaldırmak için ikona uzun bas.';
+
+  @override
+  String get viewerBookmarkMenuGoTo => 'Kaldığın yere dön';
+
+  @override
+  String get viewerBookmarkMenuRemove => 'İşareti kaldır';
 
   @override
   String get viewerResumedFromBookmark => 'Son okuduğun yerden devam ediliyor';

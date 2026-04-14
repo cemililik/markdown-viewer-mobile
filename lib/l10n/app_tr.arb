@@ -46,6 +46,47 @@
   "libraryRecentPinnedSnack": "Yukarı sabitlendi",
   "libraryRecentUnpinnedSnack": "Sabitleme kaldırıldı",
 
+  "libraryFoldersDrawerTitle": "Klasörler",
+  "libraryFoldersAdd": "Klasör ekle",
+  "libraryFoldersEmptyTitle": "Henüz klasör yok",
+  "libraryFoldersEmptyMessage": "İçinde markdown dosyaları olan bir klasör ekleyin, burada gezinin.",
+  "libraryFoldersOpenDrawerTooltip": "Klasörleri aç",
+  "libraryFoldersAddedSnack": "Klasör eklendi",
+  "libraryFoldersRemovedSnack": "Klasör kaldırıldı",
+  "libraryFoldersRemove": "Klasörü kaldır",
+  "libraryFoldersAddCancelled": "Klasör seçimi iptal edildi",
+  "libraryFoldersAddFailed": "Klasör seçici açılamadı. Tekrar deneyin.",
+  "libraryFoldersAlreadyAdded": "Bu klasör zaten kütüphanede.",
+  "libraryFoldersEnumerationFailed": "Bu klasör okunamadı.",
+  "libraryFoldersEmptyFolder": "Bu klasörde markdown dosyası yok",
+  "libraryActionMenuOpenFile": "Dosya aç",
+  "libraryActionMenuOpenFolder": "Klasör aç",
+  "libraryActionMenuSyncRepo": "Depoyu senkronize et",
+  "libraryActionMenuTooltip": "Belge ekle",
+  "libraryActionMenuCloseTooltip": "Menüyü kapat",
+
+  "librarySourceRecents": "Son açılanlar",
+  "librarySourceSectionHeader": "Kaynaklar",
+  "libraryAddSourceButton": "Kaynak ekle",
+  "libraryAddSourceSheetTitle": "Yeni kaynak ekle",
+  "libraryFolderSourceSearchHint": "{folderName} içinde ara",
+  "@libraryFolderSourceSearchHint": {
+    "placeholders": {
+      "folderName": { "type": "String", "example": "Notes" }
+    }
+  },
+  "libraryFolderSourceEmpty": "Bu klasörde markdown dosyası yok",
+  "libraryFolderSourceError": "Bu klasör okunamadı. Diskte hâlâ olup olmadığını kontrol edin.",
+  "libraryFolderSourceSearchNoResults": "{folderName} içinde eşleşen dosya yok",
+  "@libraryFolderSourceSearchNoResults": {
+    "placeholders": {
+      "folderName": { "type": "String", "example": "Notes" }
+    }
+  },
+  "libraryFolderSourceSearchLoading": "Klasör taranıyor…",
+  "libraryAddSourceFolderSubtitle": "Bu cihazdan bir dizin ekle",
+  "libraryAddSourceRepoSubtitle": "Bir git deposundan markdown dosyalarını çek (yakında)",
+
   "actionOpenFile": "Dosya aç",
   "actionSyncRepo": "Depoyu senkronize et",
   "actionCancel": "İptal",
@@ -75,10 +116,13 @@
   "mermaidRenderErrorBody": "Diyagram söz dizimini kontrol edip tekrar deneyin.",
   "mermaidReset": "Görünümü sıfırla",
   "viewerBackToTopTooltip": "Başa dön",
-  "viewerBookmarkSaveTooltip": "Kaldığın yeri işaretle",
-  "viewerBookmarkClearTooltip": "İşareti kaldır",
+  "viewerBookmarkSaveTooltip": "Kaldığın yeri kaydet veya güncelle",
   "viewerBookmarkSaved": "Kaldığın yer kaydedildi",
+  "viewerBookmarkUpdated": "Kaldığın yer güncellendi",
   "viewerBookmarkCleared": "İşaret silindi",
+  "viewerBookmarkLongPressHint": "Kaldırmak için ikona uzun bas.",
+  "viewerBookmarkMenuGoTo": "Kaldığın yere dön",
+  "viewerBookmarkMenuRemove": "İşareti kaldır",
   "viewerResumedFromBookmark": "Son okuduğun yerden devam ediliyor",
   "actionGoToTop": "Başa dön",
   "viewerLoading": "Doküman yükleniyor…",

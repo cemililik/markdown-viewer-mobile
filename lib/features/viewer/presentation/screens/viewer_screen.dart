@@ -8,6 +8,7 @@ import 'package:markdown_viewer/core/widgets/error_view.dart';
 import 'package:markdown_viewer/core/widgets/loading_view.dart';
 import 'package:markdown_viewer/features/library/application/preview_extractor.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
+import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/viewer_document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
@@ -110,28 +111,29 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       if (!mounted || !_scrollController.hasClients) {
         return;
       }
-      final maxOffset = _scrollController.position.maxScrollExtent;
-      final target = saved.offset.clamp(0.0, maxOffset);
-      _scrollController.animateTo(
-        target,
-        duration: const Duration(milliseconds: 600),
-        curve: Curves.easeOutCubic,
-      );
+      _animateToSavedPosition(saved);
       _showLocalizedSnackBar((l10n) => l10n.viewerResumedFromBookmark);
     });
   }
 
-  Future<void> _toggleBookmark() async {
+  /// Saves the current scroll offset as the reading-position
+  /// bookmark, whether or not one already exists for this
+  /// document. Tap semantics are deliberately "do what I mean":
+  /// the user taps to say "remember where I am right now", and
+  /// the button no longer acts as a toggle — removal is a
+  /// long-press affordance handled by [_showBookmarkMenu].
+  ///
+  /// The snackbar wording reflects "saved for the first time on
+  /// this document" vs "updated over a previous save" by checking
+  /// the store before writing. A separate one-shot coach mark
+  /// (`viewerBookmarkLongPressHint`) is appended the very first
+  /// time the user ever saves a bookmark — across all
+  /// documents — so they learn that long-press opens the remove
+  /// menu, then never see the hint again.
+  Future<void> _saveBookmark() async {
     final store = ref.read(readingPositionStoreProvider);
-    if (_isBookmarked.value) {
-      _isBookmarked.value = false;
-      await store.clear(widget.documentId);
-      if (!mounted) {
-        return;
-      }
-      _showLocalizedSnackBar((l10n) => l10n.viewerBookmarkCleared);
-      return;
-    }
+    final settingsStore = ref.read(settingsStoreProvider);
+    final hadPrevious = store.read(widget.documentId) != null;
     final offset =
         _scrollController.hasClients ? _scrollController.offset : 0.0;
     _isBookmarked.value = true;
@@ -142,10 +144,132 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
         savedAt: DateTime.now(),
       ),
     );
-    if (!mounted) {
+    if (!mounted) return;
+
+    final firstEver = !settingsStore.readHasSeenBookmarkHint();
+    if (firstEver) {
+      // Fire-and-forget — the next save does not need to wait
+      // on the flag landing in prefs to show the shorter
+      // confirmation.
+      settingsStore.markBookmarkHintSeen().ignore();
+    }
+    _showBookmarkSaveConfirmation(
+      hadPrevious: hadPrevious,
+      includeHint: firstEver,
+    );
+  }
+
+  /// Shows the Save/Update confirmation snackbar. When
+  /// [includeHint] is true a second line teaching the long-press
+  /// remove affordance is appended and the duration bumps from
+  /// 3 s to 5 s so the user has time to actually read it.
+  void _showBookmarkSaveConfirmation({
+    required bool hadPrevious,
+    required bool includeHint,
+  }) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        duration: Duration(seconds: includeHint ? 5 : 3),
+        content: Builder(
+          builder: (context) {
+            final l10n = context.l10n;
+            final headline =
+                hadPrevious
+                    ? l10n.viewerBookmarkUpdated
+                    : l10n.viewerBookmarkSaved;
+            if (!includeHint) {
+              return Text(headline);
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(headline),
+                const SizedBox(height: 4),
+                Text(
+                  l10n.viewerBookmarkLongPressHint,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  /// Opens the bookmark long-press bottom sheet with two
+  /// actions: animate back to the saved position, or clear the
+  /// saved position entirely. No-op when no bookmark has been
+  /// saved yet — the sheet would only show a disabled "Go to"
+  /// and a pointless "Remove", so we short-circuit with a
+  /// single-line save snackbar instead, mirroring the tap path.
+  Future<void> _showBookmarkMenu() async {
+    final store = ref.read(readingPositionStoreProvider);
+    final saved = store.read(widget.documentId);
+    if (saved == null) {
+      await _saveBookmark();
       return;
     }
-    _showLocalizedSnackBar((l10n) => l10n.viewerBookmarkSaved);
+    final choice = await showModalBottomSheet<_BookmarkMenuAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final l10n = sheetContext.l10n;
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.bookmark_outlined),
+                title: Text(l10n.viewerBookmarkMenuGoTo),
+                onTap:
+                    () => Navigator.of(
+                      sheetContext,
+                    ).pop(_BookmarkMenuAction.goTo),
+              ),
+              ListTile(
+                leading: const Icon(Icons.bookmark_remove_outlined),
+                title: Text(l10n.viewerBookmarkMenuRemove),
+                onTap:
+                    () => Navigator.of(
+                      sheetContext,
+                    ).pop(_BookmarkMenuAction.remove),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (!mounted || choice == null) return;
+    switch (choice) {
+      case _BookmarkMenuAction.goTo:
+        _animateToSavedPosition(saved);
+      case _BookmarkMenuAction.remove:
+        _isBookmarked.value = false;
+        await store.clear(widget.documentId);
+        if (!mounted) return;
+        _showLocalizedSnackBar((l10n) => l10n.viewerBookmarkCleared);
+    }
+  }
+
+  /// Animates the scroll back to [position]. Shared by the
+  /// long-press menu and the first-frame auto-restore so the
+  /// two paths land on the same motion.
+  void _animateToSavedPosition(ReadingPosition position) {
+    if (!_scrollController.hasClients) return;
+    final maxOffset = _scrollController.position.maxScrollExtent;
+    final target = position.offset.clamp(0.0, maxOffset);
+    _scrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 600),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   /// Shows a snackbar whose content reads its localized string on
@@ -220,15 +344,30 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
           ValueListenableBuilder<bool>(
             valueListenable: _isBookmarked,
             builder: (context, bookmarked, _) {
-              return IconButton(
-                icon: Icon(
-                  bookmarked ? Icons.bookmark : Icons.bookmark_outline,
+              // `IconButton` does not expose an `onLongPress`,
+              // and wrapping it in a `GestureDetector` loses
+              // long-press events to the inner tap recognizer
+              // inside the gesture arena. The reliable fix is
+              // an `InkResponse` sized to the standard 48×48 dp
+              // AppBar action touch target with both `onTap`
+              // and `onLongPress` wired. A surrounding
+              // `Tooltip` preserves the hover/long-press
+              // accessibility affordance that IconButton
+              // normally provides.
+              return Tooltip(
+                message: l10n.viewerBookmarkSaveTooltip,
+                child: InkResponse(
+                  onTap: _saveBookmark,
+                  onLongPress: _showBookmarkMenu,
+                  radius: 24,
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: Icon(
+                      bookmarked ? Icons.bookmark : Icons.bookmark_outline,
+                    ),
+                  ),
                 ),
-                tooltip:
-                    bookmarked
-                        ? l10n.viewerBookmarkClearTooltip
-                        : l10n.viewerBookmarkSaveTooltip,
-                onPressed: _toggleBookmark,
               );
             },
           ),
@@ -290,3 +429,8 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     return basename.isEmpty ? fallback : basename;
   }
 }
+
+/// Two-entry menu surfaced by the bookmark long-press. Hoisted
+/// out of the state class so the bottom sheet result type is a
+/// plain enum and not a nested generic.
+enum _BookmarkMenuAction { goTo, remove }

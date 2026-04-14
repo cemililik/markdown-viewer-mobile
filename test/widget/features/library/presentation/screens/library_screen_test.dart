@@ -3,9 +3,13 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
+import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/entities/recent_document.dart';
+import 'package:markdown_viewer/features/library/domain/repositories/library_folders_store.dart';
 import 'package:markdown_viewer/features/library/domain/repositories/recent_documents_store.dart';
+import 'package:markdown_viewer/features/library/domain/services/folder_enumerator.dart';
 import 'package:markdown_viewer/features/library/presentation/screens/library_screen.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
@@ -27,7 +31,41 @@ class _InMemoryStore implements RecentDocumentsStore {
   }
 }
 
-Widget _harness(RecentDocumentsStore store) {
+class _InMemoryFoldersStore implements LibraryFoldersStore {
+  _InMemoryFoldersStore([List<LibraryFolder>? seed])
+    : _state = <LibraryFolder>[...?seed];
+
+  List<LibraryFolder> _state;
+
+  @override
+  List<LibraryFolder> read() => List.unmodifiable(_state);
+
+  @override
+  Future<void> write(List<LibraryFolder> folders) async {
+    _state = List<LibraryFolder>.from(folders);
+  }
+}
+
+class _NoopEnumerator implements FolderEnumerator {
+  const _NoopEnumerator();
+
+  @override
+  Future<List<FolderEntry>> enumerate(
+    LibraryFolder folder, {
+    String? subPath,
+  }) async => const <FolderEntry>[];
+
+  @override
+  Future<List<FolderFileEntry>> enumerateRecursive(
+    LibraryFolder folder,
+  ) async => const <FolderFileEntry>[];
+}
+
+Widget _harness(
+  RecentDocumentsStore store, {
+  LibraryFoldersStore? foldersStore,
+  FolderEnumerator? enumerator,
+}) {
   final router = GoRouter(
     initialLocation: '/',
     routes: [
@@ -39,7 +77,15 @@ Widget _harness(RecentDocumentsStore store) {
     ],
   );
   return ProviderScope(
-    overrides: [recentDocumentsStoreProvider.overrideWithValue(store)],
+    overrides: [
+      recentDocumentsStoreProvider.overrideWithValue(store),
+      libraryFoldersStoreProvider.overrideWithValue(
+        foldersStore ?? _InMemoryFoldersStore(),
+      ),
+      folderEnumeratorProvider.overrideWithValue(
+        enumerator ?? const _NoopEnumerator(),
+      ),
+    ],
     child: MaterialApp.router(
       routerConfig: router,
       locale: const Locale('en'),
@@ -58,7 +104,7 @@ Widget _harness(RecentDocumentsStore store) {
 void main() {
   group('LibraryScreen', () {
     testWidgets(
-      'empty state shows the welcome icon, title, and Open file CTA',
+      'empty state shows the welcome icon plus three onboarding buttons',
       (tester) async {
         await tester.pumpWidget(_harness(_InMemoryStore()));
         await tester.pumpAndSettle();
@@ -66,6 +112,8 @@ void main() {
         expect(find.byIcon(Icons.menu_book_outlined), findsOneWidget);
         expect(find.text('No documents yet'), findsOneWidget);
         expect(find.text('Open file'), findsOneWidget);
+        expect(find.text('Open folder'), findsOneWidget);
+        expect(find.text('Sync repository'), findsOneWidget);
         expect(
           find.byType(FloatingActionButton),
           findsNothing,
@@ -73,6 +121,97 @@ void main() {
         );
       },
     );
+
+    testWidgets(
+      'AppBar hamburger opens the source picker drawer with Recents + Add source',
+      (tester) async {
+        await tester.pumpWidget(_harness(_InMemoryStore()));
+        await tester.pumpAndSettle();
+
+        // Drawer closed — the header and the drawer-exclusive
+        // "Recents" tile are not on screen yet. (The "Recents"
+        // text may appear in other places like Recents body
+        // headers when a folder has recent documents; in the
+        // empty harness that is not a worry.)
+        expect(find.text('Folders'), findsNothing);
+
+        await tester.tap(find.byTooltip('Open folders'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Folders'), findsOneWidget);
+        expect(find.text('Recents'), findsOneWidget);
+        expect(find.text('Add source'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'drawer renders a tile for every persisted library folder under Sources',
+      (tester) async {
+        final foldersStore = _InMemoryFoldersStore([
+          LibraryFolder(path: '/tmp/notes', addedAt: DateTime.utc(2026, 4, 14)),
+          LibraryFolder(path: '/tmp/blog', addedAt: DateTime.utc(2026, 4, 13)),
+        ]);
+
+        await tester.pumpWidget(
+          _harness(_InMemoryStore(), foldersStore: foldersStore),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip('Open folders'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Sources'), findsOneWidget);
+        expect(find.text('notes'), findsOneWidget);
+        expect(find.text('blog'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'selecting a folder in the drawer switches the body to its tree view',
+      (tester) async {
+        final foldersStore = _InMemoryFoldersStore([
+          LibraryFolder(path: '/tmp/notes', addedAt: DateTime.utc(2026, 4, 14)),
+        ]);
+
+        await tester.pumpWidget(
+          _harness(_InMemoryStore(), foldersStore: foldersStore),
+        );
+        await tester.pumpAndSettle();
+
+        // Open drawer, tap the folder tile.
+        await tester.tap(find.byTooltip('Open folders'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('notes'));
+        await tester.pumpAndSettle();
+
+        // AppBar title now shows the folder basename; the
+        // folder-scoped search placeholder appears in the body.
+        expect(find.text('Search in notes'), findsOneWidget);
+        // Greeting no longer shows because we left the Recents
+        // source.
+        expect(find.text('Good morning'), findsNothing);
+        expect(find.text('Good afternoon'), findsNothing);
+        expect(find.text('Good evening'), findsNothing);
+      },
+    );
+
+    testWidgets('populated Recents source shows an extended Open file FAB', (
+      tester,
+    ) async {
+      final store = _InMemoryStore([
+        RecentDocument(
+          documentId: const DocumentId('/tmp/alpha.md'),
+          openedAt: DateTime.now(),
+        ),
+      ]);
+
+      await tester.pumpWidget(_harness(store));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.widgetWithText(FloatingActionButton, 'Open file'),
+        findsOneWidget,
+      );
+    });
 
     testWidgets(
       'populated state shows greeting + search + Today group + tile + FAB',
@@ -118,8 +257,11 @@ void main() {
         expect(find.text('alpha.md'), findsOneWidget);
         expect(find.text('beta.md'), findsOneWidget);
 
-        // Floating action button.
-        expect(find.byType(FloatingActionButton), findsOneWidget);
+        // Extended Open file FAB on the populated Recents source.
+        expect(
+          find.widgetWithText(FloatingActionButton, 'Open file'),
+          findsOneWidget,
+        );
 
         // Old empty state is gone.
         expect(find.text('No documents yet'), findsNothing);

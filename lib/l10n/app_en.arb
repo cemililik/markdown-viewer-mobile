@@ -161,6 +161,130 @@
     "description": "Snackbar shown after a pinned recent document is unpinned."
   },
 
+  "libraryFoldersDrawerTitle": "Folders",
+  "@libraryFoldersDrawerTitle": {
+    "description": "Header of the folder explorer drawer slid in from the left of the library home screen."
+  },
+  "libraryFoldersAdd": "Add folder",
+  "@libraryFoldersAdd": {
+    "description": "Action that opens the platform directory picker to add a new library root."
+  },
+  "libraryFoldersEmptyTitle": "No folders yet",
+  "@libraryFoldersEmptyTitle": {
+    "description": "Title shown inside the folder explorer drawer when the user has not added any library roots."
+  },
+  "libraryFoldersEmptyMessage": "Add a folder of markdown files to browse them here.",
+  "@libraryFoldersEmptyMessage": {
+    "description": "Body shown inside the folder explorer drawer beneath libraryFoldersEmptyTitle."
+  },
+  "libraryFoldersOpenDrawerTooltip": "Open folders",
+  "@libraryFoldersOpenDrawerTooltip": {
+    "description": "Tooltip on the AppBar hamburger that opens the folder explorer drawer."
+  },
+  "libraryFoldersAddedSnack": "Folder added",
+  "@libraryFoldersAddedSnack": {
+    "description": "Snackbar shown after the user picks a directory to add as a library root."
+  },
+  "libraryFoldersRemovedSnack": "Folder removed",
+  "@libraryFoldersRemovedSnack": {
+    "description": "Snackbar shown after the user removes a library root from the drawer."
+  },
+  "libraryFoldersRemove": "Remove folder",
+  "@libraryFoldersRemove": {
+    "description": "Long-press / context menu action to remove a library root from the drawer."
+  },
+  "libraryFoldersAddCancelled": "Folder selection cancelled",
+  "@libraryFoldersAddCancelled": {
+    "description": "Snackbar shown when the directory picker is dismissed without a selection."
+  },
+  "libraryFoldersAddFailed": "Could not open the folder picker. Please try again.",
+  "@libraryFoldersAddFailed": {
+    "description": "Snackbar shown when the platform directory picker fails to open."
+  },
+  "libraryFoldersAlreadyAdded": "This folder is already in the library.",
+  "@libraryFoldersAlreadyAdded": {
+    "description": "Snackbar shown when the user tries to add a directory that is already a library root."
+  },
+  "libraryFoldersEnumerationFailed": "Could not read this folder.",
+  "@libraryFoldersEnumerationFailed": {
+    "description": "Inline label shown inside an expanded folder when listing its contents fails."
+  },
+  "libraryFoldersEmptyFolder": "No markdown files in this folder",
+  "@libraryFoldersEmptyFolder": {
+    "description": "Inline label shown inside an expanded folder when the directory holds no markdown files or subfolders."
+  },
+  "libraryActionMenuOpenFile": "Open file",
+  "@libraryActionMenuOpenFile": {
+    "description": "Speed dial entry that opens the platform file picker."
+  },
+  "libraryActionMenuOpenFolder": "Open folder",
+  "@libraryActionMenuOpenFolder": {
+    "description": "Speed dial entry that opens the platform directory picker and adds the result as a library root."
+  },
+  "libraryActionMenuSyncRepo": "Sync repository",
+  "@libraryActionMenuSyncRepo": {
+    "description": "Speed dial entry that triggers the repo sync flow (Phase 4.5 — currently disabled)."
+  },
+  "libraryActionMenuTooltip": "Add documents",
+  "@libraryActionMenuTooltip": {
+    "description": "Tooltip on the populated-state plus FAB that expands the speed dial menu."
+  },
+  "libraryActionMenuCloseTooltip": "Close menu",
+  "@libraryActionMenuCloseTooltip": {
+    "description": "Tooltip on the populated-state FAB while the speed dial menu is open."
+  },
+
+  "librarySourceRecents": "Recents",
+  "@librarySourceRecents": {
+    "description": "Drawer entry that switches the library body back to the time-grouped recents view."
+  },
+  "librarySourceSectionHeader": "Sources",
+  "@librarySourceSectionHeader": {
+    "description": "Section header inside the drawer above the list of user-added folders (and future synced repositories)."
+  },
+  "libraryAddSourceButton": "Add source",
+  "@libraryAddSourceButton": {
+    "description": "Drawer bottom button that opens the Add source bottom sheet."
+  },
+  "libraryAddSourceSheetTitle": "Add a new source",
+  "@libraryAddSourceSheetTitle": {
+    "description": "Title of the Add source bottom sheet."
+  },
+  "libraryFolderSourceSearchHint": "Search in {folderName}",
+  "@libraryFolderSourceSearchHint": {
+    "description": "Placeholder inside the folder source search field. Scoped to the active folder's name so the user knows the search is not over the whole library.",
+    "placeholders": {
+      "folderName": { "type": "String", "example": "Notes" }
+    }
+  },
+  "libraryFolderSourceEmpty": "This folder has no markdown files",
+  "@libraryFolderSourceEmpty": {
+    "description": "Empty state shown inside the folder source body when the folder has no markdown files at any depth."
+  },
+  "libraryFolderSourceError": "Could not read this folder. Check that it still exists on disk.",
+  "@libraryFolderSourceError": {
+    "description": "Error state shown inside the folder source body when enumerating the folder throws."
+  },
+  "libraryFolderSourceSearchNoResults": "No matching files in {folderName}",
+  "@libraryFolderSourceSearchNoResults": {
+    "description": "Empty state shown inside the folder source body when a recursive search query matches no files.",
+    "placeholders": {
+      "folderName": { "type": "String", "example": "Notes" }
+    }
+  },
+  "libraryFolderSourceSearchLoading": "Scanning folder…",
+  "@libraryFolderSourceSearchLoading": {
+    "description": "Loading label shown while the folder source recursively walks its directory tree for the first time."
+  },
+  "libraryAddSourceFolderSubtitle": "Add a directory from this device",
+  "@libraryAddSourceFolderSubtitle": {
+    "description": "Subtitle beneath the Add folder tile in the Add source bottom sheet."
+  },
+  "libraryAddSourceRepoSubtitle": "Pull markdown files from a git repository (coming soon)",
+  "@libraryAddSourceRepoSubtitle": {
+    "description": "Subtitle beneath the Sync repository tile in the Add source bottom sheet."
+  },
+
   "actionOpenFile": "Open file",
   "@actionOpenFile": {
     "description": "Button label that opens a file picker on the device."
@@ -256,21 +380,33 @@
   "@viewerBackToTopTooltip": {
     "description": "Tooltip for the floating action button that scrolls a markdown document back to the very top."
   },
-  "viewerBookmarkSaveTooltip": "Bookmark reading position",
+  "viewerBookmarkSaveTooltip": "Save or update reading position",
   "@viewerBookmarkSaveTooltip": {
-    "description": "Tooltip for the viewer AppBar action that saves the current reading position so it can be resumed later."
-  },
-  "viewerBookmarkClearTooltip": "Clear bookmark",
-  "@viewerBookmarkClearTooltip": {
-    "description": "Tooltip for the viewer AppBar action that clears a previously saved reading position."
+    "description": "Tooltip for the viewer AppBar bookmark action. Tapping it always writes the current scroll offset, whether a prior position was saved or not; the long-press menu handles removal."
   },
   "viewerBookmarkSaved": "Reading position saved",
   "@viewerBookmarkSaved": {
-    "description": "Snackbar confirmation shown after the user saves a bookmark at the current scroll position."
+    "description": "Snackbar confirmation shown after the user saves a bookmark at the current scroll position for the first time in a document."
+  },
+  "viewerBookmarkUpdated": "Reading position updated",
+  "@viewerBookmarkUpdated": {
+    "description": "Snackbar confirmation shown when the user taps bookmark on a document that already had a saved position, so the save acts as an update rather than a first write."
   },
   "viewerBookmarkCleared": "Bookmark cleared",
   "@viewerBookmarkCleared": {
-    "description": "Snackbar confirmation shown after the user clears a previously saved bookmark."
+    "description": "Snackbar confirmation shown after the user clears a previously saved bookmark via the long-press menu."
+  },
+  "viewerBookmarkLongPressHint": "Long-press the bookmark icon to remove it.",
+  "@viewerBookmarkLongPressHint": {
+    "description": "Secondary coach-mark line appended to the first-ever bookmark save confirmation, teaching the user that long-press opens the remove menu."
+  },
+  "viewerBookmarkMenuGoTo": "Go to saved position",
+  "@viewerBookmarkMenuGoTo": {
+    "description": "Bottom sheet action that animates the scroll back to the previously saved reading position."
+  },
+  "viewerBookmarkMenuRemove": "Remove bookmark",
+  "@viewerBookmarkMenuRemove": {
+    "description": "Bottom sheet action that clears the saved reading position for the active document."
   },
   "viewerResumedFromBookmark": "Resumed from your last reading position",
   "@viewerResumedFromBookmark": {
