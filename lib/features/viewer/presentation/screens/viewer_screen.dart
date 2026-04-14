@@ -614,7 +614,13 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     final renderer = ref.read(mermaidRendererProvider);
     final result = <String, Uint8List>{};
     for (final code in codes) {
-      final r = await renderer.render(code);
+      // Use a neutral light theme so diagrams are legible on the PDF's
+      // white background regardless of the app's current colour scheme.
+      // The init directive is intentionally different from the viewer's
+      // Material-3-derived directive so the two cache slots are separate
+      // and do not interfere with each other.
+      const pdfInit = '%%{init: {"theme": "neutral"}}%%\n';
+      final r = await renderer.render(code, initDirective: pdfInit);
       if (r is MermaidRenderSuccess) result[code] = r.pngBytes;
     }
     return result;

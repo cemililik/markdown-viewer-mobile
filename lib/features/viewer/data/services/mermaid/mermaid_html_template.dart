@@ -137,7 +137,14 @@ $mermaidJs
     // `%%{init: …}%%` pragmas in the source.
     mermaid.initialize({
       startOnLoad: false,
-      securityLevel: 'strict'
+      // 'antiscript' strips <script> tags from diagram labels while still
+      // allowing HTML labels required by quadrantChart and certain flowchart
+      // nodes. 'strict' blocks HTML labels entirely, causing quadrantChart
+      // to fail and triggering Mermaid's bomb-emoji error indicator on
+      // diagrams that use htmlLabels: true. Since this renderer processes
+      // the user's own local files (not untrusted remote content),
+      // antiscript is the appropriate security level.
+      securityLevel: 'antiscript'
     });
   } catch (e) {
     window.flutter_inappwebview.callHandler('mermaidResult', {
