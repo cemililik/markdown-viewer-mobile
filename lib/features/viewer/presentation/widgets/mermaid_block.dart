@@ -241,6 +241,74 @@ String buildMermaidInitDirective(ColorScheme scheme) {
     'relationColor': outline,
     'relationLabelColor': onSurface,
     'relationLabelBackground': surfaceContainer,
+
+    // ── Mindmap ───────────────────────────────────────────────────
+    //
+    // Mermaid's mindmap renderer cycles its branch fills through
+    // a `cScale<i>` palette and reads the matching label colours
+    // from `cScaleLabel<i>`. The defaults from `theme: "base"`
+    // produce washed-out pastels that are nearly unreadable on
+    // the dark Material 3 surface, so we override the first
+    // twelve slots (mindmaps rarely go past three levels — the
+    // extra slots cover wide root nodes with many children) with
+    // the project's container palette plus their matching `on*`
+    // text colours.
+    //
+    // The cycle is `primary → secondary → tertiary → surfaceHigh`
+    // so that no single branch family dominates and every level
+    // has paired text contrast that flips with light / dark
+    // theme automatically. The fourth slot is the neutral
+    // surface high so a fourth-level branch reads as "more of
+    // the same hierarchy" rather than as a fourth distinct
+    // semantic colour.
+    'cScale0': primaryContainer,
+    'cScale1': secondaryContainer,
+    'cScale2': tertiaryContainer,
+    'cScale3': surfaceContainerHigh,
+    'cScale4': primaryContainer,
+    'cScale5': secondaryContainer,
+    'cScale6': tertiaryContainer,
+    'cScale7': surfaceContainerHigh,
+    'cScale8': primaryContainer,
+    'cScale9': secondaryContainer,
+    'cScale10': tertiaryContainer,
+    'cScale11': surfaceContainerHigh,
+    'cScaleLabel0': onPrimaryContainer,
+    'cScaleLabel1': onSecondaryContainer,
+    'cScaleLabel2': onTertiaryContainer,
+    'cScaleLabel3': onSurface,
+    'cScaleLabel4': onPrimaryContainer,
+    'cScaleLabel5': onSecondaryContainer,
+    'cScaleLabel6': onTertiaryContainer,
+    'cScaleLabel7': onSurface,
+    'cScaleLabel8': onPrimaryContainer,
+    'cScaleLabel9': onSecondaryContainer,
+    'cScaleLabel10': onTertiaryContainer,
+    'cScaleLabel11': onSurface,
+    // Mindmap also uses `cScalePeer<i>` for the connecting
+    // lines between a branch and its children. Routing those
+    // through the matching `*Border*` (primary / secondary / …)
+    // colours keeps the line tied to the visual family of the
+    // branch it sprouts from.
+    'cScalePeer0': primary,
+    'cScalePeer1': secondary,
+    'cScalePeer2': tertiary,
+    'cScalePeer3': outline,
+    'cScalePeer4': primary,
+    'cScalePeer5': secondary,
+    'cScalePeer6': tertiary,
+    'cScalePeer7': outline,
+    'cScalePeer8': primary,
+    'cScalePeer9': secondary,
+    'cScalePeer10': tertiary,
+    'cScalePeer11': outline,
+    // Bump the global mermaid font from its default 14 px to
+    // 16 px so mindmap labels stay legible after the
+    // `useMaxWidth: true` SVG gets scaled into a phone column.
+    // 16 px is the same baseline the project uses for body
+    // text, so mindmap text matches the surrounding paragraph
+    // sizing instead of looking smaller.
+    'fontSize': '16px',
   };
 
   // Mermaid accepts JSON syntax inside the init directive, so we
