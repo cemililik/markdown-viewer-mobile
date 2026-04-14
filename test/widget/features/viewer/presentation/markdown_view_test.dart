@@ -191,6 +191,17 @@ void main() {
       await tester.pumpWidget(harness(doc));
       await tester.pumpAndSettle();
 
+      // Positive guard: verify the fixture actually rendered before asserting
+      // absences. A render failure that swallows exceptions would otherwise
+      // make findsNothing trivially pass.
+      expect(
+        find.textContaining(
+          'GitHub-Flavoured Markdown Features',
+          findRichText: true,
+        ),
+        findsOneWidget,
+      );
+
       // Definitions are extracted and shown in popup sheets — they must
       // not appear as paragraph text in the rendered document.
       expect(

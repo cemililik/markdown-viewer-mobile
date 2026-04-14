@@ -68,6 +68,20 @@ abstract final class SettingsRoute {
   static String location() => path;
 }
 
+/// Route for the repository sync screen.
+///
+/// The optional [urlQuery] query parameter (`'url'`) pre-populates the
+/// repository URL field when the screen opens. The value is
+/// percent-encoded via [Uri.encodeQueryComponent] so it survives
+/// deep-link serialisation and round-trips through [GoRouter].
+///
+/// Usage:
+/// ```dart
+/// // Navigate with a pre-filled URL:
+/// context.push(RepoSyncRoute.location(url: 'https://github.com/owner/repo'));
+/// // Navigate without a pre-filled URL:
+/// context.push(RepoSyncRoute.location());
+/// ```
 abstract final class RepoSyncRoute {
   static const String path = '/repo-sync';
   static const String name = 'repoSync';
@@ -75,6 +89,10 @@ abstract final class RepoSyncRoute {
   /// Query parameter carrying the pre-populated repository URL.
   static const String urlQuery = 'url';
 
+  /// Builds the full `/repo-sync` location string.
+  ///
+  /// Returns [path] directly when [url] is null or empty. Otherwise
+  /// appends the percent-encoded [url] as the [urlQuery] parameter.
   static String location({String? url}) {
     if (url == null || url.isEmpty) return path;
     return '$path?$urlQuery=${Uri.encodeQueryComponent(url)}';

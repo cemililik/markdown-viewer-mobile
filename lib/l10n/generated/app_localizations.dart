@@ -1219,6 +1219,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No network connection. Sync needs internet access.'**
   String get errorNetworkUnavailable;
+
+  /// User-facing message when the entered URL is not a recognised sync provider.
+  ///
+  /// In en, this message translates to:
+  /// **'This URL is not supported. Only GitHub repository URLs are currently accepted.'**
+  String get errorUnsupportedProvider;
+
+  /// User-facing message when a sync completes with some files failing.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync partially completed: {syncedCount} file(s) saved, {failedCount} failed.'**
+  String errorPartialSync(int syncedCount, int failedCount);
 }
 
 class _AppLocalizationsDelegate

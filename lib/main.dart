@@ -68,7 +68,10 @@ Future<void> main() async {
         folderEnumeratorProvider.overrideWithValue(
           const FolderEnumeratorImpl(),
         ),
-        appDatabaseProvider.overrideWithValue(appDatabase),
+        appDatabaseProvider.overrideWith((ref) {
+          ref.onDispose(appDatabase.close);
+          return appDatabase;
+        }),
       ],
       child: const MarkdownViewerApp(),
     ),

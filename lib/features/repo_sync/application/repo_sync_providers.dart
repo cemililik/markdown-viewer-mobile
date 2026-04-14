@@ -1,3 +1,8 @@
+// This file is the composition root for the repo_sync feature.
+// Intentional deviation from the layering rule: providers here wire domain
+// ports to concrete data-layer implementations (AppDatabase,
+// SyncedReposStoreImpl, GitHubSyncProvider, PatStore). All other files in the
+// feature import only the domain-layer abstractions declared in this file.
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -25,33 +30,6 @@ final syncedReposStoreProvider = Provider<SyncedReposStore>((ref) {
   return SyncedReposStoreImpl(db);
 });
 
-/// Shared [Dio] client for all GitHub API and raw download calls.
-///
-/// Configured with a descriptive User-Agent and JSON accept header.
-/// An optional `Authorization` header is injected per-request by
-/// [RepoSyncNotifier] based on the stored PAT.
-final syncDioProvider = Provider<Dio>((ref) {
-  final dio = Dio(
-    BaseOptions(
-      connectTimeout: const Duration(seconds: 15),
-      receiveTimeout: const Duration(seconds: 30),
-      headers: {
-        'User-Agent': 'MarkdownViewer/1.0 (flutter)',
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28',
-      },
-    ),
-  );
-  ref.onDispose(dio.close);
-  return dio;
-});
-
-/// The GitHub-backed [RepoSyncProvider].
-final gitHubSyncProviderProvider = Provider<RepoSyncProvider>((ref) {
-  final dio = ref.watch(syncDioProvider);
-  return GitHubSyncProvider(dio: dio);
-});
-
 /// Secure storage for the optional GitHub Personal Access Token.
 ///
 /// Android uses EncryptedSharedPreferences backed by Android Keystore
@@ -63,6 +41,46 @@ final patStoreProvider = Provider<PatStore>((ref) {
       aOptions: AndroidOptions(encryptedSharedPreferences: true),
     ),
   );
+});
+
+/// Shared [Dio] client for all GitHub API and raw download calls.
+///
+/// Configured with a descriptive User-Agent and JSON accept header.
+/// An `Authorization` header is injected per-request via an interceptor
+/// that reads the stored PAT from [patStoreProvider] so it is always
+/// fresh without mutating the shared [Dio] instance's global headers.
+final syncDioProvider = Provider<Dio>((ref) {
+  final patStore = ref.watch(patStoreProvider);
+  final dio = Dio(
+    BaseOptions(
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 30),
+      headers: {
+        'User-Agent': 'MarkdownViewer/1.0 (flutter)',
+        'Accept': 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
+    ),
+  );
+  dio.interceptors.add(
+    InterceptorsWrapper(
+      onRequest: (options, handler) async {
+        final pat = await patStore.read();
+        if (pat != null && pat.isNotEmpty) {
+          options.headers['Authorization'] = 'token $pat';
+        }
+        handler.next(options);
+      },
+    ),
+  );
+  ref.onDispose(dio.close);
+  return dio;
+});
+
+/// The GitHub-backed [RepoSyncProvider].
+final gitHubSyncProviderProvider = Provider<RepoSyncProvider>((ref) {
+  final dio = ref.watch(syncDioProvider);
+  return GitHubSyncProvider(dio: dio);
 });
 
 /// Watches the list of all persisted synced repositories, refreshing

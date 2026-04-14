@@ -1,0 +1,5 @@
+tags:
+  golden:
+    description: >
+      Tests that compare against committed golden image files.
+      Run with --update-goldens to regenerate the baseline images.

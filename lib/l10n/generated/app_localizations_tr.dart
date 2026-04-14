@@ -670,4 +670,13 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get errorNetworkUnavailable =>
       'Ağ bağlantısı yok. Senkronizasyon için internet gerekli.';
+
+  @override
+  String get errorUnsupportedProvider =>
+      'Bu URL desteklenmiyor. Şu an yalnızca GitHub depo URL\'leri kabul edilmektedir.';
+
+  @override
+  String errorPartialSync(int syncedCount, int failedCount) {
+    return 'Senkronizasyon kısmen tamamlandı: $syncedCount dosya kaydedildi, $failedCount başarısız oldu.';
+  }
 }

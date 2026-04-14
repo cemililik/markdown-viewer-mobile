@@ -63,8 +63,7 @@ class SyncedReposStoreImpl implements SyncedReposStore {
   @override
   Future<void> delete(int id) async {
     // Retrieve localRoot before deleting so we can wipe the directory.
-    final rows = await _db.getAllRepos();
-    final row = rows.where((r) => r.id == id).firstOrNull;
+    final row = await _db.getRepoById(id);
     await _db.deleteRepo(id);
     if (row != null) {
       final dir = Directory(row.localRoot);

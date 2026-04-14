@@ -9,6 +9,11 @@ void main() {
         PermissionDeniedFailure(message: 'denied'),
         ParseFailure(message: 'bad'),
         RenderFailure(message: 'render'),
+        NetworkUnavailableFailure(message: 'offline'),
+        RateLimitedFailure(message: 'slow down'),
+        RepoNotFoundFailure(message: 'not there'),
+        PartialSyncFailure(message: 'partial', syncedCount: 1, failedCount: 2),
+        UnsupportedProviderFailure(message: 'unknown host'),
         UnknownFailure(message: 'what'),
       ];
 
@@ -19,6 +24,11 @@ void main() {
         'PermissionDeniedFailure',
         'ParseFailure',
         'RenderFailure',
+        'NetworkUnavailableFailure',
+        'RateLimitedFailure',
+        'RepoNotFoundFailure',
+        'PartialSyncFailure',
+        'UnsupportedProviderFailure',
         'UnknownFailure',
       ]);
     });

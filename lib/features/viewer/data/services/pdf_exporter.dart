@@ -14,7 +14,9 @@ String extractPdfTitle(String source, String fallback) {
   final ast = md.Document(
     extensionSet: md.ExtensionSet.gitHubFlavored,
   ).parseLines(source.split('\n'));
-  return _firstH1(ast) ?? fallback;
+  // Run the fallback through the same cleaning path that _firstH1 applies to
+  // heading text so the output is always Latin-1 safe and entity-free.
+  return _firstH1(ast) ?? _cleanText(fallback);
 }
 
 /// Converts a markdown document to a PDF byte array.

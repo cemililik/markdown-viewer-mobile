@@ -78,14 +78,22 @@ final class FileOpenChannel: NSObject, FlutterStreamHandler {
     /// directory while the scope is active and hand the copy's path to
     /// Dart. The scope is released via `defer` after the copy completes.
     ///
-    /// If the copy fails (e.g. for a non-scoped URL that is already
-    /// accessible) we fall back to the original path so the caller still
-    /// has a chance to open the file.
+    /// Each source URL maps to a unique cache filename: the basename is
+    /// prefixed with a short (8-char) hex hash of `url.path` so two files
+    /// with the same basename from different directories never collide
+    /// (e.g. `/docs/README.md` and `/notes/README.md` both named
+    /// `README.md` map to distinct `<hash>_README.md` entries).
+    ///
+    /// For non-scoped URLs (e.g. AirDrop inbox paths that are already
+    /// inside the app sandbox) the copy is still attempted; if it fails
+    /// the original path is returned as-is because the file is still
+    /// accessible without a security scope. When the URL **is** security-
+    /// scoped and the copy fails, the failure is reported as an error
+    /// string to Dart rather than handing over the now-inaccessible path.
     func deliver(url: URL) {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
 
-        let path: String
         do {
             let cacheDir = try FileManager.default.url(
                 for: .cachesDirectory,
@@ -96,22 +104,47 @@ final class FileOpenChannel: NSObject, FlutterStreamHandler {
             try FileManager.default.createDirectory(
                 at: cacheDir, withIntermediateDirectories: true
             )
-            let dest = cacheDir.appendingPathComponent(url.lastPathComponent)
+            // Prefix the basename with a short hash of the source path so
+            // two files with the same name from different directories do not
+            // overwrite each other in the shared cache directory.
+            let hash = String(format: "%08x", url.path.hashValue & 0xFFFFFFFF)
+            let uniqueName = "\(hash)_\(url.lastPathComponent)"
+            let dest = cacheDir.appendingPathComponent(uniqueName)
             if FileManager.default.fileExists(atPath: dest.path) {
                 try FileManager.default.removeItem(at: dest)
             }
             try FileManager.default.copyItem(at: url, to: dest)
-            path = dest.path
+            emit(dest.path)
         } catch {
-            // Non-scoped URLs (e.g. app-sandbox paths from AirDrop inbox)
-            // are already accessible — fall back to the original path.
-            path = url.path
+            if scoped {
+                // The security scope will be released by the defer before
+                // Dart can read the file, so url.path is inaccessible.
+                // Report the failure instead of handing over a dead path.
+                emit(FlutterError(
+                    code: "FILE_OPEN_ERROR",
+                    message: "Failed to copy security-scoped file: \(error.localizedDescription)",
+                    details: url.lastPathComponent
+                ))
+            } else {
+                // Non-scoped URLs (e.g. app-sandbox paths from AirDrop inbox)
+                // are already accessible without a scope — fall back to the
+                // original path.
+                emit(url.path)
+            }
         }
+    }
 
+    private func emit(_ value: Any) {
         if let sink = eventSink {
-            sink(path)
+            sink(value)
         } else {
-            pendingPaths.append(path)
+            if let path = value as? String {
+                pendingPaths.append(path)
+            }
+            // Errors cannot be buffered (no FlutterError queue); they are
+            // dropped when the stream is not yet listening. This matches the
+            // behaviour of the previous single-slot implementation where a
+            // scoped-copy failure during cold-start was also silently lost.
         }
     }
 }

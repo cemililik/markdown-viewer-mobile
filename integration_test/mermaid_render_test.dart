@@ -157,6 +157,38 @@ void main() {
       }
     });
 
+    testWidgets(
+      'cache hit-rate reaches 100 % after repeated identical renders',
+      (tester) async {
+        const source = 'flowchart LR\n  HitRate --> Check';
+
+        // Cold render — populates the cache.
+        await renderer.render(source);
+
+        final statsBeforeHit = renderer.cacheStats;
+
+        // Warm render — must be a pure cache hit; no JS eval.
+        await renderer.render(source);
+
+        final statsAfterHit = renderer.cacheStats;
+
+        expect(
+          statsAfterHit.hits,
+          greaterThan(statsBeforeHit.hits),
+          reason:
+              'A second identical render must increment the hit counter: '
+              'hits went from ${statsBeforeHit.hits} to ${statsAfterHit.hits}.',
+        );
+        expect(
+          statsAfterHit.misses,
+          equals(statsBeforeHit.misses),
+          reason:
+              'The warm render must not add a miss — the SVG was already '
+              'in the LRU cache.',
+        );
+      },
+    );
+
     testWidgets('cold prewarm + first render stays under the 800 ms budget', (
       tester,
     ) async {

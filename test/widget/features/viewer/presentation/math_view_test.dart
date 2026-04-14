@@ -182,5 +182,59 @@ void main() {
       // parts would be swallowed by a (broken) inline match.
       expect(find.textContaining(r'$100', findRichText: true), findsWidgets);
     });
+
+    testWidgets(
+      'math widget sizes are stable across scroll (no layout jitter)',
+      (tester) async {
+        // Render on a viewport that is deliberately shorter than the
+        // document so a scroll is necessary to bring later math blocks
+        // into view. A 390×700 surface at 1× DPR gives us a viewport
+        // about half as tall as the full document.
+        tester.view.physicalSize = const Size(390, 700);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        final doc = parseFixture('math.md');
+        await tester.pumpWidget(markdownHarness(doc));
+        await tester.pumpAndSettle();
+
+        // Capture the render sizes of all Math widgets before scrolling.
+        // `getSize` reads the element's RenderBox so it reflects the
+        // actual laid-out pixel size, not a placeholder.
+        final mathFinder = find.byType(Math);
+        final sizesBeforeScroll =
+            tester
+                .widgetList(mathFinder)
+                .map((_) => tester.getSize(mathFinder.first))
+                .toList();
+
+        // Scroll down by 300 logical pixels, settle, then scroll back.
+        await tester.drag(find.byType(Scaffold), const Offset(0, -300));
+        await tester.pumpAndSettle();
+
+        await tester.drag(find.byType(Scaffold), const Offset(0, 300));
+        await tester.pumpAndSettle();
+
+        // Re-capture sizes after returning to the original scroll position.
+        final sizesAfterScroll =
+            tester
+                .widgetList(mathFinder)
+                .map((_) => tester.getSize(mathFinder.first))
+                .toList();
+
+        expect(
+          sizesAfterScroll,
+          equals(sizesBeforeScroll),
+          reason:
+              'Math widget sizes must be identical before and after a '
+              'scroll round-trip. A size change indicates a layout '
+              'reflow triggered by scroll state — the jitter regression '
+              'this test guards against.',
+        );
+      },
+    );
   });
 }
