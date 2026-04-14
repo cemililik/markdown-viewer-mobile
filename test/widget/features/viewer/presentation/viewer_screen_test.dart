@@ -207,7 +207,10 @@ void main() {
         await store.write(
           ReadingPosition(
             documentId: id,
-            offset: 1234,
+            // Offset 0 keeps _maybeRestoreReadingPosition from running an
+            // animation that scrolls the SliverAppBar offscreen before
+            // the assertion runs.
+            offset: 0,
             savedAt: DateTime.utc(2026, 4, 13),
           ),
         );
@@ -247,7 +250,9 @@ void main() {
         await store.write(
           ReadingPosition(
             documentId: id,
-            offset: 42,
+            // Offset 0 prevents the restore animation from scrolling the
+            // SliverAppBar offscreen before the assertion runs.
+            offset: 0,
             savedAt: DateTime.utc(2026, 4, 13),
           ),
         );
@@ -469,7 +474,9 @@ void main() {
         await store.write(
           ReadingPosition(
             documentId: id,
-            offset: 120,
+            // Offset 0 prevents the restore animation from scrolling the
+            // SliverAppBar offscreen before the assertion runs.
+            offset: 0,
             savedAt: DateTime.utc(2026, 4, 13),
           ),
         );

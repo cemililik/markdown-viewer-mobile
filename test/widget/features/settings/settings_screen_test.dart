@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/settings/data/settings_store.dart';
 import 'package:markdown_viewer/features/settings/domain/app_locale.dart';
+import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
 import 'package:markdown_viewer/features/settings/presentation/screens/settings_screen.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,17 +34,19 @@ void main() {
 
   group('SettingsScreen', () {
     testWidgets(
-      'renders three theme radios and three language radios in English',
+      'renders four theme segments and three language segments in English',
       (tester) async {
         await tester.pumpWidget(await buildHarness());
         await tester.pumpAndSettle();
 
         expect(find.text('Theme'), findsOneWidget);
-        expect(find.text('System default'), findsNWidgets(2));
+        expect(find.text('System'), findsOneWidget);
         expect(find.text('Light'), findsOneWidget);
         expect(find.text('Dark'), findsOneWidget);
+        expect(find.text('Sepia'), findsOneWidget);
 
         expect(find.text('Language'), findsOneWidget);
+        expect(find.text('System default'), findsOneWidget);
         expect(find.text('English'), findsOneWidget);
         expect(find.text('Turkish'), findsOneWidget);
       },
@@ -60,7 +63,7 @@ void main() {
 
       final element = tester.element(find.byType(SettingsScreen));
       final container = ProviderScope.containerOf(element);
-      expect(container.read(themeModeControllerProvider), ThemeMode.dark);
+      expect(container.read(themeModeControllerProvider), AppThemeMode.dark);
     });
 
     testWidgets('tapping a language radio updates the LocaleController state', (
