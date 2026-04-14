@@ -775,9 +775,9 @@ lands the three features the user prioritized in one commit:
 
 **Goal (rest of Phase 3)**: Polish the remaining reading UX.
 
-- [ ] Immersive scroll (AppBar + FAB auto-hide on scroll)
-- [ ] Sepia reading theme
-- [ ] Keep-screen-on toggle
+- [x] Immersive scroll (AppBar + FAB auto-hide on scroll)
+- [x] Sepia reading theme
+- [x] Keep-screen-on toggle
 - [x] Text selection + copy + share
 - [x] In-doc anchor links
 - [ ] Footnote popup sheets
