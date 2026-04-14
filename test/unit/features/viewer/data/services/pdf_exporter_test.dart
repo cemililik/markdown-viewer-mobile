@@ -156,6 +156,42 @@ graph TD
     });
   });
 
+  group('Latin Extended-A transliteration', () {
+    test('transliterates Turkish characters', () {
+      // ğ Ğ ş Ş ı İ are all > U+00FF and would produce glyph boxes in the
+      // built-in Helvetica font without explicit mapping.
+      // ü (U+00FC) is within Latin-1 and passes through unchanged.
+      expect(
+        extractPdfTitle('No heading.', 'Ğüzel bir şey — ı ve İ'),
+        'Güzel bir sey -- i ve I',
+      );
+    });
+
+    test('transliterates Polish characters', () {
+      // ó (U+00F3) is within Latin-1 and passes through unchanged.
+      expect(
+        extractPdfTitle('No heading.', 'Łódź — Ąą Ćć Ęę Śś Źź Żż Ńń'),
+        'Lódz -- Aa Cc Ee Ss Zz Zz Nn',
+      );
+    });
+
+    test('transliterates Czech characters', () {
+      expect(
+        extractPdfTitle('No heading.', 'Čeština: Čč Šš Žž Řř Ěě Ďď Ťť'),
+        'Cestina: Cc Ss Zz Rr Ee Dd Tt',
+      );
+    });
+
+    test('catch-all strips remaining non-Latin-1 characters', () {
+      // Any character above U+00FF not covered by the explicit table
+      // is removed rather than producing a glyph box.
+      expect(
+        extractPdfTitle('No heading.', 'A\u0400B'), // U+0400 Cyrillic
+        'AB',
+      );
+    });
+  });
+
   group('fire-emoji normalization', () {
     test('replaces 🔥 (U+1F525) with [fire] via extractPdfTitle fallback', () {
       // _cleanText is private; exercise it through extractPdfTitle's fallback

@@ -19,6 +19,32 @@ String extractPdfTitle(String source, String fallback) {
   return _firstH1(ast) ?? _cleanText(fallback);
 }
 
+/// Returns the trimmed source of every mermaid fenced code block in
+/// [source], in document order, without duplicates.
+///
+/// The returned strings are the exact look-up keys that [exportToPdf]
+/// uses in [mermaidImages], so callers can pre-render the diagrams via
+/// [MermaidRenderer] and pass the result map in without any key
+/// mismatch — both sides go through the same markdown parser and the
+/// same [_extractText] + trim path.
+List<String> extractMermaidCodes(String source) {
+  final ast = md.Document(
+    extensionSet: md.ExtensionSet.gitHubFlavored,
+  ).parseLines(source.split('\n'));
+  final codes = <String>[];
+  final seen = <String>{};
+  for (final node in ast) {
+    if (node is! md.Element || node.tag != 'pre') continue;
+    final codeEl = node.children?.whereType<md.Element>().firstOrNull;
+    final lang =
+        codeEl?.attributes['class']?.replaceFirst('language-', '') ?? '';
+    if (lang != 'mermaid') continue;
+    final code = _extractText(node).trim();
+    if (code.isNotEmpty && seen.add(code)) codes.add(code);
+  }
+  return codes;
+}
+
 /// Converts a markdown document to a PDF byte array.
 ///
 /// The markdown source is parsed with the same GitHub-Flavored Markdown
@@ -628,6 +654,58 @@ String _cleanText(String text) {
       .replaceAll('\u2139', '[i]') // ℹ information source
       .replaceAll('\u2B50', '*') // ⭐ star
       .replaceAll('\u{1F525}', '[fire]') // 🔥
+      // Latin Extended-A transliteration — characters in U+0100–U+024F that
+      // are outside the Latin-1 range supported by the built-in PDF fonts.
+      // Turkish
+      .replaceAll('\u011E', 'G') // Ğ
+      .replaceAll('\u011F', 'g') // ğ
+      .replaceAll('\u0130', 'I') // İ
+      .replaceAll('\u0131', 'i') // ı
+      .replaceAll('\u015E', 'S') // Ş
+      .replaceAll('\u015F', 's') // ş
+      // Polish
+      .replaceAll('\u0104', 'A') // Ą
+      .replaceAll('\u0105', 'a') // ą
+      .replaceAll('\u0106', 'C') // Ć
+      .replaceAll('\u0107', 'c') // ć
+      .replaceAll('\u0118', 'E') // Ę
+      .replaceAll('\u0119', 'e') // ę
+      .replaceAll('\u0141', 'L') // Ł
+      .replaceAll('\u0142', 'l') // ł
+      .replaceAll('\u0143', 'N') // Ń
+      .replaceAll('\u0144', 'n') // ń
+      .replaceAll('\u015A', 'S') // Ś
+      .replaceAll('\u015B', 's') // ś
+      .replaceAll('\u0179', 'Z') // Ź
+      .replaceAll('\u017A', 'z') // ź
+      .replaceAll('\u017B', 'Z') // Ż
+      .replaceAll('\u017C', 'z') // ż
+      // Czech / Slovak
+      .replaceAll('\u010C', 'C') // Č
+      .replaceAll('\u010D', 'c') // č
+      .replaceAll('\u010E', 'D') // Ď
+      .replaceAll('\u010F', 'd') // ď
+      .replaceAll('\u011A', 'E') // Ě
+      .replaceAll('\u011B', 'e') // ě
+      .replaceAll('\u0147', 'N') // Ň
+      .replaceAll('\u0148', 'n') // ň
+      .replaceAll('\u0158', 'R') // Ř
+      .replaceAll('\u0159', 'r') // ř
+      .replaceAll('\u0160', 'S') // Š
+      .replaceAll('\u0161', 's') // š
+      .replaceAll('\u0164', 'T') // Ť
+      .replaceAll('\u0165', 't') // ť
+      .replaceAll('\u017D', 'Z') // Ž
+      .replaceAll('\u017E', 'z') // ž
+      // Romanian
+      .replaceAll('\u0102', 'A') // Ă
+      .replaceAll('\u0103', 'a') // ă
+      .replaceAll('\u0218', 'S') // Ș (comma below)
+      .replaceAll('\u0219', 's') // ș (comma below)
+      .replaceAll('\u021A', 'T') // Ț (comma below)
+      .replaceAll('\u021B', 't') // ț (comma below)
+      // Catch-all: drop any remaining character above U+00FF
+      .replaceAll(RegExp(r'[^\x00-\xFF]'), '')
       // PUA sentinels used by the viewer's search highlight system
       .replaceAll(RegExp('[\uE000-\uE003]'), '');
 }

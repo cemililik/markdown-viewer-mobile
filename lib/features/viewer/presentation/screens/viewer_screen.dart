@@ -608,14 +608,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   Future<Map<String, Uint8List>> _prerenderMermaidDiagrams(
     String source,
   ) async {
-    final fenceRe = RegExp(r'```mermaid[ \t]*\n([\s\S]*?)```', multiLine: true);
-    final codes =
-        fenceRe
-            .allMatches(source)
-            .map((m) => (m.group(1) ?? '').trim())
-            .where((c) => c.isNotEmpty)
-            .toSet()
-            .toList();
+    final codes = extractMermaidCodes(source);
     if (codes.isEmpty) return const {};
 
     final renderer = ref.read(mermaidRendererProvider);
