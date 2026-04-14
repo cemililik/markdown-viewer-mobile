@@ -549,12 +549,15 @@ pw.Widget _list(md.Element node, _Fonts f, {required bool ordered}) {
 
 pw.Widget _table(md.Element tableNode, _Fonts f) {
   final rows = <pw.TableRow>[];
+  int colCount = 0;
   for (final section in (tableNode.children ?? []).whereType<md.Element>()) {
     final isHead = section.tag == 'thead';
     for (final tr in (section.children ?? []).whereType<md.Element>()) {
       if (tr.tag != 'tr') continue;
+      final cellElements = (tr.children ?? []).whereType<md.Element>().toList();
+      if (colCount == 0) colCount = cellElements.length;
       final cells =
-          (tr.children ?? []).whereType<md.Element>().map((cell) {
+          cellElements.map((cell) {
             final text = _cleanText(_extractText(cell)).trim();
             return pw.Padding(
               padding: const pw.EdgeInsets.symmetric(
@@ -582,10 +585,17 @@ pw.Widget _table(md.Element tableNode, _Fonts f) {
 
   if (rows.isEmpty) return pw.SizedBox();
 
+  // Distribute all columns equally so no column collapses to its minimum
+  // intrinsic width and causes mid-word wrapping.
+  final columnWidths = {
+    for (var i = 0; i < colCount; i++) i: const pw.FlexColumnWidth(1),
+  };
+
   return pw.Padding(
     padding: const pw.EdgeInsets.only(bottom: 10),
     child: pw.Table(
       border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+      columnWidths: columnWidths,
       children: rows,
     ),
   );
