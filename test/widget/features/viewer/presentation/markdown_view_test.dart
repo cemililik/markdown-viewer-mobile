@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/markdown_view.dart';
+import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 import '../../../../_helpers/markdown_fixtures.dart';
@@ -48,6 +49,8 @@ void main() {
     // crash with "vertical viewport given unbounded height".
     return MaterialApp(
       theme: ThemeData(brightness: brightness, useMaterial3: true),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(body: MarkdownView(document: document)),
     );
   }
@@ -179,20 +182,24 @@ void main() {
       expect(find.byIcon(Icons.check_box_outline_blank), findsNWidgets(2));
     });
 
-    testWidgets('renders footnote bodies in the document tree', (tester) async {
+    testWidgets('strips footnote definitions from the document body', (
+      tester,
+    ) async {
       useTallSurface(tester);
       final doc = parseFixture('gfm_features.md');
 
       await tester.pumpWidget(harness(doc));
       await tester.pumpAndSettle();
 
+      // Definitions are extracted and shown in popup sheets — they must
+      // not appear as paragraph text in the rendered document.
       expect(
         find.textContaining('First footnote body', findRichText: true),
-        findsOneWidget,
+        findsNothing,
       );
       expect(
         find.textContaining('Second footnote body', findRichText: true),
-        findsOneWidget,
+        findsNothing,
       );
     });
 
