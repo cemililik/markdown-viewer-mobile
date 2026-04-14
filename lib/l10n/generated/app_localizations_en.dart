@@ -324,16 +324,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewerBackToTopTooltip => 'Back to top';
 
   @override
-  String get viewerBookmarkSaveTooltip => 'Bookmark reading position';
-
-  @override
-  String get viewerBookmarkClearTooltip => 'Clear bookmark';
+  String get viewerBookmarkSaveTooltip => 'Save or update reading position';
 
   @override
   String get viewerBookmarkSaved => 'Reading position saved';
 
   @override
+  String get viewerBookmarkUpdated => 'Reading position updated';
+
+  @override
   String get viewerBookmarkCleared => 'Bookmark cleared';
+
+  @override
+  String get viewerBookmarkLongPressHint =>
+      'Long-press the bookmark icon to remove it.';
+
+  @override
+  String get viewerBookmarkMenuGoTo => 'Go to saved position';
+
+  @override
+  String get viewerBookmarkMenuRemove => 'Remove bookmark';
 
   @override
   String get viewerResumedFromBookmark =>

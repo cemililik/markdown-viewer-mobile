@@ -322,16 +322,25 @@ class AppLocalizationsTr extends AppLocalizations {
   String get viewerBackToTopTooltip => 'Başa dön';
 
   @override
-  String get viewerBookmarkSaveTooltip => 'Kaldığın yeri işaretle';
-
-  @override
-  String get viewerBookmarkClearTooltip => 'İşareti kaldır';
+  String get viewerBookmarkSaveTooltip => 'Kaldığın yeri kaydet veya güncelle';
 
   @override
   String get viewerBookmarkSaved => 'Kaldığın yer kaydedildi';
 
   @override
+  String get viewerBookmarkUpdated => 'Kaldığın yer güncellendi';
+
+  @override
   String get viewerBookmarkCleared => 'İşaret silindi';
+
+  @override
+  String get viewerBookmarkLongPressHint => 'Kaldırmak için ikona uzun bas.';
+
+  @override
+  String get viewerBookmarkMenuGoTo => 'Kaldığın yere dön';
+
+  @override
+  String get viewerBookmarkMenuRemove => 'İşareti kaldır';
 
   @override
   String get viewerResumedFromBookmark => 'Son okuduğun yerden devam ediliyor';

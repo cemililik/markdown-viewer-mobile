@@ -638,29 +638,47 @@ abstract class AppLocalizations {
   /// **'Back to top'**
   String get viewerBackToTopTooltip;
 
-  /// Tooltip for the viewer AppBar action that saves the current reading position so it can be resumed later.
+  /// Tooltip for the viewer AppBar bookmark action. Tapping it always writes the current scroll offset, whether a prior position was saved or not; the long-press menu handles removal.
   ///
   /// In en, this message translates to:
-  /// **'Bookmark reading position'**
+  /// **'Save or update reading position'**
   String get viewerBookmarkSaveTooltip;
 
-  /// Tooltip for the viewer AppBar action that clears a previously saved reading position.
-  ///
-  /// In en, this message translates to:
-  /// **'Clear bookmark'**
-  String get viewerBookmarkClearTooltip;
-
-  /// Snackbar confirmation shown after the user saves a bookmark at the current scroll position.
+  /// Snackbar confirmation shown after the user saves a bookmark at the current scroll position for the first time in a document.
   ///
   /// In en, this message translates to:
   /// **'Reading position saved'**
   String get viewerBookmarkSaved;
 
-  /// Snackbar confirmation shown after the user clears a previously saved bookmark.
+  /// Snackbar confirmation shown when the user taps bookmark on a document that already had a saved position, so the save acts as an update rather than a first write.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading position updated'**
+  String get viewerBookmarkUpdated;
+
+  /// Snackbar confirmation shown after the user clears a previously saved bookmark via the long-press menu.
   ///
   /// In en, this message translates to:
   /// **'Bookmark cleared'**
   String get viewerBookmarkCleared;
+
+  /// Secondary coach-mark line appended to the first-ever bookmark save confirmation, teaching the user that long-press opens the remove menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Long-press the bookmark icon to remove it.'**
+  String get viewerBookmarkLongPressHint;
+
+  /// Bottom sheet action that animates the scroll back to the previously saved reading position.
+  ///
+  /// In en, this message translates to:
+  /// **'Go to saved position'**
+  String get viewerBookmarkMenuGoTo;
+
+  /// Bottom sheet action that clears the saved reading position for the active document.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove bookmark'**
+  String get viewerBookmarkMenuRemove;
 
   /// Snackbar shown when a document opens and the viewer automatically restores the scroll position from a saved bookmark.
   ///

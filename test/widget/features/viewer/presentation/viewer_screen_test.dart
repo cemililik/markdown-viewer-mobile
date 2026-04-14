@@ -5,6 +5,11 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/core/errors/failure.dart';
+import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
+import 'package:markdown_viewer/features/library/domain/entities/recent_document.dart';
+import 'package:markdown_viewer/features/library/domain/repositories/recent_documents_store.dart';
+import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
+import 'package:markdown_viewer/features/settings/data/settings_store.dart';
 import 'package:markdown_viewer/features/viewer/application/document_repository_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
@@ -13,6 +18,7 @@ import 'package:markdown_viewer/features/viewer/domain/repositories/document_rep
 import 'package:markdown_viewer/features/viewer/domain/repositories/reading_position_store.dart';
 import 'package:markdown_viewer/features/viewer/presentation/screens/viewer_screen.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 void main() {
@@ -48,15 +54,25 @@ void main() {
     byteSize: 22,
   );
 
-  Widget harness(
+  Future<Widget> harness(
     DocumentRepository repo, {
     ReadingPositionStore? readingPositionStore,
-  }) {
+    Map<String, Object>? settingsPrefs,
+  }) async {
+    // Seed a fresh mocked SharedPreferences per test so the
+    // one-shot bookmark hint flag starts in its "unseen" state
+    // (the default) unless a test deliberately seeds it true.
+    SharedPreferences.setMockInitialValues(settingsPrefs ?? <String, Object>{});
+    final prefs = await SharedPreferences.getInstance();
     return ProviderScope(
       overrides: [
         documentRepositoryProvider.overrideWithValue(repo),
         readingPositionStoreProvider.overrideWithValue(
           readingPositionStore ?? _InMemoryReadingPositionStore(),
+        ),
+        settingsStoreProvider.overrideWithValue(SettingsStore(prefs)),
+        recentDocumentsStoreProvider.overrideWithValue(
+          _InMemoryRecentDocumentsStore(),
         ),
       ],
       child: const MaterialApp(
@@ -78,7 +94,7 @@ void main() {
     ) async {
       final completer = Completer<Document>();
       await tester.pumpWidget(
-        harness(_CompleterDocumentRepository(completer.future)),
+        await harness(_CompleterDocumentRepository(completer.future)),
       );
 
       // No settle — we want to freeze the provider in the pending state.
@@ -100,7 +116,7 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        harness(const _ImmediateDocumentRepository(sampleDocument)),
+        await harness(const _ImmediateDocumentRepository(sampleDocument)),
       );
       await tester.pumpAndSettle();
 
@@ -114,7 +130,7 @@ void main() {
 
     testWidgets('maps a Failure to the localized error view', (tester) async {
       await tester.pumpWidget(
-        harness(
+        await harness(
           const _ThrowingDocumentRepository(
             FileNotFoundFailure(message: 'gone'),
           ),
@@ -138,7 +154,7 @@ void main() {
       'wraps a non-Failure exception in UnknownFailure and still shows an error',
       (tester) async {
         await tester.pumpWidget(
-          harness(_ThrowingNonFailureRepository(StateError('boom'))),
+          await harness(_ThrowingNonFailureRepository(StateError('boom'))),
         );
         await tester.pumpAndSettle();
 
@@ -154,7 +170,7 @@ void main() {
       'bookmark icon is outlined on first build when no position is saved',
       (tester) async {
         await tester.pumpWidget(
-          harness(const _ImmediateDocumentRepository(sampleDocument)),
+          await harness(const _ImmediateDocumentRepository(sampleDocument)),
         );
         await tester.pumpAndSettle();
 
@@ -167,7 +183,7 @@ void main() {
       'bookmark icon flips to filled after the user taps the AppBar action',
       (tester) async {
         await tester.pumpWidget(
-          harness(const _ImmediateDocumentRepository(sampleDocument)),
+          await harness(const _ImmediateDocumentRepository(sampleDocument)),
         );
         await tester.pumpAndSettle();
 
@@ -193,7 +209,7 @@ void main() {
         );
 
         await tester.pumpWidget(
-          harness(
+          await harness(
             const _ImmediateDocumentRepository(sampleDocument),
             readingPositionStore: store,
           ),
@@ -209,7 +225,7 @@ void main() {
       tester,
     ) async {
       await tester.pumpWidget(
-        harness(const _ImmediateDocumentRepository(sampleDocument)),
+        await harness(const _ImmediateDocumentRepository(sampleDocument)),
       );
       await tester.pumpAndSettle();
 
@@ -218,6 +234,129 @@ void main() {
       // itself is in the tree).
       expect(find.byType(FloatingActionButton), findsOneWidget);
     });
+
+    testWidgets(
+      'tapping bookmark on an already-saved doc updates the snackbar copy '
+      'rather than clearing the bookmark',
+      (tester) async {
+        final store = _InMemoryReadingPositionStore();
+        await store.write(
+          ReadingPosition(
+            documentId: id,
+            offset: 42,
+            savedAt: DateTime.utc(2026, 4, 13),
+          ),
+        );
+
+        await tester.pumpWidget(
+          await harness(
+            const _ImmediateDocumentRepository(sampleDocument),
+            readingPositionStore: store,
+            // Hint flag already seen so the snackbar stays on the
+            // one-line "Updated" copy for this test.
+            settingsPrefs: const <String, Object>{
+              'settings.bookmarkHintSeen': true,
+            },
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        // Filled on mount (position is pre-seeded).
+        expect(find.byIcon(Icons.bookmark), findsOneWidget);
+
+        await tester.tap(find.byIcon(Icons.bookmark));
+        await tester.pumpAndSettle();
+
+        // Still filled — tap is save/update, not toggle.
+        expect(find.byIcon(Icons.bookmark), findsOneWidget);
+        expect(find.text('Reading position updated'), findsOneWidget);
+        // And the store still carries a position (not cleared).
+        expect(store.read(id), isNotNull);
+      },
+    );
+
+    testWidgets(
+      'first ever bookmark save appends the long-press hint to the snackbar',
+      (tester) async {
+        await tester.pumpWidget(
+          await harness(const _ImmediateDocumentRepository(sampleDocument)),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byIcon(Icons.bookmark_outline));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Reading position saved'), findsOneWidget);
+        expect(
+          find.text('Long-press the bookmark icon to remove it.'),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets(
+      'the long-press hint does not repeat once the settings flag is seen',
+      (tester) async {
+        await tester.pumpWidget(
+          await harness(
+            const _ImmediateDocumentRepository(sampleDocument),
+            settingsPrefs: const <String, Object>{
+              'settings.bookmarkHintSeen': true,
+            },
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byIcon(Icons.bookmark_outline));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Reading position saved'), findsOneWidget);
+        expect(
+          find.text('Long-press the bookmark icon to remove it.'),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets(
+      'long-press on a saved bookmark opens the Go to / Remove menu',
+      (tester) async {
+        final store = _InMemoryReadingPositionStore();
+        await store.write(
+          ReadingPosition(
+            documentId: id,
+            offset: 120,
+            savedAt: DateTime.utc(2026, 4, 13),
+          ),
+        );
+
+        await tester.pumpWidget(
+          await harness(
+            const _ImmediateDocumentRepository(sampleDocument),
+            readingPositionStore: store,
+            settingsPrefs: const <String, Object>{
+              'settings.bookmarkHintSeen': true,
+            },
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.longPress(find.byIcon(Icons.bookmark));
+        await tester.pumpAndSettle();
+
+        expect(find.text('Go to saved position'), findsOneWidget);
+        expect(find.text('Remove bookmark'), findsOneWidget);
+
+        // Tap Remove → the bookmark is cleared and the icon
+        // flips back to outlined.
+        await tester.tap(find.text('Remove bookmark'));
+        await tester.pumpAndSettle();
+
+        expect(store.read(id), isNull);
+        expect(find.byIcon(Icons.bookmark_outline), findsOneWidget);
+        expect(find.text('Bookmark cleared'), findsOneWidget);
+      },
+    );
   });
 }
 
@@ -270,5 +409,20 @@ final class _InMemoryReadingPositionStore implements ReadingPositionStore {
   @override
   Future<void> clear(DocumentId documentId) async {
     _positions.remove(documentId.value);
+  }
+}
+
+/// In-memory [RecentDocumentsStore] so the viewer's
+/// `ref.listen` → `touch` hop does not crash when the
+/// document provider transitions to its data state.
+final class _InMemoryRecentDocumentsStore implements RecentDocumentsStore {
+  List<RecentDocument> _state = const <RecentDocument>[];
+
+  @override
+  List<RecentDocument> read() => List.unmodifiable(_state);
+
+  @override
+  Future<void> write(List<RecentDocument> documents) async {
+    _state = List<RecentDocument>.from(documents);
   }
 }

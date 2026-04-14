@@ -380,21 +380,33 @@
   "@viewerBackToTopTooltip": {
     "description": "Tooltip for the floating action button that scrolls a markdown document back to the very top."
   },
-  "viewerBookmarkSaveTooltip": "Bookmark reading position",
+  "viewerBookmarkSaveTooltip": "Save or update reading position",
   "@viewerBookmarkSaveTooltip": {
-    "description": "Tooltip for the viewer AppBar action that saves the current reading position so it can be resumed later."
-  },
-  "viewerBookmarkClearTooltip": "Clear bookmark",
-  "@viewerBookmarkClearTooltip": {
-    "description": "Tooltip for the viewer AppBar action that clears a previously saved reading position."
+    "description": "Tooltip for the viewer AppBar bookmark action. Tapping it always writes the current scroll offset, whether a prior position was saved or not; the long-press menu handles removal."
   },
   "viewerBookmarkSaved": "Reading position saved",
   "@viewerBookmarkSaved": {
-    "description": "Snackbar confirmation shown after the user saves a bookmark at the current scroll position."
+    "description": "Snackbar confirmation shown after the user saves a bookmark at the current scroll position for the first time in a document."
+  },
+  "viewerBookmarkUpdated": "Reading position updated",
+  "@viewerBookmarkUpdated": {
+    "description": "Snackbar confirmation shown when the user taps bookmark on a document that already had a saved position, so the save acts as an update rather than a first write."
   },
   "viewerBookmarkCleared": "Bookmark cleared",
   "@viewerBookmarkCleared": {
-    "description": "Snackbar confirmation shown after the user clears a previously saved bookmark."
+    "description": "Snackbar confirmation shown after the user clears a previously saved bookmark via the long-press menu."
+  },
+  "viewerBookmarkLongPressHint": "Long-press the bookmark icon to remove it.",
+  "@viewerBookmarkLongPressHint": {
+    "description": "Secondary coach-mark line appended to the first-ever bookmark save confirmation, teaching the user that long-press opens the remove menu."
+  },
+  "viewerBookmarkMenuGoTo": "Go to saved position",
+  "@viewerBookmarkMenuGoTo": {
+    "description": "Bottom sheet action that animates the scroll back to the previously saved reading position."
+  },
+  "viewerBookmarkMenuRemove": "Remove bookmark",
+  "@viewerBookmarkMenuRemove": {
+    "description": "Bottom sheet action that clears the saved reading position for the active document."
   },
   "viewerResumedFromBookmark": "Resumed from your last reading position",
   "@viewerResumedFromBookmark": {
