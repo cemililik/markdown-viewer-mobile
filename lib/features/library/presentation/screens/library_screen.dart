@@ -9,12 +9,16 @@ import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/core/logging/logger.dart';
 import 'package:markdown_viewer/features/library/application/active_library_source_provider.dart';
+import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
+import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_source.dart';
 import 'package:markdown_viewer/features/library/domain/entities/recent_document.dart';
 import 'package:markdown_viewer/features/library/presentation/widgets/add_source_sheet.dart';
 import 'package:markdown_viewer/features/library/presentation/widgets/library_folder_body.dart';
 import 'package:markdown_viewer/features/library/presentation/widgets/source_picker_drawer.dart';
+import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
+import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:path/path.dart' as p;
 
@@ -85,6 +89,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     final l10n = context.l10n;
     final recents = ref.watch(recentDocumentsControllerProvider);
     final activeSource = ref.watch(activeLibrarySourceProvider);
+    final folders = ref.watch(libraryFoldersControllerProvider);
+    final syncedRepos = ref.watch(syncedReposProvider).value ?? <SyncedRepo>[];
+    final hasSources = folders.isNotEmpty || syncedRepos.isNotEmpty;
 
     // AppBar title follows the active source so the user always
     // knows which source they are browsing. Recents falls back
@@ -111,6 +118,21 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             ),
           ],
         );
+      case SyncedRepoSource(:final syncedRepo):
+        titleWidget = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.cloud_done_outlined, size: 20),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                syncedRepo.displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        );
     }
 
     return Scaffold(
@@ -131,6 +153,20 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         ),
         title: titleWidget,
         actions: [
+          if (activeSource case SyncedRepoSource(:final syncedRepo))
+            IconButton(
+              icon: const Icon(Icons.sync),
+              tooltip: l10n.syncRefreshTooltip,
+              onPressed: () {
+                final base =
+                    'https://github.com/${syncedRepo.owner}/${syncedRepo.repo}';
+                final url =
+                    syncedRepo.subPath.isNotEmpty
+                        ? '$base/tree/${syncedRepo.ref}/${syncedRepo.subPath}'
+                        : '$base/tree/${syncedRepo.ref}';
+                context.push(RepoSyncRoute.location(url: url));
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
             tooltip: l10n.navSettings,
@@ -140,33 +176,51 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       ),
       drawer: const SourcePickerDrawer(),
       body: switch (activeSource) {
-        RecentsSource() =>
-          recents.isEmpty
-              ? _LibraryEmptyState(
-                onOpenFile: () => _pickAndOpenFile(context, ref),
-                onOpenFolder: () => showAddSourceSheet(context, ref),
-              )
-              : _LibraryPopulatedBody(
-                recents: recents,
-                searchController: _searchController,
-                searchQuery: _searchQuery,
-                onSearchChanged: _onSearchChanged,
-                onClearSearch: _clearSearch,
-              ),
+        RecentsSource() when recents.isNotEmpty => _LibraryPopulatedBody(
+          recents: recents,
+          searchController: _searchController,
+          searchQuery: _searchQuery,
+          onSearchChanged: _onSearchChanged,
+          onClearSearch: _clearSearch,
+        ),
+        RecentsSource() when hasSources => _RecentsEmptyWithSources(
+          folders: folders,
+          syncedRepos: syncedRepos,
+          onSelectFolder:
+              (LibraryFolder f) => ref
+                  .read(activeLibrarySourceProvider.notifier)
+                  .selectFolder(f),
+          onSelectSyncedRepo:
+              (SyncedRepo r) => ref
+                  .read(activeLibrarySourceProvider.notifier)
+                  .selectSyncedRepo(r),
+          onOpenFile: () => _pickAndOpenFile(context, ref),
+          onAddSource: () => showAddSourceSheet(context, ref),
+        ),
+        RecentsSource() => _LibraryEmptyState(
+          onOpenFile: () => _pickAndOpenFile(context, ref),
+          onOpenFolder: () => showAddSourceSheet(context, ref),
+          onSyncRepo: () => context.push(RepoSyncRoute.location()),
+        ),
         FolderSource(:final folder) => LibraryFolderBody(
           key: ValueKey('folder-body-${folder.path}'),
           folder: folder,
         ),
+        SyncedRepoSource(:final syncedRepo) => LibraryFolderBody(
+          key: ValueKey('synced-repo-body-${syncedRepo.localRoot}'),
+          folder: LibraryFolder(
+            path: syncedRepo.localRoot,
+            addedAt: syncedRepo.lastSyncedAt,
+          ),
+        ),
       },
-      // Single Open file FAB on both source kinds: quick picker
-      // that does not persist the folder and drops the user
-      // straight into the viewer. "Add source" (folder + repo)
-      // lives in the drawer so the FAB stays a one-purpose
-      // affordance. On the Recents empty state we hide it
-      // because the three-button onboarding layout already
-      // exposes Open file as a primary CTA.
+      // Single Open file FAB. Hidden only on the first-run onboarding
+      // screen (no recents AND no sources) because its three-button
+      // layout already exposes Open file as a primary CTA. On the
+      // "recents cleared but sources exist" state the FAB stays
+      // visible so the user can still open a one-off file quickly.
       floatingActionButton: switch (activeSource) {
-        RecentsSource() when recents.isEmpty => null,
+        RecentsSource() when recents.isEmpty && !hasSources => null,
         _ => FloatingActionButton.extended(
           icon: const Icon(Icons.note_add_outlined),
           label: Text(l10n.actionOpenFile),
@@ -236,18 +290,156 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 }
 
+/// Shown when the user is on the Recents tab with no recent documents
+/// but has at least one folder or synced-repo source saved.
+///
+/// Rather than the first-run onboarding screen, this presents the
+/// existing sources as tappable shortcut cards so the user can
+/// quickly jump to their content without hunting in the drawer.
+class _RecentsEmptyWithSources extends StatelessWidget {
+  const _RecentsEmptyWithSources({
+    required this.folders,
+    required this.syncedRepos,
+    required this.onSelectFolder,
+    required this.onSelectSyncedRepo,
+    required this.onOpenFile,
+    required this.onAddSource,
+  });
+
+  final List<LibraryFolder> folders;
+  final List<SyncedRepo> syncedRepos;
+  final void Function(LibraryFolder) onSelectFolder;
+  final void Function(SyncedRepo) onSelectSyncedRepo;
+  final VoidCallback onOpenFile;
+  final VoidCallback onAddSource;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = context.l10n;
+    final scheme = theme.colorScheme;
+
+    return CustomScrollView(
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(24, 48, 24, 0),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  Icons.history_toggle_off_outlined,
+                  size: 48,
+                  color: scheme.onSurfaceVariant,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  l10n.libraryRecentsEmptyTitle,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  l10n.libraryRecentsEmptySubtitle,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Text(
+                  l10n.libraryRecentsEmptySources,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.6,
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        ),
+        SliverList.separated(
+          itemCount: folders.length + syncedRepos.length,
+          separatorBuilder: (_, __) => const Divider(height: 1, indent: 56),
+          itemBuilder: (context, index) {
+            if (index < folders.length) {
+              final folder = folders[index];
+              final basename = p.basename(folder.path);
+              final display = basename.isEmpty ? folder.path : basename;
+              return ListTile(
+                leading: Icon(Icons.folder_outlined, color: scheme.primary),
+                title: Text(
+                  display,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                subtitle: Text(
+                  folder.path,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => onSelectFolder(folder),
+              );
+            }
+            final repo = syncedRepos[index - folders.length];
+            return ListTile(
+              leading: Icon(Icons.cloud_done_outlined, color: scheme.primary),
+              title: Text(
+                repo.displayName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              subtitle: Text(
+                repo.subPath.isNotEmpty ? repo.subPath : repo.ref,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => onSelectSyncedRepo(repo),
+            );
+          },
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 32),
+          sliver: SliverToBoxAdapter(
+            child: Row(
+              children: [
+                FilledButton.tonalIcon(
+                  icon: const Icon(Icons.create_new_folder_outlined, size: 18),
+                  label: Text(l10n.libraryAddSourceButton),
+                  onPressed: onAddSource,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// Centred welcome view shown when the user has never opened a
-/// document. Three onboarding affordances stacked in priority
-/// order: Open file (filled), Open folder (tonal), Sync
-/// repository (disabled outlined — gated on Phase 4.5).
+/// document. Three onboarding affordances stacked in priority order:
+/// Open file (filled), Open folder (tonal), Sync repository (outlined).
 class _LibraryEmptyState extends StatelessWidget {
   const _LibraryEmptyState({
     required this.onOpenFile,
     required this.onOpenFolder,
+    required this.onSyncRepo,
   });
 
   final VoidCallback onOpenFile;
   final VoidCallback onOpenFolder;
+  final VoidCallback onSyncRepo;
 
   @override
   Widget build(BuildContext context) {
@@ -292,7 +484,7 @@ class _LibraryEmptyState extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(
-                onPressed: null,
+                onPressed: onSyncRepo,
                 icon: const Icon(Icons.cloud_download_outlined),
                 label: Text(l10n.actionSyncRepo),
               ),

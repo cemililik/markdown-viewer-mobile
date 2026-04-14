@@ -1,11 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/features/library/application/active_library_source_provider.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_source.dart';
 import 'package:markdown_viewer/features/library/presentation/widgets/add_source_sheet.dart';
+import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
+import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
+import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:path/path.dart' as p;
 
 /// Source picker drawer for the library home screen.
@@ -32,6 +39,8 @@ class SourcePickerDrawer extends ConsumerWidget {
     final theme = Theme.of(context);
     final folders = ref.watch(libraryFoldersControllerProvider);
     final activeSource = ref.watch(activeLibrarySourceProvider);
+    final syncedReposAsync = ref.watch(syncedReposProvider);
+    final syncedRepos = syncedReposAsync.value ?? <SyncedRepo>[];
 
     return Drawer(
       child: SafeArea(
@@ -59,7 +68,7 @@ class SourcePickerDrawer extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 children: [
                   _RecentsTile(isActive: activeSource is RecentsSource),
-                  if (folders.isNotEmpty) ...[
+                  if (folders.isNotEmpty || syncedRepos.isNotEmpty) ...[
                     _SectionHeader(text: l10n.librarySourceSectionHeader),
                     for (final folder in folders)
                       _FolderSourceTile(
@@ -67,6 +76,13 @@ class SourcePickerDrawer extends ConsumerWidget {
                         isActive:
                             activeSource is FolderSource &&
                             activeSource.folder.path == folder.path,
+                      ),
+                    for (final repo in syncedRepos)
+                      _SyncedRepoTile(
+                        repo: repo,
+                        isActive:
+                            activeSource is SyncedRepoSource &&
+                            activeSource.syncedRepo.id == repo.id,
                       ),
                   ],
                 ],
@@ -226,5 +242,119 @@ class _FolderSourceTile extends ConsumerWidget {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(l10n.libraryFoldersRemovedSnack)));
+  }
+}
+
+class _SyncedRepoTile extends ConsumerWidget {
+  const _SyncedRepoTile({required this.repo, required this.isActive});
+
+  final SyncedRepo repo;
+  final bool isActive;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final l10n = context.l10n;
+    final isPartial = repo.status == SyncStatus.partial;
+    final iconColor =
+        isPartial
+            ? theme.colorScheme.error
+            : isActive
+            ? theme.colorScheme.primary
+            : theme.colorScheme.onSurfaceVariant;
+
+    return ListTile(
+      leading: Icon(
+        isPartial ? Icons.cloud_off_outlined : Icons.cloud_done_outlined,
+        color: iconColor,
+      ),
+      title: Text(
+        repo.displayName,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.bodyLarge?.copyWith(
+          fontWeight: FontWeight.w600,
+          color:
+              isActive
+                  ? theme.colorScheme.primary
+                  : theme.colorScheme.onSurface,
+        ),
+      ),
+      subtitle: Text(
+        _buildSubtitle(repo, l10n),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+      selected: isActive,
+      selectedTileColor: theme.colorScheme.primaryContainer.withValues(
+        alpha: 0.25,
+      ),
+      onTap: () {
+        ref.read(activeLibrarySourceProvider.notifier).selectSyncedRepo(repo);
+        Navigator.of(context).maybePop();
+      },
+      onLongPress: () => _showActionsSheet(context, ref),
+    );
+  }
+
+  /// Combines subPath (if set) with a relative last-synced time.
+  static String _buildSubtitle(SyncedRepo repo, AppLocalizations l10n) {
+    final timeStr = _formatLastSynced(repo.lastSyncedAt, l10n);
+    if (repo.subPath.isNotEmpty) return '${repo.subPath} · $timeStr';
+    return timeStr;
+  }
+
+  static String _formatLastSynced(DateTime at, AppLocalizations l10n) {
+    final diff = DateTime.now().difference(at);
+    if (diff.inMinutes < 1) return l10n.syncLastSyncedJustNow;
+    if (diff.inHours < 1) return l10n.syncLastSyncedMinutes(diff.inMinutes);
+    if (diff.inDays < 1) return l10n.syncLastSyncedHours(diff.inHours);
+    return l10n.syncLastSyncedDays(diff.inDays);
+  }
+
+  Future<void> _showActionsSheet(BuildContext context, WidgetRef ref) async {
+    final l10n = context.l10n;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder:
+          (sheetContext) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.sync),
+                  title: Text(l10n.syncUpdateRepo),
+                  onTap: () => Navigator.of(sheetContext).pop('update'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete_outline),
+                  title: Text(l10n.syncRemoveRepo),
+                  onTap: () => Navigator.of(sheetContext).pop('remove'),
+                ),
+              ],
+            ),
+          ),
+    );
+    if (!context.mounted) return;
+    if (action == 'update') {
+      unawaited(Navigator.of(context).maybePop());
+      final base = 'https://github.com/${repo.owner}/${repo.repo}';
+      final url =
+          repo.subPath.isNotEmpty
+              ? '$base/tree/${repo.ref}/${repo.subPath}'
+              : '$base/tree/${repo.ref}';
+      unawaited(context.push(RepoSyncRoute.location(url: url)));
+    } else if (action == 'remove') {
+      await ref.read(syncedReposStoreProvider).delete(repo.id);
+      ref.invalidate(syncedReposProvider);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(l10n.syncRemovedRepoSnack)));
+    }
   }
 }

@@ -1,4 +1,5 @@
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
+import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
 
 /// A selectable "source" shown in the library drawer. Picking a
 /// source swaps the library screen body between the recents view
@@ -30,4 +31,15 @@ final class FolderSource extends LibrarySource {
   const FolderSource(this.folder);
 
   final LibraryFolder folder;
+}
+
+/// A remote repository that has been synced to local storage.
+/// The body renders the local mirror directory using the same
+/// [LibraryFolderBody] widget as [FolderSource]; relative links
+/// between documents keep working because the directory structure
+/// mirrors the remote sub-path exactly.
+final class SyncedRepoSource extends LibrarySource {
+  const SyncedRepoSource(this.syncedRepo);
+
+  final SyncedRepo syncedRepo;
 }

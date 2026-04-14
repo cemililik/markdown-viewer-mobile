@@ -4,6 +4,19 @@ import 'package:markdown/markdown.dart' as md;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
+/// Returns the text of the first H1 heading in [source], cleaned and
+/// ready to use as a PDF filename or display title. Falls back to
+/// [fallback] when the document has no H1.
+///
+/// Note: calling this function and then [exportToPdf] parses the markdown
+/// source twice. Avoid when performance matters.
+String extractPdfTitle(String source, String fallback) {
+  final ast = md.Document(
+    extensionSet: md.ExtensionSet.gitHubFlavored,
+  ).parseLines(source.split('\n'));
+  return _firstH1(ast) ?? fallback;
+}
+
 /// Converts a markdown document to a PDF byte array.
 ///
 /// The markdown source is parsed with the same GitHub-Flavored Markdown
@@ -24,19 +37,6 @@ import 'package:pdf/widgets.dart' as pw;
 ///
 /// ### Unsupported elements (skipped silently)
 /// Images · raw HTML · mermaid/LaTeX fences (shown as placeholder)
-/// Returns the text of the first H1 heading in [source], cleaned and
-/// ready to use as a PDF filename or display title. Falls back to
-/// [fallback] when the document has no H1.
-///
-/// Call this before [exportToPdf] when you need the display title for
-/// the share-sheet filename without parsing the AST twice.
-String extractPdfTitle(String source, String fallback) {
-  final ast = md.Document(
-    extensionSet: md.ExtensionSet.gitHubFlavored,
-  ).parseLines(source.split('\n'));
-  return _firstH1(ast) ?? fallback;
-}
-
 Future<Uint8List> exportToPdf(String title, String source) async {
   final ast = md.Document(
     extensionSet: md.ExtensionSet.gitHubFlavored,
@@ -572,7 +572,7 @@ String _cleanText(String text) {
       .replaceAll('\u26A0', '[!]') // ⚠ warning sign
       .replaceAll('\u2139', '[i]') // ℹ information source
       .replaceAll('\u2B50', '*') // ⭐ star
-      .replaceAll('\u1F525', '[fire]') // 🔥
+      .replaceAll('\u{1F525}', '[fire]') // 🔥
       // PUA sentinels used by the viewer's search highlight system
       .replaceAll(RegExp('[\uE000-\uE003]'), '');
 }

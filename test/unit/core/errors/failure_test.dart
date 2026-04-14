@@ -63,6 +63,11 @@ void main() {
         PermissionDeniedFailure() => 'denied',
         ParseFailure() => 'parse',
         RenderFailure() => 'render',
+        NetworkUnavailableFailure() => 'network',
+        RateLimitedFailure() => 'rate-limited',
+        RepoNotFoundFailure() => 'repo-not-found',
+        PartialSyncFailure() => 'partial-sync',
+        UnsupportedProviderFailure() => 'unsupported-provider',
         UnknownFailure() => 'unknown',
       };
 

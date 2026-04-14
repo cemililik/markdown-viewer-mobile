@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/core/widgets/error_view.dart';
 import 'package:markdown_viewer/features/library/library.dart';
+import 'package:markdown_viewer/features/repo_sync/presentation/screens/repo_sync_screen.dart';
 import 'package:markdown_viewer/features/settings/presentation/screens/settings_screen.dart';
 import 'package:markdown_viewer/features/viewer/viewer.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -38,6 +39,14 @@ GoRouter router(Ref ref) {
         name: SettingsRoute.name,
         builder: (context, state) => const SettingsScreen(),
       ),
+      GoRoute(
+        path: RepoSyncRoute.path,
+        name: RepoSyncRoute.name,
+        builder: (context, state) {
+          final initialUrl = state.uri.queryParameters[RepoSyncRoute.urlQuery];
+          return RepoSyncScreen(initialUrl: initialUrl);
+        },
+      ),
     ],
   );
 }
@@ -57,6 +66,19 @@ abstract final class SettingsRoute {
   static const String name = 'settings';
 
   static String location() => path;
+}
+
+abstract final class RepoSyncRoute {
+  static const String path = '/repo-sync';
+  static const String name = 'repoSync';
+
+  /// Query parameter carrying the pre-populated repository URL.
+  static const String urlQuery = 'url';
+
+  static String location({String? url}) {
+    if (url == null || url.isEmpty) return path;
+    return '$path?$urlQuery=${Uri.encodeQueryComponent(url)}';
+  }
 }
 
 /// Route for [ViewerScreen]. The document path is passed as a query

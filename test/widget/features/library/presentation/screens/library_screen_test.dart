@@ -159,9 +159,21 @@ void main() {
         await tester.tap(find.byTooltip('Open folders'));
         await tester.pumpAndSettle();
 
-        expect(find.text('Sources'), findsOneWidget);
-        expect(find.text('notes'), findsOneWidget);
-        expect(find.text('blog'), findsOneWidget);
+        // Scope to the Drawer because _RecentsEmptyWithSources also renders
+        // folder basenames in the main body behind the open drawer.
+        final inDrawer = find.byType(Drawer);
+        expect(
+          find.descendant(of: inDrawer, matching: find.text('Sources')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: inDrawer, matching: find.text('notes')),
+          findsOneWidget,
+        );
+        expect(
+          find.descendant(of: inDrawer, matching: find.text('blog')),
+          findsOneWidget,
+        );
       },
     );
 
@@ -177,10 +189,16 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Open drawer, tap the folder tile.
+        // Open drawer, tap the folder tile inside the drawer specifically
+        // (the body also renders a "notes" tile in _RecentsEmptyWithSources).
         await tester.tap(find.byTooltip('Open folders'));
         await tester.pumpAndSettle();
-        await tester.tap(find.text('notes'));
+        await tester.tap(
+          find.descendant(
+            of: find.byType(Drawer),
+            matching: find.text('notes'),
+          ),
+        );
         await tester.pumpAndSettle();
 
         // AppBar title now shows the folder basename; the

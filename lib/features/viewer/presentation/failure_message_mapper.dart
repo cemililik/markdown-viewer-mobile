@@ -16,6 +16,11 @@ String mapFailureToViewerMessage(Failure failure, AppLocalizations l10n) {
     PermissionDeniedFailure() => l10n.errorPermissionDenied,
     ParseFailure() => l10n.errorParseFailed,
     RenderFailure() => l10n.errorRenderFailed,
+    NetworkUnavailableFailure() => l10n.errorNetworkUnavailable,
+    RateLimitedFailure() => l10n.errorRateLimited,
+    RepoNotFoundFailure() => l10n.errorRepoNotFound,
+    PartialSyncFailure() => l10n.errorUnknown,
+    UnsupportedProviderFailure() => l10n.errorUnknown,
     UnknownFailure() => l10n.errorUnknown,
   };
 }

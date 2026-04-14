@@ -19,6 +19,18 @@
     "description": "Bottom navigation label for the repository sync screen."
   },
 
+  "libraryRecentsEmptyTitle": "No recent documents",
+  "@libraryRecentsEmptyTitle": {
+    "description": "Heading shown when the user has cleared their recents but still has folder or repo sources available."
+  },
+  "libraryRecentsEmptySubtitle": "Browse a saved source or open a new file.",
+  "@libraryRecentsEmptySubtitle": {
+    "description": "Subtitle beneath libraryRecentsEmptyTitle."
+  },
+  "libraryRecentsEmptySources": "Your sources",
+  "@libraryRecentsEmptySources": {
+    "description": "Section header above the list of saved sources in the recents-empty-with-sources state."
+  },
   "libraryEmptyTitle": "No documents yet",
   "@libraryEmptyTitle": {
     "description": "Title shown when the library has no files."
@@ -280,7 +292,7 @@
   "@libraryAddSourceFolderSubtitle": {
     "description": "Subtitle beneath the Add folder tile in the Add source bottom sheet."
   },
-  "libraryAddSourceRepoSubtitle": "Pull markdown files from a git repository (coming soon)",
+  "libraryAddSourceRepoSubtitle": "Pull markdown files from a git repository",
   "@libraryAddSourceRepoSubtitle": {
     "description": "Subtitle beneath the Sync repository tile in the Add source bottom sheet."
   },
@@ -638,6 +650,106 @@
   "@syncStart": {
     "description": "Button label to begin a repository sync."
   },
+  "syncDiscovering": "Discovering files…",
+  "@syncDiscovering": {
+    "description": "Status message shown while the Trees API call is in-flight."
+  },
+  "syncSyncAnotherButton": "Sync another",
+  "@syncSyncAnotherButton": {
+    "description": "Button shown after a successful sync to reset the screen and sync a different repo."
+  },
+  "syncOpenInLibrary": "Open in library",
+  "@syncOpenInLibrary": {
+    "description": "Button in the sync result card that navigates to the synced repo in the library."
+  },
+  "syncStatsIncremental": "{downloaded} updated · {unchanged} unchanged",
+  "@syncStatsIncremental": {
+    "description": "Result card detail line on a re-sync showing how many files were actually downloaded vs skipped (SHA match).",
+    "placeholders": {
+      "downloaded": { "type": "int", "example": "3" },
+      "unchanged":  { "type": "int", "example": "47" }
+    }
+  },
+  "syncUpdateRepo": "Update",
+  "@syncUpdateRepo": {
+    "description": "Long-press / context menu action to re-sync an already-synced repository."
+  },
+  "syncPatToggle": "Add personal access token (optional)",
+  "@syncPatToggle": {
+    "description": "Expansion toggle that reveals the GitHub PAT input field."
+  },
+  "syncPatLabel": "Personal access token",
+  "@syncPatLabel": {
+    "description": "Label for the GitHub PAT text field."
+  },
+  "syncPatHint": "ghp_xxxxxxxxxxxxxxxxxxxx",
+  "@syncPatHint": {
+    "description": "Placeholder text inside the PAT field showing the expected token format."
+  },
+  "syncPatSubtitle": "Increases the rate limit to 5,000 requests/hour and enables private repositories.",
+  "@syncPatSubtitle": {
+    "description": "Caption beneath the PAT field explaining its purpose."
+  },
+  "syncPatSecurityNote": "Your token is stored in your device's secure keychain. It is never sent to our servers and is used only to access the repository you specify.",
+  "@syncPatSecurityNote": {
+    "description": "Security disclosure note shown in the PAT section reassuring the user about local-only storage."
+  },
+  "syncPatHowToButton": "How do I get a token?",
+  "@syncPatHowToButton": {
+    "description": "Tappable link in the PAT security note that opens the how-to dialog."
+  },
+  "syncPatHowToTitle": "Getting a GitHub token",
+  "@syncPatHowToTitle": {
+    "description": "Title of the dialog explaining how to create a GitHub Personal Access Token."
+  },
+  "syncPatHowToStep1": "Open github.com → Settings → Developer settings → Personal access tokens",
+  "@syncPatHowToStep1": {
+    "description": "Step 1 in the GitHub PAT how-to dialog."
+  },
+  "syncPatHowToStep2": "Choose Fine-grained tokens, then tap Generate new token",
+  "@syncPatHowToStep2": {
+    "description": "Step 2 in the GitHub PAT how-to dialog."
+  },
+  "syncPatHowToStep3": "Set a name, expiration date, and select your target repository",
+  "@syncPatHowToStep3": {
+    "description": "Step 3 in the GitHub PAT how-to dialog."
+  },
+  "syncPatHowToStep4": "Under Permissions → Repository permissions → Contents, choose Read-only",
+  "@syncPatHowToStep4": {
+    "description": "Step 4 in the GitHub PAT how-to dialog — specifies the minimum required scope."
+  },
+  "syncPatHowToStep5": "Tap Generate token, then copy and paste it into this field",
+  "@syncPatHowToStep5": {
+    "description": "Step 5 in the GitHub PAT how-to dialog."
+  },
+  "syncPatHowToPermissionNote": "Only Contents: Read-only is needed — do not grant write or admin permissions.",
+  "@syncPatHowToPermissionNote": {
+    "description": "Highlighted note in the PAT how-to dialog emphasising minimum required permissions."
+  },
+  "syncPatHowToClose": "Got it",
+  "@syncPatHowToClose": {
+    "description": "Dismiss button in the PAT how-to dialog."
+  },
+  "syncPatClearButton": "Clear token",
+  "@syncPatClearButton": {
+    "description": "Tooltip on the clear icon inside the PAT input field."
+  },
+  "syncPatCleared": "Token cleared",
+  "@syncPatCleared": {
+    "description": "Snackbar shown after the stored PAT is deleted."
+  },
+  "syncRemoveRepo": "Remove synced repository",
+  "@syncRemoveRepo": {
+    "description": "Long-press / context menu action to remove a synced repo from the library drawer."
+  },
+  "syncRemovedRepoSnack": "Repository removed",
+  "@syncRemovedRepoSnack": {
+    "description": "Snackbar shown after a synced repository is removed."
+  },
+  "syncRefreshTooltip": "Re-sync",
+  "@syncRefreshTooltip": {
+    "description": "Tooltip on the refresh icon shown next to a synced repo in the library drawer."
+  },
   "syncFilesFound": "{count, plural, =0{No markdown files found} =1{1 markdown file found} other{{count} markdown files found}}",
   "@syncFilesFound": {
     "description": "Plural message showing how many .md files were discovered in a repo.",
@@ -663,6 +775,31 @@
   "syncPartial": "Some files could not be downloaded.",
   "@syncPartial": {
     "description": "Warning shown when a sync finishes with partial failures."
+  },
+  "syncLastSyncedJustNow": "Synced just now",
+  "@syncLastSyncedJustNow": {
+    "description": "Subtitle on a synced-repo drawer tile when the last sync was under a minute ago."
+  },
+  "syncLastSyncedMinutes": "{count, plural, =1{Synced 1 min ago} other{Synced {count} min ago}}",
+  "@syncLastSyncedMinutes": {
+    "description": "Subtitle on a synced-repo drawer tile: minutes since last sync.",
+    "placeholders": {
+      "count": { "type": "int", "example": "5" }
+    }
+  },
+  "syncLastSyncedHours": "{count, plural, =1{Synced 1 hour ago} other{Synced {count} hours ago}}",
+  "@syncLastSyncedHours": {
+    "description": "Subtitle on a synced-repo drawer tile: hours since last sync.",
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  },
+  "syncLastSyncedDays": "{count, plural, =1{Synced yesterday} other{Synced {count} days ago}}",
+  "@syncLastSyncedDays": {
+    "description": "Subtitle on a synced-repo drawer tile: days since last sync.",
+    "placeholders": {
+      "count": { "type": "int", "example": "2" }
+    }
   },
 
   "errorRateLimited": "GitHub rate limit reached. Add a personal access token in Settings or try again later.",

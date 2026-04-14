@@ -35,10 +35,10 @@ gantt
     Reading Experience rest  :p3, after p2, 14d
 
     section Phase 4
-    Platform Integration     :p4, after p3, 7d
+    Platform Integration     :done, p4, after p3, 7d
 
     section Phase 4.5
-    Repo Sync                :p45, after p4, 14d
+    Repo Sync                :done, p45, after p4, 14d
 
     section Phase 5
     Hardening & Release      :p5, after p45, 10d
@@ -852,25 +852,87 @@ comfortable on phone and tablet.
 - [x] Splash screens — `flutter_native_splash` generates light/dark
       launch backgrounds; Android 12+ shows the launcher icon on the
       brand-colour (`#3B5BDB`) circle per Material You guidelines.
-- [ ] Share-to-PDF export
+- [x] Share-to-PDF export — `pdf` + `printing` packages; each viewer
+      screen exposes a "Share as PDF" action that renders the current
+      document via `pw.MarkdownWidget`. Mermaid diagrams show a
+      placeholder pending rasterization support (Phase 5).
 - [ ] App icons, store assets
 - [ ] Accessibility audit pass
 
 ## Phase 4.5 — Repo Sync
 
+**Status**: ✅ Core complete — background isolate pending
+
 **Goal**: Pull markdown documentation from a public git repository URL
 into the local library, preserving the directory structure.
 
-- URL parser for GitHub `tree` and `blob` URLs (and bare repo URLs)
-- GitHub provider via REST API + `raw.githubusercontent.com`
-- Recursive `.md` discovery filtered to a sub-path
-- Local mirroring under app documents directory
-- `synced_repos` table in drift with refresh and conflict policy
-- Optional Personal Access Token storage in platform secure storage
-- Sync progress UI with cancel and partial-failure handling
-- Background isolate for the sync work
-- See [ADR-0011](decisions/0011-network-access-policy.md) and
-  [ADR-0012](decisions/0012-document-sync-architecture.md)
+See [ADR-0011](decisions/0011-network-access-policy.md) and
+[ADR-0012](decisions/0012-document-sync-architecture.md).
+
+### Domain & data layer
+
+- [x] URL parser for GitHub `tree`, `blob`, and bare repo URL shapes
+      (owner/repo, owner/repo/tree/ref, owner/repo/tree/ref/subPath,
+      owner/repo/blob/ref/file)
+- [x] `RepoSyncProvider` domain port + `GitHubSyncProvider` implementation
+      using the GitHub Trees API (`/git/trees/{ref}?recursive=1`) for
+      single-call `.md` discovery filtered to an optional sub-path
+- [x] Raw file download via `raw.githubusercontent.com` (no REST quota)
+- [x] SHA-based incremental re-sync — files with matching blob SHA are
+      skipped; `downloadedCount` vs `skippedCount` tracked separately
+      in `SyncResult` for transparent progress reporting
+- [x] `synced_repos` + `synced_files` Drift tables with upsert on natural
+      key (`provider/owner/repo/ref/subPath`); `SyncStatus` enum
+      (`ok` / `partial` / `failed`) persisted per repo
+- [x] Local mirror under `<app-docs>/synced_repos/<provider>/<owner>/
+      <repo>/<ref>/<subPath>/` preserving remote directory structure
+- [x] Optional GitHub PAT stored in platform Keychain (iOS) /
+      `EncryptedSharedPreferences` backed by Android Keystore (Android);
+      never logged or sent to any server
+- [x] Five new sealed `Failure` subtypes: `NetworkUnavailableFailure`,
+      `RateLimitedFailure`, `RepoNotFoundFailure`, `PartialSyncFailure`,
+      `UnsupportedProviderFailure`
+
+### Application layer
+
+- [x] `RepoSyncNotifier` state machine: `SyncIdle` → `SyncDiscovering`
+      → `SyncDownloading(current, total)` → `SyncComplete` / `SyncError`
+- [x] Bounded concurrency (4 parallel downloads per batch) via `Future.wait`
+- [x] `CancelToken` wired to an AppBar "Cancel" button; cancellation
+      mid-batch leaves already-written files intact
+- [x] `keepAlive: true` on the provider — sync survives navigation away
+      from the sync screen
+- [x] **Background isolate** — `_fetchTree` now requests the Trees API
+      response as raw text (`ResponseType.plain`) and decodes via
+      `Isolate.run(() => json.decode(body))`, keeping the UI isolate free
+      during large-repo discovery (~3 MB JSON for 500-node repos).
+      Progress state updates throttled to 250 ms intervals (final
+      update always fires immediately) to cap widget rebuilds at ~4
+      per second regardless of file count.
+
+### Presentation & UX
+
+- [x] `RepoSyncScreen` — URL input with real-time GitHub URL validation,
+      collapsible PAT section with security disclosure and 5-step
+      how-to dialog (Contents: Read-only scope guidance), progress card
+      with linear indicator, result card, error card
+- [x] Result card auto-dismisses after 4 seconds; shows
+      `"X updated · Y unchanged"` on re-sync vs `"X files synced"` on
+      first run
+- [x] "Open in library" button in result card navigates directly to the
+      synced repo source
+- [x] Re-sync from library AppBar (`Icons.sync`) when a synced repo
+      source is active — URL pre-populated from stored `SyncedRepo`
+- [x] Re-sync ("Update") + remove from drawer long-press bottom sheet
+- [x] Drawer tile shows last-synced relative time and partial-sync
+      warning icon (`Icons.cloud_off_outlined` in error colour)
+- [x] `SyncedRepoSource` variant in `LibrarySource` sealed class; reuses
+      `LibraryFolderBody` with `localRoot` as folder path — no new body
+      widget needed
+- [x] Context-aware library empty state: when recents are cleared but
+      folder / repo sources exist, shows a source shortcut list instead
+      of the first-run onboarding screen
+- [x] Empty-state "Sync repository" button enabled (was disabled placeholder)
 
 **Exit criteria**: A 50-file documentation directory from a public GitHub
 repo syncs in < 30s on Wi-Fi, with progress shown and resumable on failure.

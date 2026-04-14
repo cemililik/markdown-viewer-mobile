@@ -92,9 +92,7 @@ See [^a] and [^b].
       const source = 'See[^1] this.\n\n[^1]: Definition.';
       final result = stripFootnoteDefs(source);
 
-      // The inline [^1] reference must survive.
       expect(result, contains('[^1]'));
-      // The block definition must be gone.
       expect(result, isNot(contains('[^1]:')));
     });
   });

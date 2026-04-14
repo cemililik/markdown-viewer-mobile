@@ -5,6 +5,10 @@ import 'package:markdown_widget/markdown_widget.dart';
 
 // ── Source preprocessing ─────────────────────────────────────────────
 
+// Compiled once so every call to extractFootnotes avoids re-allocating
+// the same pattern on every loop iteration.
+final _defPattern = RegExp(r'^\[\^([^\]]+)\]:\s*(.*)');
+
 /// Strips footnote definition blocks from [source] so they do not
 /// appear in the rendered document body.
 ///
@@ -34,7 +38,7 @@ Map<String, String> extractFootnotes(String source) {
   final buffer = StringBuffer();
 
   for (final line in lines) {
-    final defMatch = RegExp(r'^\[\^([^\]]+)\]:\s*(.*)').firstMatch(line);
+    final defMatch = _defPattern.firstMatch(line);
     if (defMatch != null) {
       if (currentId != null) {
         result[currentId] = buffer.toString().trim();
@@ -121,6 +125,9 @@ void showFootnoteSheet(BuildContext context, String id, String content) {
   showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
+    // Allow the sheet to grow beyond half the screen so long footnotes
+    // are not clipped. The inner content scrolls when it would overflow.
+    isScrollControlled: true,
     builder: (_) => _FootnoteSheet(id: id, content: content),
   );
 }
@@ -135,26 +142,33 @@ class _FootnoteSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '[$id]',
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.primary,
-                fontWeight: FontWeight.w600,
+      child: ConstrainedBox(
+        // Cap at 90 % of the screen height so the sheet never covers the
+        // entire viewport while still accommodating very long footnotes.
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+        ),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '[$id]',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            SelectableText(
-              content.isEmpty ? '—' : content,
-              style: theme.textTheme.bodyMedium,
-            ),
-            const SizedBox(height: 8),
-          ],
+              const SizedBox(height: 8),
+              SelectableText(
+                content.isEmpty ? '—' : content,
+                style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
         ),
       ),
     );
