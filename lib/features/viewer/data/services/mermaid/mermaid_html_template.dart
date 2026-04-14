@@ -183,6 +183,15 @@ $mermaidJs
     // the next screenshot while mermaid is parsing the new
     // source.
     sink.innerHTML = '';
+    // Remove any stray mermaid-injected elements (error SVGs, temp
+    // containers) left in the document by a previous failed render.
+    // Mermaid appends these at document.body level; because #sink is
+    // positioned at (0,0), a leftover element at the same origin
+    // appears inside the screenshot rect and produces bomb icons or
+    // "Syntax error" text on top of an otherwise-successful diagram.
+    document.querySelectorAll('[id^="mmd-"]').forEach(function(el) {
+      el.remove();
+    });
     try {
       mermaid.render('mmd-' + id, code).then(function (out) {
         var svgString = out && out.svg ? out.svg : '';
