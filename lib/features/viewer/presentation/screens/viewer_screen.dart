@@ -6,6 +6,8 @@ import 'package:markdown_viewer/core/errors/failure.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/core/widgets/error_view.dart';
 import 'package:markdown_viewer/core/widgets/loading_view.dart';
+import 'package:markdown_viewer/features/library/application/preview_extractor.dart';
+import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/viewer_document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
@@ -55,11 +57,14 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     super.initState();
     _scrollController.addListener(_onScroll);
     // Seed the bookmark indicator from persisted state so the AppBar
-    // icon reflects the truth on the very first build.
-    final saved = ProviderScope.containerOf(
-      context,
-      listen: false,
-    ).read(readingPositionStoreProvider).read(widget.documentId);
+    // icon reflects the truth on the very first build. `ref` is a
+    // `late final` on `ConsumerState` backed by the element's
+    // `context as WidgetRef`, so reading a provider here is the
+    // idiomatic path in Riverpod 3 — no need to reach into
+    // `ProviderScope.containerOf` manually.
+    final saved = ref
+        .read(readingPositionStoreProvider)
+        .read(widget.documentId);
     _isBookmarked = ValueNotifier<bool>(saved != null);
   }
 
@@ -156,7 +161,13 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// short confirmation messages and keeps the snackbar from
   /// lingering over the back-to-top FAB.
   void _showLocalizedSnackBar(String Function(AppLocalizations l10n) resolve) {
-    ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context);
+    // Dismiss any already-visible snackbar so rapid tap sequences
+    // (e.g. bookmark → unbookmark → bookmark) show immediate
+    // feedback for the latest action instead of queueing behind
+    // stale confirmations.
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
       SnackBar(
         duration: const Duration(seconds: 3),
         content: Builder(builder: (context) => Text(resolve(context.l10n))),
@@ -167,6 +178,25 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    // Touch the recent-documents list as soon as the document
+    // transitions to the data state. Listening here (rather than
+    // hooking into `LibraryScreen._pickAndOpenFile`) means every
+    // entry point — file picker, deep links via go_router,
+    // future folder explorer, even in-doc cross-links — records
+    // through one funnel.
+    ref.listen<AsyncValue<Document>>(
+      viewerDocumentProvider(widget.documentId),
+      (previous, next) {
+        next.whenData((document) {
+          ref
+              .read(recentDocumentsControllerProvider.notifier)
+              .touch(
+                widget.documentId,
+                preview: extractPreviewSnippet(document.source),
+              );
+        });
+      },
+    );
     final async = ref.watch(viewerDocumentProvider(widget.documentId));
 
     return Scaffold(
@@ -204,14 +234,22 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
           ),
         ],
       ),
-      floatingActionButton: AnimatedScale(
-        duration: const Duration(milliseconds: 180),
-        curve: Curves.easeOutCubic,
-        scale: _showBackToTop ? 1 : 0,
-        child: FloatingActionButton.small(
-          tooltip: l10n.viewerBackToTopTooltip,
-          onPressed: _scrollToTop,
-          child: const Icon(Icons.arrow_upward),
+      // `IgnorePointer` guard because `AnimatedScale(scale: 0)` still
+      // participates in hit-testing at its original bounds — without
+      // the guard, invisible taps near the bottom-right of the
+      // viewport would fire `_scrollToTop` even when the FAB is not
+      // supposed to be there.
+      floatingActionButton: IgnorePointer(
+        ignoring: !_showBackToTop,
+        child: AnimatedScale(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          scale: _showBackToTop ? 1 : 0,
+          child: FloatingActionButton.small(
+            tooltip: l10n.viewerBackToTopTooltip,
+            onPressed: _scrollToTop,
+            child: const Icon(Icons.arrow_upward),
+          ),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,

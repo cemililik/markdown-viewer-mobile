@@ -1,8 +1,8 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/features/viewer/application/markdown_extensions/admonition.dart';
 import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
@@ -66,11 +66,10 @@ class _MermaidBlockState extends ConsumerState<MermaidBlock> {
 
   void _maybeRerender() {
     final scheme = Theme.of(context).colorScheme;
-    final brightness = Theme.of(context).brightness;
     final directive =
         _sourceHasOwnDirective(widget.code)
             ? ''
-            : buildMermaidInitDirective(scheme, brightness);
+            : buildMermaidInitDirective(scheme);
 
     if (_future != null && _renderedDirective == directive) {
       return;
@@ -95,9 +94,17 @@ class _MermaidBlockState extends ConsumerState<MermaidBlock> {
         }
         final result = snapshot.data;
         if (result is MermaidRenderSuccess) {
-          return _MermaidSvg(svg: result.svg);
+          return _MermaidImage(
+            pngBytes: result.pngBytes,
+            width: result.width,
+            height: result.height,
+          );
         }
-        return const _MermaidErrorPlaceholder();
+        final detail =
+            result is MermaidRenderFailure
+                ? result.message
+                : snapshot.error?.toString();
+        return _MermaidErrorPlaceholder(detail: detail);
       },
     );
   }
@@ -116,12 +123,13 @@ class _MermaidBlockState extends ConsumerState<MermaidBlock> {
 /// that honours user-supplied `themeVariables`. The `default` and
 /// `dark` presets silently drop most overrides.
 ///
-/// [brightness] is currently only used to decide a few contrast
-/// fallbacks (task text colour in gantt charts that have to read
-/// on top of a filled bar); the rest of the palette comes from
-/// [scheme] directly so it follows both dynamic-colour seed changes
-/// and light ⇄ dark flips.
-String buildMermaidInitDirective(ColorScheme scheme, Brightness brightness) {
+/// Light vs dark mode is expressed entirely through [scheme]: both
+/// `scheme.onPrimaryContainer` and the other `on*` roles already
+/// flip between light and dark palettes, so every task-text /
+/// contrast-sensitive variable in the map below picks up the
+/// right value automatically without a separate `Brightness`
+/// argument.
+String buildMermaidInitDirective(ColorScheme scheme) {
   String hex(Color color) {
     final r = (color.r * 255).round() & 0xff;
     final g = (color.g * 255).round() & 0xff;
@@ -239,75 +247,64 @@ String buildMermaidInitDirective(ColorScheme scheme, Brightness brightness) {
   // can let `jsonEncode` do all the escaping work and avoid hand-
   // rolled string concatenation edge cases.
   //
-  // `htmlLabels: false` is critical for `flutter_svg` compatibility:
-  // mermaid's default label mode uses `<foreignObject>` + `<div>`
-  // to host HTML text inside the SVG, and `flutter_svg` has no
-  // support for `foreignObject` at all — labels disappear
-  // entirely. Forcing every diagram type to emit plain `<text>`
-  // elements makes the labels renderable at the cost of losing
-  // some fancy HTML wrapping we don't need on mobile anyway.
-  final payload = jsonEncode({
-    'theme': 'base',
-    'themeVariables': variables,
-    'flowchart': {'htmlLabels': false},
-    'class': {'htmlLabels': false},
-    'state': {'htmlLabels': false},
-  });
+  // The directive only has to thread the colour palette through —
+  // mermaid's default `htmlLabels: true` and `useMaxWidth: true`
+  // are kept because the sandbox WebView renders them faithfully
+  // (CSS, foreignObject, font metrics all work) and the native
+  // screenshot path captures whatever the browser paints.
+  final payload = jsonEncode({'theme': 'base', 'themeVariables': variables});
   return '%%{init: $payload}%%\n';
 }
 
-/// Pan+zoom container for a mermaid SVG with a smooth reset-to-centre
-/// affordance.
+/// Pan+zoom container for a rasterised mermaid diagram.
 ///
-/// The SVG carries its natural size in a `viewBox="minX minY W H"`
-/// attribute. We parse it once, compute `aspectRatio = W / H`, and
-/// hand that to an [AspectRatio] parent so the widget takes the
-/// column width and scales its height to match — the diagram keeps
-/// its intrinsic proportions instead of collapsing to zero height
-/// inside the enclosing `ListView`.
+/// The WebView hands us PNG bytes plus the diagram's natural CSS
+/// pixel dimensions (computed by the browser at layout time, so
+/// they reflect the real text-wrapped, font-metric-aware footprint
+/// — not whatever flutter_svg might recompute against its own
+/// fonts). We size the widget against those dimensions so the
+/// diagram keeps its intrinsic proportions, and wrap the bitmap in
+/// an [InteractiveViewer] for pinch-zoom + two-finger pan.
 ///
-/// The SVG itself lives inside an [InteractiveViewer] so the user
-/// can pinch-zoom and two-finger-pan to inspect small labels on
-/// wide diagrams. `boundaryMargin: infinity` lets the user pan
-/// anywhere while zoomed; `ClipRect` makes sure the zoomed-in
-/// content does not bleed into adjacent markdown blocks.
+/// Layout strategy:
+///
+/// - Try to fill column width first (`displayWidth = columnWidth`,
+///   `displayHeight = displayWidth / aspectRatio`).
+/// - If the resulting height exceeds [_maxHeightFraction] of the
+///   screen height (a tall vertical flowchart, a long class
+///   diagram, etc.), invert the calculation: pin height to the
+///   cap and recompute width so the aspect ratio stays intact.
+///   The diagram then sits centred in the column with horizontal
+///   slack on either side, leaving the reader enough whitespace
+///   above and below to land an outer-scroll gesture.
 ///
 /// A small tonal icon button in the top-left fades in whenever the
 /// underlying `TransformationController` has moved off the identity
 /// matrix. Tapping it runs a short [Matrix4Tween] animation back
-/// to identity, so a user who has zoomed in and panned out of
-/// frame can recover in one tap with a smooth transition rather
-/// than a jarring snap.
-class _MermaidSvg extends StatefulWidget {
-  const _MermaidSvg({required this.svg});
+/// to identity — a one-tap recovery if the user zooms + pans the
+/// diagram out of frame.
+class _MermaidImage extends StatefulWidget {
+  const _MermaidImage({
+    required this.pngBytes,
+    required this.width,
+    required this.height,
+  });
 
-  final String svg;
+  final Uint8List pngBytes;
+  final double width;
+  final double height;
 
-  /// Matches the four numbers inside a `viewBox="..."` attribute,
-  /// tolerating decimal, negative, and exponent syntax. Captures
-  /// the width (group 1) and height (group 2).
-  static final RegExp _viewBox = RegExp(
-    r'viewBox\s*=\s*"\s*[\d.eE+-]+\s+[\d.eE+-]+\s+([\d.eE+-]+)\s+([\d.eE+-]+)"',
-  );
-
-  static double parseAspectRatio(String svg) {
-    final match = _viewBox.firstMatch(svg);
-    if (match == null) {
-      return 16 / 9;
-    }
-    final w = double.tryParse(match.group(1)!);
-    final h = double.tryParse(match.group(2)!);
-    if (w == null || h == null || w <= 0 || h <= 0) {
-      return 16 / 9;
-    }
-    return w / h;
-  }
+  /// Fraction of the screen height a single mermaid diagram is
+  /// allowed to claim. Picked so even tall diagrams leave roughly
+  /// 40% of the viewport above / below for the user to land an
+  /// outer-scroll gesture.
+  static const double _maxHeightFraction = 0.6;
 
   @override
-  State<_MermaidSvg> createState() => _MermaidSvgState();
+  State<_MermaidImage> createState() => _MermaidImageState();
 }
 
-class _MermaidSvgState extends State<_MermaidSvg>
+class _MermaidImageState extends State<_MermaidImage>
     with SingleTickerProviderStateMixin {
   late final TransformationController _transform;
   late final AnimationController _resetController;
@@ -333,10 +330,6 @@ class _MermaidSvgState extends State<_MermaidSvg>
   }
 
   void _resetTransform() {
-    // Build a fresh Matrix4Tween every time so the animation is
-    // always based on the current matrix — without this a quick
-    // zoom immediately after a reset would interpolate from the
-    // stale starting matrix.
     final tween = Matrix4Tween(
       begin: _transform.value.clone(),
       end: Matrix4.identity(),
@@ -370,42 +363,72 @@ class _MermaidSvgState extends State<_MermaidSvg>
 
   @override
   Widget build(BuildContext context) {
-    final aspectRatio = _MermaidSvg.parseAspectRatio(widget.svg);
     final l10n = context.l10n;
+    final aspectRatio =
+        widget.width > 0 && widget.height > 0
+            ? widget.width / widget.height
+            : 16 / 9;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final maxDiagramHeight = screenHeight * _MermaidImage._maxHeightFraction;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
-      child: AspectRatio(
-        aspectRatio: aspectRatio,
-        child: ClipRect(
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: InteractiveViewer(
-                  transformationController: _transform,
-                  minScale: 1.0,
-                  maxScale: 5.0,
-                  boundaryMargin: const EdgeInsets.all(double.infinity),
-                  child: SvgPicture.string(widget.svg, fit: BoxFit.contain),
-                ),
-              ),
-              Positioned(
-                top: 8,
-                left: 8,
-                child: AnimatedOpacity(
-                  duration: const Duration(milliseconds: 150),
-                  opacity: _isTransformed ? 1 : 0,
-                  child: IgnorePointer(
-                    ignoring: !_isTransformed,
-                    child: _CenterButton(
-                      tooltip: l10n.mermaidReset,
-                      onPressed: _resetTransform,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final columnWidth = constraints.maxWidth;
+          var displayWidth = columnWidth;
+          var displayHeight = displayWidth / aspectRatio;
+          if (displayHeight > maxDiagramHeight) {
+            displayHeight = maxDiagramHeight;
+            displayWidth = displayHeight * aspectRatio;
+          }
+          return Center(
+            child: SizedBox(
+              width: displayWidth,
+              height: displayHeight,
+              child: ClipRect(
+                child: Stack(
+                  children: [
+                    Positioned.fill(
+                      child: InteractiveViewer(
+                        transformationController: _transform,
+                        minScale: 1.0,
+                        maxScale: 5.0,
+                        boundaryMargin: const EdgeInsets.all(double.infinity),
+                        child: Image.memory(
+                          widget.pngBytes,
+                          fit: BoxFit.contain,
+                          // The native snapshot arrives at the
+                          // device-pixel-ratio scaled resolution;
+                          // `filterQuality: medium` keeps the
+                          // down-scale smooth without the jagged
+                          // look of default nearest-neighbour.
+                          filterQuality: FilterQuality.medium,
+                          gaplessPlayback: true,
+                        ),
+                      ),
                     ),
-                  ),
+                    Positioned(
+                      top: 8,
+                      left: 8,
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 150),
+                        opacity: _isTransformed ? 1 : 0,
+                        child: IgnorePointer(
+                          ignoring: !_isTransformed,
+                          child: _CenterButton(
+                            tooltip: l10n.mermaidReset,
+                            onPressed: _resetTransform,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -480,7 +503,14 @@ class _MermaidPlaceholder extends StatelessWidget {
 }
 
 class _MermaidErrorPlaceholder extends StatelessWidget {
-  const _MermaidErrorPlaceholder();
+  const _MermaidErrorPlaceholder({this.detail});
+
+  /// Renderer-supplied diagnostic (mermaid parse error, screenshot
+  /// failure, JS exception message, …). Surfaced as a small
+  /// monospace line beneath the localized body so we can actually
+  /// see what went wrong on device — "diagram unreadable" with no
+  /// context turned every iPhone iteration into guesswork.
+  final String? detail;
 
   @override
   Widget build(BuildContext context) {
@@ -522,6 +552,22 @@ class _MermaidErrorPlaceholder extends StatelessWidget {
               color: palette.foreground,
             ),
           ),
+          if (detail != null && detail!.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            SelectableText(
+              detail!,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: palette.foreground.withValues(alpha: 0.75),
+                fontFamily: 'JetBrains Mono',
+                fontFamilyFallback: const [
+                  'Menlo',
+                  'Consolas',
+                  'Roboto Mono',
+                  'monospace',
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

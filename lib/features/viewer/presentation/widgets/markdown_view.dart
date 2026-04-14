@@ -122,11 +122,41 @@ class MarkdownView extends StatelessWidget {
       config: config,
     );
 
-    return ListView.builder(
+    // The `Scrollbar` wrapper picks up the app-wide
+    // `ScrollbarThemeData` (see `lib/app/theme.dart`): a thin
+    // 4 dp thumb that fades in only while the reader is actively
+    // scrolling. Hands the scroll position over via the same
+    // [controller] [ViewerScreen] uses for back-to-top and
+    // bookmark restore — no separate controller, no fight over
+    // the scroll position source of truth.
+    //
+    // `SingleChildScrollView` + `Column` (instead of a
+    // `ListView.builder`) is a deliberate choice for scrollbar
+    // stability. `buildWidgets` above materialises the entire
+    // document into a ready list of widgets — there is no lazy
+    // win from a builder. A `ListView.builder` lays its children
+    // out lazily as they enter the viewport, which means
+    // `maxScrollExtent` grows on every new row and the scrollbar
+    // thumb jumps up and down while the reader scrolls (observed
+    // on iPhone). Forcing a single measurement pass here makes
+    // the thumb behave like a reader expects — position = exact
+    // fraction of the real document height — at the cost of a
+    // one-time layout spike on very long documents. For a
+    // phone-side markdown reader that tradeoff is strictly
+    // correct; if a pathological document ever stalls the first
+    // frame we can revisit with explicit `itemExtentBuilder` or
+    // a slot-sliced variant, but typical docs are a few dozen
+    // blocks where this cost is invisible.
+    return Scrollbar(
       controller: controller,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      itemCount: widgets.length,
-      itemBuilder: (context, index) => widgets[index],
+      child: SingleChildScrollView(
+        controller: controller,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: widgets,
+        ),
+      ),
     );
   }
 

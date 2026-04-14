@@ -24,12 +24,12 @@ void main() {
   Document parseFixture(String name) => parseMarkdownFixture(name);
 
   /// Resizes the test surface to a tall window before each test runs
-  /// and resets it on tear-down. `MarkdownWidget` is internally backed
-  /// by a `ListView`, which builds children lazily — items below the
-  /// default 800×600 viewport are simply never instantiated, and any
-  /// `find.textContaining(...)` against them returns zero matches.
-  /// Giving each test a 1200×4000 surface forces the whole document
-  /// into the build tree so the assertions can see every block.
+  /// and resets it on tear-down. `MarkdownView` hosts its content in
+  /// a `SingleChildScrollView` + `Column`, which measures every
+  /// child up-front — but the default 800×600 test surface still
+  /// clips any content below the fold from hit-testing and makes
+  /// assertions like `find.textContaining(...)` flaky on long
+  /// fixtures. Giving each test a 1200×4000 surface avoids the clip.
   void useTallSurface(WidgetTester tester) {
     tester.view.physicalSize = const Size(1200, 4000);
     tester.view.devicePixelRatio = 1.0;

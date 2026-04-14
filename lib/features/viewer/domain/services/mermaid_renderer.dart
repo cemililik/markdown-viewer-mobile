@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 /// Port for rendering a mermaid diagram source string into an SVG.
 ///
 /// Lives in the domain layer so the application and presentation
@@ -68,12 +70,37 @@ sealed class MermaidRenderResult {
   const MermaidRenderResult();
 }
 
-/// Successful render — [svg] is a self-contained SVG document
-/// suitable for `flutter_svg`'s `SvgPicture.string` constructor.
+/// Successful render — the implementation has rasterised the
+/// mermaid SVG into a PNG bitmap inside its sandboxed WebView and
+/// is handing us the bytes along with the natural pixel dimensions
+/// the presentation layer needs to size an [AspectRatio].
+///
+/// Rasterisation happens in the WebView (not on the Dart side)
+/// because `flutter_svg` cannot render mermaid's output
+/// faithfully: it has no CSS selector engine, no `<foreignObject>`
+/// support, and no access to mermaid's layout-time font metrics.
+/// Shipping pixels instead of SVG sidesteps every one of those
+/// limitations and keeps the mermaid feature surface complete
+/// across flowchart / sequence / class / state / gantt / ER /
+/// mindmap / timeline / git diagram types.
 final class MermaidRenderSuccess extends MermaidRenderResult {
-  const MermaidRenderSuccess(this.svg);
+  const MermaidRenderSuccess({
+    required this.pngBytes,
+    required this.width,
+    required this.height,
+  });
 
-  final String svg;
+  /// PNG byte stream, ready to hand to `Image.memory`.
+  final Uint8List pngBytes;
+
+  /// Natural pixel width of the rasterised diagram in CSS pixels
+  /// (the WebView may have rendered at a higher physical multiplier
+  /// for crispness). Used by the presentation layer to drive an
+  /// `AspectRatio` parent.
+  final double width;
+
+  /// Natural pixel height; see [width].
+  final double height;
 }
 
 /// Failed render — [message] is a renderer-supplied diagnostic

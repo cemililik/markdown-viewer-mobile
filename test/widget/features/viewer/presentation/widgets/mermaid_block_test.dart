@@ -1,20 +1,34 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
 import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/mermaid_block.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 
+/// 1×1 transparent PNG (base64-decoded) — the smallest payload
+/// that `Image.memory` will accept without complaining. Tests do
+/// not inspect pixels; they only need a real PNG-shaped buffer
+/// that round-trips through the cache and the widget.
+final Uint8List _tinyPng = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNgAAIAAAUAAen63/AAAAAASUVORK5CYII=',
+);
+
+MermaidRenderSuccess _successResult({double width = 200, double height = 60}) {
+  return MermaidRenderSuccess(pngBytes: _tinyPng, width: width, height: height);
+}
+
 void main() {
   Widget harness({
     required MermaidRenderer renderer,
     Locale locale = const Locale('en'),
     Brightness brightness = Brightness.light,
+    String code = 'flowchart LR; A-->B',
   }) {
     return ProviderScope(
       overrides: [mermaidRendererProvider.overrideWithValue(renderer)],
@@ -32,7 +46,7 @@ void main() {
           brightness: brightness,
           colorSchemeSeed: Colors.blue,
         ),
-        home: const Scaffold(body: MermaidBlock(code: 'flowchart LR; A-->B')),
+        home: Scaffold(body: MermaidBlock(code: code)),
       ),
     );
   }
@@ -48,25 +62,21 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsOneWidget);
       expect(find.text('Rendering diagram…'), findsOneWidget);
 
-      // Resolve the pending future so the dispose path doesn't leak a
-      // microtask into the next test run.
-      renderer.completeWith(const MermaidRenderSuccess('<svg/>'));
+      // Resolve the pending future so the dispose path doesn't leak
+      // a microtask into the next test run.
+      renderer.completeWith(_successResult());
       await tester.pumpAndSettle();
     });
 
     testWidgets(
-      'renders an SvgPicture when the renderer returns a successful result',
+      'renders an Image when the renderer returns a successful result',
       (tester) async {
-        final renderer = _CannedMermaidRenderer(
-          const MermaidRenderSuccess(
-            '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>',
-          ),
-        );
+        final renderer = _CannedMermaidRenderer(_successResult());
 
         await tester.pumpWidget(harness(renderer: renderer));
         await tester.pumpAndSettle();
 
-        expect(find.byType(SvgPicture), findsOneWidget);
+        expect(find.byType(Image), findsOneWidget);
         expect(find.byType(CircularProgressIndicator), findsNothing);
       },
     );
@@ -90,7 +100,11 @@ void main() {
           find.text('Check the diagram syntax and try again.'),
           findsOneWidget,
         );
-        expect(find.byType(SvgPicture), findsNothing);
+        // The renderer's failure message is surfaced as a small
+        // monospace detail line so on-device debugging has
+        // something concrete to read.
+        expect(find.text('mermaid parse error'), findsOneWidget);
+        expect(find.byType(Image), findsNothing);
       },
     );
 
@@ -115,11 +129,7 @@ void main() {
       'threads a Material 3 themeVariables init directive into render() '
       'when the source has no init of its own',
       (tester) async {
-        final renderer = _CannedMermaidRenderer(
-          const MermaidRenderSuccess(
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60"></svg>',
-          ),
-        );
+        final renderer = _CannedMermaidRenderer(_successResult());
 
         await tester.pumpWidget(harness(renderer: renderer));
         await tester.pumpAndSettle();
@@ -135,21 +145,13 @@ void main() {
     testWidgets(
       'differentiates light and dark renders via different init directives',
       (tester) async {
-        final lightRenderer = _CannedMermaidRenderer(
-          const MermaidRenderSuccess(
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60"></svg>',
-          ),
-        );
+        final lightRenderer = _CannedMermaidRenderer(_successResult());
         await tester.pumpWidget(
           harness(renderer: lightRenderer, brightness: Brightness.light),
         );
         await tester.pumpAndSettle();
 
-        final darkRenderer = _CannedMermaidRenderer(
-          const MermaidRenderSuccess(
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60"></svg>',
-          ),
-        );
+        final darkRenderer = _CannedMermaidRenderer(_successResult());
         await tester.pumpWidget(
           harness(renderer: darkRenderer, brightness: Brightness.dark),
         );
@@ -171,30 +173,12 @@ void main() {
     testWidgets(
       'passes an empty init directive when the user source already has one',
       (tester) async {
-        final renderer = _CannedMermaidRenderer(
-          const MermaidRenderSuccess(
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60"></svg>',
-          ),
-        );
+        final renderer = _CannedMermaidRenderer(_successResult());
 
         await tester.pumpWidget(
-          ProviderScope(
-            overrides: [mermaidRendererProvider.overrideWithValue(renderer)],
-            child: MaterialApp(
-              localizationsDelegates: const [
-                AppLocalizations.delegate,
-                GlobalMaterialLocalizations.delegate,
-                GlobalWidgetsLocalizations.delegate,
-                GlobalCupertinoLocalizations.delegate,
-              ],
-              supportedLocales: AppLocalizations.supportedLocales,
-              theme: ThemeData(useMaterial3: true),
-              home: const Scaffold(
-                body: MermaidBlock(
-                  code: "%%{init: {'theme':'forest'}}%%\nflowchart LR; A-->B",
-                ),
-              ),
-            ),
+          harness(
+            renderer: renderer,
+            code: "%%{init: {'theme':'forest'}}%%\nflowchart LR; A-->B",
           ),
         );
         await tester.pumpAndSettle();
@@ -212,13 +196,11 @@ void main() {
     );
 
     testWidgets(
-      'wraps the rendered SVG in an InteractiveViewer with an AspectRatio '
-      'parent driven by the SVG viewBox',
+      'wraps the rendered image in an InteractiveViewer with a SizedBox '
+      'parent whose dimensions preserve the renderer-supplied aspect ratio',
       (tester) async {
         final renderer = _CannedMermaidRenderer(
-          const MermaidRenderSuccess(
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 50"></svg>',
-          ),
+          _successResult(width: 200, height: 50),
         );
 
         await tester.pumpWidget(harness(renderer: renderer));
@@ -226,85 +208,99 @@ void main() {
 
         expect(find.byType(InteractiveViewer), findsOneWidget);
 
-        final aspectRatio = tester.widget<AspectRatio>(
+        final sized = tester.widget<SizedBox>(
           find.ancestor(
             of: find.byType(InteractiveViewer),
-            matching: find.byType(AspectRatio),
+            matching: find.byType(SizedBox),
           ),
         );
+        final computedRatio = sized.width! / sized.height!;
         expect(
-          aspectRatio.aspectRatio,
-          closeTo(4.0, 1e-9),
-          reason: 'viewBox 200x50 should produce aspectRatio 4.0',
+          computedRatio,
+          closeTo(4.0, 1e-3),
+          reason: 'width 200 / height 50 should produce aspectRatio 4.0',
         );
       },
     );
 
-    testWidgets('rebuilds and re-renders when the MermaidBlock.code prop changes', (
-      tester,
-    ) async {
-      final renderer = _CodeAwareMermaidRenderer({
-        'flowchart LR; A-->B':
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60" data-marker="svg-a"></svg>',
-        'flowchart LR; C-->D':
-            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 60" data-marker="svg-b"></svg>',
-      });
+    testWidgets('falls back to a 16:9 aspect ratio when the renderer reports a '
+        'zero-sized bitmap', (tester) async {
+      final renderer = _CannedMermaidRenderer(
+        _successResult(width: 0, height: 0),
+      );
 
-      Widget buildWith(String code) => ProviderScope(
-        overrides: [mermaidRendererProvider.overrideWithValue(renderer)],
-        child: MaterialApp(
-          localizationsDelegates: const [
-            AppLocalizations.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-          supportedLocales: AppLocalizations.supportedLocales,
-          theme: ThemeData(useMaterial3: true),
-          home: Scaffold(body: MermaidBlock(code: code)),
+      await tester.pumpWidget(harness(renderer: renderer));
+      await tester.pumpAndSettle();
+
+      final sized = tester.widget<SizedBox>(
+        find.ancestor(
+          of: find.byType(InteractiveViewer),
+          matching: find.byType(SizedBox),
         ),
       );
-
-      await tester.pumpWidget(buildWith('flowchart LR; A-->B'));
-      await tester.pumpAndSettle();
-
-      expect(renderer.observedSources, ['flowchart LR; A-->B']);
-      expect(find.byWidgetPredicate((w) => w is SvgPicture), findsOneWidget);
-
-      // Swap the code prop to a different diagram — didUpdateWidget
-      // must notice the change, re-enter the renderer, and the new
-      // SVG marker should reach the painted tree.
-      await tester.pumpWidget(buildWith('flowchart LR; C-->D'));
-      await tester.pumpAndSettle();
-
-      expect(
-        renderer.observedSources,
-        ['flowchart LR; A-->B', 'flowchart LR; C-->D'],
-        reason:
-            'didUpdateWidget must call render() again with the new '
-            'code so the displayed SVG reflects the updated source.',
-      );
+      final computedRatio = sized.width! / sized.height!;
+      expect(computedRatio, closeTo(16 / 9, 1e-3));
     });
 
     testWidgets(
-      'falls back to a 16:9 aspect ratio when the SVG has no viewBox',
+      'caps the displayed diagram height at 60% of the screen height for '
+      'tall diagrams so the outer scroll always has room to catch gestures',
       (tester) async {
+        // 200×2000 is a ~1:10 aspect ratio — the classic tall
+        // flowchart that used to eat the whole viewport.
         final renderer = _CannedMermaidRenderer(
-          const MermaidRenderSuccess(
-            '<svg xmlns="http://www.w3.org/2000/svg"></svg>',
-          ),
+          _successResult(width: 200, height: 2000),
         );
 
         await tester.pumpWidget(harness(renderer: renderer));
         await tester.pumpAndSettle();
 
-        final aspectRatio = tester.widget<AspectRatio>(
+        final sized = tester.widget<SizedBox>(
           find.ancestor(
             of: find.byType(InteractiveViewer),
-            matching: find.byType(AspectRatio),
+            matching: find.byType(SizedBox),
           ),
         );
-        expect(aspectRatio.aspectRatio, closeTo(16 / 9, 1e-9));
+        final screenHeight =
+            tester.view.physicalSize.height / tester.view.devicePixelRatio;
+        expect(
+          sized.height!,
+          lessThanOrEqualTo(screenHeight * 0.6 + 1),
+          reason:
+              'Tall diagrams must be clipped to 60% of viewport height so '
+              'the outer ListView can catch scroll gestures around them.',
+        );
+      },
+    );
+
+    testWidgets(
+      'rebuilds and re-renders when the MermaidBlock.code prop changes',
+      (tester) async {
+        final renderer = _CodeAwareMermaidRenderer({
+          'flowchart LR; A-->B': _successResult(width: 100, height: 60),
+          'flowchart LR; C-->D': _successResult(width: 120, height: 40),
+        });
+
+        await tester.pumpWidget(
+          harness(renderer: renderer, code: 'flowchart LR; A-->B'),
+        );
+        await tester.pumpAndSettle();
+
+        expect(renderer.observedSources, ['flowchart LR; A-->B']);
+        expect(find.byType(Image), findsOneWidget);
+
+        await tester.pumpWidget(
+          harness(renderer: renderer, code: 'flowchart LR; C-->D'),
+        );
+        await tester.pumpAndSettle();
+
+        expect(
+          renderer.observedSources,
+          ['flowchart LR; A-->B', 'flowchart LR; C-->D'],
+          reason:
+              'didUpdateWidget must call render() again with the new '
+              'code so the displayed image reflects the updated source.',
+        );
       },
     );
   });
@@ -334,36 +330,6 @@ class _CannedMermaidRenderer implements MermaidRenderer {
   Future<void> dispose() async {}
 }
 
-/// Fake [MermaidRenderer] that hands back a scripted SVG keyed by
-/// source string and records every observed source. Used by the
-/// didUpdateWidget test to prove a `MermaidBlock.code` change
-/// re-enters the renderer with the new source.
-class _CodeAwareMermaidRenderer implements MermaidRenderer {
-  _CodeAwareMermaidRenderer(this._scripted);
-
-  final Map<String, String> _scripted;
-  final List<String> observedSources = <String>[];
-
-  @override
-  Future<void> prewarm() async {}
-
-  @override
-  Future<MermaidRenderResult> render(
-    String source, {
-    String initDirective = '',
-  }) async {
-    observedSources.add(source);
-    final svg = _scripted[source];
-    if (svg == null) {
-      return const MermaidRenderFailure('no scripted svg for source');
-    }
-    return MermaidRenderSuccess(svg);
-  }
-
-  @override
-  Future<void> dispose() async {}
-}
-
 class _PendingMermaidRenderer implements MermaidRenderer {
   final List<Completer<MermaidRenderResult>> _pending = [];
 
@@ -387,6 +353,36 @@ class _PendingMermaidRenderer implements MermaidRenderer {
     final completer = Completer<MermaidRenderResult>();
     _pending.add(completer);
     return completer.future;
+  }
+
+  @override
+  Future<void> dispose() async {}
+}
+
+/// Fake [MermaidRenderer] that returns a scripted result keyed by
+/// source string and records every observed source. Used by the
+/// didUpdateWidget test to prove a `MermaidBlock.code` change
+/// re-enters the renderer with the new source.
+class _CodeAwareMermaidRenderer implements MermaidRenderer {
+  _CodeAwareMermaidRenderer(this._scripted);
+
+  final Map<String, MermaidRenderResult> _scripted;
+  final List<String> observedSources = <String>[];
+
+  @override
+  Future<void> prewarm() async {}
+
+  @override
+  Future<MermaidRenderResult> render(
+    String source, {
+    String initDirective = '',
+  }) async {
+    observedSources.add(source);
+    final scripted = _scripted[source];
+    if (scripted == null) {
+      return const MermaidRenderFailure('no scripted result for source');
+    }
+    return scripted;
   }
 
   @override

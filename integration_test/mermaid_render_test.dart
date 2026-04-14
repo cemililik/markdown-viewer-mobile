@@ -59,20 +59,31 @@ void main() {
   });
 
   group('MermaidRendererImpl (real WebView)', () {
-    testWidgets('renders a flowchart source to a non-empty SVG string', (
-      tester,
-    ) async {
-      final result = await renderer.render('flowchart TD\n  Start --> Stop');
+    testWidgets(
+      'renders a flowchart source to a non-empty PNG bitmap with natural '
+      'pixel dimensions',
+      (tester) async {
+        final result = await renderer.render('flowchart TD\n  Start --> Stop');
 
-      expect(result, isA<MermaidRenderSuccess>());
-      final svg = (result as MermaidRenderSuccess).svg;
-      expect(svg, isNotEmpty);
-      expect(
-        svg.trimLeft(),
-        startsWith('<svg'),
-        reason: 'mermaid must return a self-contained SVG document',
-      );
-    });
+        expect(result, isA<MermaidRenderSuccess>());
+        final success = result as MermaidRenderSuccess;
+        expect(
+          success.pngBytes,
+          isNotEmpty,
+          reason:
+              'The native takeScreenshot path must return decoded PNG bytes',
+        );
+        // First 8 bytes of a PNG are the fixed signature
+        // 0x89 0x50 0x4E 0x47 0x0D 0x0A 0x1A 0x0A.
+        expect(success.pngBytes.length, greaterThan(8));
+        expect(success.pngBytes[0], 0x89);
+        expect(success.pngBytes[1], 0x50);
+        expect(success.pngBytes[2], 0x4E);
+        expect(success.pngBytes[3], 0x47);
+        expect(success.width, greaterThan(0));
+        expect(success.height, greaterThan(0));
+      },
+    );
 
     testWidgets(
       'returns MermaidRenderFailure for a deliberately broken diagram '

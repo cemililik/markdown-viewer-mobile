@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
+import 'dart:ui' show Size;
 
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_js_channel.dart';
@@ -24,7 +26,36 @@ import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_js
 ///
 /// The page is loaded as a `data:` URI so there is no file:// or
 /// http:// origin to leak through the sandbox.
+///
+/// ## Native screenshot flow
+///
+/// The channel does not just marshal `render()` calls into
+/// JavaScript — it also intercepts the `state: 'ready'` handshake
+/// the sandbox posts once an SVG has been injected into the page
+/// and laid out, calls
+/// [InAppWebViewController.takeScreenshot] to grab the region the
+/// SVG occupies, and forwards the resulting PNG bytes to the
+/// caller's `onResult` callback as
+/// `{id, pngBytes: Uint8List, width, height}`.
+///
+/// Going through `takeScreenshot` — which hits the native WKWebView
+/// snapshot API — is the only reliable way to get pixel data out
+/// of an iOS WebView for SVG content: every JS-canvas path
+/// (drawImage + toDataURL, createImageBitmap, Blob + fetch) taints
+/// the canvas under WebKit and throws
+/// `SecurityError: The operation is insecure` on export. The
+/// native snapshot path has no such restriction.
 class HeadlessMermaidJsChannel implements MermaidJsChannel {
+  /// Initial CSS pixel footprint of the offscreen WebView.
+  ///
+  /// Width matches the 900 px sink in `mermaid_html_template.dart`
+  /// so mermaid lays out within a deterministic horizontal box.
+  /// Height is generous (4000 px) so even tall vertical flowcharts
+  /// have room to render before the screenshot rect captures
+  /// them — anything taller than this would clip, but the cost of
+  /// a backbuffer that size is cheap on a headless view.
+  static const Size _initialSize = Size(900, 4000);
+
   HeadlessInAppWebView? _view;
 
   /// In-flight initialise future. The first caller starts the work
@@ -59,6 +90,7 @@ class HeadlessMermaidJsChannel implements MermaidJsChannel {
     final ready = Completer<void>();
 
     final view = HeadlessInAppWebView(
+      initialSize: _initialSize,
       initialSettings: InAppWebViewSettings(
         javaScriptEnabled: true,
         allowFileAccess: false,
@@ -103,6 +135,24 @@ class HeadlessMermaidJsChannel implements MermaidJsChannel {
               }
               return null;
             }
+            // The JS hook signals "the SVG is on screen, here is
+            // its rect". We grab a native screenshot of that rect
+            // and forward the PNG bytes to the renderer impl as
+            // a `{id, pngBytes, width, height}` result. We
+            // fire-and-forget here because the JavaScriptHandler
+            // callback cannot be async — any error inside
+            // `_captureAndForward` bubbles out as a forwarded
+            // `{error: ...}` message instead.
+            if (message['state'] == 'ready') {
+              unawaited(
+                _captureAndForward(
+                  controller: controller,
+                  message: message,
+                  onResult: onResult,
+                ),
+              );
+              return null;
+            }
             onResult(message);
             return null;
           },
@@ -117,9 +167,7 @@ class HeadlessMermaidJsChannel implements MermaidJsChannel {
       // Tear the partially-created view down before bubbling the
       // failure up — without this, _view stays null but the
       // platform side might still hold the live HeadlessInAppWebView,
-      // and a future retry would leak it. Any exception from the
-      // disposal itself is swallowed because we are already in an
-      // error path and the original cause matters more.
+      // and a future retry would leak it.
       try {
         await view.dispose();
       } catch (_) {
@@ -138,6 +186,59 @@ class HeadlessMermaidJsChannel implements MermaidJsChannel {
     // ready handshake; before that, `render()` would be unsafe.
     _view = view;
     _initializing = null;
+  }
+
+  /// Reads `width` / `height` out of the JS ready message, asks
+  /// WKWebView for a native snapshot of exactly that rect, and
+  /// forwards the PNG bytes to [onResult] as
+  /// `{id, pngBytes: Uint8List, width, height}`.
+  ///
+  /// Every failure path translates to a forwarded `{id, error}`
+  /// message so the renderer impl's regular result pipeline can
+  /// surface it to the UI.
+  Future<void> _captureAndForward({
+    required InAppWebViewController controller,
+    required Map<String, Object?> message,
+    required void Function(Map<String, Object?> message) onResult,
+  }) async {
+    final id = message['id'];
+    final width = _asPositiveDouble(message['width']);
+    final height = _asPositiveDouble(message['height']);
+    if (id is! String || width == null || height == null) {
+      onResult({
+        'id': id,
+        'error': 'ready handshake missing id / width / height: $message',
+      });
+      return;
+    }
+    Uint8List? bytes;
+    try {
+      bytes = await controller.takeScreenshot(
+        screenshotConfiguration: ScreenshotConfiguration(
+          rect: InAppWebViewRect(x: 0, y: 0, width: width, height: height),
+          compressFormat: CompressFormat.PNG,
+          quality: 100,
+        ),
+      );
+    } catch (e) {
+      onResult({'id': id, 'error': 'takeScreenshot threw: $e'});
+      return;
+    }
+    if (bytes == null || bytes.isEmpty) {
+      onResult({'id': id, 'error': 'takeScreenshot returned no bytes'});
+      return;
+    }
+    onResult({'id': id, 'pngBytes': bytes, 'width': width, 'height': height});
+  }
+
+  static double? _asPositiveDouble(Object? raw) {
+    if (raw is num) {
+      final value = raw.toDouble();
+      if (value > 0 && value.isFinite) {
+        return value;
+      }
+    }
+    return null;
   }
 
   @override

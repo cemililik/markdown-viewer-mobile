@@ -27,6 +27,139 @@
   "@libraryEmptyMessage": {
     "description": "Body shown beneath libraryEmptyTitle."
   },
+  "libraryRecentTitle": "Recent documents",
+  "@libraryRecentTitle": {
+    "description": "Section header above the list of recently opened markdown documents on the library home screen."
+  },
+  "libraryRecentClearAll": "Clear all",
+  "@libraryRecentClearAll": {
+    "description": "Action shown next to the Recent documents section header that wipes the recent list."
+  },
+  "libraryRecentClearConfirmTitle": "Clear recent documents?",
+  "@libraryRecentClearConfirmTitle": {
+    "description": "Title of the confirmation dialog before wiping the entire recent documents list."
+  },
+  "libraryRecentClearConfirmBody": "This removes every entry from the Recent documents list. The files themselves are not deleted.",
+  "@libraryRecentClearConfirmBody": {
+    "description": "Body of the confirmation dialog before wiping the entire recent documents list."
+  },
+  "libraryRecentRemove": "Remove from recents",
+  "@libraryRecentRemove": {
+    "description": "Long-press / context menu action to remove a single document from the Recent documents list."
+  },
+  "libraryRecentRemoved": "Removed from recents",
+  "@libraryRecentRemoved": {
+    "description": "Snackbar shown after a single recent document entry is removed."
+  },
+  "libraryRecentFileMissing": "This file is no longer available — removed from recents.",
+  "@libraryRecentFileMissing": {
+    "description": "Snackbar shown when the user taps a recent document whose underlying file no longer exists."
+  },
+  "libraryRecentJustNow": "Just now",
+  "@libraryRecentJustNow": {
+    "description": "Relative time label for documents opened less than a minute ago."
+  },
+  "libraryRecentMinutesAgo": "{count, plural, =1{1 minute ago} other{{count} minutes ago}}",
+  "@libraryRecentMinutesAgo": {
+    "description": "Plural relative time label for documents opened a few minutes ago.",
+    "placeholders": {
+      "count": { "type": "int", "example": "5" }
+    }
+  },
+  "libraryRecentHoursAgo": "{count, plural, =1{1 hour ago} other{{count} hours ago}}",
+  "@libraryRecentHoursAgo": {
+    "description": "Plural relative time label for documents opened a few hours ago.",
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  },
+  "libraryRecentYesterday": "Yesterday",
+  "@libraryRecentYesterday": {
+    "description": "Relative time label for documents opened roughly one day ago."
+  },
+  "libraryRecentDaysAgo": "{count, plural, other{{count} days ago}}",
+  "@libraryRecentDaysAgo": {
+    "description": "Plural relative time label for documents opened several days ago.",
+    "placeholders": {
+      "count": { "type": "int", "example": "5" }
+    }
+  },
+  "libraryRecentLongAgo": "A while back",
+  "@libraryRecentLongAgo": {
+    "description": "Fallback relative time label for documents opened more than a week ago."
+  },
+
+  "libraryGreetingMorning": "Good morning",
+  "@libraryGreetingMorning": {
+    "description": "Library home screen greeting shown between 05:00 and 11:59 local time."
+  },
+  "libraryGreetingAfternoon": "Good afternoon",
+  "@libraryGreetingAfternoon": {
+    "description": "Library home screen greeting shown between 12:00 and 17:59 local time."
+  },
+  "libraryGreetingEvening": "Good evening",
+  "@libraryGreetingEvening": {
+    "description": "Library home screen greeting shown between 18:00 and 04:59 local time."
+  },
+  "libraryGreetingSubtitleEmpty": "No recent documents yet",
+  "@libraryGreetingSubtitleEmpty": {
+    "description": "Library greeting subtitle shown when the user has never opened a document."
+  },
+  "libraryGreetingSubtitle": "{count, plural, =1{1 recent document} other{{count} recent documents}}",
+  "@libraryGreetingSubtitle": {
+    "description": "Library greeting subtitle showing the number of recent documents.",
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  },
+  "librarySearchHint": "Search recents",
+  "@librarySearchHint": {
+    "description": "Placeholder shown inside the library search field."
+  },
+  "librarySearchClear": "Clear search",
+  "@librarySearchClear": {
+    "description": "Tooltip on the clear-search icon inside the library search field."
+  },
+  "librarySearchNoResults": "No matching documents",
+  "@librarySearchNoResults": {
+    "description": "Empty state shown below the search field when the current query matches zero recents."
+  },
+  "libraryRecentPinnedSection": "Pinned",
+  "@libraryRecentPinnedSection": {
+    "description": "Header above the section holding user-pinned recent documents."
+  },
+  "libraryRecentGroupToday": "Today",
+  "@libraryRecentGroupToday": {
+    "description": "Group header for documents opened on the current calendar day."
+  },
+  "libraryRecentGroupYesterday": "Yesterday",
+  "@libraryRecentGroupYesterday": {
+    "description": "Group header for documents opened on the previous calendar day."
+  },
+  "libraryRecentGroupThisWeek": "Earlier this week",
+  "@libraryRecentGroupThisWeek": {
+    "description": "Group header for documents opened within the last seven days but not today or yesterday."
+  },
+  "libraryRecentGroupEarlier": "Earlier",
+  "@libraryRecentGroupEarlier": {
+    "description": "Group header for documents opened more than a week ago."
+  },
+  "libraryRecentPin": "Pin to top",
+  "@libraryRecentPin": {
+    "description": "Long-press / context menu action to pin a recent document to the top of the library."
+  },
+  "libraryRecentUnpin": "Unpin",
+  "@libraryRecentUnpin": {
+    "description": "Long-press / context menu action to unpin a previously pinned recent document."
+  },
+  "libraryRecentPinnedSnack": "Pinned to top",
+  "@libraryRecentPinnedSnack": {
+    "description": "Snackbar shown after a recent document is pinned."
+  },
+  "libraryRecentUnpinnedSnack": "Removed pin",
+  "@libraryRecentUnpinnedSnack": {
+    "description": "Snackbar shown after a pinned recent document is unpinned."
+  },
 
   "actionOpenFile": "Open file",
   "@actionOpenFile": {

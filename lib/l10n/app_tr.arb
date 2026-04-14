@@ -9,6 +9,42 @@
 
   "libraryEmptyTitle": "Henüz doküman yok",
   "libraryEmptyMessage": "Başlamak için bir markdown dosyası açın veya bir depoyu senkronize edin.",
+  "libraryRecentTitle": "Son açılan dökümanlar",
+  "libraryRecentClearAll": "Tümünü temizle",
+  "libraryRecentClearConfirmTitle": "Son dökümanlar silinsin mi?",
+  "libraryRecentClearConfirmBody": "Bu işlem son açılanlar listesindeki tüm girdileri siler. Dosyaların kendileri silinmez.",
+  "libraryRecentRemove": "Listeden kaldır",
+  "libraryRecentRemoved": "Listeden kaldırıldı",
+  "libraryRecentFileMissing": "Bu dosya artık mevcut değil — listeden kaldırıldı.",
+  "libraryRecentJustNow": "Az önce",
+  "libraryRecentMinutesAgo": "{count, plural, =1{1 dakika önce} other{{count} dakika önce}}",
+  "libraryRecentHoursAgo": "{count, plural, =1{1 saat önce} other{{count} saat önce}}",
+  "libraryRecentYesterday": "Dün",
+  "libraryRecentDaysAgo": "{count, plural, other{{count} gün önce}}",
+  "libraryRecentLongAgo": "Bir süre önce",
+
+  "libraryGreetingMorning": "Günaydın",
+  "libraryGreetingAfternoon": "İyi günler",
+  "libraryGreetingEvening": "İyi akşamlar",
+  "libraryGreetingSubtitleEmpty": "Henüz son açılan belge yok",
+  "libraryGreetingSubtitle": "{count, plural, =1{1 son belge} other{{count} son belge}}",
+  "@libraryGreetingSubtitle": {
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  },
+  "librarySearchHint": "Son belgelerde ara",
+  "librarySearchClear": "Aramayı temizle",
+  "librarySearchNoResults": "Eşleşen belge yok",
+  "libraryRecentPinnedSection": "Sabitlenenler",
+  "libraryRecentGroupToday": "Bugün",
+  "libraryRecentGroupYesterday": "Dün",
+  "libraryRecentGroupThisWeek": "Bu hafta içinde",
+  "libraryRecentGroupEarlier": "Daha önce",
+  "libraryRecentPin": "Yukarı sabitle",
+  "libraryRecentUnpin": "Sabitlemeyi kaldır",
+  "libraryRecentPinnedSnack": "Yukarı sabitlendi",
+  "libraryRecentUnpinnedSnack": "Sabitleme kaldırıldı",
 
   "actionOpenFile": "Dosya aç",
   "actionSyncRepo": "Depoyu senkronize et",
