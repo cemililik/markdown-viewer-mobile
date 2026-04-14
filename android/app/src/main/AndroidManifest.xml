@@ -32,6 +32,46 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Open .md / .markdown files from the Files app, email
+                 clients, and other file-providing apps. Both file://
+                 and content:// URIs are handled by FileOpenChannel,
+                 which copies content:// streams to the cache dir. -->
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/markdown"/>
+            </intent-filter>
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/x-markdown"/>
+            </intent-filter>
+            <!-- Catch-all for .md files served with text/plain MIME.
+                 Scoped to the specific extensions so we do not claim
+                 every plain-text file on the device. -->
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"
+                      android:pathPattern=".*\\.md"/>
+            </intent-filter>
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"
+                      android:pathPattern=".*\\.markdown"/>
+            </intent-filter>
+            <!-- Share-to: another app sends us a single markdown file. -->
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/markdown"/>
+            </intent-filter>
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/x-markdown"/>
+            </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->

@@ -13,5 +13,6 @@ class MainActivity : FlutterActivity() {
     // engine's plugin registry, which also wires the `ActivityAware`
     // hooks the picker needs.
     flutterEngine.plugins.add(LibraryFoldersChannel())
+    flutterEngine.plugins.add(FileOpenChannel())
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/app/theme.dart';
+import 'package:markdown_viewer/features/file_open/application/incoming_file_provider.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
@@ -13,6 +14,16 @@ class MarkdownViewerApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
+
+    // Navigate to the viewer whenever the OS hands us a file to open
+    // (Android share-intent / ACTION_VIEW, iOS "Open In" from Files).
+    // ref.listen fires synchronously on the first emission if the
+    // provider already has a value (cold-start buffered path), and on
+    // every subsequent emission for warm-start opens.
+    ref.listen<AsyncValue<String>>(incomingFileProvider, (_, next) {
+      next.whenData((path) => router.go(ViewerRoute.location(path)));
+    });
+
     // Watching the settings controllers directly (instead of using
     // `ref.select` for a narrower rebuild) is intentional: a
     // theme-mode or locale change must rebuild the entire

@@ -835,11 +835,26 @@ comfortable on phone and tablet.
 
 ## Phase 4 — Platform Integration
 
-- Register as default `.md` handler on Android
-- iOS Files app integration
-- Share-to-PDF export
-- App icons, splash screens, store assets
-- Accessibility audit pass
+- [x] Register as default `.md` handler on Android — `ACTION_VIEW`
+      intent-filters for `text/markdown`, `text/x-markdown`, and
+      `text/plain` with `.md`/`.markdown` path patterns; `ACTION_SEND`
+      for markdown MIME types. `FileOpenChannel` (`EventChannel`) handles
+      both `file://` and `content://` URIs, copies content streams to
+      the app cache dir, and buffers the path until the Dart stream
+      subscribes.
+- [x] iOS Files app integration — `CFBundleDocumentTypes` +
+      `UTImportedTypeDeclarations` (net.daringfireball.markdown) +
+      `UIFileSharingEnabled` in `Info.plist`; `FileOpenChannel.swift`
+      singleton delivers URLs from `SceneDelegate`
+      `scene(_:openURLContexts:)` and `scene(_:willConnectTo:options:)`.
+      Flutter-side `StreamProvider<String>` (`incomingFileProvider`) +
+      `ref.listen` in `app.dart` navigates to `ViewerRoute` on arrival.
+- [x] Splash screens — `flutter_native_splash` generates light/dark
+      launch backgrounds; Android 12+ shows the launcher icon on the
+      brand-colour (`#3B5BDB`) circle per Material You guidelines.
+- [ ] Share-to-PDF export
+- [ ] App icons, store assets
+- [ ] Accessibility audit pass
 
 ## Phase 4.5 — Repo Sync
 

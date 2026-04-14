@@ -104,6 +104,7 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_native_splash: ^2.4.3
 
   # ── Codegen ─────────────────────────────────────────────────────────
   build_runner: ^2.13.1
