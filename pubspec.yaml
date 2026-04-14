@@ -67,6 +67,10 @@ dependencies:
   # ── File I/O & share intents ────────────────────────────────────────
   file_picker: ^8.1.4
   receive_sharing_intent: ^1.8.1
+  # url_launcher is already in the tree via markdown_widget; declared
+  # here so callers can import it directly without relying on a
+  # transitive path.
+  url_launcher: ^6.3.2
 
   # ── Theming ─────────────────────────────────────────────────────────
   # ADR-0008

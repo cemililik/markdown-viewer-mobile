@@ -105,6 +105,7 @@ class MarkdownView extends StatelessWidget {
     this.controller,
     this.blockKeys,
     this.readingSettings = ReadingSettings.defaults,
+    this.onLinkTap,
     super.key,
   });
 
@@ -138,6 +139,18 @@ class MarkdownView extends StatelessWidget {
   /// and so the viewer can drive it from its own `ref.watch`.
   final ReadingSettings readingSettings;
 
+  /// Optional handler for link taps.
+  ///
+  /// Receives the raw `href` value from the markdown link. The
+  /// caller is responsible for routing: anchor links (`#slug`)
+  /// should scroll within the document; external `http(s)://`
+  /// links should open a browser.
+  ///
+  /// When `null`, `markdown_widget`'s default behaviour fires —
+  /// it calls `url_launcher` for every link — so callers that
+  /// only care about external links can omit this.
+  final void Function(String href)? onLinkTap;
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -167,6 +180,7 @@ class MarkdownView extends StatelessWidget {
         _buildPreConfig(theme),
         _buildTableConfig(),
         pConfigWithLineHeight,
+        if (onLinkTap != null) LinkConfig(onTap: onLinkTap),
         // Custom task-list checkbox renderer. The package's
         // default `InputNode` applies
         // `EdgeInsets.fromLTRB(2, (parentStyleHeight / 2) - 12, 2, 0)`

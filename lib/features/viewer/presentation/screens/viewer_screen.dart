@@ -21,6 +21,7 @@ import 'package:markdown_viewer/features/viewer/presentation/widgets/viewer_read
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:path/path.dart' as p;
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 /// Screen that loads and renders a single markdown document.
@@ -544,6 +545,27 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     );
   }
 
+  /// Routes a link tap from [MarkdownView].
+  ///
+  /// Anchor links (`#slug`) look up the matching [HeadingRef] and
+  /// scroll to it via [_scrollToHeading]. All other hrefs are
+  /// handed to the platform via [launchUrl] — `externalApplication`
+  /// mode keeps the viewer open in the background on both iOS and
+  /// Android.
+  void _onLinkTap(String href, Document document) {
+    if (href.startsWith('#')) {
+      final slug = href.substring(1);
+      final heading =
+          document.headings.where((h) => h.anchor == slug).firstOrNull;
+      if (heading != null) _scrollToHeading(heading);
+      return;
+    }
+    final uri = Uri.tryParse(href);
+    if (uri != null) {
+      launchUrl(uri, mode: LaunchMode.externalApplication).ignore();
+    }
+  }
+
   /// Invokes the platform share sheet for the active document's
   /// markdown source text. The filename is used as the subject so
   /// receiving apps (email, notes) can pre-fill a title.
@@ -792,6 +814,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
               controller: null,
               blockKeys: _blockKeys,
               readingSettings: readingSettings,
+              onLinkTap: (href) => _onLinkTap(href, document),
             );
           },
         ),

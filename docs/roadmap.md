@@ -779,7 +779,7 @@ lands the three features the user prioritized in one commit:
 - [ ] Sepia reading theme
 - [ ] Keep-screen-on toggle
 - [x] Text selection + copy + share
-- [ ] In-doc anchor links
+- [x] In-doc anchor links
 - [ ] Footnote popup sheets
 - [ ] Reading time estimate
 - [ ] Haptic feedback on jump / save / back-to-top
