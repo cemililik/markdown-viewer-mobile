@@ -325,7 +325,14 @@ String buildMermaidInitDirective(ColorScheme scheme) {
   // are kept because the sandbox WebView renders them faithfully
   // (CSS, foreignObject, font metrics all work) and the native
   // screenshot path captures whatever the browser paints.
-  final payload = jsonEncode({'theme': 'base', 'themeVariables': variables});
+  // 'classic' suppresses the per-diagram-type decorative icons added in
+  // Mermaid v11 (the mindmap icon in particular looks like a bomb/starburst
+  // and is confusing in both the viewer and PDF output).
+  final payload = jsonEncode({
+    'theme': 'base',
+    'look': 'classic',
+    'themeVariables': variables,
+  });
   return '%%{init: $payload}%%\n';
 }
 

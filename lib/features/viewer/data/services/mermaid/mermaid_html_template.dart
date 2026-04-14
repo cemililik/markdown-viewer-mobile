@@ -139,12 +139,15 @@ $mermaidJs
       startOnLoad: false,
       // 'antiscript' strips <script> tags from diagram labels while still
       // allowing HTML labels required by quadrantChart and certain flowchart
-      // nodes. 'strict' blocks HTML labels entirely, causing quadrantChart
-      // to fail and triggering Mermaid's bomb-emoji error indicator on
-      // diagrams that use htmlLabels: true. Since this renderer processes
-      // the user's own local files (not untrusted remote content),
-      // antiscript is the appropriate security level.
-      securityLevel: 'antiscript'
+      // nodes. 'strict' blocks HTML labels entirely and causes quadrantChart
+      // to fail. Since this renderer processes the user's own local files
+      // (not untrusted remote content), antiscript is appropriate.
+      securityLevel: 'antiscript',
+      // 'classic' suppresses the per-diagram-type decorative icons that
+      // Mermaid v11 introduced. The mindmap icon in particular renders as
+      // a starburst/bomb shape that is confusing and undesirable in both
+      // the viewer and PDF output.
+      look: 'classic'
     });
   } catch (e) {
     window.flutter_inappwebview.callHandler('mermaidResult', {
@@ -193,27 +196,34 @@ $mermaidJs
           postError(id, 'svg injection produced no root element');
           return;
         }
-        // Two paint ticks: one for the browser to lay out the
-        // newly-injected SVG, a second so any late style
-        // application or foreignObject metric calculation also
-        // settles before we measure.
+        // Poll up to 10 animation frames for non-zero dimensions.
+        // Complex diagram types (quadrantChart, large flowcharts)
+        // can take more than 2 frames before the browser has
+        // finished computing their final layout.
+        function measureSvg(remaining) {
+          var rect;
+          try {
+            rect = svg.getBoundingClientRect();
+          } catch (e) {
+            postError(
+              id,
+              'getBoundingClientRect threw: ' + (e && e.message ? e.message : e)
+            );
+            return;
+          }
+          if (rect.width > 0 && rect.height > 0) {
+            postReady(id, rect.width, rect.height);
+            return;
+          }
+          if (remaining <= 0) {
+            postError(id, 'svg has zero dimensions after layout');
+            return;
+          }
+          requestAnimationFrame(function () { measureSvg(remaining - 1); });
+        }
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
-            var rect;
-            try {
-              rect = svg.getBoundingClientRect();
-            } catch (e) {
-              postError(
-                id,
-                'getBoundingClientRect threw: ' + (e && e.message ? e.message : e)
-              );
-              return;
-            }
-            if (rect.width <= 0 || rect.height <= 0) {
-              postError(id, 'svg has zero dimensions after layout');
-              return;
-            }
-            postReady(id, rect.width, rect.height);
+            measureSvg(8);
           });
         });
       }).catch(function (err) {
