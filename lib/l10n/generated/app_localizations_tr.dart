@@ -322,6 +322,11 @@ class AppLocalizationsTr extends AppLocalizations {
   String get mermaidReset => 'Görünümü sıfırla';
 
   @override
+  String viewerReadingTime(int minutes) {
+    return '$minutes dk okuma';
+  }
+
+  @override
   String get viewerBackToTopTooltip => 'Başa dön';
 
   @override

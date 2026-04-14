@@ -638,6 +638,12 @@ abstract class AppLocalizations {
   /// **'Reset view'**
   String get mermaidReset;
 
+  /// Reading-time estimate shown at the top of the document content. Always shows at least 1 min.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min read'**
+  String viewerReadingTime(int minutes);
+
   /// Tooltip for the floating action button that scrolls a markdown document back to the very top.
   ///
   /// In en, this message translates to:

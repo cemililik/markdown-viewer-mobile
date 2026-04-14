@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 
@@ -88,6 +89,7 @@ class TocDrawer extends StatelessWidget {
                           return _TocEntry(
                             heading: heading,
                             onTap: () {
+                              HapticFeedback.selectionClick().ignore();
                               Navigator.of(context).maybePop();
                               onHeadingSelected(heading);
                             },

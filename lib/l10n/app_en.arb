@@ -383,6 +383,15 @@
   "@mermaidReset": {
     "description": "Tooltip / semantic label for the button that resets a panned or zoomed mermaid diagram back to its default position."
   },
+  "viewerReadingTime": "{minutes} min read",
+  "@viewerReadingTime": {
+    "description": "Reading-time estimate shown at the top of the document content. Always shows at least 1 min.",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "viewerBackToTopTooltip": "Back to top",
   "@viewerBackToTopTooltip": {
     "description": "Tooltip for the floating action button that scrolls a markdown document back to the very top."

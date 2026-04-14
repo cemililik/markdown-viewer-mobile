@@ -780,9 +780,9 @@ lands the three features the user prioritized in one commit:
 - [x] Keep-screen-on toggle
 - [x] Text selection + copy + share
 - [x] In-doc anchor links
-- [ ] Footnote popup sheets
-- [ ] Reading time estimate
-- [ ] Haptic feedback on jump / save / back-to-top
+- [x] Footnote popup sheets
+- [x] Reading time estimate
+- [x] Haptic feedback on jump / save / back-to-top
 - [ ] Swipe between adjacent files
 - [ ] Share-intent import handling
 - [x] **Table of contents drawer** — shipped in Phase 3.1 as

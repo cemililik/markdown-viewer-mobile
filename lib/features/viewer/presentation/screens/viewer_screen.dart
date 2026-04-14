@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/app/router.dart';
@@ -171,6 +172,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   }
 
   void _scrollToTop() {
+    HapticFeedback.lightImpact().ignore();
     final controller = _scrollController;
     if (controller == null || !controller.hasClients) return;
     controller.animateTo(
@@ -215,6 +217,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// documents — so they learn that long-press opens the remove
   /// menu, then never see the hint again.
   Future<void> _saveBookmark() async {
+    HapticFeedback.mediumImpact().ignore();
     final store = ref.read(readingPositionStoreProvider);
     final settingsStore = ref.read(settingsStoreProvider);
     final hadPrevious = store.read(widget.documentId) != null;
@@ -298,6 +301,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       await _saveBookmark();
       return;
     }
+    HapticFeedback.selectionClick().ignore();
     final choice = await showModalBottomSheet<_BookmarkMenuAction>(
       context: context,
       showDragHandle: true,
@@ -450,6 +454,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// Advances to the next match, wrapping around at the end.
   void _nextMatch(Document document) {
     if (_searchMatches.isEmpty) return;
+    HapticFeedback.selectionClick().ignore();
     final nextIndex = (_currentMatchIndex + 1) % _searchMatches.length;
     setState(() => _currentMatchIndex = nextIndex);
     _jumpToMatch(_searchMatches[nextIndex], document);
@@ -458,6 +463,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// Retreats to the previous match, wrapping around at the start.
   void _previousMatch(Document document) {
     if (_searchMatches.isEmpty) return;
+    HapticFeedback.selectionClick().ignore();
     final prevIndex =
         (_currentMatchIndex - 1 + _searchMatches.length) %
         _searchMatches.length;

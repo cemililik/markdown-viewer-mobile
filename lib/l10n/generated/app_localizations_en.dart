@@ -324,6 +324,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mermaidReset => 'Reset view';
 
   @override
+  String viewerReadingTime(int minutes) {
+    return '$minutes min read';
+  }
+
+  @override
   String get viewerBackToTopTooltip => 'Back to top';
 
   @override
