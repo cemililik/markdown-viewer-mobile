@@ -3,8 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/app/app.dart';
+import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
+import 'package:markdown_viewer/features/library/data/repositories/library_folders_store_impl.dart';
 import 'package:markdown_viewer/features/library/data/repositories/recent_documents_store_impl.dart';
+import 'package:markdown_viewer/features/library/data/services/folder_enumerator_impl.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/settings/data/settings_store.dart';
 import 'package:markdown_viewer/features/viewer/application/document_repository_provider.dart';
@@ -32,6 +35,7 @@ Future<void> main() async {
   final settingsStore = SettingsStore(prefs);
   final readingPositionStore = ReadingPositionStoreImpl(prefs);
   final recentDocumentsStore = RecentDocumentsStoreImpl(prefs);
+  final libraryFoldersStore = LibraryFoldersStoreImpl(prefs);
 
   final mermaidRenderer = await _buildMermaidRenderer();
 
@@ -55,6 +59,10 @@ Future<void> main() async {
         settingsStoreProvider.overrideWithValue(settingsStore),
         readingPositionStoreProvider.overrideWithValue(readingPositionStore),
         recentDocumentsStoreProvider.overrideWithValue(recentDocumentsStore),
+        libraryFoldersStoreProvider.overrideWithValue(libraryFoldersStore),
+        folderEnumeratorProvider.overrideWithValue(
+          const FolderEnumeratorImpl(),
+        ),
       ],
       child: const MarkdownViewerApp(),
     ),

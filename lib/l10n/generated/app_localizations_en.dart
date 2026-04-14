@@ -151,6 +151,63 @@ class AppLocalizationsEn extends AppLocalizations {
   String get libraryRecentUnpinnedSnack => 'Removed pin';
 
   @override
+  String get libraryFoldersDrawerTitle => 'Folders';
+
+  @override
+  String get libraryFoldersAdd => 'Add folder';
+
+  @override
+  String get libraryFoldersEmptyTitle => 'No folders yet';
+
+  @override
+  String get libraryFoldersEmptyMessage =>
+      'Add a folder of markdown files to browse them here.';
+
+  @override
+  String get libraryFoldersOpenDrawerTooltip => 'Open folders';
+
+  @override
+  String get libraryFoldersAddedSnack => 'Folder added';
+
+  @override
+  String get libraryFoldersRemovedSnack => 'Folder removed';
+
+  @override
+  String get libraryFoldersRemove => 'Remove folder';
+
+  @override
+  String get libraryFoldersAddCancelled => 'Folder selection cancelled';
+
+  @override
+  String get libraryFoldersAddFailed =>
+      'Could not open the folder picker. Please try again.';
+
+  @override
+  String get libraryFoldersAlreadyAdded =>
+      'This folder is already in the library.';
+
+  @override
+  String get libraryFoldersEnumerationFailed => 'Could not read this folder.';
+
+  @override
+  String get libraryFoldersEmptyFolder => 'No markdown files in this folder';
+
+  @override
+  String get libraryActionMenuOpenFile => 'Open file';
+
+  @override
+  String get libraryActionMenuOpenFolder => 'Open folder';
+
+  @override
+  String get libraryActionMenuSyncRepo => 'Sync repository';
+
+  @override
+  String get libraryActionMenuTooltip => 'Add documents';
+
+  @override
+  String get libraryActionMenuCloseTooltip => 'Close menu';
+
+  @override
   String get actionOpenFile => 'Open file';
 
   @override

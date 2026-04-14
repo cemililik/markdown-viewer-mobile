@@ -8,8 +8,11 @@ import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/core/logging/logger.dart';
+import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
 import 'package:markdown_viewer/features/library/domain/entities/recent_document.dart';
+import 'package:markdown_viewer/features/library/presentation/widgets/folder_explorer_drawer.dart';
+import 'package:markdown_viewer/features/library/presentation/widgets/library_speed_dial.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:path/path.dart' as p;
 
@@ -82,6 +85,18 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        // Explicit leading IconButton (rather than relying on
+        // Scaffold's automatic drawer hamburger) so we can wire a
+        // localized tooltip and keep the icon style consistent
+        // with the settings action on the right.
+        leading: Builder(
+          builder:
+              (context) => IconButton(
+                icon: const Icon(Icons.menu),
+                tooltip: l10n.libraryFoldersOpenDrawerTooltip,
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              ),
+        ),
         title: Text(l10n.navLibrary),
         actions: [
           IconButton(
@@ -91,10 +106,12 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           ),
         ],
       ),
+      drawer: const FolderExplorerDrawer(),
       body:
           recents.isEmpty
               ? _LibraryEmptyState(
                 onOpenFile: () => _pickAndOpenFile(context, ref),
+                onOpenFolder: () => _pickAndAddFolder(context, ref),
               )
               : _LibraryPopulatedBody(
                 recents: recents,
@@ -106,12 +123,78 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       floatingActionButton:
           recents.isEmpty
               ? null
-              : FloatingActionButton.extended(
-                icon: const Icon(Icons.note_add_outlined),
-                label: Text(l10n.actionOpenFile),
-                onPressed: () => _pickAndOpenFile(context, ref),
+              : LibrarySpeedDial(
+                openTooltip: l10n.libraryActionMenuTooltip,
+                closeTooltip: l10n.libraryActionMenuCloseTooltip,
+                actions: [
+                  LibrarySpeedDialAction(
+                    label: l10n.libraryActionMenuOpenFile,
+                    icon: Icons.note_add_outlined,
+                    onTap: () => _pickAndOpenFile(context, ref),
+                  ),
+                  LibrarySpeedDialAction(
+                    label: l10n.libraryActionMenuOpenFolder,
+                    icon: Icons.create_new_folder_outlined,
+                    onTap: () => _pickAndAddFolder(context, ref),
+                  ),
+                  // Sync repository: gated on Phase 4.5. Disabled
+                  // until the repo_sync feature lands; the entry
+                  // still appears so users discover the surface.
+                  LibrarySpeedDialAction(
+                    label: l10n.libraryActionMenuSyncRepo,
+                    icon: Icons.cloud_download_outlined,
+                    onTap: null,
+                  ),
+                ],
               ),
     );
+  }
+
+  /// Opens the platform directory picker and forwards the
+  /// chosen path to [LibraryFoldersController.add]. Used by
+  /// both the empty-state CTA and the speed dial entry.
+  static Future<void> _pickAndAddFolder(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    final logger = ref.read(appLoggerProvider);
+    final controller = ref.read(libraryFoldersControllerProvider.notifier);
+
+    String? path;
+    try {
+      path = await FilePicker.platform.getDirectoryPath();
+    } on Object catch (error, stackTrace) {
+      logger.e('Folder picker failed', error: error, stackTrace: stackTrace);
+      if (!context.mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.libraryFoldersAddFailed)),
+      );
+      return;
+    }
+
+    if (!context.mounted) return;
+
+    if (path == null || path.isEmpty) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(l10n.libraryFoldersAddCancelled)),
+      );
+      return;
+    }
+
+    final added = controller.add(path);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            added
+                ? l10n.libraryFoldersAddedSnack
+                : l10n.libraryFoldersAlreadyAdded,
+          ),
+        ),
+      );
   }
 
   /// Opens the platform file picker, validates the result, and
@@ -175,12 +258,17 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 }
 
 /// Centred welcome view shown when the user has never opened a
-/// document. Mirrors the original empty-state layout so first
-/// launches keep the friendly onboarding feel.
+/// document. Three onboarding affordances stacked in priority
+/// order: Open file (filled), Open folder (tonal), Sync
+/// repository (disabled outlined — gated on Phase 4.5).
 class _LibraryEmptyState extends StatelessWidget {
-  const _LibraryEmptyState({required this.onOpenFile});
+  const _LibraryEmptyState({
+    required this.onOpenFile,
+    required this.onOpenFolder,
+  });
 
   final VoidCallback onOpenFile;
+  final VoidCallback onOpenFolder;
 
   @override
   Widget build(BuildContext context) {
@@ -214,8 +302,14 @@ class _LibraryEmptyState extends StatelessWidget {
               const SizedBox(height: 32),
               FilledButton.icon(
                 onPressed: onOpenFile,
-                icon: const Icon(Icons.folder_open_outlined),
+                icon: const Icon(Icons.note_add_outlined),
                 label: Text(l10n.actionOpenFile),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.tonalIcon(
+                onPressed: onOpenFolder,
+                icon: const Icon(Icons.create_new_folder_outlined),
+                label: Text(l10n.libraryActionMenuOpenFolder),
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(

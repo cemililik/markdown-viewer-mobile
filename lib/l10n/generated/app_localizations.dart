@@ -314,6 +314,114 @@ abstract class AppLocalizations {
   /// **'Removed pin'**
   String get libraryRecentUnpinnedSnack;
 
+  /// Header of the folder explorer drawer slid in from the left of the library home screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Folders'**
+  String get libraryFoldersDrawerTitle;
+
+  /// Action that opens the platform directory picker to add a new library root.
+  ///
+  /// In en, this message translates to:
+  /// **'Add folder'**
+  String get libraryFoldersAdd;
+
+  /// Title shown inside the folder explorer drawer when the user has not added any library roots.
+  ///
+  /// In en, this message translates to:
+  /// **'No folders yet'**
+  String get libraryFoldersEmptyTitle;
+
+  /// Body shown inside the folder explorer drawer beneath libraryFoldersEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a folder of markdown files to browse them here.'**
+  String get libraryFoldersEmptyMessage;
+
+  /// Tooltip on the AppBar hamburger that opens the folder explorer drawer.
+  ///
+  /// In en, this message translates to:
+  /// **'Open folders'**
+  String get libraryFoldersOpenDrawerTooltip;
+
+  /// Snackbar shown after the user picks a directory to add as a library root.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder added'**
+  String get libraryFoldersAddedSnack;
+
+  /// Snackbar shown after the user removes a library root from the drawer.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder removed'**
+  String get libraryFoldersRemovedSnack;
+
+  /// Long-press / context menu action to remove a library root from the drawer.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove folder'**
+  String get libraryFoldersRemove;
+
+  /// Snackbar shown when the directory picker is dismissed without a selection.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder selection cancelled'**
+  String get libraryFoldersAddCancelled;
+
+  /// Snackbar shown when the platform directory picker fails to open.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the folder picker. Please try again.'**
+  String get libraryFoldersAddFailed;
+
+  /// Snackbar shown when the user tries to add a directory that is already a library root.
+  ///
+  /// In en, this message translates to:
+  /// **'This folder is already in the library.'**
+  String get libraryFoldersAlreadyAdded;
+
+  /// Inline label shown inside an expanded folder when listing its contents fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read this folder.'**
+  String get libraryFoldersEnumerationFailed;
+
+  /// Inline label shown inside an expanded folder when the directory holds no markdown files or subfolders.
+  ///
+  /// In en, this message translates to:
+  /// **'No markdown files in this folder'**
+  String get libraryFoldersEmptyFolder;
+
+  /// Speed dial entry that opens the platform file picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Open file'**
+  String get libraryActionMenuOpenFile;
+
+  /// Speed dial entry that opens the platform directory picker and adds the result as a library root.
+  ///
+  /// In en, this message translates to:
+  /// **'Open folder'**
+  String get libraryActionMenuOpenFolder;
+
+  /// Speed dial entry that triggers the repo sync flow (Phase 4.5 — currently disabled).
+  ///
+  /// In en, this message translates to:
+  /// **'Sync repository'**
+  String get libraryActionMenuSyncRepo;
+
+  /// Tooltip on the populated-state plus FAB that expands the speed dial menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Add documents'**
+  String get libraryActionMenuTooltip;
+
+  /// Tooltip on the populated-state FAB while the speed dial menu is open.
+  ///
+  /// In en, this message translates to:
+  /// **'Close menu'**
+  String get libraryActionMenuCloseTooltip;
+
   /// Button label that opens a file picker on the device.
   ///
   /// In en, this message translates to:

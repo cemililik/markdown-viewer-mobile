@@ -3,9 +3,13 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
+import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/entities/recent_document.dart';
+import 'package:markdown_viewer/features/library/domain/repositories/library_folders_store.dart';
 import 'package:markdown_viewer/features/library/domain/repositories/recent_documents_store.dart';
+import 'package:markdown_viewer/features/library/domain/services/folder_enumerator.dart';
 import 'package:markdown_viewer/features/library/presentation/screens/library_screen.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
@@ -27,7 +31,34 @@ class _InMemoryStore implements RecentDocumentsStore {
   }
 }
 
-Widget _harness(RecentDocumentsStore store) {
+class _InMemoryFoldersStore implements LibraryFoldersStore {
+  _InMemoryFoldersStore([List<LibraryFolder>? seed])
+    : _state = <LibraryFolder>[...?seed];
+
+  List<LibraryFolder> _state;
+
+  @override
+  List<LibraryFolder> read() => List.unmodifiable(_state);
+
+  @override
+  Future<void> write(List<LibraryFolder> folders) async {
+    _state = List<LibraryFolder>.from(folders);
+  }
+}
+
+class _NoopEnumerator implements FolderEnumerator {
+  const _NoopEnumerator();
+
+  @override
+  Future<List<FolderEntry>> enumerate(String folderPath) async =>
+      const <FolderEntry>[];
+}
+
+Widget _harness(
+  RecentDocumentsStore store, {
+  LibraryFoldersStore? foldersStore,
+  FolderEnumerator? enumerator,
+}) {
   final router = GoRouter(
     initialLocation: '/',
     routes: [
@@ -39,7 +70,15 @@ Widget _harness(RecentDocumentsStore store) {
     ],
   );
   return ProviderScope(
-    overrides: [recentDocumentsStoreProvider.overrideWithValue(store)],
+    overrides: [
+      recentDocumentsStoreProvider.overrideWithValue(store),
+      libraryFoldersStoreProvider.overrideWithValue(
+        foldersStore ?? _InMemoryFoldersStore(),
+      ),
+      folderEnumeratorProvider.overrideWithValue(
+        enumerator ?? const _NoopEnumerator(),
+      ),
+    ],
     child: MaterialApp.router(
       routerConfig: router,
       locale: const Locale('en'),
@@ -58,7 +97,7 @@ Widget _harness(RecentDocumentsStore store) {
 void main() {
   group('LibraryScreen', () {
     testWidgets(
-      'empty state shows the welcome icon, title, and Open file CTA',
+      'empty state shows the welcome icon plus three onboarding buttons',
       (tester) async {
         await tester.pumpWidget(_harness(_InMemoryStore()));
         await tester.pumpAndSettle();
@@ -66,11 +105,76 @@ void main() {
         expect(find.byIcon(Icons.menu_book_outlined), findsOneWidget);
         expect(find.text('No documents yet'), findsOneWidget);
         expect(find.text('Open file'), findsOneWidget);
+        expect(find.text('Open folder'), findsOneWidget);
+        expect(find.text('Sync repository'), findsOneWidget);
         expect(
           find.byType(FloatingActionButton),
           findsNothing,
           reason: 'The FAB only shows in the populated state.',
         );
+      },
+    );
+
+    testWidgets('AppBar hamburger opens the folder explorer drawer', (
+      tester,
+    ) async {
+      await tester.pumpWidget(_harness(_InMemoryStore()));
+      await tester.pumpAndSettle();
+
+      // Drawer is closed → its empty-state title is not on screen yet.
+      expect(find.text('No folders yet'), findsNothing);
+
+      await tester.tap(find.byTooltip('Open folders'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Folders'), findsOneWidget);
+      expect(find.text('No folders yet'), findsOneWidget);
+    });
+
+    testWidgets('drawer renders a tile for every persisted library folder', (
+      tester,
+    ) async {
+      final foldersStore = _InMemoryFoldersStore([
+        LibraryFolder(path: '/tmp/notes', addedAt: DateTime.utc(2026, 4, 14)),
+        LibraryFolder(path: '/tmp/blog', addedAt: DateTime.utc(2026, 4, 13)),
+      ]);
+
+      await tester.pumpWidget(
+        _harness(_InMemoryStore(), foldersStore: foldersStore),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Open folders'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('notes'), findsOneWidget);
+      expect(find.text('blog'), findsOneWidget);
+      expect(find.text('No folders yet'), findsNothing);
+    });
+
+    testWidgets(
+      'populated state shows a + FAB that expands the speed dial menu',
+      (tester) async {
+        final store = _InMemoryStore([
+          RecentDocument(
+            documentId: const DocumentId('/tmp/alpha.md'),
+            openedAt: DateTime.now(),
+          ),
+        ]);
+
+        await tester.pumpWidget(_harness(store));
+        await tester.pumpAndSettle();
+
+        // Closed: primary FAB is visible, mini-FAB labels are not
+        // exposed because the menu has not been opened yet.
+        expect(find.byTooltip('Add documents'), findsOneWidget);
+
+        await tester.tap(find.byTooltip('Add documents'));
+        await tester.pumpAndSettle();
+
+        // Three speed dial labels are now on screen — Open file
+        // appears twice (mini-FAB tooltip + label chip).
+        expect(find.text('Open folder'), findsOneWidget);
+        expect(find.text('Sync repository'), findsOneWidget);
       },
     );
 
@@ -118,8 +222,10 @@ void main() {
         expect(find.text('alpha.md'), findsOneWidget);
         expect(find.text('beta.md'), findsOneWidget);
 
-        // Floating action button.
-        expect(find.byType(FloatingActionButton), findsOneWidget);
+        // Primary speed-dial FAB (mini-FABs remain collapsed and
+        // off-screen until the menu opens, so we verify the
+        // primary one is present by its tooltip).
+        expect(find.byTooltip('Add documents'), findsOneWidget);
 
         // Old empty state is gone.
         expect(find.text('No documents yet'), findsNothing);

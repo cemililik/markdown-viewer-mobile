@@ -161,6 +161,79 @@
     "description": "Snackbar shown after a pinned recent document is unpinned."
   },
 
+  "libraryFoldersDrawerTitle": "Folders",
+  "@libraryFoldersDrawerTitle": {
+    "description": "Header of the folder explorer drawer slid in from the left of the library home screen."
+  },
+  "libraryFoldersAdd": "Add folder",
+  "@libraryFoldersAdd": {
+    "description": "Action that opens the platform directory picker to add a new library root."
+  },
+  "libraryFoldersEmptyTitle": "No folders yet",
+  "@libraryFoldersEmptyTitle": {
+    "description": "Title shown inside the folder explorer drawer when the user has not added any library roots."
+  },
+  "libraryFoldersEmptyMessage": "Add a folder of markdown files to browse them here.",
+  "@libraryFoldersEmptyMessage": {
+    "description": "Body shown inside the folder explorer drawer beneath libraryFoldersEmptyTitle."
+  },
+  "libraryFoldersOpenDrawerTooltip": "Open folders",
+  "@libraryFoldersOpenDrawerTooltip": {
+    "description": "Tooltip on the AppBar hamburger that opens the folder explorer drawer."
+  },
+  "libraryFoldersAddedSnack": "Folder added",
+  "@libraryFoldersAddedSnack": {
+    "description": "Snackbar shown after the user picks a directory to add as a library root."
+  },
+  "libraryFoldersRemovedSnack": "Folder removed",
+  "@libraryFoldersRemovedSnack": {
+    "description": "Snackbar shown after the user removes a library root from the drawer."
+  },
+  "libraryFoldersRemove": "Remove folder",
+  "@libraryFoldersRemove": {
+    "description": "Long-press / context menu action to remove a library root from the drawer."
+  },
+  "libraryFoldersAddCancelled": "Folder selection cancelled",
+  "@libraryFoldersAddCancelled": {
+    "description": "Snackbar shown when the directory picker is dismissed without a selection."
+  },
+  "libraryFoldersAddFailed": "Could not open the folder picker. Please try again.",
+  "@libraryFoldersAddFailed": {
+    "description": "Snackbar shown when the platform directory picker fails to open."
+  },
+  "libraryFoldersAlreadyAdded": "This folder is already in the library.",
+  "@libraryFoldersAlreadyAdded": {
+    "description": "Snackbar shown when the user tries to add a directory that is already a library root."
+  },
+  "libraryFoldersEnumerationFailed": "Could not read this folder.",
+  "@libraryFoldersEnumerationFailed": {
+    "description": "Inline label shown inside an expanded folder when listing its contents fails."
+  },
+  "libraryFoldersEmptyFolder": "No markdown files in this folder",
+  "@libraryFoldersEmptyFolder": {
+    "description": "Inline label shown inside an expanded folder when the directory holds no markdown files or subfolders."
+  },
+  "libraryActionMenuOpenFile": "Open file",
+  "@libraryActionMenuOpenFile": {
+    "description": "Speed dial entry that opens the platform file picker."
+  },
+  "libraryActionMenuOpenFolder": "Open folder",
+  "@libraryActionMenuOpenFolder": {
+    "description": "Speed dial entry that opens the platform directory picker and adds the result as a library root."
+  },
+  "libraryActionMenuSyncRepo": "Sync repository",
+  "@libraryActionMenuSyncRepo": {
+    "description": "Speed dial entry that triggers the repo sync flow (Phase 4.5 — currently disabled)."
+  },
+  "libraryActionMenuTooltip": "Add documents",
+  "@libraryActionMenuTooltip": {
+    "description": "Tooltip on the populated-state plus FAB that expands the speed dial menu."
+  },
+  "libraryActionMenuCloseTooltip": "Close menu",
+  "@libraryActionMenuCloseTooltip": {
+    "description": "Tooltip on the populated-state FAB while the speed dial menu is open."
+  },
+
   "actionOpenFile": "Open file",
   "@actionOpenFile": {
     "description": "Button label that opens a file picker on the device."

@@ -151,6 +151,62 @@ class AppLocalizationsTr extends AppLocalizations {
   String get libraryRecentUnpinnedSnack => 'Sabitleme kaldırıldı';
 
   @override
+  String get libraryFoldersDrawerTitle => 'Klasörler';
+
+  @override
+  String get libraryFoldersAdd => 'Klasör ekle';
+
+  @override
+  String get libraryFoldersEmptyTitle => 'Henüz klasör yok';
+
+  @override
+  String get libraryFoldersEmptyMessage =>
+      'İçinde markdown dosyaları olan bir klasör ekleyin, burada gezinin.';
+
+  @override
+  String get libraryFoldersOpenDrawerTooltip => 'Klasörleri aç';
+
+  @override
+  String get libraryFoldersAddedSnack => 'Klasör eklendi';
+
+  @override
+  String get libraryFoldersRemovedSnack => 'Klasör kaldırıldı';
+
+  @override
+  String get libraryFoldersRemove => 'Klasörü kaldır';
+
+  @override
+  String get libraryFoldersAddCancelled => 'Klasör seçimi iptal edildi';
+
+  @override
+  String get libraryFoldersAddFailed =>
+      'Klasör seçici açılamadı. Tekrar deneyin.';
+
+  @override
+  String get libraryFoldersAlreadyAdded => 'Bu klasör zaten kütüphanede.';
+
+  @override
+  String get libraryFoldersEnumerationFailed => 'Bu klasör okunamadı.';
+
+  @override
+  String get libraryFoldersEmptyFolder => 'Bu klasörde markdown dosyası yok';
+
+  @override
+  String get libraryActionMenuOpenFile => 'Dosya aç';
+
+  @override
+  String get libraryActionMenuOpenFolder => 'Klasör aç';
+
+  @override
+  String get libraryActionMenuSyncRepo => 'Depoyu senkronize et';
+
+  @override
+  String get libraryActionMenuTooltip => 'Belge ekle';
+
+  @override
+  String get libraryActionMenuCloseTooltip => 'Menüyü kapat';
+
+  @override
   String get actionOpenFile => 'Dosya aç';
 
   @override
