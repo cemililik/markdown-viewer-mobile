@@ -34,7 +34,7 @@ import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
 /// - An **All settings** link that pushes the full settings
 ///   route — used for preferences not exposed here (language,
 ///   future settings).
-Future<void> showViewerReadingPanel(BuildContext context, WidgetRef ref) async {
+Future<void> showViewerReadingPanel(BuildContext context) async {
   await showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
@@ -215,8 +215,11 @@ class _ViewerReadingPanelBody extends ConsumerWidget {
                   icon: const Icon(Icons.settings_outlined, size: 18),
                   label: Text(l10n.viewerReadingPanelAllSettings),
                   onPressed: () {
-                    Navigator.of(context).maybePop();
-                    context.push(SettingsRoute.location());
+                    Navigator.of(context).maybePop().then((_) {
+                      if (context.mounted) {
+                        context.push(SettingsRoute.location());
+                      }
+                    });
                   },
                 ),
               ],

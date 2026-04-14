@@ -96,6 +96,12 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   List<int> _searchMatches = const <int>[];
   int _currentMatchIndex = 0;
 
+  /// Cached result of [_matchContext] for the current match index.
+  /// Recomputed only when [_searchMatches] or [_currentMatchIndex]
+  /// changes — not on every scroll-driven rebuild.
+  ({String lineText, int startInLine, int endInLine, int lineIndex})?
+  _cachedMatchContext;
+
   @override
   void initState() {
     super.initState();
@@ -407,6 +413,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       _searchController.clear();
       _searchMatches = const <int>[];
       _currentMatchIndex = 0;
+      _cachedMatchContext = null;
     });
     _searchFocusNode.unfocus();
   }
@@ -433,6 +440,14 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     setState(() {
       _searchMatches = matches;
       _currentMatchIndex = 0;
+      _cachedMatchContext =
+          matches.isEmpty
+              ? null
+              : _matchContext(
+                source: document.source,
+                offset: matches.first,
+                queryLength: trimmed.length,
+              );
     });
     if (matches.isNotEmpty) {
       _jumpToMatch(matches.first, document);
@@ -445,7 +460,14 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   void _nextMatch(Document document) {
     if (_searchMatches.isEmpty) return;
     final nextIndex = (_currentMatchIndex + 1) % _searchMatches.length;
-    setState(() => _currentMatchIndex = nextIndex);
+    setState(() {
+      _currentMatchIndex = nextIndex;
+      _cachedMatchContext = _matchContext(
+        source: document.source,
+        offset: _searchMatches[nextIndex],
+        queryLength: _searchController.text.trim().length,
+      );
+    });
     _jumpToMatch(_searchMatches[nextIndex], document);
   }
 
@@ -453,23 +475,23 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     if (_searchMatches.isEmpty) return;
     final length = _searchMatches.length;
     final prevIndex = (_currentMatchIndex - 1 + length) % length;
-    setState(() => _currentMatchIndex = prevIndex);
+    setState(() {
+      _currentMatchIndex = prevIndex;
+      _cachedMatchContext = _matchContext(
+        source: document.source,
+        offset: _searchMatches[prevIndex],
+        queryLength: _searchController.text.trim().length,
+      );
+    });
     _jumpToMatch(_searchMatches[prevIndex], document);
   }
 
   /// Builds the `PreferredSize` bar that sits under the AppBar
   /// while search is active.
-  PreferredSizeWidget _buildSearchContextHint(Document document) {
-    final query = _searchController.text;
-    final offset = _searchMatches[_currentMatchIndex];
-    final ctx = _matchContext(
-      source: document.source,
-      offset: offset,
-      queryLength: query.length,
-    );
+  PreferredSizeWidget _buildSearchContextHint() {
     return PreferredSize(
       preferredSize: const Size.fromHeight(36),
-      child: _SearchContextHint(context: ctx),
+      child: _SearchContextHint(context: _cachedMatchContext),
     );
   }
 
@@ -686,7 +708,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                           onPressed:
                               dataDocument == null
                                   ? null
-                                  : () => showViewerReadingPanel(context, ref),
+                                  : () => showViewerReadingPanel(context),
                         ),
                         ValueListenableBuilder<bool>(
                           valueListenable: _isBookmarked,
@@ -716,7 +738,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                           dataDocument != null &&
                           _searchMatches.isNotEmpty &&
                           _searchController.text.isNotEmpty)
-                      ? _buildSearchContextHint(dataDocument)
+                      ? _buildSearchContextHint()
                       : null,
             ),
           ];

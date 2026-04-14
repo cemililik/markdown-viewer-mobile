@@ -1,8 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:logger/logger.dart';
 import 'package:markdown_viewer/features/viewer/data/repositories/reading_position_store_impl.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/reading_position.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+class _NullOutput extends LogOutput {
+  @override
+  void output(OutputEvent event) {}
+}
+
+final _silentLogger = Logger(output: _NullOutput());
 
 void main() {
   group('ReadingPositionStoreImpl', () {
@@ -14,7 +22,7 @@ void main() {
       'returns null for a document that has never been bookmarked',
       () async {
         final prefs = await SharedPreferences.getInstance();
-        final store = ReadingPositionStoreImpl(prefs);
+        final store = ReadingPositionStoreImpl(prefs, logger: _silentLogger);
 
         expect(store.read(const DocumentId('/tmp/none.md')), isNull);
       },
@@ -22,7 +30,7 @@ void main() {
 
     test('write then read round-trips the offset and timestamp', () async {
       final prefs = await SharedPreferences.getInstance();
-      final store = ReadingPositionStoreImpl(prefs);
+      final store = ReadingPositionStoreImpl(prefs, logger: _silentLogger);
       final timestamp = DateTime.utc(2026, 4, 13, 12, 30);
       const id = DocumentId('/tmp/example.md');
 
@@ -39,7 +47,7 @@ void main() {
 
     test('clear removes a previously written bookmark', () async {
       final prefs = await SharedPreferences.getInstance();
-      final store = ReadingPositionStoreImpl(prefs);
+      final store = ReadingPositionStoreImpl(prefs, logger: _silentLogger);
       const id = DocumentId('/tmp/clear.md');
 
       await store.write(
@@ -60,7 +68,7 @@ void main() {
       'two different document paths sit in two different storage slots',
       () async {
         final prefs = await SharedPreferences.getInstance();
-        final store = ReadingPositionStoreImpl(prefs);
+        final store = ReadingPositionStoreImpl(prefs, logger: _silentLogger);
         const a = DocumentId('/tmp/a.md');
         const b = DocumentId('/tmp/b.md');
 
@@ -88,7 +96,7 @@ void main() {
       'does not leak the raw file path into SharedPreferences keys',
       () async {
         final prefs = await SharedPreferences.getInstance();
-        final store = ReadingPositionStoreImpl(prefs);
+        final store = ReadingPositionStoreImpl(prefs, logger: _silentLogger);
         const id = DocumentId('/Users/dev/Documents/secret-document.md');
 
         await store.write(
@@ -118,7 +126,7 @@ void main() {
           // by writing through the public API first, then poisoning.
         });
         final prefs = await SharedPreferences.getInstance();
-        final store = ReadingPositionStoreImpl(prefs);
+        final store = ReadingPositionStoreImpl(prefs, logger: _silentLogger);
         const id = DocumentId('/tmp/poison.md');
 
         // Save a real value, then corrupt the underlying string.

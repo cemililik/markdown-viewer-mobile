@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/features/viewer/application/markdown_extensions/admonition.dart';
 import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
+import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_utils.dart';
 import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_view.dart';
 
@@ -81,30 +82,10 @@ class _MermaidBlockState extends ConsumerState<MermaidBlock> {
   }
 
   static bool _sourceHasOwnDirective(String source) {
-    // Skip an optional leading YAML frontmatter block (--- ... ---) before
-    // checking for a %%{init: directive, because mermaid source can legally
-    // start with frontmatter followed by the init block.
-    var scanFrom = 0;
-    if (source.trimLeft().startsWith('---')) {
-      final firstNl = source.indexOf('\n');
-      if (firstNl > 0) {
-        final opener = source.substring(0, firstNl).trimRight();
-        if (opener == '---') {
-          var cursor = firstNl + 1;
-          while (cursor < source.length) {
-            final nextNl = source.indexOf('\n', cursor);
-            final lineEnd = nextNl < 0 ? source.length : nextNl;
-            final line = source.substring(cursor, lineEnd).trimRight();
-            if (line == '---' || line == '...') {
-              scanFrom = nextNl < 0 ? source.length : nextNl + 1;
-              break;
-            }
-            if (nextNl < 0) break;
-            cursor = nextNl + 1;
-          }
-        }
-      }
-    }
+    // Skip any leading YAML frontmatter block before checking for a
+    // %%{init: directive, using the same shared helper that the renderer
+    // uses when deciding where to splice the init directive.
+    final scanFrom = frontmatterEndIndex(source) ?? 0;
     return source.substring(scanFrom).trimLeft().startsWith('%%{init:');
   }
 
@@ -422,6 +403,11 @@ class _MermaidImageState extends State<_MermaidImage>
         oldWidget.height != widget.height) {
       // A new bitmap arrived (re-render or theme flip) — discard the
       // previous pan/zoom so the fresh diagram is shown at identity.
+      // Stop any running recenter animation first so _applyResetFrame
+      // cannot overwrite the identity matrix after we set it.
+      _resetAnimation?.removeListener(_applyResetFrame);
+      _resetAnimation = null;
+      _resetController.stop();
       _transform.value = Matrix4.identity();
     }
   }

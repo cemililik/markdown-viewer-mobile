@@ -23,8 +23,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// an async hop first (which would be visible as a flash of the
 /// document at offset 0 before the jump).
 class ReadingPositionStoreImpl implements ReadingPositionStore {
-  ReadingPositionStoreImpl(this._prefs, {Logger? logger})
-    : _logger = logger ?? Logger();
+  ReadingPositionStoreImpl(this._prefs, {required Logger logger})
+    : _logger = logger;
 
   final SharedPreferences _prefs;
   final Logger _logger;
@@ -63,7 +63,8 @@ class ReadingPositionStoreImpl implements ReadingPositionStore {
       // opens normally; the next explicit save overwrites the
       // bad blob.
       _logger.e(
-        'ReadingPositionStore: could not decode entry for $documentId',
+        'ReadingPositionStore: could not decode entry for key '
+        '${_keyFor(documentId)}',
         error: e,
         stackTrace: st,
       );

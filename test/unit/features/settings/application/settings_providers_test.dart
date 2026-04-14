@@ -235,6 +235,11 @@ void main() {
         store.readReadingSettings().fontScale,
         ReadingSettings.defaults.fontScale,
       );
+      expect(store.readReadingSettings().width, ReadingSettings.defaults.width);
+      expect(
+        store.readReadingSettings().lineHeight,
+        ReadingSettings.defaults.lineHeight,
+      );
     });
   });
 
