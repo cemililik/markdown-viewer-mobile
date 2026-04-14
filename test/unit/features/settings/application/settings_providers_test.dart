@@ -1,15 +1,16 @@
-import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/settings/data/settings_store.dart';
 import 'package:markdown_viewer/features/settings/domain/app_locale.dart';
+import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
 import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Unit tests for [ThemeModeController] and [LocaleController]. Both
+/// Unit tests for [ThemeModeController], [LocaleController],
+/// [ReadingSettingsController], and [KeepScreenOnController]. All four
 /// controllers share the same "seed from store, mutate in memory,
-/// fire-and-forget persistence" shape, so one test file covers both.
+/// fire-and-forget persistence" shape, so one test file covers them all.
 ///
 /// The tests run against a real [SettingsStore] backed by the in-memory
 /// `SharedPreferences.setMockInitialValues`. That lets us verify both
@@ -36,15 +37,18 @@ void main() {
       SharedPreferences.setMockInitialValues({'settings.themeMode': 'dark'});
       final container = await buildContainer();
 
-      expect(container.read(themeModeControllerProvider), ThemeMode.dark);
+      expect(container.read(themeModeControllerProvider), AppThemeMode.dark);
     });
 
     test(
-      'defaults to ThemeMode.system when no value has been persisted',
+      'defaults to AppThemeMode.system when no value has been persisted',
       () async {
         final container = await buildContainer();
 
-        expect(container.read(themeModeControllerProvider), ThemeMode.system);
+        expect(
+          container.read(themeModeControllerProvider),
+          AppThemeMode.system,
+        );
       },
     );
 
@@ -52,9 +56,9 @@ void main() {
       final container = await buildContainer();
       final notifier = container.read(themeModeControllerProvider.notifier);
 
-      notifier.set(ThemeMode.light);
+      notifier.set(AppThemeMode.light);
 
-      expect(container.read(themeModeControllerProvider), ThemeMode.light);
+      expect(container.read(themeModeControllerProvider), AppThemeMode.light);
     });
 
     test('set persists the value through the underlying store', () async {
@@ -65,11 +69,29 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      container.read(themeModeControllerProvider.notifier).set(ThemeMode.dark);
+      container
+          .read(themeModeControllerProvider.notifier)
+          .set(AppThemeMode.dark);
 
       // Give the fire-and-forget write a microtask to land.
       await Future<void>.delayed(Duration.zero);
-      expect(store.readThemeMode(), ThemeMode.dark);
+      expect(store.readAppThemeMode(), AppThemeMode.dark);
+    });
+
+    test('set persists AppThemeMode.sepia correctly', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final store = SettingsStore(prefs);
+      final container = ProviderContainer(
+        overrides: [settingsStoreProvider.overrideWithValue(store)],
+      );
+      addTearDown(container.dispose);
+
+      container
+          .read(themeModeControllerProvider.notifier)
+          .set(AppThemeMode.sepia);
+
+      await Future<void>.delayed(Duration.zero);
+      expect(store.readAppThemeMode(), AppThemeMode.sepia);
     });
 
     test('set is a no-op when the value is unchanged', () async {
@@ -190,7 +212,6 @@ void main() {
       );
       addTearDown(container.dispose);
 
-      // Mutate every knob away from its default first.
       container
           .read(readingSettingsControllerProvider.notifier)
           .setFontScale(1.4);
@@ -214,6 +235,51 @@ void main() {
         store.readReadingSettings().fontScale,
         ReadingSettings.defaults.fontScale,
       );
+      expect(store.readReadingSettings().width, ReadingSettings.defaults.width);
+      expect(
+        store.readReadingSettings().lineHeight,
+        ReadingSettings.defaults.lineHeight,
+      );
+    });
+  });
+
+  group('KeepScreenOnController', () {
+    test('defaults to false on a fresh install', () async {
+      final container = await buildContainer();
+
+      expect(container.read(keepScreenOnControllerProvider), isFalse);
+    });
+
+    test('set updates in-memory state synchronously', () async {
+      final container = await buildContainer();
+      final notifier = container.read(keepScreenOnControllerProvider.notifier);
+
+      notifier.set(true);
+
+      expect(container.read(keepScreenOnControllerProvider), isTrue);
+    });
+
+    test('set persists the value through the underlying store', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final store = SettingsStore(prefs);
+      final container = ProviderContainer(
+        overrides: [settingsStoreProvider.overrideWithValue(store)],
+      );
+      addTearDown(container.dispose);
+
+      container.read(keepScreenOnControllerProvider.notifier).set(true);
+
+      await Future<void>.delayed(Duration.zero);
+      expect(store.readKeepScreenOn(), isTrue);
+    });
+
+    test('set is a no-op when the value is unchanged', () async {
+      final container = await buildContainer();
+      final notifier = container.read(keepScreenOnControllerProvider.notifier);
+
+      notifier.set(false);
+
+      expect(container.read(keepScreenOnControllerProvider), isFalse);
     });
   });
 }

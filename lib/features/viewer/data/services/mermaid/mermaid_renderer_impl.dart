@@ -368,68 +368,12 @@ class MermaidRendererImpl implements MermaidRenderer {
     if (initDirective.isEmpty) {
       return source;
     }
-    final frontmatterEnd = _frontmatterEndIndex(source);
-    if (frontmatterEnd == null) {
+    final end = frontmatterEndIndex(source);
+    if (end == null) {
       return '$initDirective$source';
     }
     // Insert BETWEEN the frontmatter block and the diagram body.
-    return '${source.substring(0, frontmatterEnd)}'
-        '$initDirective'
-        '${source.substring(frontmatterEnd)}';
-  }
-
-  /// Returns the byte index just past the closing `---` (and its
-  /// trailing newline) of a leading YAML frontmatter block, or
-  /// `null` when [source] has no frontmatter.
-  ///
-  /// Recognises the canonical mermaid frontmatter shape:
-  ///
-  /// ```
-  /// ---
-  /// key: value
-  /// ...
-  /// ---
-  /// <diagram body>
-  /// ```
-  ///
-  /// The opener must be the literal `---` at offset 0 (optionally
-  /// followed by whitespace before the newline). The closer is the
-  /// first later line whose trimmed content equals `---`. Anything
-  /// else — stray `-`, `----`, missing closer before EOF — falls
-  /// through to "no frontmatter" and the caller reverts to the
-  /// simple prepend path.
-  static int? _frontmatterEndIndex(String source) {
-    if (!source.startsWith('---')) {
-      return null;
-    }
-    final firstNewline = source.indexOf('\n');
-    if (firstNewline < 0 || firstNewline > 32) {
-      // The opener must be `---` followed immediately by a newline
-      // (index 3 for LF, 4 for CRLF) or optional trailing whitespace.
-      // A limit of 32 accommodates any reasonable whitespace while
-      // still rejecting `---junk` lines that are not real openers.
-      return null;
-    }
-    final openerLine = source.substring(0, firstNewline).trimRight();
-    if (openerLine != '---') {
-      return null;
-    }
-    var cursor = firstNewline + 1;
-    while (cursor < source.length) {
-      final nextNewline = source.indexOf('\n', cursor);
-      final lineEnd = nextNewline < 0 ? source.length : nextNewline;
-      final line = source.substring(cursor, lineEnd).trimRight();
-      if (line == '---') {
-        // Include the newline after the closer so the spliced
-        // init directive lands on its own fresh line.
-        return nextNewline < 0 ? source.length : nextNewline + 1;
-      }
-      if (nextNewline < 0) {
-        break;
-      }
-      cursor = nextNewline + 1;
-    }
-    return null;
+    return '${source.substring(0, end)}$initDirective${source.substring(end)}';
   }
 }
 

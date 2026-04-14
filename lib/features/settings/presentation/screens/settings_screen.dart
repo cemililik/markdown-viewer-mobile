@@ -3,19 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/settings/domain/app_locale.dart';
+import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
 import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
 
-/// Screen offering the two v1 personalisation knobs: theme mode and
-/// language. Lives on its own `/settings` route pushed from the
-/// library screen's AppBar. Intentionally a simple vertical list —
-/// no grouping tiles, no custom layouts — so adding more settings
-/// later (font size, reading width, etc.) is a single `ListView`
-/// child addition.
-///
-/// Uses the `RadioGroup` ancestor API introduced post-Flutter 3.32
-/// so the tiles don't rely on the deprecated `groupValue` /
-/// `onChanged` properties on `RadioListTile` itself — the group
-/// state lives on the wrapping widget.
+/// Screen offering the personalisation knobs: theme mode, language,
+/// reading comfort, and display options. Lives on its own `/settings`
+/// route pushed from the library screen's AppBar.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -25,6 +18,7 @@ class SettingsScreen extends ConsumerWidget {
     final themeMode = ref.watch(themeModeControllerProvider);
     final locale = ref.watch(localeControllerProvider);
     final readingSettings = ref.watch(readingSettingsControllerProvider);
+    final keepScreenOn = ref.watch(keepScreenOnControllerProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.navSettings)),
@@ -33,19 +27,27 @@ class SettingsScreen extends ConsumerWidget {
           _SectionHeader(title: l10n.settingsThemeTitle),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-            child: SegmentedButton<ThemeMode>(
+            // Four modes in one row — labels are kept to single words
+            // ("System", "Light", "Dark", "Sepia") so the button fits
+            // comfortably on narrow phones.
+            child: SegmentedButton<AppThemeMode>(
+              showSelectedIcon: false,
               segments: [
                 ButtonSegment(
-                  value: ThemeMode.system,
+                  value: AppThemeMode.system,
                   label: Text(l10n.settingsThemeSystem),
                 ),
                 ButtonSegment(
-                  value: ThemeMode.light,
+                  value: AppThemeMode.light,
                   label: Text(l10n.settingsThemeLight),
                 ),
                 ButtonSegment(
-                  value: ThemeMode.dark,
+                  value: AppThemeMode.dark,
                   label: Text(l10n.settingsThemeDark),
+                ),
+                ButtonSegment(
+                  value: AppThemeMode.sepia,
+                  label: Text(l10n.settingsThemeSepia),
                 ),
               ],
               selected: {themeMode},
@@ -86,6 +88,17 @@ class SettingsScreen extends ConsumerWidget {
           const Divider(),
           _SectionHeader(title: l10n.settingsReadingTitle),
           _ReadingSettingsSection(settings: readingSettings),
+          const Divider(),
+          _SectionHeader(title: l10n.settingsDisplayTitle),
+          SwitchListTile(
+            title: Text(l10n.settingsKeepScreenOnTitle),
+            subtitle: Text(l10n.settingsKeepScreenOnSubtitle),
+            value: keepScreenOn,
+            onChanged: (value) {
+              ref.read(keepScreenOnControllerProvider.notifier).set(value);
+            },
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          ),
           const Divider(),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
@@ -131,9 +144,10 @@ class SettingsScreen extends ConsumerWidget {
           ),
     );
     if (confirmed != true || !context.mounted) return;
-    ref.read(themeModeControllerProvider.notifier).set(ThemeMode.system);
+    ref.read(themeModeControllerProvider.notifier).set(AppThemeMode.system);
     ref.read(localeControllerProvider.notifier).set(AppLocale.system);
     ref.read(readingSettingsControllerProvider.notifier).resetToDefaults();
+    ref.read(keepScreenOnControllerProvider.notifier).set(false);
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(l10n.settingsResetSnack)));

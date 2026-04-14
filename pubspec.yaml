@@ -86,6 +86,13 @@ dependencies:
   path: ^1.9.0
   crypto: ^3.0.6
 
+  # ── Display / system ────────────────────────────────────────────────
+  # Keeps the screen awake while the viewer is open when the user
+  # enables "Keep screen on" in settings. Uses
+  # UIApplication.isIdleTimerDisabled on iOS and
+  # PowerManager.WakeLock on Android — no special entitlements needed.
+  wakelock_plus: ^1.2.11
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

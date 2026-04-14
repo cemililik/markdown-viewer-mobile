@@ -253,9 +253,8 @@ class MarkdownView extends StatelessWidget {
     final mq = MediaQuery.of(context);
     return MediaQuery(
       data: mq.copyWith(
-        textScaler: mq.textScaler.clamp(
-          minScaleFactor: readingSettings.fontScale,
-          maxScaleFactor: readingSettings.fontScale,
+        textScaler: TextScaler.linear(
+          mq.textScaler.scale(readingSettings.fontScale),
         ),
       ),
       child: Scrollbar(

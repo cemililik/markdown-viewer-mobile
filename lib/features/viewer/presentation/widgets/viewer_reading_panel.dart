@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
+import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
 import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
 
 /// Slides the reading-comfort knobs the user is most likely to
@@ -33,7 +34,7 @@ import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
 /// - An **All settings** link that pushes the full settings
 ///   route — used for preferences not exposed here (language,
 ///   future settings).
-Future<void> showViewerReadingPanel(BuildContext context, WidgetRef ref) async {
+Future<void> showViewerReadingPanel(BuildContext context) async {
   await showModalBottomSheet<void>(
     context: context,
     showDragHandle: true,
@@ -82,19 +83,24 @@ class _ViewerReadingPanelBody extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 6),
-            SegmentedButton<ThemeMode>(
+            SegmentedButton<AppThemeMode>(
+              showSelectedIcon: false,
               segments: [
                 ButtonSegment(
-                  value: ThemeMode.system,
+                  value: AppThemeMode.system,
                   label: Text(l10n.settingsThemeSystem),
                 ),
                 ButtonSegment(
-                  value: ThemeMode.light,
+                  value: AppThemeMode.light,
                   label: Text(l10n.settingsThemeLight),
                 ),
                 ButtonSegment(
-                  value: ThemeMode.dark,
+                  value: AppThemeMode.dark,
                   label: Text(l10n.settingsThemeDark),
+                ),
+                ButtonSegment(
+                  value: AppThemeMode.sepia,
+                  label: Text(l10n.settingsThemeSepia),
                 ),
               ],
               selected: {themeMode},
@@ -209,8 +215,11 @@ class _ViewerReadingPanelBody extends ConsumerWidget {
                   icon: const Icon(Icons.settings_outlined, size: 18),
                   label: Text(l10n.viewerReadingPanelAllSettings),
                   onPressed: () {
-                    Navigator.of(context).maybePop();
-                    context.push(SettingsRoute.location());
+                    Navigator.of(context).maybePop().then((_) {
+                      if (context.mounted) {
+                        context.push(SettingsRoute.location());
+                      }
+                    });
                   },
                 ),
               ],

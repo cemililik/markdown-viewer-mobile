@@ -86,6 +86,21 @@ class FolderFileMaterializer {
     // no recognisable extension (e.g. a SAF URI with a query).
     final ext = _extensionFor(sourcePath);
     final cachePath = p.join(folderCacheDir.path, '$hash$ext');
+
+    // The hash was previously computed with sourcePath.codeUnits
+    // (UTF-16 code units) instead of utf8.encode. For ASCII paths
+    // the two are identical; for any path containing non-ASCII
+    // characters the old slot will be an orphan after the hash
+    // change. Rename it to the new slot so the bytes survive and
+    // no stale files accumulate in the cache directory.
+    final legacyHash = sha256.convert(sourcePath.codeUnits).toString();
+    if (legacyHash != hash) {
+      final legacyFile = File(p.join(folderCacheDir.path, '$legacyHash$ext'));
+      if (legacyFile.existsSync()) {
+        await legacyFile.rename(cachePath);
+      }
+    }
+
     await File(cachePath).writeAsBytes(bytes, flush: true);
     return cachePath;
   }

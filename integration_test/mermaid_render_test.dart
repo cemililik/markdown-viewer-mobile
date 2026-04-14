@@ -80,6 +80,10 @@ void main() {
         expect(success.pngBytes[1], 0x50);
         expect(success.pngBytes[2], 0x4E);
         expect(success.pngBytes[3], 0x47);
+        expect(success.pngBytes[4], 0x0D);
+        expect(success.pngBytes[5], 0x0A);
+        expect(success.pngBytes[6], 0x1A);
+        expect(success.pngBytes[7], 0x0A);
         expect(success.width, greaterThan(0));
         expect(success.height, greaterThan(0));
       },

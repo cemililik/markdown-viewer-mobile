@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logger/logger.dart';
 import 'package:markdown_viewer/app/app.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
@@ -32,8 +33,9 @@ Future<void> main() async {
   // backs the reading-position store so its synchronous `read` can
   // run inside a post-frame callback without an extra disk hop.
   final prefs = await SharedPreferences.getInstance();
+  final logger = Logger();
   final settingsStore = SettingsStore(prefs);
-  final readingPositionStore = ReadingPositionStoreImpl(prefs);
+  final readingPositionStore = ReadingPositionStoreImpl(prefs, logger: logger);
   final recentDocumentsStore = RecentDocumentsStoreImpl(prefs);
   final libraryFoldersStore = LibraryFoldersStoreImpl(prefs);
 

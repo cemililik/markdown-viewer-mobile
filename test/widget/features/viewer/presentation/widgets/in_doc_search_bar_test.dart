@@ -7,6 +7,7 @@ import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 void main() {
   Widget harness({
     required TextEditingController controller,
+    required FocusNode focusNode,
     required int matchCount,
     required int currentMatchIndex,
     required ValueChanged<String> onQueryChanged,
@@ -26,7 +27,7 @@ void main() {
         appBar: AppBar(
           title: InDocSearchBar(
             controller: controller,
-            focusNode: FocusNode(),
+            focusNode: focusNode,
             matchCount: matchCount,
             currentMatchIndex: currentMatchIndex,
             onQueryChanged: onQueryChanged,
@@ -46,9 +47,12 @@ void main() {
     ) async {
       final controller = TextEditingController();
       addTearDown(controller.dispose);
+      final focusNode = FocusNode();
+      addTearDown(focusNode.dispose);
       await tester.pumpWidget(
         harness(
           controller: controller,
+          focusNode: focusNode,
           matchCount: 0,
           currentMatchIndex: 0,
           onQueryChanged: (_) {},
@@ -68,9 +72,12 @@ void main() {
     ) async {
       final controller = TextEditingController(text: 'foo');
       addTearDown(controller.dispose);
+      final focusNode = FocusNode();
+      addTearDown(focusNode.dispose);
       await tester.pumpWidget(
         harness(
           controller: controller,
+          focusNode: focusNode,
           matchCount: 12,
           currentMatchIndex: 2,
           onQueryChanged: (_) {},
@@ -90,9 +97,12 @@ void main() {
     ) async {
       final controller = TextEditingController(text: 'xyz');
       addTearDown(controller.dispose);
+      final focusNode = FocusNode();
+      addTearDown(focusNode.dispose);
       await tester.pumpWidget(
         harness(
           controller: controller,
+          focusNode: focusNode,
           matchCount: 0,
           currentMatchIndex: 0,
           onQueryChanged: (_) {},
@@ -111,11 +121,14 @@ void main() {
     ) async {
       final controller = TextEditingController(text: 'xyz');
       addTearDown(controller.dispose);
+      final focusNode = FocusNode();
+      addTearDown(focusNode.dispose);
       var nextCalled = 0;
       var prevCalled = 0;
       await tester.pumpWidget(
         harness(
           controller: controller,
+          focusNode: focusNode,
           matchCount: 0,
           currentMatchIndex: 0,
           onQueryChanged: (_) {},
@@ -137,11 +150,14 @@ void main() {
     testWidgets('tapping next / prev fires the callbacks', (tester) async {
       final controller = TextEditingController(text: 'foo');
       addTearDown(controller.dispose);
+      final focusNode = FocusNode();
+      addTearDown(focusNode.dispose);
       var nextCalled = 0;
       var prevCalled = 0;
       await tester.pumpWidget(
         harness(
           controller: controller,
+          focusNode: focusNode,
           matchCount: 5,
           currentMatchIndex: 1,
           onQueryChanged: (_) {},

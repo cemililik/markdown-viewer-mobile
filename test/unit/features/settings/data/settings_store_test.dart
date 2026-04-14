@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart' show ThemeMode;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/features/settings/data/settings_store.dart';
 import 'package:markdown_viewer/features/settings/domain/app_locale.dart';
+import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
 import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -14,36 +14,73 @@ void main() {
       SharedPreferences.setMockInitialValues(<String, Object>{});
     });
 
-    test('readThemeMode returns ThemeMode.system on a fresh install', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStore(prefs);
-
-      expect(store.readThemeMode(), ThemeMode.system);
-    });
-
     test(
-      'writeThemeMode persists the value so a subsequent read returns it',
+      'readAppThemeMode returns AppThemeMode.system on a fresh install',
       () async {
         final prefs = await SharedPreferences.getInstance();
         final store = SettingsStore(prefs);
 
-        await store.writeThemeMode(ThemeMode.dark);
-
-        // A fresh store over the same prefs instance models what
-        // happens on the next app launch.
-        final reopened = SettingsStore(prefs);
-        expect(reopened.readThemeMode(), ThemeMode.dark);
+        expect(store.readAppThemeMode(), AppThemeMode.system);
       },
     );
 
-    test('writeThemeMode round-trips every ThemeMode value', () async {
+    test(
+      'writeAppThemeMode persists the value so a subsequent read returns it',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = SettingsStore(prefs);
+
+        await store.writeAppThemeMode(AppThemeMode.dark);
+
+        final reopened = SettingsStore(prefs);
+        expect(reopened.readAppThemeMode(), AppThemeMode.dark);
+      },
+    );
+
+    test('writeAppThemeMode round-trips every AppThemeMode value', () async {
       final prefs = await SharedPreferences.getInstance();
       final store = SettingsStore(prefs);
 
-      for (final mode in ThemeMode.values) {
-        await store.writeThemeMode(mode);
-        expect(store.readThemeMode(), mode, reason: 'round trip for $mode');
+      for (final mode in AppThemeMode.values) {
+        await store.writeAppThemeMode(mode);
+        expect(store.readAppThemeMode(), mode, reason: 'round trip for $mode');
       }
+    });
+
+    test(
+      'readAppThemeMode decodes legacy ThemeMode tags without migration',
+      () async {
+        // A prefs value written by an older build that used Flutter's
+        // ThemeMode tag strings must decode transparently.
+        for (final entry
+            in {
+              'light': AppThemeMode.light,
+              'dark': AppThemeMode.dark,
+              'system': AppThemeMode.system,
+            }.entries) {
+          SharedPreferences.setMockInitialValues({
+            'settings.themeMode': entry.key,
+          });
+          final prefs = await SharedPreferences.getInstance();
+          final store = SettingsStore(prefs);
+          expect(
+            store.readAppThemeMode(),
+            entry.value,
+            reason: 'legacy tag "${entry.key}"',
+          );
+        }
+      },
+    );
+
+    test('readAppThemeMode returns AppThemeMode.system when the stored tag is '
+        'unrecognised', () async {
+      SharedPreferences.setMockInitialValues({
+        'settings.themeMode': 'ultraviolet',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final store = SettingsStore(prefs);
+
+      expect(store.readAppThemeMode(), AppThemeMode.system);
     });
 
     test('readLocale returns AppLocale.system on a fresh install', () async {
@@ -62,17 +99,6 @@ void main() {
         final reopened = SettingsStore(prefs);
         expect(reopened.readLocale(), locale);
       }
-    });
-
-    test('readThemeMode returns ThemeMode.system when the stored tag is '
-        'unrecognised', () async {
-      SharedPreferences.setMockInitialValues({
-        'settings.themeMode': 'ultraviolet',
-      });
-      final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStore(prefs);
-
-      expect(store.readThemeMode(), ThemeMode.system);
     });
 
     test('readLocale returns AppLocale.system when the stored tag is '
@@ -154,6 +180,26 @@ void main() {
       final read = store.readReadingSettings();
 
       expect(read.fontScale, ReadingSettings.maxFontScale);
+    });
+
+    test('readKeepScreenOn defaults to false on a fresh install', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final store = SettingsStore(prefs);
+
+      expect(store.readKeepScreenOn(), isFalse);
+    });
+
+    test('writeKeepScreenOn persists and round-trips the value', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final store = SettingsStore(prefs);
+
+      await store.writeKeepScreenOn(true);
+      final reopened = SettingsStore(prefs);
+      expect(reopened.readKeepScreenOn(), isTrue);
+
+      await store.writeKeepScreenOn(false);
+      final reopened2 = SettingsStore(prefs);
+      expect(reopened2.readKeepScreenOn(), isFalse);
     });
   });
 }

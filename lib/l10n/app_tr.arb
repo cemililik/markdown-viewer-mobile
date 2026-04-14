@@ -95,7 +95,8 @@
   "settingsThemeTitle": "Tema",
   "settingsThemeLight": "Açık",
   "settingsThemeDark": "Koyu",
-  "settingsThemeSystem": "Sistem varsayılanı",
+  "settingsThemeSystem": "Sistem",
+  "settingsThemeSepia": "Sepya",
 
   "settingsLanguageTitle": "Dil",
   "settingsLanguageSystem": "Sistem varsayılanı",
@@ -155,6 +156,10 @@
   "settingsReadingLineHeightCompact": "Sıkı",
   "settingsReadingLineHeightStandard": "Standart",
   "settingsReadingLineHeightAiry": "Ferah",
+
+  "settingsDisplayTitle": "Görünüm",
+  "settingsKeepScreenOnTitle": "Ekranı açık tut",
+  "settingsKeepScreenOnSubtitle": "Okurken ekran kilidi devreye girmez",
 
   "settingsResetButton": "Varsayılana sıfırla",
   "settingsResetConfirmTitle": "Ayarlar sıfırlansın mı?",
