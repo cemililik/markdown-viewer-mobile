@@ -2,8 +2,16 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/features/library/data/services/folder_enumerator_impl.dart';
+import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/services/folder_enumerator.dart';
 import 'package:path/path.dart' as p;
+
+/// Builds a [LibraryFolder] around [directory] with no bookmark
+/// so the enumerator falls through to the `dart:io` code path.
+/// On iOS with a non-null bookmark the enumerator would route
+/// to the native channel, which is not available in unit tests.
+LibraryFolder _bareFolder(Directory directory) =>
+    LibraryFolder(path: directory.path, addedAt: DateTime.utc(2026, 4, 14));
 
 void main() {
   group('FolderEnumeratorImpl', () {
@@ -38,7 +46,9 @@ void main() {
         await mkdir('chapter-1');
         await mkdir('chapter-2');
 
-        final entries = await const FolderEnumeratorImpl().enumerate(tmp.path);
+        final entries = await const FolderEnumeratorImpl().enumerate(
+          _bareFolder(tmp),
+        );
 
         final names = entries.map((e) => e.name).toList();
         // Subdirectories first, then files, both alphabetically.
@@ -60,7 +70,9 @@ void main() {
       await touchFile('.hidden.md');
       await mkdir('.git');
 
-      final entries = await const FolderEnumeratorImpl().enumerate(tmp.path);
+      final entries = await const FolderEnumeratorImpl().enumerate(
+        _bareFolder(tmp),
+      );
 
       expect(entries.map((e) => e.name), ['readme.md']);
     });
@@ -70,13 +82,17 @@ void main() {
       await touchFile('notes.txt');
       await touchFile('photo.jpg');
 
-      final entries = await const FolderEnumeratorImpl().enumerate(tmp.path);
+      final entries = await const FolderEnumeratorImpl().enumerate(
+        _bareFolder(tmp),
+      );
 
       expect(entries.map((e) => e.name), ['readme.md']);
     });
 
     test('returns an empty list for an empty directory', () async {
-      final entries = await const FolderEnumeratorImpl().enumerate(tmp.path);
+      final entries = await const FolderEnumeratorImpl().enumerate(
+        _bareFolder(tmp),
+      );
 
       expect(entries, isEmpty);
     });
@@ -85,7 +101,9 @@ void main() {
       final missing = p.join(tmp.path, 'does-not-exist');
 
       expect(
-        () => const FolderEnumeratorImpl().enumerate(missing),
+        () => const FolderEnumeratorImpl().enumerate(
+          LibraryFolder(path: missing, addedAt: DateTime.utc(2026, 4, 14)),
+        ),
         throwsA(isA<Object>()),
       );
     });
@@ -94,7 +112,9 @@ void main() {
       await touchFile('readme.MD');
       await touchFile('notes.Markdown');
 
-      final entries = await const FolderEnumeratorImpl().enumerate(tmp.path);
+      final entries = await const FolderEnumeratorImpl().enumerate(
+        _bareFolder(tmp),
+      );
 
       expect(entries, hasLength(2));
       expect(entries.every((e) => e is FolderFileEntry), isTrue);
@@ -129,7 +149,7 @@ void main() {
       await touchFile('chapter-2/.ignored.md');
 
       final entries = await const FolderEnumeratorImpl().enumerateRecursive(
-        tmp.path,
+        _bareFolder(tmp),
       );
 
       final names = entries.map((e) => e.name).toSet();
@@ -151,7 +171,7 @@ void main() {
       await touchFile('.cache/doc.md');
 
       final entries = await const FolderEnumeratorImpl().enumerateRecursive(
-        tmp.path,
+        _bareFolder(tmp),
       );
 
       expect(entries, hasLength(1));
@@ -160,7 +180,7 @@ void main() {
 
     test('returns an empty list for an empty directory', () async {
       final entries = await const FolderEnumeratorImpl().enumerateRecursive(
-        tmp.path,
+        _bareFolder(tmp),
       );
       expect(entries, isEmpty);
     });
@@ -171,7 +191,7 @@ void main() {
       await touchFile('b/b.md');
 
       final entries = await const FolderEnumeratorImpl().enumerateRecursive(
-        tmp.path,
+        _bareFolder(tmp),
       );
 
       expect(entries.map((e) => e.name), ['a.md', 'b.md', 'c.md']);
@@ -180,7 +200,9 @@ void main() {
     test('throws on a missing directory', () async {
       final missing = p.join(tmp.path, 'does-not-exist');
       expect(
-        () => const FolderEnumeratorImpl().enumerateRecursive(missing),
+        () => const FolderEnumeratorImpl().enumerateRecursive(
+          LibraryFolder(path: missing, addedAt: DateTime.utc(2026, 4, 14)),
+        ),
         throwsA(isA<Object>()),
       );
     });

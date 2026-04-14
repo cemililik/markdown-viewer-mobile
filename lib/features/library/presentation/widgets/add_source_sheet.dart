@@ -1,11 +1,11 @@
 import 'dart:async';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/core/logging/logger.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
+import 'package:markdown_viewer/features/library/data/services/native_library_folders_channel.dart';
 
 /// Opens the "Add source" bottom sheet that lets the user pick
 /// between adding a local folder and (eventually) syncing a
@@ -81,8 +81,25 @@ class _AddSourceSheetBody extends ConsumerWidget {
     unawaited(Navigator.of(context).maybePop());
 
     String? path;
+    String? bookmark;
     try {
-      path = await FilePicker.platform.getDirectoryPath();
+      // Both platforms go through the native channel:
+      //
+      // - iOS: captures the security-scoped NSURL bookmark while
+      //   the document picker's URL is still alive. Without it,
+      //   any later `Directory.list()` on the returned path would
+      //   trip `PathAccessException(Permission denied)` the
+      //   moment the URL is deallocated.
+      //
+      // - Android: opens the SAF tree picker, calls
+      //   `takePersistableUriPermission` so the granted access
+      //   survives a cold start, and returns the tree URI as the
+      //   bookmark. `dart:io` cannot read SAF content URIs at
+      //   all, so every later access is also routed back through
+      //   the channel.
+      final pick = await NativeLibraryFoldersChannel().pickDirectory();
+      path = pick?.path;
+      bookmark = pick?.bookmark;
     } on Object catch (error, stackTrace) {
       logger.e('Folder picker failed', error: error, stackTrace: stackTrace);
       messenger.showSnackBar(
@@ -98,7 +115,7 @@ class _AddSourceSheetBody extends ConsumerWidget {
       return;
     }
 
-    final added = controller.add(path);
+    final added = controller.add(path, bookmark: bookmark);
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(

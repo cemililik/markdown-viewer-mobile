@@ -55,7 +55,20 @@ void main() {
       final state = container.read(libraryFoldersControllerProvider);
       expect(state, hasLength(1));
       expect(state.first.path, '/tmp/a');
+      expect(state.first.bookmark, isNull);
       expect(store.writeCount, 1);
+    });
+
+    test('add carries the optional iOS security-scoped bookmark', () {
+      final store = _FakeStore();
+      final container = _containerWith(store);
+
+      container
+          .read(libraryFoldersControllerProvider.notifier)
+          .add('/tmp/ios', bookmark: 'base64-blob');
+
+      final state = container.read(libraryFoldersControllerProvider);
+      expect(state.first.bookmark, 'base64-blob');
     });
 
     test('add returns false and is a no-op for a duplicate path', () {

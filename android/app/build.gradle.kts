@@ -57,3 +57,12 @@ android {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Used by `LibraryFoldersChannel` to enumerate the contents of
+    // a Storage Access Framework tree URI without re-implementing
+    // the platform-specific cursor walks. The DocumentFile abstraction
+    // gives us a uniform handle for both the picked tree root and any
+    // descendant document, which keeps the channel code small.
+    implementation("androidx.documentfile:documentfile:1.0.1")
+}

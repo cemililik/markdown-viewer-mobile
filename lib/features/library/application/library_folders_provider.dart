@@ -63,12 +63,22 @@ class LibraryFoldersController extends Notifier<List<LibraryFolder>> {
   /// already contained an entry with the same path. The boolean
   /// lets the UI distinguish "added a new root" from "no-op
   /// because of a duplicate" without re-reading the state.
-  bool add(String path) {
+  ///
+  /// On iOS, callers must pass the [bookmark] returned by the
+  /// native picker alongside the path. Without it, every
+  /// subsequent access to the folder will fail with a permission
+  /// error. On Android / desktop [bookmark] is always `null`
+  /// because the filesystem path alone is sufficient.
+  bool add(String path, {String? bookmark}) {
     final alreadyExists = state.any((folder) => folder.path == path);
     if (alreadyExists) {
       return false;
     }
-    final fresh = LibraryFolder(path: path, addedAt: DateTime.now());
+    final fresh = LibraryFolder(
+      path: path,
+      addedAt: DateTime.now(),
+      bookmark: bookmark,
+    );
     final updated = _ordered(<LibraryFolder>[fresh, ...state]);
     state = updated;
     ref.read(libraryFoldersStoreProvider).write(updated).ignore();

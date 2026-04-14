@@ -7,11 +7,23 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// `SharedPreferences`-backed [LibraryFoldersStore].
 ///
 /// The list is encoded as a single JSON array under the key
-/// [_storageKey], with each entry shaped as
-/// `{"path": <String>, "addedAt": <ISO-8601 String>}`. The schema
-/// is deliberately tiny — there is no per-entry label or pinned
-/// flag yet because the drawer renders folders straight from
-/// their basename and the order on disk is the order shown.
+/// [_storageKey]. Each entry is shaped as:
+///
+/// ```json
+/// {
+///   "path": "<String>",
+///   "addedAt": "<ISO-8601 String>",
+///   "bookmark": "<base64 String, optional>"
+/// }
+/// ```
+///
+/// The `bookmark` field carries the iOS security-scoped
+/// `NSURL.bookmarkData` blob produced by `LibraryFoldersChannel`
+/// at pick time. It is optional for backward compatibility with
+/// entries written by older builds and because Android / desktop
+/// do not need it; the enumerator treats `null` as "use dart:io
+/// directly" and a non-null value as "route through the native
+/// channel".
 ///
 /// Reads are synchronous against the already-loaded
 /// [SharedPreferences] instance the composition root injects. A
@@ -47,7 +59,17 @@ class LibraryFoldersStoreImpl implements LibraryFoldersStore {
         if (addedAtRaw is! String) continue;
         final addedAt = DateTime.tryParse(addedAtRaw);
         if (addedAt == null) continue;
-        entries.add(LibraryFolder(path: path, addedAt: addedAt));
+        final bookmarkRaw = item['bookmark'];
+        entries.add(
+          LibraryFolder(
+            path: path,
+            addedAt: addedAt,
+            bookmark:
+                bookmarkRaw is String && bookmarkRaw.isNotEmpty
+                    ? bookmarkRaw
+                    : null,
+          ),
+        );
       }
       return entries;
     } on Object {
@@ -58,14 +80,17 @@ class LibraryFoldersStoreImpl implements LibraryFoldersStore {
   @override
   Future<void> write(List<LibraryFolder> folders) {
     final encoded = jsonEncode(
-      folders
-          .map(
-            (folder) => <String, String>{
-              'path': folder.path,
-              'addedAt': folder.addedAt.toUtc().toIso8601String(),
-            },
-          )
-          .toList(),
+      folders.map((folder) {
+        final map = <String, Object>{
+          'path': folder.path,
+          'addedAt': folder.addedAt.toUtc().toIso8601String(),
+        };
+        final bookmark = folder.bookmark;
+        if (bookmark != null && bookmark.isNotEmpty) {
+          map['bookmark'] = bookmark;
+        }
+        return map;
+      }).toList(),
     );
     return _prefs.setString(_storageKey, encoded);
   }

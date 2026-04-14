@@ -1,3 +1,5 @@
+import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
+
 /// A single immediate child of a library folder, returned by the
 /// folder enumerator when the drawer expands a directory.
 ///
@@ -38,15 +40,15 @@ final class FolderSubdirEntry extends FolderEntry {
   const FolderSubdirEntry({required super.path, required super.name});
 }
 
-/// Pure-domain port for listing the immediate `.md` files and
-/// subdirectories of a single folder.
+/// Pure-domain port for listing the markdown files and
+/// subdirectories of a [LibraryFolder].
 ///
 /// The contract is intentionally narrow:
 ///
-/// - Only one level is enumerated per call. Recursive walks are
-///   the caller's responsibility, which lets the drawer expand
-///   each subfolder lazily without forcing the implementation to
-///   know about the UI's expand state.
+/// - Only one level is enumerated per [enumerate] call. Recursive
+///   walks live on a separate [enumerateRecursive] method because
+///   they are strictly used by the folder-body search view and
+///   are much more expensive.
 /// - Hidden entries (`.git`, `.DS_Store`, anything starting with
 ///   `.`) are filtered out so the drawer is not noise.
 /// - Subdirectories are returned regardless of their contents —
@@ -58,31 +60,23 @@ final class FolderSubdirEntry extends FolderEntry {
 /// - Entries are sorted alphabetically with subdirectories first
 ///   so the drawer reads top-down by hierarchy depth.
 ///
-/// The data layer's implementation lives in
-/// `data/services/folder_enumerator_impl.dart` and is the only
-/// place in the library feature that touches `dart:io`.
+/// Both methods take a [LibraryFolder] rather than a plain path
+/// so the implementation can route by the optional
+/// `bookmark` field: on iOS, bookmarked folders go through the
+/// native `LibraryFoldersChannel`; everywhere else, plain
+/// `dart:io` is used.
 abstract interface class FolderEnumerator {
-  /// Returns the immediate children of [folderPath] as a flat
-  /// list of [FolderEntry] values, throwing on any I/O failure
-  /// so the drawer can surface a localized inline error tile
-  /// without falling back to an empty list (which would be
-  /// indistinguishable from a legitimately empty folder).
-  Future<List<FolderEntry>> enumerate(String folderPath);
+  /// Lists the immediate children of [folder]. Tests may pass an
+  /// explicit [subPath] to enumerate a sub-directory of the root
+  /// without re-asking the user to re-pick; production callers
+  /// walk the tree by calling `enumerate` on a [LibraryFolder]
+  /// constructed from the sub-path they want to drill into.
+  Future<List<FolderEntry>> enumerate(LibraryFolder folder, {String? subPath});
 
-  /// Walks [folderPath] recursively and returns a flat list of
-  /// every markdown file underneath it. Hidden dot-directories
-  /// (`.git`, `.cache`, …) are skipped so the walk does not drag
-  /// in noise the user never asked for.
-  ///
-  /// Used by the library folder body when the search field is
-  /// non-empty: the browsing view is still a lazy
-  /// `ExpansionTile` tree, but search has to look across every
-  /// subfolder so a file buried three levels deep is still
-  /// reachable by name. The one-time walk cost is acceptable
-  /// for a mobile reading app and the result is cached inside
-  /// the folder body so a second search query does not re-walk.
-  ///
-  /// Throws on I/O failure so the caller can surface a localized
-  /// error state instead of silently returning an empty list.
-  Future<List<FolderFileEntry>> enumerateRecursive(String folderPath);
+  /// Walks [folder] recursively and returns a flat list of every
+  /// markdown file underneath it. Hidden dot-directories are
+  /// skipped so `.git` / `.cache`-style noise does not drag into
+  /// the search results. Used by the library folder body when
+  /// the search field is non-empty.
+  Future<List<FolderFileEntry>> enumerateRecursive(LibraryFolder folder);
 }

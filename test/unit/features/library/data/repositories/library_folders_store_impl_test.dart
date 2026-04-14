@@ -48,6 +48,38 @@ void main() {
       },
     );
 
+    test('round-trips the optional bookmark field', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final store = LibraryFoldersStoreImpl(prefs);
+
+      await store.write(<LibraryFolder>[
+        LibraryFolder(
+          path: '/tmp/ios-bookmarked',
+          addedAt: DateTime.utc(2026, 4, 14),
+          bookmark: 'base64-bookmark-blob',
+        ),
+        LibraryFolder(path: '/tmp/plain', addedAt: DateTime.utc(2026, 4, 13)),
+      ]);
+
+      final round = store.read();
+      expect(round, hasLength(2));
+      expect(round[0].bookmark, 'base64-bookmark-blob');
+      expect(round[1].bookmark, isNull);
+    });
+
+    test('accepts legacy entries without the bookmark field', () async {
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'library.folders':
+            '[{"path":"/tmp/legacy","addedAt":"2026-04-14T10:00:00.000Z"}]',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final store = LibraryFoldersStoreImpl(prefs);
+
+      final round = store.read();
+      expect(round, hasLength(1));
+      expect(round.first.bookmark, isNull);
+    });
+
     test('skips malformed entries but keeps the well-formed ones', () async {
       SharedPreferences.setMockInitialValues(<String, Object>{
         'library.folders':

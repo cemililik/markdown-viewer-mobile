@@ -50,12 +50,15 @@ class _NoopEnumerator implements FolderEnumerator {
   const _NoopEnumerator();
 
   @override
-  Future<List<FolderEntry>> enumerate(String folderPath) async =>
-      const <FolderEntry>[];
+  Future<List<FolderEntry>> enumerate(
+    LibraryFolder folder, {
+    String? subPath,
+  }) async => const <FolderEntry>[];
 
   @override
-  Future<List<FolderFileEntry>> enumerateRecursive(String folderPath) async =>
-      const <FolderFileEntry>[];
+  Future<List<FolderFileEntry>> enumerateRecursive(
+    LibraryFolder folder,
+  ) async => const <FolderFileEntry>[];
 }
 
 Widget _harness(

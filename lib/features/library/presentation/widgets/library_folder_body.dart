@@ -5,7 +5,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
+import 'package:markdown_viewer/core/logging/logger.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
+import 'package:markdown_viewer/features/library/data/services/folder_file_materializer.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/services/folder_enumerator.dart';
 import 'package:path/path.dart' as p;
@@ -78,7 +80,7 @@ class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
       if (_searchQuery.isNotEmpty) {
         _recursiveFuture ??= ref
             .read(folderEnumeratorProvider)
-            .enumerateRecursive(widget.folder.path);
+            .enumerateRecursive(widget.folder);
       }
     });
   }
@@ -182,9 +184,7 @@ class _FolderBrowseViewState extends ConsumerState<_FolderBrowseView> {
   @override
   void initState() {
     super.initState();
-    _rootFuture = ref
-        .read(folderEnumeratorProvider)
-        .enumerate(widget.folder.path);
+    _rootFuture = ref.read(folderEnumeratorProvider).enumerate(widget.folder);
   }
 
   @override
@@ -212,8 +212,11 @@ class _FolderBrowseViewState extends ConsumerState<_FolderBrowseView> {
           padding: const EdgeInsets.fromLTRB(8, 0, 8, 96),
           itemCount: entries.length,
           itemBuilder:
-              (context, index) =>
-                  _FolderEntryTile(entry: entries[index], indent: 0),
+              (context, index) => _FolderEntryTile(
+                rootFolder: widget.folder,
+                entry: entries[index],
+                indent: 0,
+              ),
         );
       },
     );
@@ -278,7 +281,7 @@ class _FolderSearchView extends ConsumerWidget {
           itemCount: matches.length,
           itemBuilder:
               (context, index) =>
-                  _MatchTile(entry: matches[index], rootPath: folder.path),
+                  _MatchTile(rootFolder: folder, entry: matches[index]),
         );
       },
     );
@@ -291,8 +294,18 @@ class _FolderSearchView extends ConsumerWidget {
 /// follow the hierarchy without the tiles bleeding into each
 /// other.
 class _FolderEntryTile extends ConsumerStatefulWidget {
-  const _FolderEntryTile({required this.entry, required this.indent});
+  const _FolderEntryTile({
+    required this.rootFolder,
+    required this.entry,
+    required this.indent,
+  });
 
+  /// The [LibraryFolder] the user picked as the active source.
+  /// Threaded down through every level of the expansion tree so
+  /// the nested enumerate call can reuse the root's security-
+  /// scoped bookmark — on iOS the native channel needs the root
+  /// bookmark to claim access before listing any sub-path.
+  final LibraryFolder rootFolder;
   final FolderEntry entry;
   final int indent;
 
@@ -306,7 +319,7 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
   void _loadChildrenIfNeeded() {
     _childrenFuture ??= ref
         .read(folderEnumeratorProvider)
-        .enumerate(widget.entry.path);
+        .enumerate(widget.rootFolder, subPath: widget.entry.path);
   }
 
   @override
@@ -326,9 +339,15 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
             color: theme.colorScheme.onSurfaceVariant,
           ),
           title: Text(entry.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-          onTap: () {
-            unawaited(context.push(ViewerRoute.location(entry.path)));
-          },
+          onTap:
+              () => unawaited(
+                openFolderEntry(
+                  context: context,
+                  ref: ref,
+                  folder: widget.rootFolder,
+                  entry: entry,
+                ),
+              ),
         ),
       );
     }
@@ -384,7 +403,11 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
                 return Column(
                   children: [
                     for (final child in children)
-                      _FolderEntryTile(entry: child, indent: widget.indent + 1),
+                      _FolderEntryTile(
+                        rootFolder: widget.rootFolder,
+                        entry: child,
+                        indent: widget.indent + 1,
+                      ),
                   ],
                 );
               },
@@ -398,16 +421,16 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
 /// Search-result row. Shows the matched file name on the first
 /// line and the path relative to the folder root on the second
 /// line so the user can tell two `readme.md` results apart.
-class _MatchTile extends StatelessWidget {
-  const _MatchTile({required this.entry, required this.rootPath});
+class _MatchTile extends ConsumerWidget {
+  const _MatchTile({required this.rootFolder, required this.entry});
 
+  final LibraryFolder rootFolder;
   final FolderFileEntry entry;
-  final String rootPath;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final relative = p.relative(entry.path, from: rootPath);
+    final relative = p.relative(entry.path, from: rootFolder.path);
     final parent = p.dirname(relative);
     return ListTile(
       leading: Icon(
@@ -431,9 +454,66 @@ class _MatchTile extends StatelessWidget {
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
-      onTap: () => unawaited(context.push(ViewerRoute.location(entry.path))),
+      onTap:
+          () => unawaited(
+            openFolderEntry(
+              context: context,
+              ref: ref,
+              folder: rootFolder,
+              entry: entry,
+            ),
+          ),
     );
   }
+}
+
+/// Shared "open a folder-sourced markdown file" handler used by
+/// both the browsing tree and the search-result list.
+///
+/// On platforms / folders that have no security-scoped bookmark
+/// the function pushes the viewer route directly with the
+/// original path — exactly the legacy behaviour. When a bookmark
+/// is present (iOS picked folders, Android SAF tree URIs) the
+/// function asks the [folderFileMaterializerProvider] to copy
+/// the bytes into the app cache and pushes the viewer with the
+/// resulting cache path. The viewer + recents store + reading-
+/// position store keep using plain `dart:io` filesystem reads
+/// without any SAF awareness.
+///
+/// Errors are caught locally and surfaced as a localized
+/// snackbar; an unreachable folder must not crash the library.
+Future<void> openFolderEntry({
+  required BuildContext context,
+  required WidgetRef ref,
+  required LibraryFolder folder,
+  required FolderFileEntry entry,
+}) async {
+  final messenger = ScaffoldMessenger.of(context);
+  final l10n = context.l10n;
+  final logger = ref.read(appLoggerProvider);
+  final materializer = ref.read(folderFileMaterializerProvider);
+
+  String resolvedPath;
+  try {
+    resolvedPath = await materializer.materialize(
+      folder: folder,
+      sourcePath: entry.path,
+    );
+  } on Object catch (error, stackTrace) {
+    logger.e(
+      'Failed to materialize folder file for viewer push',
+      error: error,
+      stackTrace: stackTrace,
+    );
+    if (!context.mounted) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(l10n.libraryFolderSourceError)));
+    return;
+  }
+
+  if (!context.mounted) return;
+  unawaited(context.push(ViewerRoute.location(resolvedPath)));
 }
 
 class _CenteredHint extends StatelessWidget {

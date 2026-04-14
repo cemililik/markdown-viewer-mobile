@@ -24,9 +24,10 @@ gantt
     1.7 UX polish (iPhone)   :done, p17, 2026-04-14, 1d
     1.8 Folder explorer      :done, p18, after p17, 1d
     1.9 Source picker model  :done, p19, after p18, 1d
+    1.10 iOS bookmark bridge :done, p110, after p19, 1d
 
     section Phase 2
-    Advanced Blocks polish   :p2, after p19, 7d
+    Advanced Blocks polish   :p2, after p110, 7d
 
     section Phase 3
     Reading Experience       :p3, after p2, 14d
@@ -350,15 +351,16 @@ extended FAB.
       populated drawer renders one tile per persisted folder,
       speed dial expands on FAB tap.
 
-**Known limitation (out of scope for Phase 1.8)**: iOS
-security-scoped bookmarks are not yet wired. A folder picked via
-`file_picker.getDirectoryPath` may lose access after an app
-restart on iOS because the underlying NSURL bookmark is not
-persisted through a native channel. Documented here and
-tracked for a follow-up — the Android SAF equivalent has the
-same shape (`takePersistableUriPermission`). Treat the drawer
-as "add, browse, done" for now; persistence across cold starts
-is a v2 fix.
+**Known limitation (resolved in Phase 1.10)**: iOS
+security-scoped bookmarks AND Android Storage Access Framework
+content URIs were not wired in Phase 1.8, so a folder picked
+via `file_picker.getDirectoryPath` would fail on the first
+`Directory.list()` with "Permission denied" (iOS) or be
+unreadable by `dart:io` entirely (Android, since SAF returns
+`content://` URIs). Phase 1.10 ships native method-channel
+bridges on both platforms that capture the persistent
+permission grant at pick time and route every read back
+through the channel.
 
 ### Phase 1.9 — Library source picker model
 
@@ -456,6 +458,112 @@ Phase 4.5 without any redesign.
       folder-scoped search, extended Open file FAB on
       populated Recents). Existing drawer + speed dial tests
       updated or removed.
+
+### Phase 1.10 — Native folder picker bridge (iOS bookmarks + Android SAF)
+
+**Status**: ✅ Completed 2026-04-14
+
+**Goal**: Make folder browsing actually work end-to-end on
+both platforms. The first iPhone test of Phase 1.9 surfaced
+that the folder body always rendered the localized "Could not
+read this folder" error on a real Downloads pick — `file_picker`
+returns the path string but does not preserve the iOS
+security-scoped NSURL claim, so any later `Directory.list()`
+trips `PathAccessException(Permission denied)`. Android has
+the same shape with an even harder constraint: SAF tree URIs
+are `content://` strings that `dart:io`'s `File` and
+`Directory` cannot read at all.
+
+This phase replaces `file_picker.getDirectoryPath()` with
+custom native channels on both platforms and routes every
+folder read (listing + file bytes) back through them.
+
+- [x] **iOS native channel** (`ios/Runner/LibraryFoldersChannel.swift`):
+      Swift class registered from `AppDelegate.didInitialize`
+      that owns the full lifecycle of folder URLs.
+      `pickDirectory` shows `UIDocumentPickerViewController` in
+      `.folder` mode, claims the security scope on the chosen
+      URL, builds a `.minimalBookmark` `NSData` blob, releases
+      the scope, and returns `{path, bookmark}` to Dart.
+      `listDirectory(bookmark, subPath?)` resolves the
+      bookmark, claims the scope, and lists either the root or
+      a sub-path (sub-URLs inherit the scope automatically).
+      `listDirectoryRecursive` walks the tree natively for
+      search. `readFileBytes(bookmark, path)` reads file bytes
+      with the scope claimed and returns them as
+      `FlutterStandardTypedData`.
+- [x] **Android native channel** (`android/.../LibraryFoldersChannel.kt`):
+      Kotlin `FlutterPlugin` + `ActivityAware` registered from
+      `MainActivity.configureFlutterEngine`. `pickDirectory`
+      shows `ACTION_OPEN_DOCUMENT_TREE` and calls
+      `takePersistableUriPermission` so the granted access
+      survives a cold start, returning `{path: displayName,
+      bookmark: treeUri.toString()}`. `listDirectory` and
+      `listDirectoryRecursive` walk the tree through
+      `androidx.documentfile.DocumentFile.fromTreeUri(...)`.
+      `readFileBytes` streams bytes via
+      `ContentResolver.openInputStream`. The
+      `androidx.documentfile:documentfile:1.0.1` dependency
+      lands in `android/app/build.gradle.kts`. The Swift file
+      gets registered in `Runner.xcodeproj/project.pbxproj`.
+- [x] **Method channel contract**: identical method names,
+      argument shapes, and error codes (`BOOKMARK_STALE`,
+      `ACCESS_DENIED`, `LIST_FAILED`, `READ_FAILED`,
+      `INVALID_ARGS`, `NO_ROOT_VIEW` / `NO_ACTIVITY`) on both
+      platforms so the Dart wrapper does not branch.
+- [x] **Dart channel wrapper** (`NativeLibraryFoldersChannel`):
+      typed `pickDirectory` / `listDirectory` /
+      `listDirectoryRecursive` / `readFileBytes` methods,
+      sentinel exceptions (`NativeFolderBookmarkStaleException`,
+      `NativeFolderAccessDeniedException`) so the folder body
+      can map errors to localized messages. The wrapper is
+      cheap to fake in tests by injecting a `MethodChannel`.
+- [x] **`LibraryFolder` entity** grows an optional
+      `bookmark: String?` field. The store schema gains a
+      matching JSON field, backward-compatible with the
+      pre-1.10 entries (which would have failed on every
+      access anyway). `LibraryFoldersController.add(path,
+      {bookmark})` carries the bookmark through to persistence.
+- [x] **`FolderEnumeratorImpl`** dispatches by bookmark: a
+      non-empty bookmark goes to the native channel (with the
+      `subPath` argument for drill-down), an empty bookmark
+      stays on `dart:io` so unit tests can run without a
+      method-channel stub.
+- [x] **`FolderFileMaterializer`**: new application service
+      that copies a folder-sourced markdown file into
+      `<appCache>/library_folder_files/<sha256>.md` via the
+      native `readFileBytes` and returns the resulting
+      filesystem path. Keeps the viewer's existing
+      `File(...).readAsBytes` code path 100% unchanged — it
+      just gets a path it can read with plain `dart:io`. Used
+      by the folder body's tap handlers (browsing tree and
+      search match list) through a shared `openFolderEntry`
+      helper that surfaces a localized error snackbar on
+      failure. Cache slot keyed on the source path so repeat
+      taps overwrite the slot rather than fanning out — picks
+      up edits between sessions.
+- [x] **`AddSourceSheet`** is now platform-agnostic: both iOS
+      and Android route through `NativeLibraryFoldersChannel`.
+      `file_picker` is still used for the single-file picker
+      (Open file FAB) where neither bookmarking nor SAF apply.
+- [x] **Tests (+6)**: store round-trip of the bookmark field,
+      legacy entries without a bookmark stay readable,
+      controller `add` carries the bookmark, materializer
+      short-circuits when no bookmark is set, materializer
+      writes channel bytes into the cache and returns the
+      cache path, materializer preserves the `.markdown`
+      extension, repeat materialise lands at the same slot
+      and overwrites with the latest bytes.
+
+**Known limitation (out of scope for Phase 1.10)**: a folder-
+sourced file's reading-position bookmark and recents tile
+both reference the cache path, not the source URI. If the OS
+evicts the cache between sessions, tapping the recent hits
+the existing "missing file" self-clean and removes the entry.
+A v2 follow-up could persist the source URI alongside the
+cache path so re-materialisation is automatic, but for a
+typical reading session the cache stays warm and the user
+never notices.
 
 **Phase 1 exit criteria**: A typical README (`test/fixtures/markdown/
 typical.md` + a math-heavy doc + a mermaid-heavy doc) renders
