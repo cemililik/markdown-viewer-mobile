@@ -91,11 +91,12 @@ abstract final class RepoSyncRoute {
 
   /// Builds the full `/repo-sync` location string.
   ///
-  /// Returns [path] directly when [url] is null or empty. Otherwise
-  /// appends the percent-encoded [url] as the [urlQuery] parameter.
+  /// Returns [path] directly when [url] is null, empty, or blank.
+  /// Otherwise appends the percent-encoded [url] as the [urlQuery] parameter.
   static String location({String? url}) {
-    if (url == null || url.isEmpty) return path;
-    return '$path?$urlQuery=${Uri.encodeQueryComponent(url)}';
+    final trimmed = url?.trim();
+    if (trimmed == null || trimmed.isEmpty) return path;
+    return '$path?$urlQuery=${Uri.encodeQueryComponent(trimmed)}';
   }
 }
 
