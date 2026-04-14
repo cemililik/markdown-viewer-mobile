@@ -68,4 +68,21 @@ abstract interface class FolderEnumerator {
   /// without falling back to an empty list (which would be
   /// indistinguishable from a legitimately empty folder).
   Future<List<FolderEntry>> enumerate(String folderPath);
+
+  /// Walks [folderPath] recursively and returns a flat list of
+  /// every markdown file underneath it. Hidden dot-directories
+  /// (`.git`, `.cache`, …) are skipped so the walk does not drag
+  /// in noise the user never asked for.
+  ///
+  /// Used by the library folder body when the search field is
+  /// non-empty: the browsing view is still a lazy
+  /// `ExpansionTile` tree, but search has to look across every
+  /// subfolder so a file buried three levels deep is still
+  /// reachable by name. The one-time walk cost is acceptable
+  /// for a mobile reading app and the result is cached inside
+  /// the folder body so a second search query does not re-walk.
+  ///
+  /// Throws on I/O failure so the caller can surface a localized
+  /// error state instead of silently returning an empty list.
+  Future<List<FolderFileEntry>> enumerateRecursive(String folderPath);
 }

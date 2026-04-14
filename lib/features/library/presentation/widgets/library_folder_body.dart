@@ -1,0 +1,460 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:markdown_viewer/app/router.dart';
+import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
+import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
+import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
+import 'package:markdown_viewer/features/library/domain/services/folder_enumerator.dart';
+import 'package:path/path.dart' as p;
+
+/// Main library body rendered when the active source is a
+/// [LibraryFolder].
+///
+/// The surface has two modes:
+///
+/// 1. **Browsing mode** — the search field is empty. The body
+///    shows a lazy `ExpansionTile` tree rooted at the folder,
+///    mirroring the shape the drawer used to have but promoted
+///    to the main viewport where there is actual room to read
+///    deep hierarchies. Each subfolder loads its children
+///    through [folderEnumeratorProvider] the first time it is
+///    expanded.
+/// 2. **Search mode** — the search field is non-empty. The body
+///    shows a flat list of every markdown file underneath the
+///    folder whose name contains the query (case-insensitive).
+///    The recursive walk is done once per folder source and
+///    cached inside the state, so subsequent keystrokes filter
+///    the cached list without re-walking the tree.
+///
+/// Search is scoped to the folder the user picked in the drawer
+/// — it never mixes with the recents list. Pinning is a recents
+/// concept and does not apply here; folder browsing uses the
+/// filesystem hierarchy itself as the structure.
+class LibraryFolderBody extends ConsumerStatefulWidget {
+  const LibraryFolderBody({required this.folder, super.key});
+
+  final LibraryFolder folder;
+
+  @override
+  ConsumerState<LibraryFolderBody> createState() => _LibraryFolderBodyState();
+}
+
+class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  /// Flat recursive walk cached once per folder source. We
+  /// trigger the walk lazily on the first non-empty search so
+  /// browsing a folder without searching does not pay the walk
+  /// cost at all.
+  Future<List<FolderFileEntry>>? _recursiveFuture;
+
+  @override
+  void didUpdateWidget(covariant LibraryFolderBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.folder.path != widget.folder.path) {
+      // Switching to a different folder source invalidates the
+      // cached walk and any search state that was scoped to the
+      // previous folder.
+      _searchController.clear();
+      _searchQuery = '';
+      _recursiveFuture = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    final normalized = value.trim().toLowerCase();
+    setState(() {
+      _searchQuery = normalized;
+      if (_searchQuery.isNotEmpty) {
+        _recursiveFuture ??= ref
+            .read(folderEnumeratorProvider)
+            .enumerateRecursive(widget.folder.path);
+      }
+    });
+  }
+
+  void _clearSearch() {
+    _searchController.clear();
+    setState(() => _searchQuery = '');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = context.l10n;
+    final displayName = _displayNameFor(widget.folder);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: TextField(
+            controller: _searchController,
+            onChanged: _onSearchChanged,
+            textInputAction: TextInputAction.search,
+            style: theme.textTheme.bodyLarge,
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: theme.colorScheme.surfaceContainerHigh,
+              hintText: l10n.libraryFolderSourceSearchHint(displayName),
+              prefixIcon: Icon(
+                Icons.search,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+              suffixIcon:
+                  _searchQuery.isEmpty
+                      ? null
+                      : IconButton(
+                        tooltip: l10n.librarySearchClear,
+                        icon: const Icon(Icons.close),
+                        onPressed: _clearSearch,
+                      ),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+              border: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(14)),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: const OutlineInputBorder(
+                borderRadius: BorderRadius.all(Radius.circular(14)),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: const BorderRadius.all(Radius.circular(14)),
+                borderSide: BorderSide(
+                  color: theme.colorScheme.primary,
+                  width: 1.5,
+                ),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
+          child:
+              _searchQuery.isEmpty
+                  ? _FolderBrowseView(
+                    key: ValueKey('browse-${widget.folder.path}'),
+                    folder: widget.folder,
+                  )
+                  : _FolderSearchView(
+                    key: ValueKey('search-${widget.folder.path}'),
+                    folder: widget.folder,
+                    query: _searchQuery,
+                    recursiveFuture: _recursiveFuture!,
+                  ),
+        ),
+      ],
+    );
+  }
+
+  String _displayNameFor(LibraryFolder folder) {
+    final basename = p.basename(folder.path);
+    return basename.isEmpty ? folder.path : basename;
+  }
+}
+
+/// Browsing mode: lazy expansion-tile tree rooted at [folder].
+class _FolderBrowseView extends ConsumerStatefulWidget {
+  const _FolderBrowseView({required this.folder, super.key});
+
+  final LibraryFolder folder;
+
+  @override
+  ConsumerState<_FolderBrowseView> createState() => _FolderBrowseViewState();
+}
+
+class _FolderBrowseViewState extends ConsumerState<_FolderBrowseView> {
+  Future<List<FolderEntry>>? _rootFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _rootFuture = ref
+        .read(folderEnumeratorProvider)
+        .enumerate(widget.folder.path);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return FutureBuilder<List<FolderEntry>>(
+      future: _rootFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+        if (snapshot.hasError) {
+          return _CenteredHint(text: l10n.libraryFolderSourceError);
+        }
+        final entries = snapshot.data ?? const <FolderEntry>[];
+        if (entries.isEmpty) {
+          return _CenteredHint(text: l10n.libraryFolderSourceEmpty);
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 96),
+          itemCount: entries.length,
+          itemBuilder:
+              (context, index) =>
+                  _FolderEntryTile(entry: entries[index], indent: 0),
+        );
+      },
+    );
+  }
+}
+
+/// Search mode: flat list of markdown files that match [query],
+/// drawn from the once-walked recursive scan.
+class _FolderSearchView extends ConsumerWidget {
+  const _FolderSearchView({
+    required this.folder,
+    required this.query,
+    required this.recursiveFuture,
+    super.key,
+  });
+
+  final LibraryFolder folder;
+  final String query;
+  final Future<List<FolderFileEntry>> recursiveFuture;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final l10n = context.l10n;
+    final displayName =
+        p.basename(folder.path).isEmpty ? folder.path : p.basename(folder.path);
+
+    return FutureBuilder<List<FolderFileEntry>>(
+      future: recursiveFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState != ConnectionState.done) {
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 16),
+              Text(
+                l10n.libraryFolderSourceSearchLoading,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          );
+        }
+        if (snapshot.hasError) {
+          return _CenteredHint(text: l10n.libraryFolderSourceError);
+        }
+        final all = snapshot.data ?? const <FolderFileEntry>[];
+        final matches =
+            all
+                .where((entry) => entry.name.toLowerCase().contains(query))
+                .toList();
+        if (matches.isEmpty) {
+          return _CenteredHint(
+            text: l10n.libraryFolderSourceSearchNoResults(displayName),
+          );
+        }
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(8, 0, 8, 96),
+          itemCount: matches.length,
+          itemBuilder:
+              (context, index) =>
+                  _MatchTile(entry: matches[index], rootPath: folder.path),
+        );
+      },
+    );
+  }
+}
+
+/// Recursive expansion-tile row used inside browsing mode. Each
+/// subdirectory loads its own children lazily the first time it
+/// is expanded, and the indent grows with depth so the eye can
+/// follow the hierarchy without the tiles bleeding into each
+/// other.
+class _FolderEntryTile extends ConsumerStatefulWidget {
+  const _FolderEntryTile({required this.entry, required this.indent});
+
+  final FolderEntry entry;
+  final int indent;
+
+  @override
+  ConsumerState<_FolderEntryTile> createState() => _FolderEntryTileState();
+}
+
+class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
+  Future<List<FolderEntry>>? _childrenFuture;
+
+  void _loadChildrenIfNeeded() {
+    _childrenFuture ??= ref
+        .read(folderEnumeratorProvider)
+        .enumerate(widget.entry.path);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = context.l10n;
+    final entry = widget.entry;
+    final leftPadding = 8.0 + widget.indent * 12.0;
+
+    if (entry is FolderFileEntry) {
+      return Padding(
+        padding: EdgeInsets.only(left: leftPadding),
+        child: ListTile(
+          dense: true,
+          leading: Icon(
+            Icons.description_outlined,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          title: Text(entry.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+          onTap: () {
+            unawaited(context.push(ViewerRoute.location(entry.path)));
+          },
+        ),
+      );
+    }
+
+    return Padding(
+      padding: EdgeInsets.only(left: leftPadding),
+      child: ExpansionTile(
+        key: PageStorageKey<String>('browse-${entry.path}'),
+        leading: Icon(Icons.folder_outlined, color: theme.colorScheme.primary),
+        title: Text(
+          entry.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        onExpansionChanged: (expanded) {
+          if (expanded) {
+            setState(_loadChildrenIfNeeded);
+          }
+        },
+        childrenPadding: EdgeInsets.zero,
+        tilePadding: EdgeInsets.zero,
+        children: [
+          if (_childrenFuture == null)
+            const SizedBox.shrink()
+          else
+            FutureBuilder<List<FolderEntry>>(
+              future: _childrenFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Center(
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  );
+                }
+                if (snapshot.hasError) {
+                  return _CenteredHint(
+                    text: l10n.libraryFoldersEnumerationFailed,
+                  );
+                }
+                final children = snapshot.data ?? const <FolderEntry>[];
+                if (children.isEmpty) {
+                  return _CenteredHint(text: l10n.libraryFoldersEmptyFolder);
+                }
+                return Column(
+                  children: [
+                    for (final child in children)
+                      _FolderEntryTile(entry: child, indent: widget.indent + 1),
+                  ],
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Search-result row. Shows the matched file name on the first
+/// line and the path relative to the folder root on the second
+/// line so the user can tell two `readme.md` results apart.
+class _MatchTile extends StatelessWidget {
+  const _MatchTile({required this.entry, required this.rootPath});
+
+  final FolderFileEntry entry;
+  final String rootPath;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final relative = p.relative(entry.path, from: rootPath);
+    final parent = p.dirname(relative);
+    return ListTile(
+      leading: Icon(
+        Icons.description_outlined,
+        color: theme.colorScheme.onSurfaceVariant,
+      ),
+      title: Text(
+        entry.name,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+      ),
+      subtitle:
+          parent == '.'
+              ? null
+              : Text(
+                parent,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+      onTap: () => unawaited(context.push(ViewerRoute.location(entry.path))),
+    );
+  }
+}
+
+class _CenteredHint extends StatelessWidget {
+  const _CenteredHint({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
+      child: Center(
+        child: Text(
+          text,
+          textAlign: TextAlign.center,
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
+  }
+}

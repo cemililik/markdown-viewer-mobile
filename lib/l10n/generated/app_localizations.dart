@@ -422,6 +422,72 @@ abstract class AppLocalizations {
   /// **'Close menu'**
   String get libraryActionMenuCloseTooltip;
 
+  /// Drawer entry that switches the library body back to the time-grouped recents view.
+  ///
+  /// In en, this message translates to:
+  /// **'Recents'**
+  String get librarySourceRecents;
+
+  /// Section header inside the drawer above the list of user-added folders (and future synced repositories).
+  ///
+  /// In en, this message translates to:
+  /// **'Sources'**
+  String get librarySourceSectionHeader;
+
+  /// Drawer bottom button that opens the Add source bottom sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Add source'**
+  String get libraryAddSourceButton;
+
+  /// Title of the Add source bottom sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a new source'**
+  String get libraryAddSourceSheetTitle;
+
+  /// Placeholder inside the folder source search field. Scoped to the active folder's name so the user knows the search is not over the whole library.
+  ///
+  /// In en, this message translates to:
+  /// **'Search in {folderName}'**
+  String libraryFolderSourceSearchHint(String folderName);
+
+  /// Empty state shown inside the folder source body when the folder has no markdown files at any depth.
+  ///
+  /// In en, this message translates to:
+  /// **'This folder has no markdown files'**
+  String get libraryFolderSourceEmpty;
+
+  /// Error state shown inside the folder source body when enumerating the folder throws.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read this folder. Check that it still exists on disk.'**
+  String get libraryFolderSourceError;
+
+  /// Empty state shown inside the folder source body when a recursive search query matches no files.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching files in {folderName}'**
+  String libraryFolderSourceSearchNoResults(String folderName);
+
+  /// Loading label shown while the folder source recursively walks its directory tree for the first time.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning folder…'**
+  String get libraryFolderSourceSearchLoading;
+
+  /// Subtitle beneath the Add folder tile in the Add source bottom sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a directory from this device'**
+  String get libraryAddSourceFolderSubtitle;
+
+  /// Subtitle beneath the Sync repository tile in the Add source bottom sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull markdown files from a git repository (coming soon)'**
+  String get libraryAddSourceRepoSubtitle;
+
   /// Button label that opens a file picker on the device.
   ///
   /// In en, this message translates to:

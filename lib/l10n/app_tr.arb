@@ -65,6 +65,28 @@
   "libraryActionMenuTooltip": "Belge ekle",
   "libraryActionMenuCloseTooltip": "Menüyü kapat",
 
+  "librarySourceRecents": "Son açılanlar",
+  "librarySourceSectionHeader": "Kaynaklar",
+  "libraryAddSourceButton": "Kaynak ekle",
+  "libraryAddSourceSheetTitle": "Yeni kaynak ekle",
+  "libraryFolderSourceSearchHint": "{folderName} içinde ara",
+  "@libraryFolderSourceSearchHint": {
+    "placeholders": {
+      "folderName": { "type": "String", "example": "Notes" }
+    }
+  },
+  "libraryFolderSourceEmpty": "Bu klasörde markdown dosyası yok",
+  "libraryFolderSourceError": "Bu klasör okunamadı. Diskte hâlâ olup olmadığını kontrol edin.",
+  "libraryFolderSourceSearchNoResults": "{folderName} içinde eşleşen dosya yok",
+  "@libraryFolderSourceSearchNoResults": {
+    "placeholders": {
+      "folderName": { "type": "String", "example": "Notes" }
+    }
+  },
+  "libraryFolderSourceSearchLoading": "Klasör taranıyor…",
+  "libraryAddSourceFolderSubtitle": "Bu cihazdan bir dizin ekle",
+  "libraryAddSourceRepoSubtitle": "Bir git deposundan markdown dosyalarını çek (yakında)",
+
   "actionOpenFile": "Dosya aç",
   "actionSyncRepo": "Depoyu senkronize et",
   "actionCancel": "İptal",

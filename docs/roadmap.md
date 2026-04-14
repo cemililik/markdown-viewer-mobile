@@ -23,9 +23,10 @@ gantt
     1.6 Mermaid diagrams     :done, p16, after p15, 1d
     1.7 UX polish (iPhone)   :done, p17, 2026-04-14, 1d
     1.8 Folder explorer      :done, p18, after p17, 1d
+    1.9 Source picker model  :done, p19, after p18, 1d
 
     section Phase 2
-    Advanced Blocks polish   :p2, after p18, 7d
+    Advanced Blocks polish   :p2, after p19, 7d
 
     section Phase 3
     Reading Experience       :p3, after p2, 14d
@@ -358,6 +359,103 @@ tracked for a follow-up — the Android SAF equivalent has the
 same shape (`takePersistableUriPermission`). Treat the drawer
 as "add, browse, done" for now; persistence across cold starts
 is a v2 fix.
+
+### Phase 1.9 — Library source picker model
+
+**Status**: ✅ Completed 2026-04-14
+
+**Goal**: Rework the library screen around a single mental
+model: the drawer is a **source picker**, the body is the
+contents of whichever source is active. Phase 1.8 shipped the
+drawer as an expandable-tree widget, which conflated "pick a
+source" with "browse a folder" — tapping a folder in the
+drawer only expanded its own row without changing the main
+body, and the recents view was always the backdrop. The iPhone
+test surfaced the dissonance. Phase 1.9 lands the redesign
+agreed with the user (option C from the UX conversation) so
+synced repositories will slot into the same drawer list in
+Phase 4.5 without any redesign.
+
+- [x] Domain: sealed `LibrarySource` hierarchy with
+      `RecentsSource` and `FolderSource(LibraryFolder)`
+      branches. Built-in sources + user-added folders all live
+      in the same list — no special-casing.
+- [x] Application: `ActiveLibrarySourceController` Notifier.
+      In-memory state (not persisted), defaults to Recents on
+      cold start, `selectRecents` / `selectFolder` mutators.
+      Auto-falls back to Recents when the active folder is
+      removed via a `ref.listen` on
+      `libraryFoldersControllerProvider`, so the UI never
+      renders against a dangling folder.
+- [x] `FolderEnumerator.enumerateRecursive(path)` +
+      `FolderEnumeratorImpl._walk` for the flat search view —
+      walks the whole tree once, filters hidden dot-directories,
+      sorts results case-insensitively. Cached inside the
+      folder body for the lifetime of that folder source so
+      subsequent keystrokes filter the cached list without
+      re-walking.
+- [x] `SourcePickerDrawer` replaces the old
+      `FolderExplorerDrawer`. Flat list of sources: the
+      built-in Recents tile pinned at the top, a "Sources"
+      section header + one tile per user-added folder, and an
+      "+ Add source" button at the bottom that opens the
+      `AddSourceSheet` bottom sheet. Tapping a source sets the
+      active source and closes the drawer. Long-pressing a
+      folder tile offers "Remove folder" with a snackbar.
+      Selected source is visually highlighted.
+- [x] `AddSourceSheet` bottom sheet exposes "Add folder" (real)
+      and "Sync repository" (disabled, wired for Phase 4.5).
+      The sheet owns the folder-picker flow so neither the
+      drawer nor the library screen has to duplicate it.
+- [x] New `LibraryFolderBody` widget rendered when the active
+      source is a folder:
+      - **Browsing mode** (empty search): full-width lazy
+        `ExpansionTile` tree rooted at the folder, recursive
+        one level per expand. The cramped drawer tree is
+        promoted to the main viewport where deep hierarchies
+        are actually readable.
+      - **Search mode** (non-empty search): flat list of every
+        `.md` file anywhere under the root whose name matches
+        the query (case-insensitive substring). Results show
+        the filename + the path relative to the folder root so
+        two `readme.md` matches can be told apart. Search is
+        strictly scoped to the folder — recents never mix in.
+      - Cached recursive walk kicks off lazily on the first
+        non-empty search, so browsing a folder without
+        searching pays zero walk cost.
+- [x] `LibraryScreen` becomes a thin switcher: watches
+      `activeLibrarySourceProvider`, renders the recents body
+      on `RecentsSource` / the folder body on `FolderSource`,
+      and swaps the `AppBar` title between the localized
+      "Library" and a `folder_outlined` glyph + folder
+      basename. The leading AppBar icon is always a hamburger
+      ("open source picker"), never a context-sensitive back
+      arrow — a consistent shape regardless of source.
+- [x] Speed dial removed. Single extended `Open file` FAB on
+      every populated source (a one-purpose quick-picker that
+      does not persist a folder). The three-button onboarding
+      empty state kept the same layout since it already
+      exposed Open file + Open folder + Sync repo in priority
+      order.
+- [x] Pinning intentionally **stays a Recents-only concept**.
+      Folder browsing uses the filesystem hierarchy as its
+      structure; pinning a file inside a folder source would
+      fork the mental model.
+- [x] L10n: 14 new keys (source picker "Recents", "Sources"
+      section header, "Add source" / sheet title, folder-
+      scoped search hint / loading / empty / no-results / error
+      states, Add folder + Sync repo sheet subtitles).
+- [x] Tests (+11): active source provider
+      (default / select / fallback on folder removal),
+      `enumerateRecursive` against a real tmp directory
+      (recursive walk, dot-dir skip, empty folder, alpha
+      sort, missing directory), library widget integration
+      (hamburger opens source picker drawer with Recents +
+      Add source, drawer renders Sources section with a tile
+      per folder, selecting a folder swaps the body to the
+      folder-scoped search, extended Open file FAB on
+      populated Recents). Existing drawer + speed dial tests
+      updated or removed.
 
 **Phase 1 exit criteria**: A typical README (`test/fixtures/markdown/
 typical.md` + a math-heavy doc + a mermaid-heavy doc) renders

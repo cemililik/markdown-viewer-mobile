@@ -207,6 +207,45 @@ class AppLocalizationsTr extends AppLocalizations {
   String get libraryActionMenuCloseTooltip => 'Menüyü kapat';
 
   @override
+  String get librarySourceRecents => 'Son açılanlar';
+
+  @override
+  String get librarySourceSectionHeader => 'Kaynaklar';
+
+  @override
+  String get libraryAddSourceButton => 'Kaynak ekle';
+
+  @override
+  String get libraryAddSourceSheetTitle => 'Yeni kaynak ekle';
+
+  @override
+  String libraryFolderSourceSearchHint(String folderName) {
+    return '$folderName içinde ara';
+  }
+
+  @override
+  String get libraryFolderSourceEmpty => 'Bu klasörde markdown dosyası yok';
+
+  @override
+  String get libraryFolderSourceError =>
+      'Bu klasör okunamadı. Diskte hâlâ olup olmadığını kontrol edin.';
+
+  @override
+  String libraryFolderSourceSearchNoResults(String folderName) {
+    return '$folderName içinde eşleşen dosya yok';
+  }
+
+  @override
+  String get libraryFolderSourceSearchLoading => 'Klasör taranıyor…';
+
+  @override
+  String get libraryAddSourceFolderSubtitle => 'Bu cihazdan bir dizin ekle';
+
+  @override
+  String get libraryAddSourceRepoSubtitle =>
+      'Bir git deposundan markdown dosyalarını çek (yakında)';
+
+  @override
   String get actionOpenFile => 'Dosya aç';
 
   @override

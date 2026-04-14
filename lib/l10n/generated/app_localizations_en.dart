@@ -208,6 +208,46 @@ class AppLocalizationsEn extends AppLocalizations {
   String get libraryActionMenuCloseTooltip => 'Close menu';
 
   @override
+  String get librarySourceRecents => 'Recents';
+
+  @override
+  String get librarySourceSectionHeader => 'Sources';
+
+  @override
+  String get libraryAddSourceButton => 'Add source';
+
+  @override
+  String get libraryAddSourceSheetTitle => 'Add a new source';
+
+  @override
+  String libraryFolderSourceSearchHint(String folderName) {
+    return 'Search in $folderName';
+  }
+
+  @override
+  String get libraryFolderSourceEmpty => 'This folder has no markdown files';
+
+  @override
+  String get libraryFolderSourceError =>
+      'Could not read this folder. Check that it still exists on disk.';
+
+  @override
+  String libraryFolderSourceSearchNoResults(String folderName) {
+    return 'No matching files in $folderName';
+  }
+
+  @override
+  String get libraryFolderSourceSearchLoading => 'Scanning folder…';
+
+  @override
+  String get libraryAddSourceFolderSubtitle =>
+      'Add a directory from this device';
+
+  @override
+  String get libraryAddSourceRepoSubtitle =>
+      'Pull markdown files from a git repository (coming soon)';
+
+  @override
   String get actionOpenFile => 'Open file';
 
   @override

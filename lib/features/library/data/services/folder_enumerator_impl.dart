@@ -48,4 +48,31 @@ class FolderEnumeratorImpl implements FolderEnumerator {
 
     return <FolderEntry>[...subdirs, ...files];
   }
+
+  @override
+  Future<List<FolderFileEntry>> enumerateRecursive(String folderPath) async {
+    final root = Directory(folderPath);
+    final out = <FolderFileEntry>[];
+    await _walk(root, out);
+    // Sort by name (case-insensitive) so the flat search list
+    // reads alphabetically regardless of filesystem walk order.
+    out.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return out;
+  }
+
+  Future<void> _walk(Directory dir, List<FolderFileEntry> out) async {
+    final children = await dir.list(followLinks: false).toList();
+    for (final child in children) {
+      final name = p.basename(child.path);
+      if (name.startsWith('.')) continue;
+      if (child is Directory) {
+        await _walk(child, out);
+      } else if (child is File) {
+        final lower = name.toLowerCase();
+        if (lower.endsWith('.md') || lower.endsWith('.markdown')) {
+          out.add(FolderFileEntry(path: child.path, name: name));
+        }
+      }
+    }
+  }
 }

@@ -8,11 +8,13 @@ import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/core/logging/logger.dart';
-import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
+import 'package:markdown_viewer/features/library/application/active_library_source_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
+import 'package:markdown_viewer/features/library/domain/entities/library_source.dart';
 import 'package:markdown_viewer/features/library/domain/entities/recent_document.dart';
-import 'package:markdown_viewer/features/library/presentation/widgets/folder_explorer_drawer.dart';
-import 'package:markdown_viewer/features/library/presentation/widgets/library_speed_dial.dart';
+import 'package:markdown_viewer/features/library/presentation/widgets/add_source_sheet.dart';
+import 'package:markdown_viewer/features/library/presentation/widgets/library_folder_body.dart';
+import 'package:markdown_viewer/features/library/presentation/widgets/source_picker_drawer.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:path/path.dart' as p;
 
@@ -82,13 +84,43 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final recents = ref.watch(recentDocumentsControllerProvider);
+    final activeSource = ref.watch(activeLibrarySourceProvider);
+
+    // AppBar title follows the active source so the user always
+    // knows which source they are browsing. Recents falls back
+    // to the localized "Library" string, a folder source shows
+    // its basename with a small leading folder glyph.
+    Widget titleWidget;
+    switch (activeSource) {
+      case RecentsSource():
+        titleWidget = Text(l10n.navLibrary);
+      case FolderSource(:final folder):
+        final basename = p.basename(folder.path);
+        final display = basename.isEmpty ? folder.path : basename;
+        titleWidget = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.folder_outlined, size: 20),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                display,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        );
+    }
 
     return Scaffold(
       appBar: AppBar(
         // Explicit leading IconButton (rather than relying on
         // Scaffold's automatic drawer hamburger) so we can wire a
         // localized tooltip and keep the icon style consistent
-        // with the settings action on the right.
+        // with the settings action on the right. The hamburger
+        // always means "open source picker" regardless of which
+        // source is active.
         leading: Builder(
           builder:
               (context) => IconButton(
@@ -97,7 +129,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 onPressed: () => Scaffold.of(context).openDrawer(),
               ),
         ),
-        title: Text(l10n.navLibrary),
+        title: titleWidget,
         actions: [
           IconButton(
             icon: const Icon(Icons.settings_outlined),
@@ -106,12 +138,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           ),
         ],
       ),
-      drawer: const FolderExplorerDrawer(),
-      body:
+      drawer: const SourcePickerDrawer(),
+      body: switch (activeSource) {
+        RecentsSource() =>
           recents.isEmpty
               ? _LibraryEmptyState(
                 onOpenFile: () => _pickAndOpenFile(context, ref),
-                onOpenFolder: () => _pickAndAddFolder(context, ref),
+                onOpenFolder: () => showAddSourceSheet(context, ref),
               )
               : _LibraryPopulatedBody(
                 recents: recents,
@@ -120,81 +153,27 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                 onSearchChanged: _onSearchChanged,
                 onClearSearch: _clearSearch,
               ),
-      floatingActionButton:
-          recents.isEmpty
-              ? null
-              : LibrarySpeedDial(
-                openTooltip: l10n.libraryActionMenuTooltip,
-                closeTooltip: l10n.libraryActionMenuCloseTooltip,
-                actions: [
-                  LibrarySpeedDialAction(
-                    label: l10n.libraryActionMenuOpenFile,
-                    icon: Icons.note_add_outlined,
-                    onTap: () => _pickAndOpenFile(context, ref),
-                  ),
-                  LibrarySpeedDialAction(
-                    label: l10n.libraryActionMenuOpenFolder,
-                    icon: Icons.create_new_folder_outlined,
-                    onTap: () => _pickAndAddFolder(context, ref),
-                  ),
-                  // Sync repository: gated on Phase 4.5. Disabled
-                  // until the repo_sync feature lands; the entry
-                  // still appears so users discover the surface.
-                  LibrarySpeedDialAction(
-                    label: l10n.libraryActionMenuSyncRepo,
-                    icon: Icons.cloud_download_outlined,
-                    onTap: null,
-                  ),
-                ],
-              ),
-    );
-  }
-
-  /// Opens the platform directory picker and forwards the
-  /// chosen path to [LibraryFoldersController.add]. Used by
-  /// both the empty-state CTA and the speed dial entry.
-  static Future<void> _pickAndAddFolder(
-    BuildContext context,
-    WidgetRef ref,
-  ) async {
-    final l10n = context.l10n;
-    final messenger = ScaffoldMessenger.of(context);
-    final logger = ref.read(appLoggerProvider);
-    final controller = ref.read(libraryFoldersControllerProvider.notifier);
-
-    String? path;
-    try {
-      path = await FilePicker.platform.getDirectoryPath();
-    } on Object catch (error, stackTrace) {
-      logger.e('Folder picker failed', error: error, stackTrace: stackTrace);
-      if (!context.mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(l10n.libraryFoldersAddFailed)),
-      );
-      return;
-    }
-
-    if (!context.mounted) return;
-
-    if (path == null || path.isEmpty) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(l10n.libraryFoldersAddCancelled)),
-      );
-      return;
-    }
-
-    final added = controller.add(path);
-    messenger
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        SnackBar(
-          content: Text(
-            added
-                ? l10n.libraryFoldersAddedSnack
-                : l10n.libraryFoldersAlreadyAdded,
-          ),
+        FolderSource(:final folder) => LibraryFolderBody(
+          key: ValueKey('folder-body-${folder.path}'),
+          folder: folder,
         ),
-      );
+      },
+      // Single Open file FAB on both source kinds: quick picker
+      // that does not persist the folder and drops the user
+      // straight into the viewer. "Add source" (folder + repo)
+      // lives in the drawer so the FAB stays a one-purpose
+      // affordance. On the Recents empty state we hide it
+      // because the three-button onboarding layout already
+      // exposes Open file as a primary CTA.
+      floatingActionButton: switch (activeSource) {
+        RecentsSource() when recents.isEmpty => null,
+        _ => FloatingActionButton.extended(
+          icon: const Icon(Icons.note_add_outlined),
+          label: Text(l10n.actionOpenFile),
+          onPressed: () => _pickAndOpenFile(context, ref),
+        ),
+      },
+    );
   }
 
   /// Opens the platform file picker, validates the result, and
