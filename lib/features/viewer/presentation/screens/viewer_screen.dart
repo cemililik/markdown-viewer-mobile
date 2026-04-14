@@ -734,17 +734,21 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                   builder: (context, bookmarked, _) {
                     return Tooltip(
                       message: l10n.viewerBookmarkSaveTooltip,
-                      child: InkResponse(
-                        onTap: _saveBookmark,
-                        onLongPress: _showBookmarkMenu,
-                        radius: 24,
-                        child: SizedBox(
-                          width: 48,
-                          height: 48,
-                          child: Icon(
-                            bookmarked
-                                ? Icons.bookmark
-                                : Icons.bookmark_outline,
+                      child: Semantics(
+                        button: true,
+                        onLongPressHint: l10n.viewerBookmarkLongPressHint,
+                        child: InkResponse(
+                          onTap: _saveBookmark,
+                          onLongPress: _showBookmarkMenu,
+                          radius: 24,
+                          child: SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: Icon(
+                              bookmarked
+                                  ? Icons.bookmark
+                                  : Icons.bookmark_outline,
+                            ),
                           ),
                         ),
                       ),

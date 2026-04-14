@@ -332,6 +332,10 @@ class AppLocalizationsTr extends AppLocalizations {
   String get mermaidReset => 'Görünümü sıfırla';
 
   @override
+  String get mermaidDiagramLabel =>
+      'Mermaid diyagramı. Yakınlaştırmak için sıkıştırın, kaydırmak için sürükleyin.';
+
+  @override
   String viewerReadingTime(int minutes) {
     return '$minutes dk okuma';
   }

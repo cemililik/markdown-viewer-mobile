@@ -870,7 +870,11 @@ comfortable on phone and tablet.
       from `assets/icon/icon.png` (1024×1024); Android adaptive icon
       uses transparent foreground + `#0B1B34` background; iOS flat RGB
       1024×1024 (no alpha) for App Store Connect
-- [ ] Accessibility audit pass
+- [x] Accessibility audit pass — semantic annotations (`header`, `button`,
+      `liveRegion`, `image`, `onLongPressHint`) on all presentation
+      widgets; 44 dp minimum touch targets; `ExcludeSemantics` on
+      decorative icons; widget-level a11y tests in
+      `test/widget/a11y/`
 
 ## Phase 4.5 — Repo Sync
 

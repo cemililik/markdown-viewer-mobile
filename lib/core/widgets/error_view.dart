@@ -45,33 +45,41 @@ class ErrorView extends StatelessWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 360),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 64, color: scheme.error),
-              const SizedBox(height: 16),
-              Text(
-                message,
-                style: theme.textTheme.bodyLarge,
-                textAlign: TextAlign.center,
-              ),
-              if (onRetry != null) ...[
-                const SizedBox(height: 24),
-                FilledButton.tonalIcon(
-                  onPressed: onRetry,
-                  icon: const Icon(Icons.refresh),
-                  // `retryLabel!` is safe because the constructor
-                  // asserts that a non-null onRetry implies a non-null
-                  // retryLabel.
-                  label: Text(retryLabel!),
+    return Semantics(
+      liveRegion: true,
+      label: message,
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 360),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // The icon is decorative — the message text fully
+                // describes the error for screen readers.
+                ExcludeSemantics(
+                  child: Icon(icon, size: 64, color: scheme.error),
                 ),
+                const SizedBox(height: 16),
+                Text(
+                  message,
+                  style: theme.textTheme.bodyLarge,
+                  textAlign: TextAlign.center,
+                ),
+                if (onRetry != null) ...[
+                  const SizedBox(height: 24),
+                  FilledButton.tonalIcon(
+                    onPressed: onRetry,
+                    icon: const Icon(Icons.refresh),
+                    // `retryLabel!` is safe because the constructor
+                    // asserts that a non-null onRetry implies a non-null
+                    // retryLabel.
+                    label: Text(retryLabel!),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

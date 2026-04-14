@@ -304,14 +304,18 @@ class _PatSecurityNote extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          GestureDetector(
-            onTap: onHowTo,
-            child: Text(
-              l10n.syncPatHowToButton,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: scheme.primary,
-                decoration: TextDecoration.underline,
-                decorationColor: scheme.primary,
+          Semantics(
+            button: true,
+            label: l10n.syncPatHowToButton,
+            child: GestureDetector(
+              onTap: onHowTo,
+              child: Text(
+                l10n.syncPatHowToButton,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: scheme.primary,
+                  decoration: TextDecoration.underline,
+                  decorationColor: scheme.primary,
+                ),
               ),
             ),
           ),

@@ -395,6 +395,10 @@
   "@mermaidReset": {
     "description": "Tooltip / semantic label for the button that resets a panned or zoomed mermaid diagram back to its default position."
   },
+  "mermaidDiagramLabel": "Mermaid diagram. Pinch to zoom, drag to pan.",
+  "@mermaidDiagramLabel": {
+    "description": "Semantic label for a successfully rendered mermaid diagram image, announced by screen readers."
+  },
   "viewerReadingTime": "{minutes} min read",
   "@viewerReadingTime": {
     "description": "Reading-time estimate shown at the top of the document content. Always shows at least 1 min.",
