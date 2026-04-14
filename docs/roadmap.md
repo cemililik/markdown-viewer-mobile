@@ -956,12 +956,14 @@ repo syncs in < 30s on Wi-Fi, with progress shown and resumable on failure.
 
 ## Phase 5 — Hardening & Release
 
-- [ ] Mermaid diagrams in PDF export — render each diagram through the
-      existing `MermaidRenderer`, rasterize the SVG via `flutter_svg` →
-      `ui.Image` → PNG, embed via `pw.MemoryImage`. Requires async
-      coordination between the PDF builder and the WebView render pipeline.
-      PDF currently shows a placeholder: *"Diagram not included in PDF —
-      open in Markdown Viewer to view"*.
+- [x] Mermaid diagrams in PDF export — `_prerenderMermaidDiagrams` in
+      `ViewerScreen` scans the markdown source with a fence regex, renders
+      each unique diagram via `MermaidRenderer` (WebView pipeline, PNG
+      bytes), passes the resulting `Map<String, Uint8List>` to
+      `exportToPdf`; `_codeBlock` embeds matching diagrams as
+      `pw.Image(pw.MemoryImage(bytes))` and falls back to the labelled
+      placeholder when a diagram was not pre-rendered (e.g. renderer
+      unavailable).
 - Full a11y audit (TalkBack, VoiceOver)
 - Performance regression suite enforcement
 - Memory leak profiling

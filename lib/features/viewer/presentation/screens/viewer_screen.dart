@@ -10,11 +10,13 @@ import 'package:markdown_viewer/core/widgets/loading_view.dart';
 import 'package:markdown_viewer/features/library/application/preview_extractor.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
+import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/viewer_document.dart';
 import 'package:markdown_viewer/features/viewer/data/services/pdf_exporter.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/reading_position.dart';
+import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
 import 'package:markdown_viewer/features/viewer/presentation/failure_message_mapper.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/markdown_view.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/toc_drawer.dart';
@@ -572,7 +574,13 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     _showLocalizedSnackBar((_) => l10n.viewerPdfGenerating);
     try {
       final fallbackTitle = _titleFor(widget.documentId, '');
-      final bytes = await exportToPdf(fallbackTitle, document.source);
+      final mermaidImages = await _prerenderMermaidDiagrams(document.source);
+      if (!mounted) return;
+      final bytes = await exportToPdf(
+        fallbackTitle,
+        document.source,
+        mermaidImages: mermaidImages,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       // Prefer the document's H1 as the filename so hash-based filenames
@@ -590,6 +598,33 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       _showLocalizedSnackBar((_) => l10n.viewerPdfError);
     }
+  }
+
+  /// Scans [source] for mermaid fenced code blocks and renders each
+  /// unique diagram through [mermaidRendererProvider], returning a map
+  /// from trimmed diagram source to PNG bytes. Diagrams that fail to
+  /// render are omitted — the PDF builder falls back to a placeholder
+  /// for those entries.
+  Future<Map<String, Uint8List>> _prerenderMermaidDiagrams(
+    String source,
+  ) async {
+    final fenceRe = RegExp(r'```mermaid[ \t]*\n([\s\S]*?)```', multiLine: true);
+    final codes =
+        fenceRe
+            .allMatches(source)
+            .map((m) => (m.group(1) ?? '').trim())
+            .where((c) => c.isNotEmpty)
+            .toSet()
+            .toList();
+    if (codes.isEmpty) return const {};
+
+    final renderer = ref.read(mermaidRendererProvider);
+    final result = <String, Uint8List>{};
+    for (final code in codes) {
+      final r = await renderer.render(code);
+      if (r is MermaidRenderSuccess) result[code] = r.pngBytes;
+    }
+    return result;
   }
 
   /// Shows a snackbar whose content reads its localized string on

@@ -23,9 +23,13 @@ String extractPdfTitle(String source, String fallback) {
 ///
 /// The markdown source is parsed with the same GitHub-Flavored Markdown
 /// extension set used by the viewer so headings, fenced code, tables,
-/// and strikethrough are all handled. Mermaid diagram fences are
-/// rendered as a labelled placeholder box — rasterising an SVG inside a
-/// PDF requires a WebView round-trip and is out of scope for v1.
+/// and strikethrough are all handled.
+///
+/// [mermaidImages] is an optional map from trimmed mermaid diagram source
+/// to pre-rendered PNG bytes. When provided and a matching entry exists,
+/// the diagram is embedded as a full-width image. When absent or the
+/// source is missing from the map, a labelled placeholder box is shown
+/// instead so the PDF is still useful without the WebView pipeline.
 ///
 /// [title] is used as the PDF document metadata title and as the header
 /// on page 1. If the document's first node is an H1 heading, that text
@@ -35,11 +39,16 @@ String extractPdfTitle(String source, String fallback) {
 /// ### Supported elements
 /// H1-H6 · paragraphs · **bold** · _italic_ · `inline code` · fenced
 /// code blocks · unordered and ordered lists (1 level deep) · block
-/// quotes · horizontal rules · tables (equal-width columns)
+/// quotes · horizontal rules · tables (equal-width columns) ·
+/// mermaid diagrams (when [mermaidImages] is supplied)
 ///
 /// ### Unsupported elements (skipped silently)
-/// Images · raw HTML · mermaid/LaTeX fences (shown as placeholder)
-Future<Uint8List> exportToPdf(String title, String source) async {
+/// Images · raw HTML · LaTeX fences (shown as placeholder)
+Future<Uint8List> exportToPdf(
+  String title,
+  String source, {
+  Map<String, Uint8List> mermaidImages = const {},
+}) async {
   final ast = md.Document(
     extensionSet: md.ExtensionSet.gitHubFlavored,
   ).parseLines(source.split('\n'));
@@ -81,7 +90,7 @@ Future<Uint8List> exportToPdf(String title, String source) async {
               context.pageNumber == 1
                   ? _buildTitle(displayTitle, fonts)
                   : pw.SizedBox(),
-      build: (context) => _buildNodes(ast, fonts),
+      build: (context) => _buildNodes(ast, fonts, mermaidImages),
     ),
   );
 
@@ -129,16 +138,24 @@ pw.Widget _buildTitle(String title, _Fonts f) {
 
 // ── Top-level node list ───────────────────────────────────────────────
 
-List<pw.Widget> _buildNodes(List<md.Node> nodes, _Fonts f) {
+List<pw.Widget> _buildNodes(
+  List<md.Node> nodes,
+  _Fonts f,
+  Map<String, Uint8List> mermaidImages,
+) {
   final widgets = <pw.Widget>[];
   for (final node in nodes) {
-    final w = _buildNode(node, f);
+    final w = _buildNode(node, f, mermaidImages);
     if (w != null) widgets.add(w);
   }
   return widgets;
 }
 
-pw.Widget? _buildNode(md.Node node, _Fonts f) {
+pw.Widget? _buildNode(
+  md.Node node,
+  _Fonts f,
+  Map<String, Uint8List> mermaidImages,
+) {
   if (node is md.Text) {
     final trimmed = node.text.trim();
     if (trimmed.isEmpty) return null;
@@ -169,7 +186,7 @@ pw.Widget? _buildNode(md.Node node, _Fonts f) {
       return _paragraph(node, f);
 
     case 'pre':
-      return _codeBlock(node, f);
+      return _codeBlock(node, f, mermaidImages);
 
     case 'blockquote':
       return _blockquote(node, f);
@@ -362,16 +379,28 @@ pw.Font _resolveFont(
 
 // ── Code blocks ───────────────────────────────────────────────────────
 
-pw.Widget _codeBlock(md.Element preNode, _Fonts f) {
-  // A mermaid fence is useless as raw text in a PDF — show a placeholder.
+pw.Widget _codeBlock(
+  md.Element preNode,
+  _Fonts f,
+  Map<String, Uint8List> mermaidImages,
+) {
   final codeEl = preNode.children?.whereType<md.Element>().firstOrNull;
   final lang = codeEl?.attributes['class']?.replaceFirst('language-', '') ?? '';
-  final isMermaid = lang == 'mermaid';
 
-  final content =
-      isMermaid
-          ? '[ Diagram not included in PDF -- open in Markdown Viewer to view ]'
-          : _cleanText(_extractText(preNode));
+  if (lang == 'mermaid') {
+    final code = _extractText(preNode).trim();
+    final pngBytes = mermaidImages[code];
+    if (pngBytes != null) {
+      // Embed the pre-rendered PNG, scaled to fill the content column.
+      return pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 10),
+        child: pw.Image(pw.MemoryImage(pngBytes), fit: pw.BoxFit.contain),
+      );
+    }
+    // No pre-rendered image available — show a labelled placeholder so
+    // the PDF is still useful even without the WebView pipeline.
+    return _mermaidPlaceholder(f);
+  }
 
   return pw.Padding(
     padding: const pw.EdgeInsets.only(bottom: 10),
@@ -385,11 +414,35 @@ pw.Widget _codeBlock(md.Element preNode, _Fonts f) {
         ),
       ),
       child: pw.Text(
-        content,
+        _cleanText(_extractText(preNode)),
         style: pw.TextStyle(
-          font: isMermaid ? f.italic : f.mono,
+          font: f.mono,
           fontSize: 9.5,
-          color: isMermaid ? PdfColors.grey600 : PdfColors.grey900,
+          color: PdfColors.grey900,
+        ),
+      ),
+    ),
+  );
+}
+
+pw.Widget _mermaidPlaceholder(_Fonts f) {
+  return pw.Padding(
+    padding: const pw.EdgeInsets.only(bottom: 10),
+    child: pw.Container(
+      width: double.infinity,
+      padding: const pw.EdgeInsets.all(10),
+      decoration: const pw.BoxDecoration(
+        color: PdfColors.grey100,
+        border: pw.Border(
+          left: pw.BorderSide(color: PdfColors.grey400, width: 3),
+        ),
+      ),
+      child: pw.Text(
+        '[ Diagram not included in PDF -- open in Markdown Viewer to view ]',
+        style: pw.TextStyle(
+          font: f.italic,
+          fontSize: 9.5,
+          color: PdfColors.grey600,
         ),
       ),
     ),
