@@ -7,9 +7,14 @@ code, tables, footnotes, and admonitions.
 
 ## Status
 
-🚧 **Phase 0 — Foundation complete.** The project is bootstrapped with
-the full tooling stack but no rendering yet. See [docs/roadmap.md](docs/roadmap.md)
-for the path to v1.
+🟡 **Phase 5 — Hardening & Release in progress.** Phases 0–4.5 are
+complete. The app ships full markdown rendering (including Mermaid, LaTeX
+math, syntax-highlighted code, footnotes, admonitions), a reading-comfort
+toolbar, TOC drawer, in-document search with inline highlighting, text
+selection, PDF export with embedded Mermaid diagrams, GitHub repository
+sync, and native file-open integration on iOS and Android. See
+[docs/roadmap.md](docs/roadmap.md) for the detailed delivery history and
+remaining Phase 5 work.
 
 ## Highlights
 
@@ -32,7 +37,7 @@ All product, engineering, and process documentation lives under
 | New contributor | [docs/README.md](docs/README.md) → [CONTRIBUTING.md](CONTRIBUTING.md) |
 | Engineer | [docs/architecture.md](docs/architecture.md) → [docs/standards/](docs/standards/) |
 | Product / planning | [docs/vision.md](docs/vision.md) → [docs/roadmap.md](docs/roadmap.md) |
-| Decision history | [docs/decisions/](docs/decisions/) (12 ADRs) |
+| Decision history | [docs/decisions/](docs/decisions/) (13 ADRs) |
 
 ## Tech Stack
 
@@ -47,6 +52,8 @@ git clone https://github.com/cemililik/markdown-viewer-mobile.git
 cd markdown-viewer-mobile
 flutter pub get
 flutter gen-l10n
+dart run build_runner build --delete-conflicting-outputs
+bash tool/fetch_mermaid.sh    # download pinned mermaid.min.js (not committed to git)
 bash tool/install-hooks.sh    # mandatory pre-commit hook
 flutter test
 flutter run

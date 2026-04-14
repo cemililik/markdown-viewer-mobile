@@ -15,7 +15,7 @@ gantt
     Foundation               :done, p0, 2026-04-12, 1d
 
     section Phase 1
-    1.1 Domain + parser      :done, p11, 2026-04-13, 1d
+    1.1 Domain + parser      :done, p11, 2026-04-12, 1d
     1.2 End-to-end slice     :done, p12, after p11, 1d
     1.3 Code + GFM verify    :done, p13, after p12, 1d
     1.4 LaTeX math           :done, p14, after p13, 1d
@@ -28,20 +28,28 @@ gantt
     1.11 Bookmark tap/remove :done, p111, after p110, 1d
 
     section Phase 2
-    Advanced Blocks polish   :done, p2, after p31, 7d
+    Advanced Blocks polish   :done, p2, 2026-04-14, 1d
 
     section Phase 3
-    3.1 TOC + search + type  :done, p31, after p111, 1d
-    Reading Experience rest  :p3, after p2, 14d
+    3.1 TOC + search + type  :done, p31, 2026-04-14, 1d
+    3.2 Immersive / sepia / keep-on :done, p32, after p31, 1d
+    3.3 Text selection + links :done, p33, after p32, 1d
+    3.4 Footnotes + reading time :done, p34, after p33, 1d
+    3.5 Search UX overhaul   :done, p35, after p34, 1d
 
     section Phase 4
-    Platform Integration     :done, p4, after p3, 7d
+    4.1 Platform file-open   :done, p41, after p35, 1d
+    4.2 PDF export           :done, p42, after p41, 1d
+    4.3 App icons + splash   :done, p43, after p42, 1d
+    4.4 Accessibility audit  :done, p44, after p43, 1d
 
     section Phase 4.5
-    Repo Sync                :done, p45, after p4, 14d
+    Repo Sync                :done, p45, 2026-04-14, 2d
 
     section Phase 5
-    Hardening & Release      :p5, after p45, 10d
+    5.1 PDF + Mermaid embed  :done, p51, 2026-04-15, 1d
+    5.2 Mermaid DOM cleanup  :done, p52, after p51, 1d
+    Hardening & Release      :active, p5, after p52, 10d
 ```
 
 ## Phase 0 — Foundation
@@ -670,7 +678,7 @@ surface area.
       contains CI + macOS goldens for headings, code blocks, GFM
       features, admonitions, and math (light + dark for each)
 
-**Exit criteria**: 299 tests pass (unit + widget + golden). On-device
+**Exit criteria**: All tests pass (324 as of Phase 5.2). On-device
 benchmark targets confirmed via `integration_test/benchmark/` and
 `integration_test/mermaid_render_test.dart`.
 
@@ -863,9 +871,10 @@ comfortable on phone and tablet.
       launch backgrounds; Android 12+ shows the launcher icon on the
       brand-colour (`#3B5BDB`) circle per Material You guidelines.
 - [x] Share-to-PDF export — `pdf` + `printing` packages; each viewer
-      screen exposes a "Share as PDF" action that renders the current
-      document via `pw.MarkdownWidget`. Mermaid diagrams show a
-      placeholder pending rasterization support (Phase 5).
+      screen exposes a "Share as PDF" action. Mermaid diagrams are
+      pre-rendered to PNG via `MermaidRenderer` and embedded inline;
+      a labelled placeholder is used as fallback when the renderer
+      is unavailable.
 - [x] App icons — `flutter_launcher_icons` generates all densities
       from `assets/icon/icon.png` (1024×1024); Android adaptive icon
       uses transparent foreground + `#0B1B34` background; iOS flat RGB
@@ -878,7 +887,7 @@ comfortable on phone and tablet.
 
 ## Phase 4.5 — Repo Sync
 
-**Status**: ✅ Core complete — background isolate pending
+**Status**: ✅ Completed 2026-04-14
 
 **Goal**: Pull markdown documentation from a public git repository URL
 into the local library, preserving the directory structure.
@@ -905,7 +914,8 @@ See [ADR-0011](decisions/0011-network-access-policy.md) and
       <repo>/<ref>/<subPath>/` preserving remote directory structure
 - [x] Optional GitHub PAT stored in platform Keychain (iOS) /
       `EncryptedSharedPreferences` backed by Android Keystore (Android);
-      never logged or sent to any server
+      encrypted at rest; transmitted to GitHub only during user-triggered
+      syncs; never logged
 - [x] Five new sealed `Failure` subtypes: `NetworkUnavailableFailure`,
       `RateLimitedFailure`, `RepoNotFoundFailure`, `PartialSyncFailure`,
       `UnsupportedProviderFailure`
@@ -956,21 +966,34 @@ repo syncs in < 30s on Wi-Fi, with progress shown and resumable on failure.
 
 ## Phase 5 — Hardening & Release
 
+**Status**: 🟡 In progress
+
 - [x] Mermaid diagrams in PDF export — `_prerenderMermaidDiagrams` in
       `ViewerScreen` scans the markdown source with a fence regex, renders
       each unique diagram via `MermaidRenderer` (WebView pipeline, PNG
       bytes), passes the resulting `Map<String, Uint8List>` to
       `exportToPdf`; `_codeBlock` embeds matching diagrams as
       `pw.Image(pw.MemoryImage(bytes))` and falls back to the labelled
-      placeholder when a diagram was not pre-rendered (e.g. renderer
-      unavailable).
-- Full a11y audit (TalkBack, VoiceOver)
-- Performance regression suite enforcement
-- Memory leak profiling
-- Localization pass (en + tr)
-- Beta release to TestFlight + Google Play internal track
-- Bug fixes
-- Public v1.0 release
+      placeholder when a diagram was not pre-rendered
+- [x] PDF text quality — Latin Extended-A transliteration table so
+      accented characters survive the built-in Helvetica font; emoji
+      mapped to bracketed labels (`🔥` → `[fire]`)
+- [x] Mermaid DOM cleanup between renders — stale SVG nodes removed
+      before each new render to prevent ghost diagrams on theme flip
+- [x] Mermaid `look: classic` + retry loop for diagram types
+      (quadrantChart, mind maps) that require the classic renderer
+- [x] Mermaid `antiscript` security level + neutral PDF init directive
+- [x] Code-review hardening (four review batches): FNV-1a hash in
+      `FileOpenChannel`, host-validated PAT injection, local-file-exists
+      check in skip branch, `containsKey` fix in `MermaidLruCache`,
+      global-state tearDown in test helpers, math-view size-capture fix
+- [ ] Full a11y audit (TalkBack, VoiceOver)
+- [ ] Performance regression suite enforcement
+- [ ] Memory leak profiling
+- [ ] Localization completeness pass (en + tr)
+- [ ] Beta release to TestFlight + Google Play internal track
+- [ ] Bug fixes
+- [ ] Public v1.0 release
 
 ## Post-v1 Candidates
 
