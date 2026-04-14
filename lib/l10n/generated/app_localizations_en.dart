@@ -337,7 +337,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewerBookmarkLongPressHint =>
-      'Long-press the bookmark icon to remove it.';
+      'Long-press the bookmark icon for options.';
 
   @override
   String get viewerBookmarkMenuGoTo => 'Go to saved position';

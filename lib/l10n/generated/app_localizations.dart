@@ -662,10 +662,10 @@ abstract class AppLocalizations {
   /// **'Bookmark cleared'**
   String get viewerBookmarkCleared;
 
-  /// Secondary coach-mark line appended to the first-ever bookmark save confirmation, teaching the user that long-press opens the remove menu.
+  /// Secondary coach-mark line appended to the first-ever bookmark save confirmation, teaching the user that long-press opens an options menu.
   ///
   /// In en, this message translates to:
-  /// **'Long-press the bookmark icon to remove it.'**
+  /// **'Long-press the bookmark icon for options.'**
   String get viewerBookmarkLongPressHint;
 
   /// Bottom sheet action that animates the scroll back to the previously saved reading position.

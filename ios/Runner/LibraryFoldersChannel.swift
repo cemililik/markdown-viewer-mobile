@@ -187,7 +187,8 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
       if let sub = subPath, !sub.isEmpty, sub != rootUrl.path {
         let resolved = URL(fileURLWithPath: sub).standardized
         let rootStandard = rootUrl.standardized
-        if !resolved.path.hasPrefix(rootStandard.path) {
+        let rootPath = rootStandard.path
+        if resolved.path != rootPath && !resolved.path.hasPrefix(rootPath + "/") {
           throw NSError(
             domain: "LibraryFoldersChannel",
             code: -1,
@@ -293,7 +294,8 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
       }
       let fileUrl = URL(fileURLWithPath: filePath).standardized
       let rootStandard = rootUrl.standardized
-      if !fileUrl.path.hasPrefix(rootStandard.path) {
+      let rootPath = rootStandard.path
+      if fileUrl.path != rootPath && !fileUrl.path.hasPrefix(rootPath + "/") {
         result(FlutterError(
           code: "ACCESS_DENIED",
           message: "path escapes bookmark root",

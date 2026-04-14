@@ -51,6 +51,11 @@ class ActiveLibrarySourceController extends Notifier<LibrarySource> {
   }
 }
 
+/// `NotifierProvider` that owns the currently selected [LibrarySource].
+///
+/// Initial state is always [RecentsSource]. Resets to [RecentsSource]
+/// automatically when the currently active folder is removed from the
+/// library — see [ActiveLibrarySourceController.build].
 final activeLibrarySourceProvider =
     NotifierProvider<ActiveLibrarySourceController, LibrarySource>(
       ActiveLibrarySourceController.new,

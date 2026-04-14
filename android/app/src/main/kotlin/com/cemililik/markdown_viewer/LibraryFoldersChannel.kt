@@ -217,8 +217,9 @@ class LibraryFoldersChannel :
     val displayName = root?.name ?: treeUri.lastPathSegment ?: treeUri.toString()
     result.success(
         mapOf(
-            "path" to displayName,
+            "path" to treeUri.toString(),
             "bookmark" to treeUri.toString(),
+            "displayName" to displayName,
         )
     )
     return true
@@ -249,7 +250,7 @@ class LibraryFoldersChannel :
             }
       }
       val entries = mutableListOf<Map<String, Any>>()
-      for (child in target.listFiles()) {
+      for (child in target.listFiles() ?: emptyArray()) {
         val name = child.name ?: continue
         if (name.startsWith(".")) continue
         if (child.isDirectory) {
@@ -303,7 +304,7 @@ class LibraryFoldersChannel :
   }
 
   private fun walk(dir: DocumentFile, out: MutableList<Map<String, Any>>) {
-    for (child in dir.listFiles()) {
+    for (child in dir.listFiles() ?: emptyArray()) {
       val name = child.name ?: continue
       if (name.startsWith(".")) continue
       if (child.isDirectory) {

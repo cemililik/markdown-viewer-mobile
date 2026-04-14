@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
+import 'package:logger/logger.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/reading_position.dart';
 import 'package:markdown_viewer/features/viewer/domain/repositories/reading_position_store.dart';
@@ -22,9 +23,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// an async hop first (which would be visible as a flash of the
 /// document at offset 0 before the jump).
 class ReadingPositionStoreImpl implements ReadingPositionStore {
-  ReadingPositionStoreImpl(this._prefs);
+  ReadingPositionStoreImpl(this._prefs, {Logger? logger})
+    : _logger = logger ?? Logger();
 
   final SharedPreferences _prefs;
+  final Logger _logger;
 
   static const String _keyPrefix = 'reading.';
 
@@ -50,7 +53,7 @@ class ReadingPositionStoreImpl implements ReadingPositionStore {
         offset: offset,
         savedAt: savedAt,
       );
-    } on Object {
+    } on Object catch (e, st) {
       // A corrupt / legacy entry should not poison the reader.
       // Beyond `FormatException` from `jsonDecode`, the explicit
       // `as Map<String, dynamic>` cast can throw `TypeError` if
@@ -59,6 +62,11 @@ class ReadingPositionStoreImpl implements ReadingPositionStore {
       // Treat every failure as "no bookmark" so the document
       // opens normally; the next explicit save overwrites the
       // bad blob.
+      _logger.e(
+        'ReadingPositionStore: could not decode entry for $documentId',
+        error: e,
+        stackTrace: st,
+      );
       return null;
     }
   }

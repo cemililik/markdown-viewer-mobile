@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
@@ -78,7 +79,7 @@ class FolderFileMaterializer {
     if (!folderCacheDir.existsSync()) {
       await folderCacheDir.create(recursive: true);
     }
-    final hash = sha256.convert(sourcePath.codeUnits).toString();
+    final hash = sha256.convert(utf8.encode(sourcePath)).toString();
     // Preserve the original extension so the viewer's
     // basename-driven UI (AppBar title, recents tile) still shows
     // a sensible name. Default to `.md` when the source path has

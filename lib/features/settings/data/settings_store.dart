@@ -58,19 +58,12 @@ class SettingsStore {
     return _prefs.setString(_localeTagKey, locale.tag);
   }
 
-  /// Whether the user has already seen the "long-press to remove"
-  /// coach-mark that the viewer shows once the first time they
-  /// save a reading-position bookmark. A one-shot UI flag that
-  /// lives here rather than in its own store because it is still
-  /// a per-user preference and the settings store is already the
-  /// `SharedPreferences`-wrapper seam every other flag uses.
+  /// Returns whether the bookmark hint has been seen.
   bool readHasSeenBookmarkHint() {
     return _prefs.getBool(_bookmarkHintSeenKey) ?? false;
   }
 
-  /// Marks the bookmark long-press coach-mark as seen so the
-  /// viewer stops appending the hint line to every subsequent
-  /// save confirmation.
+  /// Marks the bookmark hint as seen.
   Future<void> markBookmarkHintSeen() {
     return _prefs.setBool(_bookmarkHintSeenKey, true);
   }

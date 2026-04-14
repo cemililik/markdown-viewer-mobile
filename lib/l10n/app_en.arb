@@ -396,9 +396,9 @@
   "@viewerBookmarkCleared": {
     "description": "Snackbar confirmation shown after the user clears a previously saved bookmark via the long-press menu."
   },
-  "viewerBookmarkLongPressHint": "Long-press the bookmark icon to remove it.",
+  "viewerBookmarkLongPressHint": "Long-press the bookmark icon for options.",
   "@viewerBookmarkLongPressHint": {
-    "description": "Secondary coach-mark line appended to the first-ever bookmark save confirmation, teaching the user that long-press opens the remove menu."
+    "description": "Secondary coach-mark line appended to the first-ever bookmark save confirmation, teaching the user that long-press opens an options menu."
   },
   "viewerBookmarkMenuGoTo": "Go to saved position",
   "@viewerBookmarkMenuGoTo": {

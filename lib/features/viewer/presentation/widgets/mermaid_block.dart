@@ -9,7 +9,7 @@ import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_pro
 import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_view.dart';
 
-/// Renders a single mermaid fenced code block as an inline SVG.
+/// Renders a single mermaid fenced code block as a PNG bitmap.
 ///
 /// Hooked into [MarkdownView] via `PreConfig.wrapper`. The widget
 /// owns no parsing logic — it reads the active Material 3
@@ -32,7 +32,7 @@ import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_
 /// same visual language as a `> [!WARNING]` admonition. Pending
 /// state shows a low-key spinner sized to roughly a typical
 /// diagram footprint so the surrounding text does not jump when
-/// the SVG arrives.
+/// the bitmap arrives.
 class MermaidBlock extends ConsumerStatefulWidget {
   const MermaidBlock({required this.code, super.key});
 
@@ -81,7 +81,31 @@ class _MermaidBlockState extends ConsumerState<MermaidBlock> {
   }
 
   static bool _sourceHasOwnDirective(String source) {
-    return source.trimLeft().startsWith('%%{init:');
+    // Skip an optional leading YAML frontmatter block (--- ... ---) before
+    // checking for a %%{init: directive, because mermaid source can legally
+    // start with frontmatter followed by the init block.
+    var scanFrom = 0;
+    if (source.trimLeft().startsWith('---')) {
+      final firstNl = source.indexOf('\n');
+      if (firstNl > 0) {
+        final opener = source.substring(0, firstNl).trimRight();
+        if (opener == '---') {
+          var cursor = firstNl + 1;
+          while (cursor < source.length) {
+            final nextNl = source.indexOf('\n', cursor);
+            final lineEnd = nextNl < 0 ? source.length : nextNl;
+            final line = source.substring(cursor, lineEnd).trimRight();
+            if (line == '---' || line == '...') {
+              scanFrom = nextNl < 0 ? source.length : nextNl + 1;
+              break;
+            }
+            if (nextNl < 0) break;
+            cursor = nextNl + 1;
+          }
+        }
+      }
+    }
+    return source.substring(scanFrom).trimLeft().startsWith('%%{init:');
   }
 
   @override
@@ -388,6 +412,18 @@ class _MermaidImageState extends State<_MermaidImage>
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
+  }
+
+  @override
+  void didUpdateWidget(_MermaidImage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!identical(oldWidget.pngBytes, widget.pngBytes) ||
+        oldWidget.width != widget.width ||
+        oldWidget.height != widget.height) {
+      // A new bitmap arrived (re-render or theme flip) — discard the
+      // previous pan/zoom so the fresh diagram is shown at identity.
+      _transform.value = Matrix4.identity();
+    }
   }
 
   void _onTransformChanged() {

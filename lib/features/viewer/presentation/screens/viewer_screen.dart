@@ -164,7 +164,6 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     final hadPrevious = store.read(widget.documentId) != null;
     final offset =
         _scrollController.hasClients ? _scrollController.offset : 0.0;
-    _isBookmarked.value = true;
     await store.write(
       ReadingPosition(
         documentId: widget.documentId,
@@ -172,6 +171,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
         savedAt: DateTime.now(),
       ),
     );
+    _isBookmarked.value = true;
     if (!mounted) return;
 
     final firstEver = !settingsStore.readHasSeenBookmarkHint();
@@ -279,8 +279,8 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       case _BookmarkMenuAction.goTo:
         _animateToSavedPosition(saved);
       case _BookmarkMenuAction.remove:
-        _isBookmarked.value = false;
         await store.clear(widget.documentId);
+        _isBookmarked.value = false;
         if (!mounted) return;
         _showLocalizedSnackBar((l10n) => l10n.viewerBookmarkCleared);
     }

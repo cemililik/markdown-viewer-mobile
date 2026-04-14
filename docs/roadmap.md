@@ -73,7 +73,7 @@ both themes. ✅ `flutter analyze` clean, smoke test passing.
 
 ## Phase 1 — MVP Rendering
 
-**Status**: ✅ Completed 2026-04-13 — all six slices shipped. Manual
+**Status**: ✅ Completed 2026-04-14 — all eleven slices (1.1–1.11) shipped. Manual
 on-device validation pass is the gate to declaring Phase 2 ready.
 
 **Goal**: Open a file and render every block type we promise, correctly
@@ -581,7 +581,7 @@ opposite of what the user intended. Phase 1.11 lands the
 refined semantics (option A from the UX conversation).
 
 - [x] **Tap = save / update**: the AppBar bookmark always
-      writes the current scroll offset, whether or not a prior
+      writes the current scroll offset, whether a prior
       position was saved. The icon stays filled when a
       position exists. A snackbar branches on "was there a
       prior position?": first save → "Reading position saved",

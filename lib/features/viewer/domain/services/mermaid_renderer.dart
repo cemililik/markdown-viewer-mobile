@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-/// Port for rendering a mermaid diagram source string into an SVG.
+/// Port for rendering a mermaid diagram source string into a PNG bitmap.
 ///
 /// Lives in the domain layer so the application and presentation
 /// layers can depend on an abstraction without ever seeing the
@@ -10,7 +10,7 @@ import 'dart:typed_data';
 /// Implementations must:
 ///
 /// 1. Treat `(source, initDirective)` as the cache key — identical
-///    pairs must return identical SVG.
+///    pairs must return identical PNG bytes.
 /// 2. Catch every error path that comes out of the underlying
 ///    renderer (mermaid syntax errors, WebView crashes, JS
 ///    exceptions, asset-load failures) and translate it into a
@@ -40,8 +40,8 @@ abstract interface class MermaidRenderer {
   /// permanent failure.
   Future<void> prewarm();
 
-  /// Renders [source] and returns either an SVG string or a typed
-  /// failure.
+  /// Renders [source] and returns either PNG bytes plus
+  /// width/height or a typed failure.
   ///
   /// [initDirective] is an opaque prefix that the implementation
   /// prepends to [source] before handing it to the underlying

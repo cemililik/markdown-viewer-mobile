@@ -61,10 +61,8 @@ final class FolderSubdirEntry extends FolderEntry {
 ///   so the drawer reads top-down by hierarchy depth.
 ///
 /// Both methods take a [LibraryFolder] rather than a plain path
-/// so the implementation can route by the optional
-/// `bookmark` field: on iOS, bookmarked folders go through the
-/// native `LibraryFoldersChannel`; everywhere else, plain
-/// `dart:io` is used.
+/// so the implementation can resolve access via the optional
+/// `bookmark` field when the platform requires it.
 abstract interface class FolderEnumerator {
   /// Lists the immediate children of [folder]. Tests may pass an
   /// explicit [subPath] to enumerate a sub-directory of the root

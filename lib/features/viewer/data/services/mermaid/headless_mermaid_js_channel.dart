@@ -5,6 +5,7 @@ import 'dart:ui' show Size;
 
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_js_channel.dart';
+import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_utils.dart';
 
 /// Production [MermaidJsChannel] backed by a sandboxed
 /// [HeadlessInAppWebView].
@@ -202,8 +203,8 @@ class HeadlessMermaidJsChannel implements MermaidJsChannel {
     required void Function(Map<String, Object?> message) onResult,
   }) async {
     final id = message['id'];
-    final width = _asPositiveDouble(message['width']);
-    final height = _asPositiveDouble(message['height']);
+    final width = asPositiveDouble(message['width']);
+    final height = asPositiveDouble(message['height']);
     if (id is! String || width == null || height == null) {
       onResult({
         'id': id,
@@ -229,16 +230,6 @@ class HeadlessMermaidJsChannel implements MermaidJsChannel {
       return;
     }
     onResult({'id': id, 'pngBytes': bytes, 'width': width, 'height': height});
-  }
-
-  static double? _asPositiveDouble(Object? raw) {
-    if (raw is num) {
-      final value = raw.toDouble();
-      if (value > 0 && value.isFinite) {
-        return value;
-      }
-    }
-    return null;
   }
 
   @override
