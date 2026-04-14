@@ -178,6 +178,16 @@ class MermaidRendererImpl implements MermaidRenderer {
     return completer.future;
   }
 
+  /// Live snapshot of the SVG LRU cache hit/miss counters.
+  ///
+  /// Exposed for instrumentation and integration-test assertions.
+  /// [hits] and [misses] are cumulative since the renderer was
+  /// constructed (or since the last `dispose` call reset the cache).
+  ({int hits, int misses}) get cacheStats => (
+    hits: _cache.hits,
+    misses: _cache.misses,
+  );
+
   @override
   Future<void> dispose() async {
     if (_disposed) {

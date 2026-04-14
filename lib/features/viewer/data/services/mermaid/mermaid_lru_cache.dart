@@ -34,16 +34,33 @@ class MermaidLruCache<V> {
   final int capacity;
   final Map<String, V> _entries = <String, V>{};
 
+  int _hits = 0;
+  int _misses = 0;
+
   /// Number of entries currently held.
   int get length => _entries.length;
+
+  /// Total cache-hit count since construction (or last [clear]).
+  int get hits => _hits;
+
+  /// Total cache-miss count since construction (or last [clear]).
+  int get misses => _misses;
+
+  /// Hit-rate in [0.0, 1.0]; 0.0 when no lookups have been made yet.
+  double get hitRate {
+    final total = _hits + _misses;
+    return total == 0 ? 0.0 : _hits / total;
+  }
 
   /// Looks up [key] and promotes it to most-recently-used. Returns
   /// `null` if absent.
   V? get(String key) {
     final value = _entries.remove(key);
     if (value == null) {
+      _misses++;
       return null;
     }
+    _hits++;
     _entries[key] = value;
     return value;
   }
@@ -59,7 +76,11 @@ class MermaidLruCache<V> {
     }
   }
 
-  /// Removes every entry. Used by tests and by
-  /// `MermaidRendererImpl.dispose`.
-  void clear() => _entries.clear();
+  /// Removes every entry and resets hit/miss counters. Used by tests
+  /// and by `MermaidRendererImpl.dispose`.
+  void clear() {
+    _entries.clear();
+    _hits = 0;
+    _misses = 0;
+  }
 }
