@@ -410,6 +410,61 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     _jumpToMatch(_searchMatches[prevIndex], document);
   }
 
+  /// Builds the `PreferredSize` bar that sits under the AppBar
+  /// while search is active. Shows "line N" and the line's
+  /// text with the matched substring highlighted so the user
+  /// sees the exact context for the current match — the
+  /// scroll landing is approximate, the context hint is not.
+  PreferredSizeWidget _buildSearchContextHint(Document document) {
+    final query = _searchController.text;
+    final offset = _searchMatches[_currentMatchIndex];
+    final ctx = _matchContext(
+      source: document.source,
+      offset: offset,
+      queryLength: query.length,
+    );
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(36),
+      child: _SearchContextHint(context: ctx),
+    );
+  }
+
+  /// Returns the line in `document.source` that contains
+  /// [offset], along with the start/end positions of the match
+  /// relative to the line start. Used by the search context
+  /// hint under the AppBar to show the user exactly which line
+  /// the current match lives on, with the matched substring
+  /// emphasised — the scroll landing is approximate, so the
+  /// hint compensates by providing the precise textual
+  /// context.
+  ({String lineText, int startInLine, int endInLine, int lineIndex})?
+  _matchContext({
+    required String source,
+    required int offset,
+    required int queryLength,
+  }) {
+    if (offset < 0 || offset >= source.length) return null;
+    var lineStart = 0;
+    var lineIndex = 0;
+    for (var i = 0; i < offset; i += 1) {
+      if (source.codeUnitAt(i) == 0x0A) {
+        lineIndex += 1;
+        lineStart = i + 1;
+      }
+    }
+    var lineEnd = source.indexOf('\n', offset);
+    if (lineEnd == -1) lineEnd = source.length;
+    final lineText = source.substring(lineStart, lineEnd);
+    final startInLine = offset - lineStart;
+    final endInLine = (startInLine + queryLength).clamp(0, lineText.length);
+    return (
+      lineText: lineText,
+      startInLine: startInLine,
+      endInLine: endInLine,
+      lineIndex: lineIndex,
+    );
+  }
+
   /// Scrolls to an approximate offset based on the fraction of
   /// the matched position in the source. Search match offsets
   /// are character positions in the source string; we convert
@@ -419,10 +474,10 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// This is imprecise — a match in the first character of a
   /// huge code block will land slightly off the block's
   /// rendered top — but it is honest: the user sees the match
-  /// counter and the approximate landing, not a pixel-perfect
-  /// highlight. Inline match highlighting inside rendered
-  /// widgets would require forking `markdown_widget`'s text
-  /// builder, tracked as a follow-up.
+  /// counter, the context hint under the AppBar, and the
+  /// approximate landing. Inline match highlighting inside the
+  /// rendered widget tree would require forking
+  /// `markdown_widget`'s text builder, tracked as a follow-up.
   void _jumpToMatch(int sourceOffset, Document document) {
     if (!_scrollController.hasClients) return;
     final total = document.source.length;
@@ -600,6 +655,18 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                     },
                   ),
                 ],
+        // Context hint shown under the AppBar while search mode
+        // is active: a compact line preview with the matched
+        // substring bolded + highlighted so the user can
+        // actually see which match they're cycling through,
+        // even though the scroll landing is approximate.
+        bottom:
+            (_searchActive &&
+                    dataDocument != null &&
+                    _searchMatches.isNotEmpty &&
+                    _searchController.text.isNotEmpty)
+                ? _buildSearchContextHint(dataDocument)
+                : null,
       ),
       endDrawer:
           dataDocument == null
@@ -677,3 +744,87 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
 /// out of the state class so the bottom sheet result type is a
 /// plain enum and not a nested generic.
 enum _BookmarkMenuAction { goTo, remove }
+
+/// Contextual line preview shown under the AppBar while search
+/// is active. Renders the line containing the current match
+/// with the matched substring highlighted (bold + filled
+/// secondary-container background). When the line is very
+/// long, the widget clips ~32 characters before the match and
+/// ~48 after, joined with ellipses so the matched word stays
+/// centred in the visible window — the user always sees
+/// context on both sides of the match.
+class _SearchContextHint extends StatelessWidget {
+  const _SearchContextHint({required this.context});
+
+  /// Nullable so the widget can render an empty placeholder
+  /// without an extra conditional at the call site. `null`
+  /// falls through to a zero-height bar — the caller should
+  /// only mount the widget when a context actually exists.
+  final ({String lineText, int startInLine, int endInLine, int lineIndex})?
+  context;
+
+  static const int _preWindow = 32;
+  static const int _postWindow = 48;
+
+  @override
+  Widget build(BuildContext buildContext) {
+    final theme = Theme.of(buildContext);
+    final scheme = theme.colorScheme;
+    final ctx = context;
+    if (ctx == null) {
+      return Container(height: 36, color: scheme.surfaceContainerHigh);
+    }
+    final lineText = ctx.lineText;
+    final start = ctx.startInLine.clamp(0, lineText.length);
+    final end = ctx.endInLine.clamp(start, lineText.length);
+
+    final beforeRaw = lineText.substring(0, start);
+    final match = lineText.substring(start, end);
+    final afterRaw = lineText.substring(end);
+
+    final before =
+        beforeRaw.length > _preWindow
+            ? '…${beforeRaw.substring(beforeRaw.length - _preWindow)}'
+            : beforeRaw;
+    final after =
+        afterRaw.length > _postWindow
+            ? '${afterRaw.substring(0, _postWindow)}…'
+            : afterRaw;
+
+    final baseStyle = theme.textTheme.bodySmall?.copyWith(
+      color: scheme.onSurfaceVariant,
+    );
+
+    return Container(
+      width: double.infinity,
+      color: scheme.surfaceContainerHigh,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: RichText(
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+        text: TextSpan(
+          style: baseStyle,
+          children: [
+            TextSpan(
+              text: 'L${ctx.lineIndex + 1}  ',
+              style: baseStyle?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: scheme.primary,
+              ),
+            ),
+            TextSpan(text: before),
+            TextSpan(
+              text: match,
+              style: baseStyle?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: scheme.onSecondaryContainer,
+                backgroundColor: scheme.secondaryContainer,
+              ),
+            ),
+            TextSpan(text: after),
+          ],
+        ),
+      ),
+    );
+  }
+}

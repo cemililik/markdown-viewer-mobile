@@ -84,6 +84,50 @@ void main() {
       expect(state.first.preview, 'first paragraph of the document');
     });
 
+    test('touch carries the display name onto the fresh entry', () {
+      final store = _FakeStore();
+      final container = _containerWith(store);
+
+      container
+          .read(recentDocumentsControllerProvider.notifier)
+          .touch(
+            const DocumentId('/tmp/cache/sha256hash.md'),
+            displayName: 'readme.md',
+          );
+
+      final state = container.read(recentDocumentsControllerProvider);
+      expect(state.first.displayName, 'readme.md');
+    });
+
+    test('touch preserves an existing display name when the call does not '
+        'provide a new one', () {
+      final store = _FakeStore([
+        RecentDocument(
+          documentId: const DocumentId('/tmp/cache/sha256hash.md'),
+          openedAt: DateTime.utc(2026, 4, 13),
+          displayName: 'readme.md',
+        ),
+      ]);
+      final container = _containerWith(store);
+
+      container
+          .read(recentDocumentsControllerProvider.notifier)
+          .touch(
+            const DocumentId('/tmp/cache/sha256hash.md'),
+            preview: 'updated preview',
+          );
+
+      final state = container.read(recentDocumentsControllerProvider);
+      expect(
+        state.first.displayName,
+        'readme.md',
+        reason:
+            'Re-touching an entry without a displayName argument must '
+            'keep the previously stamped name intact.',
+      );
+      expect(state.first.preview, 'updated preview');
+    });
+
     test(
       'touch preserves the pinned flag on re-open so a tap does not unpin',
       () {

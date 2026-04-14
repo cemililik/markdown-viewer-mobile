@@ -45,6 +45,30 @@ final MarkdownGenerator _markdownGenerator = MarkdownGenerator(
   ],
 );
 
+/// Task-list checkbox builder used by the [CheckBoxConfig]
+/// override the [MarkdownView] plugs into the live config.
+///
+/// The package's default `InputNode` computes its top padding
+/// as `(parentStyleHeight / 2) - 12` — a constant that assumes
+/// paragraph line height is at least 1.5 and that the host
+/// never fiddles with `PConfig.textStyle.height`. Our reading
+/// comfort settings do exactly that, which tips the top edge
+/// into negative territory on the "compact" preset and hits
+/// `RenderPadding`'s `padding.isNonNegative` assertion. A
+/// custom builder sidesteps the broken math — we render our
+/// own `Icon` with a fixed, always-positive padding that lines
+/// up with the first line of prose regardless of the active
+/// line-height multiplier.
+Widget _buildTaskListCheckbox(bool checked) {
+  return Padding(
+    padding: const EdgeInsets.only(right: 6),
+    child: Icon(
+      checked ? Icons.check_box : Icons.check_box_outline_blank,
+      size: 18,
+    ),
+  );
+}
+
 /// Renders a parsed [Document] using `markdown_widget`.
 ///
 /// `markdown_widget` already covers most of the surface we need for
@@ -143,6 +167,19 @@ class MarkdownView extends StatelessWidget {
         _buildPreConfig(theme),
         _buildTableConfig(),
         pConfigWithLineHeight,
+        // Custom task-list checkbox renderer. The package's
+        // default `InputNode` applies
+        // `EdgeInsets.fromLTRB(2, (parentStyleHeight / 2) - 12, 2, 0)`
+        // which goes negative once we override paragraph line
+        // height below the package's hard-coded 1.5 assumption
+        // (our "compact" preset is 1.35, and even "standard"
+        // at 1.55 is only 0.4 dp from the crash floor). The
+        // assertion fires as soon as a GitHub-flavored task
+        // list like `1. [x] Task` is parsed — the ForgeLM
+        // roadmap hit it on the very first render. Providing
+        // our own builder with a safe wrapper bypasses that
+        // broken padding math entirely.
+        const CheckBoxConfig(builder: _buildTaskListCheckbox),
       ],
     );
 

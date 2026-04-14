@@ -399,10 +399,14 @@ class _LibraryPopulatedBody extends ConsumerWidget {
     if (query.isEmpty) return entries;
     return entries.where((entry) {
       final path = entry.documentId.value;
-      final basename = p.basename(path).toLowerCase();
+      // Prefer the explicit display name so a search for
+      // "readme" hits a folder-sourced file whose path is a
+      // sha256 cache blob.
+      final nameSource = entry.displayName ?? p.basename(path);
+      final name = nameSource.toLowerCase();
       final parent = p.basename(p.dirname(path)).toLowerCase();
       final preview = entry.preview?.toLowerCase() ?? '';
-      return basename.contains(query) ||
+      return name.contains(query) ||
           parent.contains(query) ||
           preview.contains(query);
     }).toList();
@@ -659,10 +663,21 @@ class _RecentDocumentTile extends ConsumerWidget {
     final theme = Theme.of(context);
     final l10n = context.l10n;
     final path = entry.documentId.value;
-    final basename = p.basename(path);
+    // Prefer the explicit display name recorded at touch time —
+    // folder-sourced files live in the app cache under a
+    // sha256-hashed path, and the cache basename is an opaque
+    // blob. The display name carries the original filename from
+    // the folder enumeration so the tile stays readable.
+    final basename = entry.displayName ?? p.basename(path);
     final parent = p.basename(p.dirname(path));
     final relative = formatRelativeOpenedAt(l10n, entry.openedAt);
-    final subtitleFirstLine = parent.isEmpty ? relative : '$parent • $relative';
+    // Folder-sourced tiles have a meaningless `library_folder_files`
+    // cache directory as their dirname. Drop it from the subtitle
+    // so the line reads "3 minutes ago" instead of
+    // "library_folder_files • 3 minutes ago".
+    final displayParent = entry.displayName != null ? '' : parent;
+    final subtitleFirstLine =
+        displayParent.isEmpty ? relative : '$displayParent • $relative';
     final preview = entry.preview;
 
     return Padding(

@@ -71,6 +71,25 @@ void main() {
       },
     );
 
+    test('round-trips the display name for folder-sourced files', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final store = RecentDocumentsStoreImpl(prefs);
+
+      await store.write(<RecentDocument>[
+        RecentDocument(
+          documentId: const DocumentId(
+            '/tmp/cache/library_folder_files/abc123.md',
+          ),
+          openedAt: DateTime.utc(2026, 4, 14),
+          displayName: 'readme.md',
+        ),
+      ]);
+
+      final round = store.read();
+      expect(round, hasLength(1));
+      expect(round.first.displayName, 'readme.md');
+    });
+
     test('round-trips the pinned flag and preview snippet', () async {
       final prefs = await SharedPreferences.getInstance();
       final store = RecentDocumentsStoreImpl(prefs);

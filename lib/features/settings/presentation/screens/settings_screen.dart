@@ -31,54 +31,56 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         children: [
           _SectionHeader(title: l10n.settingsThemeTitle),
-          RadioGroup<ThemeMode>(
-            groupValue: themeMode,
-            onChanged: (value) {
-              if (value != null) {
-                ref.read(themeModeControllerProvider.notifier).set(value);
-              }
-            },
-            child: Column(
-              children: [
-                RadioListTile<ThemeMode>(
-                  title: Text(l10n.settingsThemeSystem),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            child: SegmentedButton<ThemeMode>(
+              segments: [
+                ButtonSegment(
                   value: ThemeMode.system,
+                  label: Text(l10n.settingsThemeSystem),
                 ),
-                RadioListTile<ThemeMode>(
-                  title: Text(l10n.settingsThemeLight),
+                ButtonSegment(
                   value: ThemeMode.light,
+                  label: Text(l10n.settingsThemeLight),
                 ),
-                RadioListTile<ThemeMode>(
-                  title: Text(l10n.settingsThemeDark),
+                ButtonSegment(
                   value: ThemeMode.dark,
+                  label: Text(l10n.settingsThemeDark),
                 ),
               ],
+              selected: {themeMode},
+              onSelectionChanged: (selection) {
+                ref
+                    .read(themeModeControllerProvider.notifier)
+                    .set(selection.first);
+              },
             ),
           ),
           const Divider(),
           _SectionHeader(title: l10n.settingsLanguageTitle),
-          RadioGroup<AppLocale>(
-            groupValue: locale,
-            onChanged: (value) {
-              if (value != null) {
-                ref.read(localeControllerProvider.notifier).set(value);
-              }
-            },
-            child: Column(
-              children: [
-                RadioListTile<AppLocale>(
-                  title: Text(l10n.settingsLanguageSystem),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+            child: SegmentedButton<AppLocale>(
+              segments: [
+                ButtonSegment(
                   value: AppLocale.system,
+                  label: Text(l10n.settingsLanguageSystem),
                 ),
-                RadioListTile<AppLocale>(
-                  title: Text(l10n.settingsLanguageEnglish),
+                ButtonSegment(
                   value: AppLocale.english,
+                  label: Text(l10n.settingsLanguageEnglish),
                 ),
-                RadioListTile<AppLocale>(
-                  title: Text(l10n.settingsLanguageTurkish),
+                ButtonSegment(
                   value: AppLocale.turkish,
+                  label: Text(l10n.settingsLanguageTurkish),
                 ),
               ],
+              selected: {locale},
+              onSelectionChanged: (selection) {
+                ref
+                    .read(localeControllerProvider.notifier)
+                    .set(selection.first);
+              },
             ),
           ),
           const Divider(),

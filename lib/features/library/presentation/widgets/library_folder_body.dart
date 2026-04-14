@@ -7,9 +7,12 @@ import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/core/logging/logger.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
+import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
 import 'package:markdown_viewer/features/library/data/services/folder_file_materializer.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/services/folder_enumerator.dart';
+import 'package:markdown_viewer/features/viewer/domain/entities/document.dart'
+    show DocumentId;
 import 'package:path/path.dart' as p;
 
 /// Main library body rendered when the active source is a
@@ -513,6 +516,17 @@ Future<void> openFolderEntry({
   }
 
   if (!context.mounted) return;
+
+  // Record the recent entry with its original filename BEFORE
+  // pushing the viewer. The viewer's own `ref.listen` touch
+  // fires after a successful load and preserves whichever
+  // `displayName` we stamped here, so the recents tile shows
+  // "readme.md" instead of the sha256 cache-path basename
+  // `b311fa8502d7...`.
+  ref
+      .read(recentDocumentsControllerProvider.notifier)
+      .touch(DocumentId(resolvedPath), displayName: entry.name);
+
   unawaited(context.push(ViewerRoute.location(resolvedPath)));
 }
 
