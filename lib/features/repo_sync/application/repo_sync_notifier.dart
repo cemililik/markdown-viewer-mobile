@@ -78,15 +78,6 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
     final logger = ref.read(appLoggerProvider);
     final gitHubProvider = ref.read(gitHubSyncProviderProvider);
     final store = ref.read(syncedReposStoreProvider);
-    final patStore = ref.read(patStoreProvider);
-    final dio = ref.read(syncDioProvider);
-
-    final pat = await patStore.read();
-    if (pat != null && pat.isNotEmpty) {
-      dio.options.headers['Authorization'] = 'token $pat';
-    } else {
-      dio.options.headers.remove('Authorization');
-    }
 
     state = const SyncDiscovering();
 
@@ -232,8 +223,23 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
       final batch = files.skip(i).take(concurrency).toList();
       await Future.wait(
         batch.map((file) async {
-          // Skip unchanged files detected via SHA comparison.
+          // Skip unchanged files detected via SHA comparison, but re-insert
+          // their metadata so the next sync can still detect them as unchanged.
+          // Without this re-insert, deleteFilesForRepo (called before this
+          // loop) would have wiped the records, leaving knownShas empty on the
+          // following sync and causing unnecessary re-downloads.
           if (file.sha.isNotEmpty && knownShas[file.path] == file.sha) {
+            await store.upsertFile(
+              repoId: persistedRepo.id,
+              remotePath: file.path,
+              localPath: p.join(
+                localRoot,
+                file.path.replaceAll('/', p.separator),
+              ),
+              sha: file.sha,
+              size: file.size,
+              status: 'synced',
+            );
             skippedCount++;
             notifyProgress();
             return;

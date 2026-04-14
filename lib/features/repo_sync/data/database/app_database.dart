@@ -74,6 +74,9 @@ class AppDatabase extends _$AppDatabase {
             t.subPath.equals(subPath),
       )).getSingleOrNull();
 
+  Future<SyncedRepoRow?> getRepoById(int id) =>
+      (select(syncedRepos)..where((t) => t.id.equals(id))).getSingleOrNull();
+
   Future<int> insertRepo(SyncedReposCompanion entry) =>
       into(syncedRepos).insert(entry);
 

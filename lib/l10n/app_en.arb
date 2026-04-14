@@ -813,5 +813,17 @@
   "errorNetworkUnavailable": "No network connection. Sync needs internet access.",
   "@errorNetworkUnavailable": {
     "description": "User-facing message when the device has no connectivity during a sync."
+  },
+  "errorUnsupportedProvider": "This URL is not supported. Only GitHub repository URLs are currently accepted.",
+  "@errorUnsupportedProvider": {
+    "description": "User-facing message when the entered URL is not a recognised sync provider."
+  },
+  "errorPartialSync": "Sync partially completed: {syncedCount} file(s) saved, {failedCount} failed.",
+  "@errorPartialSync": {
+    "description": "User-facing message when a sync completes with some files failing.",
+    "placeholders": {
+      "syncedCount": { "type": "int", "example": "42" },
+      "failedCount": { "type": "int", "example": "3" }
+    }
   }
 }

@@ -675,4 +675,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get errorNetworkUnavailable =>
       'No network connection. Sync needs internet access.';
+
+  @override
+  String get errorUnsupportedProvider =>
+      'This URL is not supported. Only GitHub repository URLs are currently accepted.';
+
+  @override
+  String errorPartialSync(int syncedCount, int failedCount) {
+    return 'Sync partially completed: $syncedCount file(s) saved, $failedCount failed.';
+  }
 }

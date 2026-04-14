@@ -252,5 +252,7 @@
 
   "errorRateLimited": "GitHub istek limitine ulaşıldı. Ayarlar'dan kişisel erişim belirteci ekleyin veya daha sonra tekrar deneyin.",
   "errorRepoNotFound": "Depo veya yol bulunamadı. URL'yi kontrol edip tekrar deneyin.",
-  "errorNetworkUnavailable": "Ağ bağlantısı yok. Senkronizasyon için internet gerekli."
+  "errorNetworkUnavailable": "Ağ bağlantısı yok. Senkronizasyon için internet gerekli.",
+  "errorUnsupportedProvider": "Bu URL desteklenmiyor. Şu an yalnızca GitHub depo URL'leri kabul edilmektedir.",
+  "errorPartialSync": "Senkronizasyon kısmen tamamlandı: {syncedCount} dosya kaydedildi, {failedCount} başarısız oldu."
 }

@@ -113,6 +113,17 @@ class GitHubSyncProvider implements RepoSyncProvider {
       throw const UnknownFailure(message: 'Unexpected tree API response shape');
     }
 
+    // The Trees API silently omits entries when a repo exceeds 100 000 items.
+    // Proceed rather than abort, but surface a warning so callers can inform
+    // the user that the resulting file list may be incomplete.
+    if (treeJson['truncated'] == true) {
+      throw const UnknownFailure(
+        message:
+            'Repository tree is too large for a single API call and was '
+            'truncated. Only a subset of files will be synced.',
+      );
+    }
+
     final prefix =
         locator.subPath.isEmpty
             ? ''
