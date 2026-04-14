@@ -20,6 +20,7 @@ import 'package:markdown_viewer/features/viewer/presentation/widgets/toc_drawer.
 import 'package:markdown_viewer/features/viewer/presentation/widgets/viewer_reading_panel.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:path/path.dart' as p;
+import 'package:share_plus/share_plus.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 /// Screen that loads and renders a single markdown document.
@@ -543,6 +544,16 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     );
   }
 
+  /// Invokes the platform share sheet for the active document's
+  /// markdown source text. The filename is used as the subject so
+  /// receiving apps (email, notes) can pre-fill a title.
+  void _shareDocument(Document document) {
+    final title = _titleFor(widget.documentId, '');
+    SharePlus.instance.share(
+      ShareParams(text: document.source, subject: title),
+    );
+  }
+
   /// Shows a snackbar whose content reads its localized string on
   /// every rebuild.
   void _showLocalizedSnackBar(String Function(AppLocalizations l10n) resolve) {
@@ -683,6 +694,14 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                   _searchActive
                       ? const <Widget>[]
                       : [
+                        IconButton(
+                          icon: const Icon(Icons.share_outlined),
+                          tooltip: l10n.viewerShareTooltip,
+                          onPressed:
+                              dataDocument == null
+                                  ? null
+                                  : () => _shareDocument(dataDocument),
+                        ),
                         IconButton(
                           icon: const Icon(Icons.search),
                           tooltip: l10n.viewerSearchOpenTooltip,

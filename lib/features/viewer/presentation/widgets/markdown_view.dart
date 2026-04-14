@@ -257,19 +257,21 @@ class MarkdownView extends StatelessWidget {
           mq.textScaler.scale(readingSettings.fontScale),
         ),
       ),
-      child: Scrollbar(
-        controller: controller,
-        child: SingleChildScrollView(
+      child: SelectionArea(
+        child: Scrollbar(
           controller: controller,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: readingSettings.width.maxWidth,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: columnChildren,
+          child: SingleChildScrollView(
+            controller: controller,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: readingSettings.width.maxWidth,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: columnChildren,
+                ),
               ),
             ),
           ),

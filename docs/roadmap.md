@@ -778,7 +778,7 @@ lands the three features the user prioritized in one commit:
 - [ ] Immersive scroll (AppBar + FAB auto-hide on scroll)
 - [ ] Sepia reading theme
 - [ ] Keep-screen-on toggle
-- [ ] Text selection + copy + share
+- [x] Text selection + copy + share
 - [ ] In-doc anchor links
 - [ ] Footnote popup sheets
 - [ ] Reading time estimate

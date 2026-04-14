@@ -349,6 +349,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewerBookmarkMenuRemove => 'Remove bookmark';
 
   @override
+  String get viewerShareTooltip => 'Share document';
+
+  @override
   String get viewerTocOpenTooltip => 'Table of contents';
 
   @override

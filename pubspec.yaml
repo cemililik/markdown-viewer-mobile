@@ -92,6 +92,7 @@ dependencies:
   # UIApplication.isIdleTimerDisabled on iOS and
   # PowerManager.WakeLock on Android — no special entitlements needed.
   wakelock_plus: ^1.2.11
+  share_plus: ^12.0.2
 
 dev_dependencies:
   flutter_test:

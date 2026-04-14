@@ -686,6 +686,12 @@ abstract class AppLocalizations {
   /// **'Remove bookmark'**
   String get viewerBookmarkMenuRemove;
 
+  /// Tooltip on the viewer AppBar share action.
+  ///
+  /// In en, this message translates to:
+  /// **'Share document'**
+  String get viewerShareTooltip;
+
   /// Tooltip on the viewer AppBar action that opens the right-side TOC drawer.
   ///
   /// In en, this message translates to:
