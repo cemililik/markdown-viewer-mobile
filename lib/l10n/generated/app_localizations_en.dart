@@ -357,6 +357,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewerShareTooltip => 'Share document';
 
   @override
+  String get viewerShareMenuTitle => 'Share as…';
+
+  @override
+  String get viewerShareMenuText => 'Share as text';
+
+  @override
+  String get viewerShareMenuPdf => 'Export as PDF';
+
+  @override
+  String get viewerPdfGenerating => 'Generating PDF…';
+
+  @override
+  String get viewerPdfError => 'Could not generate PDF. Please try again.';
+
+  @override
   String get viewerTocOpenTooltip => 'Table of contents';
 
   @override

@@ -127,6 +127,11 @@
   "viewerBookmarkMenuRemove": "İşareti kaldır",
 
   "viewerShareTooltip": "Belgeyi paylaş",
+  "viewerShareMenuTitle": "Farklı paylaş…",
+  "viewerShareMenuText": "Metin olarak paylaş",
+  "viewerShareMenuPdf": "PDF olarak dışa aktar",
+  "viewerPdfGenerating": "PDF oluşturuluyor…",
+  "viewerPdfError": "PDF oluşturulamadı. Lütfen tekrar deneyin.",
   "viewerTocOpenTooltip": "İçindekiler",
   "viewerTocEmpty": "Bu belgede başlık yok",
   "viewerSearchOpenTooltip": "Belgede ara",

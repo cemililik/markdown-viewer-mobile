@@ -354,6 +354,21 @@ class AppLocalizationsTr extends AppLocalizations {
   String get viewerShareTooltip => 'Belgeyi paylaş';
 
   @override
+  String get viewerShareMenuTitle => 'Farklı paylaş…';
+
+  @override
+  String get viewerShareMenuText => 'Metin olarak paylaş';
+
+  @override
+  String get viewerShareMenuPdf => 'PDF olarak dışa aktar';
+
+  @override
+  String get viewerPdfGenerating => 'PDF oluşturuluyor…';
+
+  @override
+  String get viewerPdfError => 'PDF oluşturulamadı. Lütfen tekrar deneyin.';
+
+  @override
   String get viewerTocOpenTooltip => 'İçindekiler';
 
   @override
