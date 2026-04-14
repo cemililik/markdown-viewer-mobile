@@ -98,8 +98,14 @@ class FolderFileMaterializer {
     final legacyHash = sha256.convert(sourcePath.codeUnits).toString();
     if (legacyHash != hash) {
       final legacyFile = File(p.join(folderCacheDir.path, '$legacyHash$ext'));
-      if (legacyFile.existsSync()) {
+      // Best-effort cleanup: skip the prior existsSync() check to avoid a
+      // TOCTOU race (file deleted between the check and the delete call).
+      // FileSystemException is benign here — the orphan simply stays in the
+      // cache until the next open, which is harmless.
+      try {
         await legacyFile.delete();
+      } on FileSystemException {
+        // Ignore — cleanup is non-critical.
       }
     }
 

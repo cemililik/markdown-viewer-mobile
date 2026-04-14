@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart' as hl_dark;
 import 'package:flutter_highlight/themes/atom-one-light.dart' as hl_light;
 import 'package:markdown/markdown.dart' as md;
+import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
 import 'package:markdown_viewer/features/viewer/application/markdown_extensions/math_syntax.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_view.dart';
+import 'package:markdown_viewer/features/viewer/presentation/widgets/footnote_view.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/math_view.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/mermaid_block.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/search_highlight_syntax.dart';
@@ -45,6 +47,21 @@ final MarkdownGenerator _markdownGenerator = MarkdownGenerator(
     ...buildAdmonitionSpanNodeGenerators(),
   ],
 );
+
+/// Estimates reading time in minutes at 200 words per minute.
+///
+/// Word count is derived from the raw markdown source — the handful of
+/// syntax characters (`#`, `*`, …) counted as extra "words" introduce
+/// at most a 2–3 % bias, which is well within the natural variance of
+/// reading speed and not worth the cost of a full-text strip.
+///
+/// Returns at least 1 so even a one-line document shows "1 min read".
+int _estimateReadingMinutes(String source) {
+  final wordCount =
+      source.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+  final minutes = (wordCount / 200).ceil();
+  return minutes < 1 ? 1 : minutes;
+}
 
 /// Task-list checkbox builder used by the [CheckBoxConfig]
 /// override the [MarkdownView] plugs into the live config.
@@ -245,19 +262,33 @@ class MarkdownView extends StatelessWidget {
     final activeHighlight =
         highlight != null && highlight.matchOffsets.isNotEmpty;
 
-    final sourceToRender =
-        activeHighlight
-            ? buildHighlightedSource(
-              source: document.source,
-              matchOffsets: highlight.matchOffsets,
-              queryLength: highlight.queryLength,
-              currentMatchIndex: highlight.currentMatchIndex,
-            )
-            : document.source;
+    // Pre-extract footnotes so the inline syntax can look up content
+    // on tap. Empty when the document has no footnote definitions.
+    final footnotes = extractFootnotes(document.source);
+    final hasFootnotes = footnotes.isNotEmpty;
+
+    // Build the source string that will be fed to the markdown pipeline:
+    // 1. Apply search-highlight PUA markers (against the original source
+    //    so the pre-computed offsets stay valid).
+    // 2. Strip footnote definition blocks so they do not appear as
+    //    paragraph text — they are shown in popup sheets instead.
+    var sourceToRender = document.source;
+    if (activeHighlight) {
+      sourceToRender = buildHighlightedSource(
+        source: sourceToRender,
+        matchOffsets: highlight.matchOffsets,
+        queryLength: highlight.queryLength,
+        currentMatchIndex: highlight.currentMatchIndex,
+      );
+    }
+    if (hasFootnotes) {
+      sourceToRender = stripFootnoteDefs(sourceToRender);
+    }
 
     final scheme = theme.colorScheme;
+    final needsCustomGenerator = activeHighlight || hasFootnotes;
     final generator =
-        activeHighlight
+        needsCustomGenerator
             ? MarkdownGenerator(
               blockSyntaxList: const [
                 DisplayMathBlockSyntax(),
@@ -265,15 +296,25 @@ class MarkdownView extends StatelessWidget {
               ],
               inlineSyntaxList: [
                 ...buildMathInlineSyntaxes(),
-                ...buildSearchHighlightInlineSyntaxes(),
+                if (hasFootnotes) ...buildFootnoteInlineSyntaxes(),
+                if (activeHighlight) ...buildSearchHighlightInlineSyntaxes(),
               ],
               generators: [
                 ...buildMathSpanNodeGenerators(),
                 ...buildAdmonitionSpanNodeGenerators(),
-                ...buildSearchHighlightGenerators(
-                  normalColor: scheme.primary.withAlpha(38),
-                  currentColor: scheme.primary.withAlpha(110),
-                ),
+                if (hasFootnotes)
+                  ...buildFootnoteGenerators(
+                    footnotes: footnotes,
+                    color: scheme.primary,
+                    onTap:
+                        (id, content) =>
+                            showFootnoteSheet(context, id, content),
+                  ),
+                if (activeHighlight)
+                  ...buildSearchHighlightGenerators(
+                    normalColor: scheme.primary.withAlpha(38),
+                    currentColor: scheme.primary.withAlpha(110),
+                  ),
               ],
             )
             : _markdownGenerator;
@@ -288,6 +329,23 @@ class MarkdownView extends StatelessWidget {
     // lands on the block that contains the current match.
     final keys = blockKeys;
     final columnChildren = <Widget>[];
+
+    // Reading-time estimate — sits above the first markdown block so
+    // it scrolls away naturally as the user starts reading.
+    columnChildren.add(
+      Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Text(
+          context.l10n.viewerReadingTime(
+            _estimateReadingMinutes(document.source),
+          ),
+          style: theme.textTheme.labelSmall?.copyWith(
+            color: scheme.onSurfaceVariant,
+          ),
+        ),
+      ),
+    );
+
     for (var i = 0; i < widgets.length; i += 1) {
       final key = keys?[i];
       if (key != null) {

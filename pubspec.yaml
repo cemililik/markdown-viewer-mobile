@@ -97,6 +97,8 @@ dependencies:
   # PowerManager.WakeLock on Android — no special entitlements needed.
   wakelock_plus: ^1.2.11
   share_plus: ^12.0.2
+  pdf: ^3.12.0
+  printing: ^5.14.3
 
 dev_dependencies:
   flutter_test:
@@ -104,6 +106,7 @@ dev_dependencies:
   integration_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  flutter_native_splash: ^2.4.3
 
   # ── Codegen ─────────────────────────────────────────────────────────
   build_runner: ^2.13.1

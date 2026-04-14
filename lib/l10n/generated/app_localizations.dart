@@ -638,6 +638,12 @@ abstract class AppLocalizations {
   /// **'Reset view'**
   String get mermaidReset;
 
+  /// Reading-time estimate shown at the top of the document content. Always shows at least 1 min.
+  ///
+  /// In en, this message translates to:
+  /// **'{minutes} min read'**
+  String viewerReadingTime(int minutes);
+
   /// Tooltip for the floating action button that scrolls a markdown document back to the very top.
   ///
   /// In en, this message translates to:
@@ -691,6 +697,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Share document'**
   String get viewerShareTooltip;
+
+  /// Title of the bottom sheet that lets the user choose how to share the document.
+  ///
+  /// In en, this message translates to:
+  /// **'Share as…'**
+  String get viewerShareMenuTitle;
+
+  /// Option in the share menu that shares the raw markdown source.
+  ///
+  /// In en, this message translates to:
+  /// **'Share as text'**
+  String get viewerShareMenuText;
+
+  /// Option in the share menu that converts the document to PDF and opens the share sheet.
+  ///
+  /// In en, this message translates to:
+  /// **'Export as PDF'**
+  String get viewerShareMenuPdf;
+
+  /// Snackbar message shown while the PDF is being generated.
+  ///
+  /// In en, this message translates to:
+  /// **'Generating PDF…'**
+  String get viewerPdfGenerating;
+
+  /// Snackbar message shown when PDF generation fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not generate PDF. Please try again.'**
+  String get viewerPdfError;
 
   /// Tooltip on the viewer AppBar action that opens the right-side TOC drawer.
   ///

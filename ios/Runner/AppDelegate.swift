@@ -23,5 +23,10 @@ import UIKit
     ) {
       LibraryFoldersChannel.register(with: registrar.messenger())
     }
+    if let registrar = engineBridge.pluginRegistry.registrar(
+      forPlugin: "FileOpenChannel"
+    ) {
+      FileOpenChannel.register(with: registrar.messenger())
+    }
   }
 }

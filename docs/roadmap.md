@@ -780,9 +780,9 @@ lands the three features the user prioritized in one commit:
 - [x] Keep-screen-on toggle
 - [x] Text selection + copy + share
 - [x] In-doc anchor links
-- [ ] Footnote popup sheets
-- [ ] Reading time estimate
-- [ ] Haptic feedback on jump / save / back-to-top
+- [x] Footnote popup sheets
+- [x] Reading time estimate
+- [x] Haptic feedback on jump / save / back-to-top
 - [ ] Swipe between adjacent files
 - [ ] Share-intent import handling
 - [x] **Table of contents drawer** — shipped in Phase 3.1 as
@@ -835,11 +835,26 @@ comfortable on phone and tablet.
 
 ## Phase 4 — Platform Integration
 
-- Register as default `.md` handler on Android
-- iOS Files app integration
-- Share-to-PDF export
-- App icons, splash screens, store assets
-- Accessibility audit pass
+- [x] Register as default `.md` handler on Android — `ACTION_VIEW`
+      intent-filters for `text/markdown`, `text/x-markdown`, and
+      `text/plain` with `.md`/`.markdown` path patterns; `ACTION_SEND`
+      for markdown MIME types. `FileOpenChannel` (`EventChannel`) handles
+      both `file://` and `content://` URIs, copies content streams to
+      the app cache dir, and buffers the path until the Dart stream
+      subscribes.
+- [x] iOS Files app integration — `CFBundleDocumentTypes` +
+      `UTImportedTypeDeclarations` (net.daringfireball.markdown) +
+      `UIFileSharingEnabled` in `Info.plist`; `FileOpenChannel.swift`
+      singleton delivers URLs from `SceneDelegate`
+      `scene(_:openURLContexts:)` and `scene(_:willConnectTo:options:)`.
+      Flutter-side `StreamProvider<String>` (`incomingFileProvider`) +
+      `ref.listen` in `app.dart` navigates to `ViewerRoute` on arrival.
+- [x] Splash screens — `flutter_native_splash` generates light/dark
+      launch backgrounds; Android 12+ shows the launcher icon on the
+      brand-colour (`#3B5BDB`) circle per Material You guidelines.
+- [ ] Share-to-PDF export
+- [ ] App icons, store assets
+- [ ] Accessibility audit pass
 
 ## Phase 4.5 — Repo Sync
 
@@ -862,6 +877,12 @@ repo syncs in < 30s on Wi-Fi, with progress shown and resumable on failure.
 
 ## Phase 5 — Hardening & Release
 
+- [ ] Mermaid diagrams in PDF export — render each diagram through the
+      existing `MermaidRenderer`, rasterize the SVG via `flutter_svg` →
+      `ui.Image` → PNG, embed via `pw.MemoryImage`. Requires async
+      coordination between the PDF builder and the WebView render pipeline.
+      PDF currently shows a placeholder: *"Diagram not included in PDF —
+      open in Markdown Viewer to view"*.
 - Full a11y audit (TalkBack, VoiceOver)
 - Performance regression suite enforcement
 - Memory leak profiling

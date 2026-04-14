@@ -322,6 +322,11 @@ class AppLocalizationsTr extends AppLocalizations {
   String get mermaidReset => 'Görünümü sıfırla';
 
   @override
+  String viewerReadingTime(int minutes) {
+    return '$minutes dk okuma';
+  }
+
+  @override
   String get viewerBackToTopTooltip => 'Başa dön';
 
   @override
@@ -347,6 +352,21 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get viewerShareTooltip => 'Belgeyi paylaş';
+
+  @override
+  String get viewerShareMenuTitle => 'Farklı paylaş…';
+
+  @override
+  String get viewerShareMenuText => 'Metin olarak paylaş';
+
+  @override
+  String get viewerShareMenuPdf => 'PDF olarak dışa aktar';
+
+  @override
+  String get viewerPdfGenerating => 'PDF oluşturuluyor…';
+
+  @override
+  String get viewerPdfError => 'PDF oluşturulamadı. Lütfen tekrar deneyin.';
 
   @override
   String get viewerTocOpenTooltip => 'İçindekiler';

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/app/router.dart';
@@ -11,6 +12,7 @@ import 'package:markdown_viewer/features/library/application/recent_documents_pr
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/viewer_document.dart';
+import 'package:markdown_viewer/features/viewer/data/services/pdf_exporter.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/reading_position.dart';
 import 'package:markdown_viewer/features/viewer/presentation/failure_message_mapper.dart';
@@ -20,6 +22,7 @@ import 'package:markdown_viewer/features/viewer/presentation/widgets/viewer_read
 import 'package:markdown_viewer/features/viewer/presentation/widgets/viewer_search_bar.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:path/path.dart' as p;
+import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
@@ -171,6 +174,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   }
 
   void _scrollToTop() {
+    HapticFeedback.lightImpact().ignore();
     final controller = _scrollController;
     if (controller == null || !controller.hasClients) return;
     controller.animateTo(
@@ -215,6 +219,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// documents — so they learn that long-press opens the remove
   /// menu, then never see the hint again.
   Future<void> _saveBookmark() async {
+    HapticFeedback.mediumImpact().ignore();
     final store = ref.read(readingPositionStoreProvider);
     final settingsStore = ref.read(settingsStoreProvider);
     final hadPrevious = store.read(widget.documentId) != null;
@@ -298,6 +303,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       await _saveBookmark();
       return;
     }
+    HapticFeedback.selectionClick().ignore();
     final choice = await showModalBottomSheet<_BookmarkMenuAction>(
       context: context,
       showDragHandle: true,
@@ -450,6 +456,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// Advances to the next match, wrapping around at the end.
   void _nextMatch(Document document) {
     if (_searchMatches.isEmpty) return;
+    HapticFeedback.selectionClick().ignore();
     final nextIndex = (_currentMatchIndex + 1) % _searchMatches.length;
     setState(() => _currentMatchIndex = nextIndex);
     _jumpToMatch(_searchMatches[nextIndex], document);
@@ -458,6 +465,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// Retreats to the previous match, wrapping around at the start.
   void _previousMatch(Document document) {
     if (_searchMatches.isEmpty) return;
+    HapticFeedback.selectionClick().ignore();
     final prevIndex =
         (_currentMatchIndex - 1 + _searchMatches.length) %
         _searchMatches.length;
@@ -503,14 +511,82 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     }
   }
 
-  /// Invokes the platform share sheet for the active document's
-  /// markdown source text. The filename is used as the subject so
-  /// receiving apps (email, notes) can pre-fill a title.
-  void _shareDocument(Document document) {
+  /// Shows a bottom sheet that lets the user choose between sharing the
+  /// raw markdown source or exporting a PDF via the platform share sheet.
+  void _showShareMenu(Document document) {
+    final l10n = context.l10n;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    l10n.viewerShareMenuTitle,
+                    style: Theme.of(sheetContext).textTheme.titleMedium,
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.text_snippet_outlined),
+                  title: Text(l10n.viewerShareMenuText),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    _shareAsText(document);
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.picture_as_pdf_outlined),
+                  title: Text(l10n.viewerShareMenuPdf),
+                  onTap: () {
+                    Navigator.of(sheetContext).pop();
+                    _shareAsPdf(document);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _shareAsText(Document document) {
     final title = _titleFor(widget.documentId, '');
     SharePlus.instance.share(
       ShareParams(text: document.source, subject: title),
     );
+  }
+
+  Future<void> _shareAsPdf(Document document) async {
+    final l10n = context.l10n;
+    _showLocalizedSnackBar((_) => l10n.viewerPdfGenerating);
+    try {
+      final fallbackTitle = _titleFor(widget.documentId, '');
+      final bytes = await exportToPdf(fallbackTitle, document.source);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      // Prefer the document's H1 as the filename so hash-based filenames
+      // (e.g. files opened via share-intent) get a meaningful PDF name.
+      final displayTitle = extractPdfTitle(document.source, fallbackTitle);
+      // Strip characters that are invalid in filenames on iOS / Android.
+      final safeName =
+          displayTitle
+              .replaceAll(RegExp(r'\.(md|markdown)$', caseSensitive: false), '')
+              .replaceAll(RegExp(r'[<>:"/\\|?*]'), '-')
+              .trim();
+      await Printing.sharePdf(bytes: bytes, filename: '$safeName.pdf');
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      _showLocalizedSnackBar((_) => l10n.viewerPdfError);
+    }
   }
 
   /// Shows a snackbar whose content reads its localized string on
@@ -627,7 +703,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                   onPressed:
                       dataDocument == null
                           ? null
-                          : () => _shareDocument(dataDocument),
+                          : () => _showShareMenu(dataDocument),
                 ),
                 IconButton(
                   icon: const Icon(Icons.search),

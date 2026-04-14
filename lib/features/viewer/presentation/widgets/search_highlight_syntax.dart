@@ -49,6 +49,11 @@ String buildHighlightedSource({
     final start = matchOffsets[i];
     final end = start + queryLength;
 
+    // Skip overlapping matches — the scanner advances by 1 character at a
+    // time so two consecutive offsets can refer to the same text region
+    // (e.g. "aa" in "aaa" yields offsets [0, 1]). A start behind the
+    // current cursor would make substring(cursor, start) throw a RangeError.
+    if (start < cursor) continue;
     if (_overlapsAnyRange(start, end, codeRanges)) continue;
 
     buffer.write(source.substring(cursor, start));
@@ -158,7 +163,7 @@ List<md.InlineSyntax> buildSearchHighlightInlineSyntaxes() => [
 ///
 /// Typical values:
 /// - [normalColor]  — `colorScheme.primary.withAlpha(38)`  (≈ 15 % opacity)
-/// - [currentColor] — `colorScheme.primary.withAlpha(102)` (≈ 40 % opacity)
+/// - [currentColor] — `colorScheme.primary.withAlpha(110)` (≈ 43 % opacity)
 List<SpanNodeGeneratorWithTag> buildSearchHighlightGenerators({
   required Color normalColor,
   required Color currentColor,

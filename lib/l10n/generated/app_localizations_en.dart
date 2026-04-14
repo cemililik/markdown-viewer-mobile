@@ -324,6 +324,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mermaidReset => 'Reset view';
 
   @override
+  String viewerReadingTime(int minutes) {
+    return '$minutes min read';
+  }
+
+  @override
   String get viewerBackToTopTooltip => 'Back to top';
 
   @override
@@ -350,6 +355,21 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get viewerShareTooltip => 'Share document';
+
+  @override
+  String get viewerShareMenuTitle => 'Share as…';
+
+  @override
+  String get viewerShareMenuText => 'Share as text';
+
+  @override
+  String get viewerShareMenuPdf => 'Export as PDF';
+
+  @override
+  String get viewerPdfGenerating => 'Generating PDF…';
+
+  @override
+  String get viewerPdfError => 'Could not generate PDF. Please try again.';
 
   @override
   String get viewerTocOpenTooltip => 'Table of contents';

@@ -383,6 +383,15 @@
   "@mermaidReset": {
     "description": "Tooltip / semantic label for the button that resets a panned or zoomed mermaid diagram back to its default position."
   },
+  "viewerReadingTime": "{minutes} min read",
+  "@viewerReadingTime": {
+    "description": "Reading-time estimate shown at the top of the document content. Always shows at least 1 min.",
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
   "viewerBackToTopTooltip": "Back to top",
   "@viewerBackToTopTooltip": {
     "description": "Tooltip for the floating action button that scrolls a markdown document back to the very top."
@@ -419,6 +428,26 @@
   "viewerShareTooltip": "Share document",
   "@viewerShareTooltip": {
     "description": "Tooltip on the viewer AppBar share action."
+  },
+  "viewerShareMenuTitle": "Share as…",
+  "@viewerShareMenuTitle": {
+    "description": "Title of the bottom sheet that lets the user choose how to share the document."
+  },
+  "viewerShareMenuText": "Share as text",
+  "@viewerShareMenuText": {
+    "description": "Option in the share menu that shares the raw markdown source."
+  },
+  "viewerShareMenuPdf": "Export as PDF",
+  "@viewerShareMenuPdf": {
+    "description": "Option in the share menu that converts the document to PDF and opens the share sheet."
+  },
+  "viewerPdfGenerating": "Generating PDF…",
+  "@viewerPdfGenerating": {
+    "description": "Snackbar message shown while the PDF is being generated."
+  },
+  "viewerPdfError": "Could not generate PDF. Please try again.",
+  "@viewerPdfError": {
+    "description": "Snackbar message shown when PDF generation fails."
   },
   "viewerTocOpenTooltip": "Table of contents",
   "@viewerTocOpenTooltip": {

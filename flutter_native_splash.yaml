@@ -1,0 +1,18 @@
+# flutter_native_splash configuration.
+# Run `dart run flutter_native_splash:create` to apply.
+# Run `dart run flutter_native_splash:remove` to revert to defaults.
+#
+# Uses the app brand colour (#3B5BDB, matching AppTheme._seed) for the
+# Android 12+ splash background. On older Android and on iOS the system
+# shows the launcher icon against a white / dark-surface background.
+flutter_native_splash:
+  color: "#FFFFFF"
+  color_dark: "#1C1B1F"
+
+  # Android 12+ "themed" splash: the icon is displayed on a brand-
+  # coloured circle as per Material You guidelines.
+  android_12:
+    color: "#FFFFFF"
+    color_dark: "#1C1B1F"
+    icon_background_color: "#3B5BDB"
+    icon_background_color_dark: "#3B5BDB"
