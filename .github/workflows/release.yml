@@ -117,6 +117,12 @@ jobs:
   # signing jobs behind a green build.
   verify:
     name: Lint, analyze, test
+    # DEBUG: temporarily skipped while the iOS TestFlight upload path
+    # is being diagnosed in isolation. Re-enable by deleting the
+    # `if: false` line below (and the matching ones on
+    # android-release and github-release) once the iOS upload is
+    # known-good.
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs: version
@@ -161,6 +167,8 @@ jobs:
   # ── 3. Android: signed AAB → Play Console internal track ─────────────
   android-release:
     name: Android (AAB → Play Console internal)
+    # DEBUG: temporarily skipped — see the note on `verify`.
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: [version, verify]
@@ -301,7 +309,10 @@ jobs:
     name: iOS (IPA → TestFlight)
     runs-on: macos-latest
     timeout-minutes: 60
-    needs: [version, verify]
+    # DEBUG: temporarily only depends on `version` while iOS is being
+    # diagnosed in isolation — `verify` is disabled via `if: false`
+    # above, so listing it here would block this job from running.
+    needs: [version]
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -339,6 +350,38 @@ jobs:
           api-key-id: ${{ secrets.APPSTORE_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_PRIVATE_KEY }}
 
+      # DEBUG: surface the exact state of the runner keychain and the
+      # downloaded provisioning profile before we spend time on a
+      # full Flutter archive. The `|| true` tail on each command stops
+      # a missing directory or a parsing glitch from turning this
+      # diagnostic into a hard failure — we want the log output
+      # regardless of outcome.
+      - name: Diagnostic — keychain identities and provisioning profiles
+        run: |
+          echo "=============================================="
+          echo "== Signing identities in default keychain   =="
+          echo "=============================================="
+          security find-identity -v -p codesigning || true
+          echo ""
+          echo "=============================================="
+          echo "== Provisioning profiles in ~/Library       =="
+          echo "=============================================="
+          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/ 2>&1 || true
+          echo ""
+          for profile in ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision; do
+            if [ -f "$profile" ]; then
+              echo "-- $(basename "$profile") --"
+              security cms -D -i "$profile" 2>/dev/null > /tmp/profile.plist || true
+              echo "Name:                $(plutil -extract Name raw /tmp/profile.plist 2>/dev/null || echo '?')"
+              echo "UUID:                $(plutil -extract UUID raw /tmp/profile.plist 2>/dev/null || echo '?')"
+              echo "TeamName:            $(plutil -extract TeamName raw /tmp/profile.plist 2>/dev/null || echo '?')"
+              echo "AppIDName:           $(plutil -extract AppIDName raw /tmp/profile.plist 2>/dev/null || echo '?')"
+              echo "Application-ID:      $(plutil -extract Entitlements.application-identifier raw /tmp/profile.plist 2>/dev/null || echo '?')"
+              echo "ExpirationDate:      $(plutil -extract ExpirationDate raw /tmp/profile.plist 2>/dev/null || echo '?')"
+              echo ""
+            fi
+          done
+
       - name: Build signed IPA
         # --export-options-plist points at the ExportOptions.plist
         # committed in `ios/` — that file pins the teamID, signing
@@ -350,13 +393,97 @@ jobs:
             --build-number=${{ needs.version.outputs.build_number }} \
             --export-options-plist=ios/ExportOptions.plist
 
-      - name: Upload to TestFlight
-        uses: apple-actions/upload-testflight-build@1fb41afa66075b5d62c79cb623c6c4999334e185 # v4.0.0
-        with:
-          app-path: build/ios/ipa/markdown_viewer.ipa
-          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
-          api-key-id: ${{ secrets.APPSTORE_KEY_ID }}
-          api-private-key: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+      # DEBUG: confirm the freshly built IPA is well-formed and signed
+      # by the certificate we expected. `codesign --verify` catches a
+      # broken signing chain before we waste an upload round-trip.
+      - name: Diagnostic — verify IPA signature and metadata
+        run: |
+          echo "=============================================="
+          echo "== IPA file details                          =="
+          echo "=============================================="
+          ls -la build/ios/ipa/ || true
+          echo ""
+          IPA=build/ios/ipa/markdown_viewer.ipa
+          if [ ! -f "$IPA" ]; then
+            echo "::error::$IPA does not exist; earlier build step likely failed silently"
+            exit 1
+          fi
+          echo "file: $(file "$IPA")"
+          echo ""
+          echo "=============================================="
+          echo "== Extracting .app from .ipa for inspection =="
+          echo "=============================================="
+          WORK=$(mktemp -d)
+          unzip -q "$IPA" -d "$WORK"
+          APP_PATH=$(find "$WORK/Payload" -maxdepth 1 -name "*.app" | head -1)
+          echo "App bundle: $APP_PATH"
+          echo ""
+          echo "== Info.plist (key fields) =="
+          INFO="$APP_PATH/Info.plist"
+          for key in CFBundleIdentifier CFBundleShortVersionString CFBundleVersion CFBundleExecutable MinimumOSVersion; do
+            echo "  $key = $(plutil -extract "$key" raw "$INFO" 2>/dev/null || echo '?')"
+          done
+          echo ""
+          echo "== codesign --display =="
+          codesign --display --verbose=4 "$APP_PATH" 2>&1 || true
+          echo ""
+          echo "== codesign --verify --deep --strict =="
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH" 2>&1 || true
+
+      # DEBUG: altool --validate-app is the App Store Connect API's
+      # diagnostic surface. Unlike iTMSTransporter (which collapses
+      # every failure mode into OSStatus -10814), altool returns a
+      # structured JSON describing WHY an upload would be rejected —
+      # missing agreements, missing DSA trader info, app record not
+      # found, bundle ID mismatch, provisioning profile not ready,
+      # etc. We run validate first so the actual upload step below
+      # has a baseline of "the server accepts this IPA".
+      #
+      # `|| true` on the altool invocation because we want the pipeline
+      # to continue to the upload step even if validate reports
+      # warnings — the log output is the signal.
+      - name: Diagnostic — altool validate-app (dry-run upload)
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+          APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+        run: |
+          set -uo pipefail
+          mkdir -p ~/.appstoreconnect/private_keys
+          KEY_FILE=~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_KEY_ID}.p8
+          printf '%s' "$APPSTORE_PRIVATE_KEY" > "$KEY_FILE"
+          chmod 600 "$KEY_FILE"
+          echo "=============================================="
+          echo "== xcrun altool --validate-app              =="
+          echo "=============================================="
+          xcrun altool --validate-app \
+            --type ios \
+            --file build/ios/ipa/markdown_viewer.ipa \
+            --apiKey "$APPSTORE_KEY_ID" \
+            --apiIssuer "$APPSTORE_ISSUER_ID" \
+            --verbose || echo "validate-app exit: $?"
+
+      # Replaces the apple-actions/upload-testflight-build action —
+      # that action uses iTMSTransporter under the hood, which has a
+      # history of returning OSStatus -10814 on arm64 macOS runners
+      # regardless of the real failure cause. altool's upload-app
+      # command exits with a human-readable JSON error envelope that
+      # is trivially diagnosable.
+      - name: Upload to TestFlight via altool
+        env:
+          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
+          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          echo "=============================================="
+          echo "== xcrun altool --upload-app                =="
+          echo "=============================================="
+          xcrun altool --upload-app \
+            --type ios \
+            --file build/ios/ipa/markdown_viewer.ipa \
+            --apiKey "$APPSTORE_KEY_ID" \
+            --apiIssuer "$APPSTORE_ISSUER_ID" \
+            --verbose
 
       - name: Upload IPA artifact for the GitHub Release job
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -369,6 +496,10 @@ jobs:
   # ── 5. GitHub Release with both artifacts attached ───────────────────
   github-release:
     name: Publish GitHub Release
+    # DEBUG: temporarily skipped — see the note on `verify`. Needs
+    # android-release artifacts which are disabled in this debug
+    # mode, so running it would fail on a missing download.
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [version, android-release, ios-release]
