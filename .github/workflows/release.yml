@@ -1,0 +1,398 @@
+name: Release
+
+# Fires on any tag matching `vX.Y.Z` (or a pre-release suffix like
+# `vX.Y.Z-rc.1`). The regular `ci.yml` still runs on branch pushes
+# and pull requests — this workflow is purely the production signing
+# + store upload path and is gated on a tag existing.
+on:
+  push:
+    tags:
+      - 'v*'
+
+# Never cancel an in-flight release — a half-finished TestFlight or
+# Play Store upload is worse than a slightly delayed one. The
+# concurrency group is scoped to the workflow name alone so a second
+# tag pushed while the first is still processing is queued rather
+# than aborting the first.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+# Third-party actions are pinned to full-length commit SHAs with the
+# release tag in a trailing comment, mirroring the convention
+# established in `ci.yml`. Bump both the SHA and the comment in the
+# same commit whenever upgrading an action.
+
+env:
+  FLUTTER_VERSION: '3.41.4'
+  JAVA_VERSION: '17'
+  IOS_BUNDLE_ID: com.cemililik.markdownViewer
+  ANDROID_PACKAGE_NAME: com.cemililik.markdown_viewer
+
+jobs:
+  # ── 1. Parse the tag into a semver string + build number ─────────────
+  version:
+    name: Resolve version from tag
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version_name: ${{ steps.parse.outputs.version_name }}
+      build_number: ${{ steps.parse.outputs.build_number }}
+      release_notes: ${{ steps.notes.outputs.release_notes }}
+      is_prerelease: ${{ steps.parse.outputs.is_prerelease }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          # Need the full history so `git log <prev>..<tag>` can
+          # reconstruct the commit list when the tag has no
+          # annotation.
+          fetch-depth: 0
+
+      - name: Parse tag into version_name + build_number
+        id: parse
+        # Strip the leading `v` so `1.2.3` ends up in Flutter's
+        # `--build-name` flag, which Info.plist and build.gradle
+        # both already thread via FLUTTER_BUILD_NAME /
+        # FLUTTER_BUILD_NUMBER. Build number is the GitHub run
+        # number so re-tagging the same version (if a prior release
+        # aborted) produces a higher build number and the stores
+        # do not reject it as a duplicate.
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF#refs/tags/}"
+          VERSION="${TAG#v}"
+          if [ -z "$VERSION" ] || [ "$VERSION" = "$TAG" ]; then
+            echo "::error::Tag '$TAG' does not start with 'v'. Expected vX.Y.Z (e.g. v1.2.3)."
+            exit 1
+          fi
+          echo "version_name=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "build_number=${{ github.run_number }}" >> "$GITHUB_OUTPUT"
+          # Mark anything with a `-` after the semver core as a
+          # pre-release so the GitHub Release job can flag it.
+          if [[ "$VERSION" == *-* ]]; then
+            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
+          fi
+          echo "Resolved tag=$TAG version=$VERSION build=${{ github.run_number }}"
+
+      - name: Extract release notes
+        id: notes
+        # Prefer the annotated tag message — that's the documented
+        # workflow in `docs/release-process.md`. If the tag is
+        # lightweight, fall back to the bulleted commit list
+        # between the previous tag and this one so the release
+        # still has *some* body. Heredoc'd into the step output so
+        # multi-line notes survive intact.
+        run: |
+          set -euo pipefail
+          TAG="${GITHUB_REF#refs/tags/}"
+          NOTES="$(git tag -l --format='%(contents)' "$TAG" || true)"
+          # `%(contents)` returns an empty string for lightweight
+          # tags — fall through to the commit log in that case.
+          if [ -z "${NOTES// }" ]; then
+            PREV="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+            if [ -n "$PREV" ]; then
+              NOTES="$(git log --pretty=format:'- %s' "${PREV}..${TAG}")"
+            else
+              NOTES="$(git log --pretty=format:'- %s' "${TAG}")"
+            fi
+          fi
+          if [ -z "${NOTES// }" ]; then
+            NOTES="Release $TAG"
+          fi
+          {
+            echo "release_notes<<RELEASE_NOTES_EOF"
+            echo "$NOTES"
+            echo "RELEASE_NOTES_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+  # ── 2. Re-run lint, analyze, test before spending signing cycles ─────
+  #
+  # A tag push is its own event — the lint-and-test job from `ci.yml`
+  # runs on branch pushes, not on tags, so a tag on an unreviewed SHA
+  # would otherwise go straight to store upload. Re-running the same
+  # checks here costs a couple of minutes and gates the expensive
+  # signing jobs behind a green build.
+  verify:
+    name: Lint, analyze, test
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    needs: version
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.22.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Fetch bundled mermaid runtime
+        run: bash tool/fetch_mermaid.sh
+
+      - name: Verify formatting
+        run: dart format --output=none --set-exit-if-changed .
+
+      - name: Generate localizations
+        run: flutter gen-l10n
+
+      - name: Fail if generated l10n files drifted
+        run: git diff --exit-code -- lib/l10n/generated/
+
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Fail if generated Dart files drifted
+        run: git diff --exit-code -- '*.g.dart' '*.freezed.dart'
+
+      - name: Static analysis
+        run: flutter analyze --no-fatal-infos
+
+      - name: Run tests
+        run: flutter test
+
+  # ── 3. Android: signed AAB → Play Console internal track ─────────────
+  android-release:
+    name: Android (AAB → Play Console internal)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [version, verify]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up Java
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4.6.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.22.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Fetch bundled mermaid runtime
+        run: bash tool/fetch_mermaid.sh
+
+      - name: Generate localizations
+        run: flutter gen-l10n
+
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Decode and stage release keystore
+        # The base64 secret is materialised to a file outside the
+        # repo working tree (`$RUNNER_TEMP`) so it is never picked
+        # up by `git status` or `actions/upload-artifact`.
+        # `build.gradle.kts` reads the path from ANDROID_KEYSTORE_PATH
+        # below.
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ANDROID_KEYSTORE_BASE64:-}" ]; then
+            echo "::error::ANDROID_KEYSTORE_BASE64 secret is empty"
+            exit 1
+          fi
+          KEYSTORE_PATH="$RUNNER_TEMP/release.keystore"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          echo "ANDROID_KEYSTORE_PATH=$KEYSTORE_PATH" >> "$GITHUB_ENV"
+
+      - name: Verify keystore integrity
+        # Runs `keytool -list` with the store password before we
+        # spend compile cycles. A corrupt base64 secret or a wrong
+        # password fails here with a clear error instead of dying
+        # deep inside Gradle.
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -euo pipefail
+          keytool -list \
+            -keystore "$ANDROID_KEYSTORE_PATH" \
+            -storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            -alias "$ANDROID_KEY_ALIAS" >/dev/null
+
+      - name: Write Play Store what's-new notes
+        # r0adkll/upload-google-play reads every file in
+        # whatsnewDirectory matching `whatsnew-<locale>` and
+        # attaches the content as the track's release notes for
+        # that locale. The Play Store hard-limits each locale to
+        # 500 characters — exceeding that fails the upload — so
+        # we truncate the annotated tag message before writing.
+        # One file per supported locale; both get the same English
+        # copy because we aren't auto-translating yet.
+        env:
+          RELEASE_NOTES: ${{ needs.version.outputs.release_notes }}
+        run: |
+          set -euo pipefail
+          mkdir -p android/whatsnew
+          # Truncate to 500 bytes using head -c; this is
+          # byte-accurate for ASCII and approximate for UTF-8
+          # (multi-byte chars might cut mid-sequence) but a
+          # 450-byte safety margin keeps that edge case from
+          # landing on a boundary.
+          TRUNCATED="$(printf '%s' "$RELEASE_NOTES" | head -c 450)"
+          printf '%s' "$TRUNCATED" > android/whatsnew/whatsnew-en-US
+          printf '%s' "$TRUNCATED" > android/whatsnew/whatsnew-tr-TR
+
+      - name: Build signed app bundle
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          flutter build appbundle --release \
+            --build-name=${{ needs.version.outputs.version_name }} \
+            --build-number=${{ needs.version.outputs.build_number }}
+
+      - name: Upload to Play Console (internal track)
+        uses: r0adkll/upload-google-play@935ef9c68bb393a8e6116b1575626a7f5be3a7fb # v1.1.3
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ env.ANDROID_PACKAGE_NAME }}
+          releaseFiles: build/app/outputs/bundle/release/app-release.aab
+          # `internal` is the Play Store track that accepts uploads
+          # without a store listing review. Promotion to beta /
+          # production is a manual action in Play Console — see
+          # docs/release-process.md.
+          track: internal
+          status: completed
+          whatsNewDirectory: android/whatsnew
+
+      - name: Upload AAB artifact for the GitHub Release job
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: android-aab
+          path: build/app/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 30
+
+  # ── 4. iOS: signed IPA → TestFlight ──────────────────────────────────
+  ios-release:
+    name: iOS (IPA → TestFlight)
+    runs-on: macos-latest
+    timeout-minutes: 60
+    needs: [version, verify]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.22.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Fetch bundled mermaid runtime
+        run: bash tool/fetch_mermaid.sh
+
+      - name: Generate localizations
+        run: flutter gen-l10n
+
+      - name: Run code generation
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Import distribution certificate into keychain
+        uses: apple-actions/import-codesign-certs@b610f78488812c1e56b20e6df63ec42d833f2d14 # v6.0.0
+        with:
+          p12-file-base64: ${{ secrets.IOS_DISTRIBUTION_CERT_BASE64 }}
+          p12-password: ${{ secrets.IOS_DISTRIBUTION_CERT_PASSWORD }}
+
+      - name: Download provisioning profile
+        uses: apple-actions/download-provisioning-profiles@f34313de00852cf9b8852f6947c344293e0aa704 # v5.0.0
+        with:
+          bundle-id: ${{ env.IOS_BUNDLE_ID }}
+          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPSTORE_KEY_ID }}
+          api-private-key: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+
+      - name: Build signed IPA
+        # --export-options-plist points at the ExportOptions.plist
+        # committed in `ios/` — that file pins the teamID, signing
+        # style, and the provisioning-profile name so this step
+        # does not need to pass any identity-specific flags.
+        run: |
+          flutter build ipa --release \
+            --build-name=${{ needs.version.outputs.version_name }} \
+            --build-number=${{ needs.version.outputs.build_number }} \
+            --export-options-plist=ios/ExportOptions.plist
+
+      - name: Upload to TestFlight
+        uses: apple-actions/upload-testflight-build@1fb41afa66075b5d62c79cb623c6c4999334e185 # v4.0.0
+        with:
+          app-path: build/ios/ipa/markdown_viewer.ipa
+          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPSTORE_KEY_ID }}
+          api-private-key: ${{ secrets.APPSTORE_PRIVATE_KEY }}
+
+      - name: Upload IPA artifact for the GitHub Release job
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ios-ipa
+          path: build/ios/ipa/markdown_viewer.ipa
+          if-no-files-found: error
+          retention-days: 30
+
+  # ── 5. GitHub Release with both artifacts attached ───────────────────
+  github-release:
+    name: Publish GitHub Release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [version, android-release, ios-release]
+    permissions:
+      # `softprops/action-gh-release` needs write access to the
+      # releases API — the default token permissions in this repo
+      # are read-only for contents.
+      contents: write
+    steps:
+      - name: Download Android artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: android-aab
+          path: artifacts/android
+
+      - name: Download iOS artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ios-ipa
+          path: artifacts/ios
+
+      - name: Rename artifacts with version suffix
+        # Stores upload a single `app-release.aab` / `markdown_viewer.ipa`
+        # regardless of version; rename both into `*-v1.2.3.*` so the
+        # GitHub Release page lists them with the version in the
+        # filename for easy drag-and-drop installs.
+        run: |
+          set -euo pipefail
+          VERSION="${{ needs.version.outputs.version_name }}"
+          mv artifacts/android/app-release.aab "artifacts/android/markdown-viewer-v${VERSION}.aab"
+          mv artifacts/ios/markdown_viewer.ipa "artifacts/ios/markdown-viewer-v${VERSION}.ipa"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          body: ${{ needs.version.outputs.release_notes }}
+          prerelease: ${{ needs.version.outputs.is_prerelease == 'true' }}
+          files: |
+            artifacts/android/markdown-viewer-v${{ needs.version.outputs.version_name }}.aab
+            artifacts/ios/markdown-viewer-v${{ needs.version.outputs.version_name }}.ipa

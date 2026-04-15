@@ -14,6 +14,10 @@ part 'router.g.dart';
 
 @Riverpod(keepAlive: true)
 GoRouter router(Ref ref) {
+  // Watch so the router provider rebuilds (and re-evaluates redirects) when
+  // the onboarding state changes at runtime — e.g. a debug reset from the
+  // settings screen via OnboardingController.reset().
+  ref.watch(shouldShowOnboardingProvider);
   return GoRouter(
     initialLocation: LibraryRoute.path,
     // Global redirect guards the onboarding flow. On every navigation
