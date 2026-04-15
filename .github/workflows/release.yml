@@ -270,7 +270,22 @@ jobs:
           # production is a manual action in Play Console — see
           # docs/release-process.md.
           track: internal
-          status: completed
+          # `draft` is used instead of `completed` because a Play
+          # Console "draft app" — an app that has never had a
+          # release manually promoted to live on any track — rejects
+          # API uploads with `completed` status:
+          #
+          #   "Only releases with status draft may be created on draft app."
+          #
+          # `draft` keeps the release pending in Play Console's UI
+          # so the maintainer can click "Start rollout" manually.
+          # The first manual rollout promotes the app out of draft
+          # state; after that, this value can be changed to
+          # `completed` for fully automated internal-track releases
+          # if desired. Keeping it as `draft` is also a safer default
+          # because it gives the maintainer a last-chance review of
+          # the automated build before testers see it.
+          status: draft
           whatsNewDirectory: android/whatsnew
 
       - name: Upload AAB artifact for the GitHub Release job
