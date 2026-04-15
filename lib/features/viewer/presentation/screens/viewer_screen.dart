@@ -14,8 +14,6 @@ import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_pro
 import 'package:markdown_viewer/features/viewer/application/pdf_extract.dart';
 import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/viewer_document.dart';
-import 'package:markdown_viewer/features/viewer/data/services/pdf_exporter.dart'
-    hide extractMermaidCodes, extractPdfTitle;
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/reading_position.dart';
 import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';

@@ -126,7 +126,11 @@ final class FileOpenChannel: NSObject, FlutterStreamHandler {
                 // FlutterError: the Dart stream is typed as Stream<String>
                 // and error events bypass stream filters, which would cause
                 // an unhandled-error crash in incoming_file_provider.dart.
-                NSLog("[FileOpenChannel] security-scoped URL access failed for %@: %@", url.path, error.localizedDescription)
+#if DEBUG
+                NSLog("[FileOpenChannel] security-scoped URL access failed for %@: %@ %ld", url.path, (error as NSError).domain, (error as NSError).code)
+#else
+                NSLog("[FileOpenChannel] security-scoped URL access failed (domain=%@, code=%ld)", (error as NSError).domain, (error as NSError).code)
+#endif
             } else {
                 // Non-scoped URLs (e.g. app-sandbox paths from AirDrop inbox)
                 // are already accessible without a scope — fall back to the
