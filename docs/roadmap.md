@@ -47,9 +47,13 @@ gantt
     Repo Sync                :done, p45, 2026-04-14, 2d
 
     section Phase 5
-    5.1 PDF + Mermaid embed  :done, p51, 2026-04-15, 1d
-    5.2 Mermaid DOM cleanup  :done, p52, after p51, 1d
-    Hardening & Release      :active, p5, after p52, 10d
+    5.1 PDF + Mermaid embed     :done, p51, 2026-04-15, 1d
+    5.2 Mermaid DOM cleanup     :done, p52, after p51, 1d
+    5.3 First-run onboarding    :done, p53, after p52, 1d
+    5.4 Release pipeline        :done, p54, after p53, 1d
+    5.5 App Store compliance    :done, p55, after p54, 1d
+    5.6 Beta release to stores  :done, p56, after p55, 1d
+    Hardening & Release         :active, p5, after p56, 6d
 ```
 
 ## Phase 0 — Foundation
@@ -987,11 +991,80 @@ repo syncs in < 30s on Wi-Fi, with progress shown and resumable on failure.
       `FileOpenChannel`, host-validated PAT injection, local-file-exists
       check in skip branch, `containsKey` fix in `MermaidLruCache`,
       global-state tearDown in test helpers, math-view size-capture fix
+- [x] First-run onboarding flow — four-page `PageView` shown on fresh
+      install and after every `currentOnboardingVersion` bump: per-page
+      Material 3 accent rotation (primary → secondary → tertiary →
+      primary), pulsing hero disc, three decorative orbiting chips on
+      phase-offset sine waves, gradient surface that tweens between
+      pages, fade + slide entrance animations on title/body, animated
+      pill page indicators, haptic feedback on advance/skip/finish.
+      `OnboardingStore` persists the acknowledged version; router
+      `redirect` guards every navigation through the flow until the
+      stored version catches up to `currentOnboardingVersion`. Debug-
+      only "Show onboarding again" affordance in Settings (gated to
+      `kDebugMode`, tree-shaken from release builds)
+- [x] System-locale resolution hardening — explicit
+      `localeListResolutionCallback` iterates the OS preferred-locale
+      list and returns `tr` when any Turkish entry is present, `en`
+      otherwise; replaces Flutter's default fallback-to-first-preferred
+      behaviour that previously landed German / Japanese devices on
+      the wrong strings. Eight-case unit test covers primary match,
+      multi-locale lists, empty / null inputs, and script variants
+- [x] Release pipeline — tag-triggered `.github/workflows/release.yml`
+      with five jobs (`version` → `verify` → `android-release` +
+      `ios-release` in parallel → `github-release`); every third-party
+      action SHA-pinned with trailing version comments; annotated tag
+      message becomes the Play Console "what's new" entry + GitHub
+      Release body; Android AAB → Play Console internal track
+      (`status: draft` for first manual promotion); iOS IPA →
+      TestFlight; GitHub Release with version-suffixed
+      `markdown-viewer-vX.Y.Z.{aab,ipa}` attachments
+- [x] iOS signing infrastructure — `ios/ExportOptions.plist` pinned
+      to manual signing with `MarkdownViewer App Store` provisioning
+      profile; Runner target Release build config set to
+      `CODE_SIGN_STYLE = Manual`, `CODE_SIGN_IDENTITY = "Apple
+      Distribution"` (no `[sdk=iphoneos*]` qualifier — that form
+      evaluates inconsistently across archive phases),
+      `PROVISIONING_PROFILE_SPECIFIER` pinned; CI imports the
+      distribution certificate via `apple-actions/import-codesign-
+      certs@v6` and downloads the profile via
+      `apple-actions/download-provisioning-profiles@v5`. Upload to
+      TestFlight uses `xcrun altool --upload-app` instead of the
+      `apple-actions/upload-testflight-build@v4` action because the
+      latter calls iTMSTransporter under the hood and that tool
+      collapses every failure mode into the opaque `OSStatus error
+      -10814` on arm64 macOS runners
+- [x] Android signing infrastructure — `build.gradle.kts` reads
+      keystore material from `android/key.properties` (local dev) or
+      `ANDROID_KEYSTORE_PATH` / `_PASSWORD` / `_ALIAS` / `_KEY_PASSWORD`
+      env vars (CI); `~/` home-directory expansion supported; release
+      signing config only applied when all four values are present so
+      `flutter run --release` still fails loudly locally without a
+      keystore instead of silently falling back to the debug key
+- [x] App Store Connect compliance — `NSPhotoLibraryUsageDescription`
+      added to `ios/Runner/Info.plist` with a truthful purpose string
+      (ITMS-90683; Flutter's `printing` / `share_plus` plugins link
+      PhotoKit even though the app does not actively query the
+      library, and Apple's static analyser demands a purpose string
+      anyway); preemptive `ITSAppUsesNonExemptEncryption = false` so
+      every build skips the Missing Compliance dialog in TestFlight;
+      Xcode 26 SDK pinned via `maxim-lobanov/setup-xcode@v1.7.0`
+      with `xcode-version: latest-stable` to satisfy ITMS-90725
+      before Apple's April 28, 2026 hard deadline
+- [x] Public release runbook — `docs/release-process.md` covers tag
+      format, required secrets table with per-step consumption,
+      pipeline job dependency graph, troubleshooting decision tree;
+      separate Turkish personal checklist in `docs/analysis/`
+      (gitignored, maintainer-only)
+- [x] Beta release to TestFlight + Google Play internal track —
+      v0.2.1 was the first tag to reach both stores end-to-end after
+      the compliance + signing iteration loop; v0.2.2 is the first
+      tag to run the full pipeline without any `if: false` debug
+      gates
 - [ ] Full a11y audit (TalkBack, VoiceOver)
 - [ ] Performance regression suite enforcement
 - [ ] Memory leak profiling
 - [ ] Localization completeness pass (en + tr)
-- [ ] Beta release to TestFlight + Google Play internal track
 - [ ] Bug fixes
 - [ ] Public v1.0 release
 
