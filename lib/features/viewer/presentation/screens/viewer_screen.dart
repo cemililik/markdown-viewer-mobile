@@ -574,12 +574,13 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     _showLocalizedSnackBar((_) => l10n.viewerPdfGenerating);
     try {
       final fallbackTitle = _titleFor(widget.documentId, '');
-      final mermaidImages = await _prerenderMermaidDiagrams(document.source);
+      final prerendered = await _prerenderMermaidDiagrams(document.source);
       if (!mounted) return;
       final bytes = await exportToPdf(
         fallbackTitle,
         document.source,
-        mermaidImages: mermaidImages,
+        mermaidImages: prerendered.images,
+        mermaidErrors: prerendered.errors,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -601,28 +602,37 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   }
 
   /// Scans [source] for mermaid fenced code blocks and renders each
-  /// unique diagram through [mermaidRendererProvider], returning a map
-  /// from trimmed diagram source to PNG bytes. Diagrams that fail to
-  /// render are omitted — the PDF builder falls back to a placeholder
-  /// for those entries.
-  Future<Map<String, Uint8List>> _prerenderMermaidDiagrams(
-    String source,
-  ) async {
+  /// unique diagram through [mermaidRendererProvider], returning a
+  /// record of `(images, errors)` keyed by trimmed diagram source.
+  /// Diagrams that render successfully populate `images`; diagrams
+  /// that fail populate `errors` with the renderer's diagnostic
+  /// message so the PDF placeholder can surface the reason instead
+  /// of dropping the information on the floor.
+  Future<({Map<String, Uint8List> images, Map<String, String> errors})>
+  _prerenderMermaidDiagrams(String source) async {
     final codes = extractMermaidCodes(source);
-    if (codes.isEmpty) return const {};
+    if (codes.isEmpty) {
+      return (images: <String, Uint8List>{}, errors: <String, String>{});
+    }
 
     final renderer = ref.read(mermaidRendererProvider);
-    final result = <String, Uint8List>{};
+    final images = <String, Uint8List>{};
+    final errors = <String, String>{};
+    // Minimal per-diagram init directive: `look: 'classic'` matches the
+    // global `mermaid.initialize` call and keeps the PDF render path in
+    // its own LRU cache slot (distinct from the viewer's Material-3
+    // themed renders). No theme override — Mermaid's default theme
+    // renders cleanly on a white PDF page.
+    const pdfInit = '%%{init: {"look": "classic"}}%%\n';
     for (final code in codes) {
-      // Neutral light theme for PDF legibility; classic look suppresses
-      // Mermaid v11's per-diagram decorative icons. The init directive is
-      // intentionally different from the viewer's Material-3-derived one
-      // so the two cache slots stay separate.
-      const pdfInit = '%%{init: {"theme": "neutral", "look": "classic"}}%%\n';
       final r = await renderer.render(code, initDirective: pdfInit);
-      if (r is MermaidRenderSuccess) result[code] = r.pngBytes;
+      if (r is MermaidRenderSuccess) {
+        images[code] = r.pngBytes;
+      } else if (r is MermaidRenderFailure) {
+        errors[code] = r.message;
+      }
     }
-    return result;
+    return (images: images, errors: errors);
   }
 
   /// Shows a snackbar whose content reads its localized string on

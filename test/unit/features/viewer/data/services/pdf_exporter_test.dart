@@ -192,6 +192,68 @@ graph TD
     });
   });
 
+  group('extractMermaidCodes — HTML entity decoding', () {
+    test('decodes &lt; &gt; &quot; in fenced mermaid code blocks', () {
+      // The markdown parser HTML-escapes raw <, >, " characters inside
+      // fenced code blocks. Mermaid's lexer rejects &lt;/&gt;/&quot;
+      // as unrecognized text, so extractMermaidCodes must decode them
+      // back to the original characters before handing the source to
+      // the renderer.
+      const source = '''
+```mermaid
+graph LR
+    A["LLaMA<br/>Factory"] --> B["Multi<br/>GPU"]
+    subgraph "ForgeLM Unique"
+        C[Safety]
+    end
+```
+''';
+      final codes = extractMermaidCodes(source);
+      expect(codes, hasLength(1));
+      expect(codes.first, contains('<br/>'));
+      expect(codes.first, contains('"LLaMA<br/>Factory"'));
+      expect(codes.first, contains('subgraph "ForgeLM Unique"'));
+      expect(codes.first, isNot(contains('&lt;')));
+      expect(codes.first, isNot(contains('&gt;')));
+      expect(codes.first, isNot(contains('&quot;')));
+    });
+
+    test('preserves literal entity text via amp-last decode order', () {
+      // If an author writes the literal five-character sequence "&lt;"
+      // inside a mermaid label, markdown stores it as "&amp;lt;" (the
+      // "&" is itself escaped). Decoding &lt; first and &amp; last
+      // yields "&lt;" — exactly what the author wrote — rather than
+      // collapsing the whole thing to "<".
+      const source = '''
+```mermaid
+graph LR
+    A[Shows &lt; as text]
+```
+''';
+      final codes = extractMermaidCodes(source);
+      expect(codes, hasLength(1));
+      expect(codes.first, contains('&lt;'));
+      expect(codes.first, isNot(contains('<')));
+    });
+
+    test('leaves plain-ASCII diagrams untouched', () {
+      const source = '''
+```mermaid
+mindmap
+  root((Root))
+    Branch A
+    Branch B
+```
+''';
+      final codes = extractMermaidCodes(source);
+      expect(codes, hasLength(1));
+      expect(
+        codes.first,
+        equals('mindmap\n  root((Root))\n    Branch A\n    Branch B'),
+      );
+    });
+  });
+
   group('fire-emoji normalization', () {
     test('replaces 🔥 (U+1F525) with [fire] via extractPdfTitle fallback', () {
       // _cleanText is private; exercise it through extractPdfTitle's fallback

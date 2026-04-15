@@ -25,8 +25,9 @@ String extractPdfTitle(String source, String fallback) {
 /// The returned strings are the exact look-up keys that [exportToPdf]
 /// uses in [mermaidImages], so callers can pre-render the diagrams via
 /// [MermaidRenderer] and pass the result map in without any key
-/// mismatch — both sides go through the same markdown parser and the
-/// same [_extractText] + trim path.
+/// mismatch — both sides go through the same [_mermaidCodeFromPre]
+/// helper, which extracts, trims, and decodes HTML entities the
+/// markdown parser introduced inside the fenced code block text.
 List<String> extractMermaidCodes(String source) {
   final ast = md.Document(
     extensionSet: md.ExtensionSet.gitHubFlavored,
@@ -39,10 +40,43 @@ List<String> extractMermaidCodes(String source) {
     final lang =
         codeEl?.attributes['class']?.replaceFirst('language-', '') ?? '';
     if (lang != 'mermaid') continue;
-    final code = _extractText(node).trim();
+    final code = _mermaidCodeFromPre(node);
     if (code.isNotEmpty && seen.add(code)) codes.add(code);
   }
   return codes;
+}
+
+/// Returns the mermaid diagram source from a `<pre><code>` node.
+///
+/// `package:markdown` stores fenced-code-block text with HTML entities
+/// escaped (`<` → `&lt;`, `>` → `&gt;`, `&` → `&amp;`, `"` → `&quot;`).
+/// Mermaid's lexer does not understand these entities — it sees the
+/// literal `&quot;` / `&lt;br/&gt;` and throws a lexical error, which
+/// is how diagrams with HTML labels (`A["LLaMA<br/>Factory"]`,
+/// `subgraph "ForgeLM Unique Advantages"`, …) were failing to render
+/// in the PDF pipeline even though they previewed correctly in VS
+/// Code and the in-app viewer.
+///
+/// Decoding the five standard entities here yields the original
+/// mermaid source verbatim, which is both the correct payload for
+/// the renderer and the correct look-up key so PDF embed path and
+/// the pre-render pass agree on the same string.
+String _mermaidCodeFromPre(md.Element preNode) {
+  return _decodeMermaidHtmlEntities(_extractText(preNode)).trim();
+}
+
+String _decodeMermaidHtmlEntities(String text) {
+  // Order matters: &amp; must be decoded LAST so literal entities in
+  // the source (e.g. a node label that really contains "&lt;") do not
+  // get double-decoded. The markdown parser only ever escapes the raw
+  // characters `<`, `>`, `&`, `"`, `'`, so these five entity forms
+  // are the complete set we need to reverse.
+  return text
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&quot;', '"')
+      .replaceAll('&#39;', "'")
+      .replaceAll('&amp;', '&');
 }
 
 /// Converts a markdown document to a PDF byte array.
@@ -74,6 +108,7 @@ Future<Uint8List> exportToPdf(
   String title,
   String source, {
   Map<String, Uint8List> mermaidImages = const {},
+  Map<String, String> mermaidErrors = const {},
 }) async {
   final ast = md.Document(
     extensionSet: md.ExtensionSet.gitHubFlavored,
@@ -116,7 +151,7 @@ Future<Uint8List> exportToPdf(
               context.pageNumber == 1
                   ? _buildTitle(displayTitle, fonts)
                   : pw.SizedBox(),
-      build: (context) => _buildNodes(ast, fonts, mermaidImages),
+      build: (context) => _buildNodes(ast, fonts, mermaidImages, mermaidErrors),
     ),
   );
 
@@ -168,10 +203,11 @@ List<pw.Widget> _buildNodes(
   List<md.Node> nodes,
   _Fonts f,
   Map<String, Uint8List> mermaidImages,
+  Map<String, String> mermaidErrors,
 ) {
   final widgets = <pw.Widget>[];
   for (final node in nodes) {
-    final w = _buildNode(node, f, mermaidImages);
+    final w = _buildNode(node, f, mermaidImages, mermaidErrors);
     if (w != null) widgets.add(w);
   }
   return widgets;
@@ -181,6 +217,7 @@ pw.Widget? _buildNode(
   md.Node node,
   _Fonts f,
   Map<String, Uint8List> mermaidImages,
+  Map<String, String> mermaidErrors,
 ) {
   if (node is md.Text) {
     final trimmed = node.text.trim();
@@ -212,7 +249,7 @@ pw.Widget? _buildNode(
       return _paragraph(node, f);
 
     case 'pre':
-      return _codeBlock(node, f, mermaidImages);
+      return _codeBlock(node, f, mermaidImages, mermaidErrors);
 
     case 'blockquote':
       return _blockquote(node, f);
@@ -409,12 +446,13 @@ pw.Widget _codeBlock(
   md.Element preNode,
   _Fonts f,
   Map<String, Uint8List> mermaidImages,
+  Map<String, String> mermaidErrors,
 ) {
   final codeEl = preNode.children?.whereType<md.Element>().firstOrNull;
   final lang = codeEl?.attributes['class']?.replaceFirst('language-', '') ?? '';
 
   if (lang == 'mermaid') {
-    final code = _extractText(preNode).trim();
+    final code = _mermaidCodeFromPre(preNode);
     final pngBytes = mermaidImages[code];
     if (pngBytes != null) {
       // Embed the pre-rendered PNG, scaled to fill the content column.
@@ -425,7 +463,7 @@ pw.Widget _codeBlock(
     }
     // No pre-rendered image available — show a labelled placeholder so
     // the PDF is still useful even without the WebView pipeline.
-    return _mermaidPlaceholder(f);
+    return _mermaidPlaceholder(f, mermaidErrors[code]);
   }
 
   return pw.Padding(
@@ -451,7 +489,11 @@ pw.Widget _codeBlock(
   );
 }
 
-pw.Widget _mermaidPlaceholder(_Fonts f) {
+pw.Widget _mermaidPlaceholder(_Fonts f, String? errorMessage) {
+  final text =
+      errorMessage != null && errorMessage.isNotEmpty
+          ? '[ Diagram failed to render: ${_cleanText(errorMessage)} ]'
+          : '[ Diagram not included in PDF -- open in Markdown Viewer to view ]';
   return pw.Padding(
     padding: const pw.EdgeInsets.only(bottom: 10),
     child: pw.Container(
@@ -464,7 +506,7 @@ pw.Widget _mermaidPlaceholder(_Fonts f) {
         ),
       ),
       child: pw.Text(
-        '[ Diagram not included in PDF -- open in Markdown Viewer to view ]',
+        text,
         style: pw.TextStyle(
           font: f.italic,
           fontSize: 9.5,
