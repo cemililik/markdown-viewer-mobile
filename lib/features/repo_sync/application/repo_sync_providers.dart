@@ -33,8 +33,9 @@ final syncedReposStoreProvider = Provider<SyncedReposStore>((ref) {
 /// Secure storage for the optional GitHub Personal Access Token.
 ///
 /// Android uses EncryptedSharedPreferences backed by Android Keystore
-/// (AES-256-GCM). iOS uses the system Keychain. The token never leaves
-/// the device.
+/// (AES-256-GCM). iOS uses the system Keychain. The token is stored
+/// encrypted at rest and is transmitted to GitHub only during
+/// user-triggered sync operations.
 final patStoreProvider = Provider<PatStore>((ref) {
   return const PatStore(
     FlutterSecureStorage(
@@ -65,9 +66,12 @@ final syncDioProvider = Provider<Dio>((ref) {
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) async {
-        final pat = await patStore.read();
-        if (pat != null && pat.isNotEmpty) {
-          options.headers['Authorization'] = 'token $pat';
+        final host = options.uri.host.toLowerCase();
+        if (host == 'api.github.com' || host == 'raw.githubusercontent.com') {
+          final pat = await patStore.read();
+          if (pat != null && pat.isNotEmpty) {
+            options.headers['Authorization'] = 'token $pat';
+          }
         }
         handler.next(options);
       },

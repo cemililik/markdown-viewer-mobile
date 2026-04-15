@@ -114,8 +114,7 @@ class GitHubSyncProvider implements RepoSyncProvider {
     }
 
     // The Trees API silently omits entries when a repo exceeds 100 000 items.
-    // Proceed rather than abort, but surface a warning so callers can inform
-    // the user that the resulting file list may be incomplete.
+    // Abort so the user is not silently handed an incomplete file list.
     if (treeJson['truncated'] == true) {
       throw const UnknownFailure(
         message:

@@ -74,6 +74,7 @@ class AppDatabase extends _$AppDatabase {
             t.subPath.equals(subPath),
       )).getSingleOrNull();
 
+  /// Returns the [SyncedRepoRow] with the given [id], or `null` if absent.
   Future<SyncedRepoRow?> getRepoById(int id) =>
       (select(syncedRepos)..where((t) => t.id.equals(id))).getSingleOrNull();
 

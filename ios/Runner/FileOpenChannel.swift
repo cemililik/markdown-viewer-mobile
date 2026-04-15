@@ -104,10 +104,13 @@ final class FileOpenChannel: NSObject, FlutterStreamHandler {
             try FileManager.default.createDirectory(
                 at: cacheDir, withIntermediateDirectories: true
             )
-            // Prefix the basename with a short hash of the source path so
-            // two files with the same name from different directories do not
-            // overwrite each other in the shared cache directory.
-            let hash = String(format: "%08x", url.path.hashValue & 0xFFFFFFFF)
+            // Prefix the basename with a short FNV-1a hash of the source path
+            // so two files with the same name from different directories do not
+            // overwrite each other in the shared cache directory. FNV-1a is
+            // used rather than Swift's `hashValue` because `hashValue` is
+            // randomised per-process (Swift 5+) and produces different values
+            // across app launches, making cached files unreachable after restart.
+            let hash = String(format: "%08x", fnv1a32(url.path))
             let uniqueName = "\(hash)_\(url.lastPathComponent)"
             let dest = cacheDir.appendingPathComponent(uniqueName)
             if FileManager.default.fileExists(atPath: dest.path) {
@@ -119,12 +122,10 @@ final class FileOpenChannel: NSObject, FlutterStreamHandler {
             if scoped {
                 // The security scope will be released by the defer before
                 // Dart can read the file, so url.path is inaccessible.
-                // Report the failure instead of handing over a dead path.
-                emit(FlutterError(
-                    code: "FILE_OPEN_ERROR",
-                    message: "Failed to copy security-scoped file: \(error.localizedDescription)",
-                    details: url.lastPathComponent
-                ))
+                // Dropping the event silently is safer than emitting a
+                // FlutterError: the Dart stream is typed as Stream<String>
+                // and error events bypass stream filters, which would cause
+                // an unhandled-error crash in incoming_file_provider.dart.
             } else {
                 // Non-scoped URLs (e.g. app-sandbox paths from AirDrop inbox)
                 // are already accessible without a scope — fall back to the
@@ -132,6 +133,20 @@ final class FileOpenChannel: NSObject, FlutterStreamHandler {
                 emit(url.path)
             }
         }
+    }
+
+    // MARK: - Utilities
+
+    /// FNV-1a 32-bit hash of a UTF-8 string. Deterministic across
+    /// processes and launches — unlike Swift's `String.hashValue`,
+    /// which is per-process randomised in Swift 5+.
+    private func fnv1a32(_ string: String) -> UInt32 {
+        var hash: UInt32 = 2_166_136_261
+        for byte in string.utf8 {
+            hash ^= UInt32(byte)
+            hash &*= 16_777_619
+        }
+        return hash
     }
 
     private func emit(_ value: Any) {

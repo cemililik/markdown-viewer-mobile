@@ -55,11 +55,11 @@ class MermaidLruCache<V> {
   /// Looks up [key] and promotes it to most-recently-used. Returns
   /// `null` if absent.
   V? get(String key) {
-    final value = _entries.remove(key);
-    if (value == null) {
+    if (!_entries.containsKey(key)) {
       _misses++;
       return null;
     }
+    final value = _entries.remove(key) as V;
     _hits++;
     _entries[key] = value;
     return value;

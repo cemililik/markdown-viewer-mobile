@@ -19,7 +19,11 @@ const Size kGoldenViewport = Size(390, 844);
 /// pending-timer flutter_test warning) and calls `pumpAndSettle` so
 /// all animations finish before the snapshot is taken.
 Future<void> goldenPumpBeforeTest(WidgetTester tester) async {
+  final original = VisibilityDetectorController.instance.updateInterval;
   VisibilityDetectorController.instance.updateInterval = Duration.zero;
+  addTearDown(
+    () => VisibilityDetectorController.instance.updateInterval = original,
+  );
   await tester.pumpAndSettle();
 }
 
@@ -29,6 +33,10 @@ Future<void> goldenPumpBeforeTest(WidgetTester tester) async {
 Future<void> goldenPumpWidget(WidgetTester tester, Widget widget) async {
   tester.view.physicalSize = kGoldenViewport;
   tester.view.devicePixelRatio = 1.0;
+  addTearDown(() {
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  });
   await tester.pumpWidget(widget);
 }
 

@@ -207,8 +207,8 @@ void main() {
         final mathFinder = find.byType(Math);
         final sizesBeforeScroll =
             tester
-                .widgetList(mathFinder)
-                .map((_) => tester.getSize(mathFinder.first))
+                .widgetList<Math>(mathFinder)
+                .map((widget) => tester.getSize(find.byWidget(widget)))
                 .toList();
 
         // Scroll down by 300 logical pixels, settle, then scroll back.
@@ -221,8 +221,8 @@ void main() {
         // Re-capture sizes after returning to the original scroll position.
         final sizesAfterScroll =
             tester
-                .widgetList(mathFinder)
-                .map((_) => tester.getSize(mathFinder.first))
+                .widgetList<Math>(mathFinder)
+                .map((widget) => tester.getSize(find.byWidget(widget)))
                 .toList();
 
         expect(

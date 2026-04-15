@@ -334,6 +334,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mermaidReset => 'Reset view';
 
   @override
+  String get mermaidDiagramLabel =>
+      'Mermaid diagram. Pinch to zoom, drag to pan.';
+
+  @override
   String viewerReadingTime(int minutes) {
     return '$minutes min read';
   }

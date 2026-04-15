@@ -29,7 +29,8 @@ flowchart LR
 - Register custom block syntaxes:
   - `MermaidBlockSyntax` — detects ` ```mermaid ` fenced blocks
   - `MathBlockSyntax` — detects `$$...$$` blocks
-  - `AdmonitionSyntax` — detects `!!! note|warning|tip` blocks
+  - `AlertBlockSyntax` (built-in) — detects `> [!NOTE|TIP|IMPORTANT|WARNING|CAUTION]`
+    GitHub-style blockquote alerts
 - Output: `List<md.Node>`
 
 ### Stage 3 — AST Transform
@@ -38,8 +39,10 @@ Walk the AST to:
 
 - Resolve relative image and link paths to absolute URIs against the
   document's base directory
-- Build a `TableOfContents` from heading nodes
-- Collect footnote definitions and references
+- Build a `TableOfContents` from heading nodes, each stamped with its
+  enclosing top-level block index for pixel-perfect `Scrollable.ensureVisible`
+  jumps from the TOC drawer
+- Collect and strip footnote definitions; store them for pop-up display
 - Normalize code-block language identifiers
 
 ### Stage 4 — Widget Build
@@ -61,42 +64,50 @@ Images flow through `Image.file` / `Image.network` with disk-backed cache.
 
 ## Mermaid Rendering Sub-Pipeline
 
-Mermaid is rendered via a sandboxed WebView with an SVG cache:
+Mermaid is rendered via a sandboxed `HeadlessInAppWebView`. The output
+is a PNG screenshot taken from the WKWebView/WebView surface, not an SVG
+string — this avoids CSS-compatibility problems that `flutter_svg` has
+with mermaid's generated SVG output.
 
 ```mermaid
 sequenceDiagram
-    participant W as MermaidBlockWidget
+    participant W as MermaidBlock<br/>widget
     participant R as MermaidRenderer
-    participant C as SVG LRU Cache
-    participant V as InAppWebView<br/>(sandboxed)
-    participant S as flutter_svg
+    participant C as PNG LRU Cache<br/>sha256(init+src)
+    participant V as HeadlessInAppWebView<br/>(sandboxed)
 
-    W->>R: render(code)
-    R->>C: lookup(sha256(code))
+    W->>R: render(initDirective, code)
+    R->>C: lookup(sha256(init+code))
     alt cache hit
-        C-->>R: SVG
+        C-->>R: PNG bytes + dimensions
     else cache miss
         R->>V: evaluateJavascript<br/>mermaid.render(id, code)
-        V-->>R: SVG string
-        R->>C: store(sha256, SVG)
+        V->>V: inject themeVariables<br/>from ColorScheme
+        V->>V: controller.takeScreenshot()
+        V-->>R: PNG bytes + intrinsic size
+        R->>C: store(sha256, PNG + size)
     end
-    R-->>W: SVG
-    W->>S: paint
+    R-->>W: PNG bytes + dimensions
+    W->>W: Image.memory(bytes)<br/>inside InteractiveViewer
 ```
 
 Strategy:
 
-1. On app start, pre-warm a single hidden `InAppWebView` with bundled
-   `mermaid.min.js` loaded from assets
-2. For each mermaid block, call `mermaid.render(id, code)` via
-   `evaluateJavascript`
-3. Receive the SVG output as a string
-4. Render the SVG via `flutter_svg` inline
-5. Cache rendered SVG by `sha256(code)` in an in-memory LRU
+1. On app start, pre-warm a single hidden `HeadlessInAppWebView` with
+   the bundled `mermaid.min.js` asset and a CSP `<meta>` tag
+2. Inject Material 3 `ColorScheme` colours as `themeVariables` so every
+   diagram type reads as if drawn by the app itself in both themes
+3. Call `mermaid.render(id, code)` via `evaluateJavascript`; capture the
+   rendered SVG inside the WebView using `controller.takeScreenshot()`
+4. Return PNG bytes + intrinsic dimensions; render as `Image.memory`
+   inside an `InteractiveViewer` (pan + pinch + animated reset button)
+5. Cache PNG by `sha256(initDirective + source)` in a bounded in-memory
+   LRU (`MermaidLruCache`). Cache key includes the init directive so a
+   user-authored `%%{init: …}%%` directive generates a distinct entry
 
-**Security**: the WebView has no network access, no local file access,
-and no JavaScript bridge beyond `mermaid.render`. See
-[standards/security-standards.md](standards/security-standards.md).
+**Security**: the WebView has no network access (`blockNetworkLoads`),
+no local file access, and a single `mermaidResult` JS bridge handler.
+See [standards/security-standards.md](standards/security-standards.md).
 
 ## Code Highlighting Sub-Pipeline
 

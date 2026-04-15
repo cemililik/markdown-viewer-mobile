@@ -656,6 +656,12 @@ abstract class AppLocalizations {
   /// **'Reset view'**
   String get mermaidReset;
 
+  /// Semantic label for a successfully rendered mermaid diagram image, announced by screen readers.
+  ///
+  /// In en, this message translates to:
+  /// **'Mermaid diagram. Pinch to zoom, drag to pan.'**
+  String get mermaidDiagramLabel;
+
   /// Reading-time estimate shown at the top of the document content. Always shows at least 1 min.
   ///
   /// In en, this message translates to:

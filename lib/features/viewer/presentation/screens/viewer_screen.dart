@@ -10,11 +10,13 @@ import 'package:markdown_viewer/core/widgets/loading_view.dart';
 import 'package:markdown_viewer/features/library/application/preview_extractor.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
+import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/viewer_document.dart';
 import 'package:markdown_viewer/features/viewer/data/services/pdf_exporter.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/reading_position.dart';
+import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
 import 'package:markdown_viewer/features/viewer/presentation/failure_message_mapper.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/markdown_view.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/toc_drawer.dart';
@@ -558,7 +560,10 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   }
 
   void _shareAsText(Document document) {
-    final title = _titleFor(widget.documentId, '');
+    final fallbackTitle = _titleFor(widget.documentId, '');
+    // Prefer the document's first H1 so hash-based filenames
+    // (files opened via share-intent) get a meaningful subject.
+    final title = extractPdfTitle(document.source, fallbackTitle);
     SharePlus.instance.share(
       ShareParams(text: document.source, subject: title),
     );
@@ -569,7 +574,14 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     _showLocalizedSnackBar((_) => l10n.viewerPdfGenerating);
     try {
       final fallbackTitle = _titleFor(widget.documentId, '');
-      final bytes = await exportToPdf(fallbackTitle, document.source);
+      final prerendered = await _prerenderMermaidDiagrams(document.source);
+      if (!mounted) return;
+      final bytes = await exportToPdf(
+        fallbackTitle,
+        document.source,
+        mermaidImages: prerendered.images,
+        mermaidErrors: prerendered.errors,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       // Prefer the document's H1 as the filename so hash-based filenames
@@ -587,6 +599,40 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       _showLocalizedSnackBar((_) => l10n.viewerPdfError);
     }
+  }
+
+  /// Scans [source] for mermaid fenced code blocks and renders each
+  /// unique diagram through [mermaidRendererProvider], returning a
+  /// record of `(images, errors)` keyed by trimmed diagram source.
+  /// Diagrams that render successfully populate `images`; diagrams
+  /// that fail populate `errors` with the renderer's diagnostic
+  /// message so the PDF placeholder can surface the reason instead
+  /// of dropping the information on the floor.
+  Future<({Map<String, Uint8List> images, Map<String, String> errors})>
+  _prerenderMermaidDiagrams(String source) async {
+    final codes = extractMermaidCodes(source);
+    if (codes.isEmpty) {
+      return (images: <String, Uint8List>{}, errors: <String, String>{});
+    }
+
+    final renderer = ref.read(mermaidRendererProvider);
+    final images = <String, Uint8List>{};
+    final errors = <String, String>{};
+    // Minimal per-diagram init directive: `look: 'classic'` matches the
+    // global `mermaid.initialize` call and keeps the PDF render path in
+    // its own LRU cache slot (distinct from the viewer's Material-3
+    // themed renders). No theme override — Mermaid's default theme
+    // renders cleanly on a white PDF page.
+    const pdfInit = '%%{init: {"look": "classic"}}%%\n';
+    for (final code in codes) {
+      final r = await renderer.render(code, initDirective: pdfInit);
+      if (r is MermaidRenderSuccess) {
+        images[code] = r.pngBytes;
+      } else if (r is MermaidRenderFailure) {
+        errors[code] = r.message;
+      }
+    }
+    return (images: images, errors: errors);
   }
 
   /// Shows a snackbar whose content reads its localized string on
@@ -734,17 +780,21 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                   builder: (context, bookmarked, _) {
                     return Tooltip(
                       message: l10n.viewerBookmarkSaveTooltip,
-                      child: InkResponse(
-                        onTap: _saveBookmark,
-                        onLongPress: _showBookmarkMenu,
-                        radius: 24,
-                        child: SizedBox(
-                          width: 48,
-                          height: 48,
-                          child: Icon(
-                            bookmarked
-                                ? Icons.bookmark
-                                : Icons.bookmark_outline,
+                      child: Semantics(
+                        button: true,
+                        onLongPressHint: l10n.viewerBookmarkLongPressHint,
+                        child: InkResponse(
+                          onTap: _saveBookmark,
+                          onLongPress: _showBookmarkMenu,
+                          radius: 24,
+                          child: SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: Icon(
+                              bookmarked
+                                  ? Icons.bookmark
+                                  : Icons.bookmark_outline,
+                            ),
                           ),
                         ),
                       ),

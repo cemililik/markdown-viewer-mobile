@@ -119,6 +119,7 @@
   "mermaidRenderErrorTitle": "Diyagram görüntülenemedi",
   "mermaidRenderErrorBody": "Diyagram söz dizimini kontrol edip tekrar deneyin.",
   "mermaidReset": "Görünümü sıfırla",
+  "mermaidDiagramLabel": "Mermaid diyagramı. Yakınlaştırmak için sıkıştırın, kaydırmak için sürükleyin.",
   "viewerReadingTime": "{minutes} dk okuma",
   "viewerBackToTopTooltip": "Başa dön",
   "viewerBookmarkSaveTooltip": "Kaldığın yeri kaydet veya güncelle",

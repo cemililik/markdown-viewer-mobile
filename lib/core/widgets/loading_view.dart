@@ -13,16 +13,27 @@ class LoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const CircularProgressIndicator(),
-          if (label != null) ...[
-            const SizedBox(height: 16),
-            Text(label!, style: Theme.of(context).textTheme.bodyMedium),
+    return Semantics(
+      liveRegion: true,
+      label: label,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(),
+            if (label != null) ...[
+              const SizedBox(height: 16),
+              // ExcludeSemantics prevents the label being read twice:
+              // once by the Semantics node above and again as a Text.
+              ExcludeSemantics(
+                child: Text(
+                  label!,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

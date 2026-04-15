@@ -199,7 +199,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         ),
         RecentsSource() => _LibraryEmptyState(
           onOpenFile: () => _pickAndOpenFile(context, ref),
-          onOpenFolder: () => showAddSourceSheet(context, ref),
+          onOpenFolder: () => pickAndAddFolder(context, ref),
           onSyncRepo: () => context.push(RepoSyncRoute.location()),
         ),
         FolderSource(:final folder) => LibraryFolderBody(
@@ -296,7 +296,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 /// Rather than the first-run onboarding screen, this presents the
 /// existing sources as tappable shortcut cards so the user can
 /// quickly jump to their content without hunting in the drawer.
-class _RecentsEmptyWithSources extends StatelessWidget {
+class _RecentsEmptyWithSources extends ConsumerWidget {
   const _RecentsEmptyWithSources({
     required this.folders,
     required this.syncedRepos,
@@ -313,8 +313,84 @@ class _RecentsEmptyWithSources extends StatelessWidget {
   final VoidCallback onOpenFile;
   final VoidCallback onAddSource;
 
+  Future<void> _showFolderRemoveSheet(
+    BuildContext context,
+    WidgetRef ref,
+    LibraryFolder folder,
+  ) async {
+    final l10n = context.l10n;
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder:
+          (sheetContext) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.delete_outline),
+                  title: Text(l10n.libraryFoldersRemove),
+                  onTap: () => Navigator.of(sheetContext).pop(true),
+                ),
+              ],
+            ),
+          ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    ref.read(libraryFoldersControllerProvider.notifier).remove(folder.path);
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(l10n.libraryFoldersRemovedSnack)));
+  }
+
+  Future<void> _showRepoActionsSheet(
+    BuildContext context,
+    WidgetRef ref,
+    SyncedRepo repo,
+  ) async {
+    final l10n = context.l10n;
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder:
+          (sheetContext) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: const Icon(Icons.sync),
+                  title: Text(l10n.syncUpdateRepo),
+                  onTap: () => Navigator.of(sheetContext).pop('update'),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.delete_outline),
+                  title: Text(l10n.syncRemoveRepo),
+                  onTap: () => Navigator.of(sheetContext).pop('remove'),
+                ),
+              ],
+            ),
+          ),
+    );
+    if (!context.mounted) return;
+    if (action == 'update') {
+      final base = 'https://github.com/${repo.owner}/${repo.repo}';
+      final url =
+          repo.subPath.isNotEmpty
+              ? '$base/tree/${repo.ref}/${repo.subPath}'
+              : '$base/tree/${repo.ref}';
+      unawaited(context.push(RepoSyncRoute.location(url: url)));
+    } else if (action == 'remove') {
+      await ref.read(syncedReposStoreProvider).delete(repo.id);
+      ref.invalidate(syncedReposProvider);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(l10n.syncRemovedRepoSnack)));
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final l10n = context.l10n;
     final scheme = theme.colorScheme;
@@ -385,6 +461,7 @@ class _RecentsEmptyWithSources extends StatelessWidget {
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => onSelectFolder(folder),
+                onLongPress: () => _showFolderRemoveSheet(context, ref, folder),
               );
             }
             final repo = syncedRepos[index - folders.length];
@@ -405,6 +482,7 @@ class _RecentsEmptyWithSources extends StatelessWidget {
               ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => onSelectSyncedRepo(repo),
+              onLongPress: () => _showRepoActionsSheet(context, ref, repo),
             );
           },
         ),

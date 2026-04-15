@@ -137,7 +137,17 @@ $mermaidJs
     // `%%{init: …}%%` pragmas in the source.
     mermaid.initialize({
       startOnLoad: false,
-      securityLevel: 'strict'
+      // 'antiscript' strips <script> tags from diagram labels while still
+      // allowing HTML labels required by quadrantChart and certain flowchart
+      // nodes. 'strict' blocks HTML labels entirely and causes quadrantChart
+      // to fail. Since this renderer processes the user's own local files
+      // (not untrusted remote content), antiscript is appropriate.
+      securityLevel: 'antiscript',
+      // 'classic' suppresses the per-diagram-type decorative icons that
+      // Mermaid v11 introduced. The mindmap icon in particular renders as
+      // a starburst/bomb shape that is confusing and undesirable in both
+      // the viewer and PDF output.
+      look: 'classic'
     });
   } catch (e) {
     window.flutter_inappwebview.callHandler('mermaidResult', {
@@ -173,6 +183,15 @@ $mermaidJs
     // the next screenshot while mermaid is parsing the new
     // source.
     sink.innerHTML = '';
+    // Remove any stray mermaid-injected elements (error SVGs, temp
+    // containers) left in the document by a previous failed render.
+    // Mermaid appends these at document.body level; because #sink is
+    // positioned at (0,0), a leftover element at the same origin
+    // appears inside the screenshot rect and produces bomb icons or
+    // "Syntax error" text on top of an otherwise-successful diagram.
+    document.querySelectorAll('[id^="mmd-"]').forEach(function(el) {
+      el.remove();
+    });
     try {
       mermaid.render('mmd-' + id, code).then(function (out) {
         var svgString = out && out.svg ? out.svg : '';
@@ -186,27 +205,34 @@ $mermaidJs
           postError(id, 'svg injection produced no root element');
           return;
         }
-        // Two paint ticks: one for the browser to lay out the
-        // newly-injected SVG, a second so any late style
-        // application or foreignObject metric calculation also
-        // settles before we measure.
+        // Poll up to 10 animation frames for non-zero dimensions.
+        // Complex diagram types (quadrantChart, large flowcharts)
+        // can take more than 2 frames before the browser has
+        // finished computing their final layout.
+        function measureSvg(remaining) {
+          var rect;
+          try {
+            rect = svg.getBoundingClientRect();
+          } catch (e) {
+            postError(
+              id,
+              'getBoundingClientRect threw: ' + (e && e.message ? e.message : e)
+            );
+            return;
+          }
+          if (rect.width > 0 && rect.height > 0) {
+            postReady(id, rect.width, rect.height);
+            return;
+          }
+          if (remaining <= 0) {
+            postError(id, 'svg has zero dimensions after layout');
+            return;
+          }
+          requestAnimationFrame(function () { measureSvg(remaining - 1); });
+        }
         requestAnimationFrame(function () {
           requestAnimationFrame(function () {
-            var rect;
-            try {
-              rect = svg.getBoundingClientRect();
-            } catch (e) {
-              postError(
-                id,
-                'getBoundingClientRect threw: ' + (e && e.message ? e.message : e)
-              );
-              return;
-            }
-            if (rect.width <= 0 || rect.height <= 0) {
-              postError(id, 'svg has zero dimensions after layout');
-              return;
-            }
-            postReady(id, rect.width, rect.height);
+            measureSvg(8);
           });
         });
       }).catch(function (err) {

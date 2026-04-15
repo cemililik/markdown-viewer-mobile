@@ -33,7 +33,13 @@ import 'package:visibility_detector/visibility_detector.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
+  final originalUpdateInterval =
+      VisibilityDetectorController.instance.updateInterval;
   VisibilityDetectorController.instance.updateInterval = Duration.zero;
+  tearDownAll(() {
+    VisibilityDetectorController.instance.updateInterval =
+        originalUpdateInterval;
+  });
 
   const MarkdownParser parser = MarkdownParser();
 

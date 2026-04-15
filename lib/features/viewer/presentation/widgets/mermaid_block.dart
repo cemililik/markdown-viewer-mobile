@@ -325,7 +325,14 @@ String buildMermaidInitDirective(ColorScheme scheme) {
   // are kept because the sandbox WebView renders them faithfully
   // (CSS, foreignObject, font metrics all work) and the native
   // screenshot path captures whatever the browser paints.
-  final payload = jsonEncode({'theme': 'base', 'themeVariables': variables});
+  // 'classic' suppresses the per-diagram-type decorative icons added in
+  // Mermaid v11 (the mindmap icon in particular looks like a bomb/starburst
+  // and is confusing in both the viewer and PDF output).
+  final payload = jsonEncode({
+    'theme': 'base',
+    'look': 'classic',
+    'themeVariables': variables,
+  });
   return '%%{init: $payload}%%\n';
 }
 
@@ -480,21 +487,26 @@ class _MermaidImageState extends State<_MermaidImage>
                 child: Stack(
                   children: [
                     Positioned.fill(
-                      child: InteractiveViewer(
-                        transformationController: _transform,
-                        minScale: 1.0,
-                        maxScale: 5.0,
-                        boundaryMargin: const EdgeInsets.all(double.infinity),
-                        child: Image.memory(
-                          widget.pngBytes,
-                          fit: BoxFit.contain,
-                          // The native snapshot arrives at the
-                          // device-pixel-ratio scaled resolution;
-                          // `filterQuality: medium` keeps the
-                          // down-scale smooth without the jagged
-                          // look of default nearest-neighbour.
-                          filterQuality: FilterQuality.medium,
-                          gaplessPlayback: true,
+                      child: Semantics(
+                        label: context.l10n.mermaidDiagramLabel,
+                        image: true,
+                        child: InteractiveViewer(
+                          transformationController: _transform,
+                          minScale: 1.0,
+                          maxScale: 5.0,
+                          boundaryMargin: const EdgeInsets.all(double.infinity),
+                          child: Image.memory(
+                            widget.pngBytes,
+                            fit: BoxFit.contain,
+                            // The native snapshot arrives at the
+                            // device-pixel-ratio scaled resolution;
+                            // `filterQuality: medium` keeps the
+                            // down-scale smooth without the jagged
+                            // look of default nearest-neighbour.
+                            filterQuality: FilterQuality.medium,
+                            gaplessPlayback: true,
+                            excludeFromSemantics: true,
+                          ),
                         ),
                       ),
                     ),
@@ -541,7 +553,7 @@ class _CenterButton extends StatelessWidget {
         tooltip: tooltip,
         iconSize: 20,
         padding: const EdgeInsets.all(6),
-        constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
+        constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
         icon: Icon(
           Icons.center_focus_strong_outlined,
           color: theme.colorScheme.onSurface,

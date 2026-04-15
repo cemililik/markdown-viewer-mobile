@@ -228,14 +228,17 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
           // Without this re-insert, deleteFilesForRepo (called before this
           // loop) would have wiped the records, leaving knownShas empty on the
           // following sync and causing unnecessary re-downloads.
-          if (file.sha.isNotEmpty && knownShas[file.path] == file.sha) {
+          final localPath = p.join(
+            localRoot,
+            file.path.replaceAll('/', p.separator),
+          );
+          if (file.sha.isNotEmpty &&
+              knownShas[file.path] == file.sha &&
+              await File(localPath).exists()) {
             await store.upsertFile(
               repoId: persistedRepo.id,
               remotePath: file.path,
-              localPath: p.join(
-                localRoot,
-                file.path.replaceAll('/', p.separator),
-              ),
+              localPath: localPath,
               sha: file.sha,
               size: file.size,
               status: 'synced',
@@ -244,11 +247,6 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
             notifyProgress();
             return;
           }
-
-          final localPath = p.join(
-            localRoot,
-            file.path.replaceAll('/', p.separator),
-          );
 
           try {
             final bytes = await gitHubProvider.downloadRaw(file);

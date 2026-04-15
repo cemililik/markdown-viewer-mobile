@@ -126,15 +126,22 @@ class _TocEntry extends StatelessWidget {
               color: theme.colorScheme.onSurfaceVariant,
             );
 
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(20 + indent, 10, 20, 10),
-        child: Text(
-          heading.text,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-          style: textStyle,
+    return Semantics(
+      button: true,
+      label: heading.text,
+      hint: 'Navigate to heading',
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(20 + indent, 10, 20, 10),
+          child: ExcludeSemantics(
+            child: Text(
+              heading.text,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: textStyle,
+            ),
+          ),
         ),
       ),
     );

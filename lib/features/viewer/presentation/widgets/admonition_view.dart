@@ -60,13 +60,20 @@ class AdmonitionView extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(palette.icon, size: 20, color: palette.accent),
+              // The icon is decorative — the adjacent title text
+              // already names the admonition kind for screen readers.
+              ExcludeSemantics(
+                child: Icon(palette.icon, size: 20, color: palette.accent),
+              ),
               const SizedBox(width: 8),
-              Text(
-                title,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  color: palette.accent,
-                  fontWeight: FontWeight.w600,
+              Semantics(
+                header: true,
+                child: Text(
+                  title,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: palette.accent,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],

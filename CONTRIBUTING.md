@@ -55,9 +55,19 @@ cd markdown_viewer
 flutter pub get
 flutter gen-l10n
 dart run build_runner build --delete-conflicting-outputs
+bash tool/fetch_mermaid.sh    # download pinned mermaid.min.js (not committed to git)
 bash tool/install-hooks.sh    # installs the pre-commit hook
 flutter test
 ```
+
+> **Note on `mermaid.min.js`**: the bundled Mermaid script is fetched
+> rather than committed because its MIT licence does not require source
+> inclusion and its size (≈ 2 MB) would inflate the git history on every
+> version bump. The script is pinned to a specific version and SHA-256
+> checksum in `tool/fetch_mermaid.sh`. CI runs this script before every
+> build. Without it, the Mermaid renderer falls back to an empty stub
+> and all diagram blocks show a placeholder — `flutter test` will still
+> pass but `integration_test/mermaid_render_test.dart` will fail.
 
 The pre-commit hook runs three checks before every commit:
 

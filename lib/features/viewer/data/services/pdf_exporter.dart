@@ -19,13 +19,77 @@ String extractPdfTitle(String source, String fallback) {
   return _firstH1(ast) ?? _cleanText(fallback);
 }
 
+/// Returns the trimmed source of every mermaid fenced code block in
+/// [source], in document order, without duplicates.
+///
+/// The returned strings are the exact look-up keys that [exportToPdf]
+/// uses in [mermaidImages], so callers can pre-render the diagrams via
+/// [MermaidRenderer] and pass the result map in without any key
+/// mismatch — both sides go through the same [_mermaidCodeFromPre]
+/// helper, which extracts, trims, and decodes HTML entities the
+/// markdown parser introduced inside the fenced code block text.
+List<String> extractMermaidCodes(String source) {
+  final ast = md.Document(
+    extensionSet: md.ExtensionSet.gitHubFlavored,
+  ).parseLines(source.split('\n'));
+  final codes = <String>[];
+  final seen = <String>{};
+  for (final node in ast) {
+    if (node is! md.Element || node.tag != 'pre') continue;
+    final codeEl = node.children?.whereType<md.Element>().firstOrNull;
+    final lang =
+        codeEl?.attributes['class']?.replaceFirst('language-', '') ?? '';
+    if (lang != 'mermaid') continue;
+    final code = _mermaidCodeFromPre(node);
+    if (code.isNotEmpty && seen.add(code)) codes.add(code);
+  }
+  return codes;
+}
+
+/// Returns the mermaid diagram source from a `<pre><code>` node.
+///
+/// `package:markdown` stores fenced-code-block text with HTML entities
+/// escaped (`<` → `&lt;`, `>` → `&gt;`, `&` → `&amp;`, `"` → `&quot;`).
+/// Mermaid's lexer does not understand these entities — it sees the
+/// literal `&quot;` / `&lt;br/&gt;` and throws a lexical error, which
+/// is how diagrams with HTML labels (`A["LLaMA<br/>Factory"]`,
+/// `subgraph "ForgeLM Unique Advantages"`, …) were failing to render
+/// in the PDF pipeline even though they previewed correctly in VS
+/// Code and the in-app viewer.
+///
+/// Decoding the five standard entities here yields the original
+/// mermaid source verbatim, which is both the correct payload for
+/// the renderer and the correct look-up key so PDF embed path and
+/// the pre-render pass agree on the same string.
+String _mermaidCodeFromPre(md.Element preNode) {
+  return _decodeMermaidHtmlEntities(_extractText(preNode)).trim();
+}
+
+String _decodeMermaidHtmlEntities(String text) {
+  // Order matters: &amp; must be decoded LAST so literal entities in
+  // the source (e.g. a node label that really contains "&lt;") do not
+  // get double-decoded. The markdown parser only ever escapes the raw
+  // characters `<`, `>`, `&`, `"`, `'`, so these five entity forms
+  // are the complete set we need to reverse.
+  return text
+      .replaceAll('&lt;', '<')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&quot;', '"')
+      .replaceAll('&#39;', "'")
+      .replaceAll('&amp;', '&');
+}
+
 /// Converts a markdown document to a PDF byte array.
 ///
 /// The markdown source is parsed with the same GitHub-Flavored Markdown
 /// extension set used by the viewer so headings, fenced code, tables,
-/// and strikethrough are all handled. Mermaid diagram fences are
-/// rendered as a labelled placeholder box — rasterising an SVG inside a
-/// PDF requires a WebView round-trip and is out of scope for v1.
+/// and strikethrough are all handled.
+///
+/// [mermaidImages] is an optional map from trimmed mermaid diagram source
+/// to pre-rendered PNG bytes. When provided and a matching entry exists,
+/// the diagram is embedded as a full-width image. When absent or the
+/// source is missing from the map, a labelled placeholder box is shown
+/// instead so the PDF is still useful without the WebView pipeline.
 ///
 /// [title] is used as the PDF document metadata title and as the header
 /// on page 1. If the document's first node is an H1 heading, that text
@@ -35,11 +99,17 @@ String extractPdfTitle(String source, String fallback) {
 /// ### Supported elements
 /// H1-H6 · paragraphs · **bold** · _italic_ · `inline code` · fenced
 /// code blocks · unordered and ordered lists (1 level deep) · block
-/// quotes · horizontal rules · tables (equal-width columns)
+/// quotes · horizontal rules · tables (equal-width columns) ·
+/// mermaid diagrams (when [mermaidImages] is supplied)
 ///
 /// ### Unsupported elements (skipped silently)
-/// Images · raw HTML · mermaid/LaTeX fences (shown as placeholder)
-Future<Uint8List> exportToPdf(String title, String source) async {
+/// Images · raw HTML · LaTeX fences (shown as placeholder)
+Future<Uint8List> exportToPdf(
+  String title,
+  String source, {
+  Map<String, Uint8List> mermaidImages = const {},
+  Map<String, String> mermaidErrors = const {},
+}) async {
   final ast = md.Document(
     extensionSet: md.ExtensionSet.gitHubFlavored,
   ).parseLines(source.split('\n'));
@@ -81,7 +151,7 @@ Future<Uint8List> exportToPdf(String title, String source) async {
               context.pageNumber == 1
                   ? _buildTitle(displayTitle, fonts)
                   : pw.SizedBox(),
-      build: (context) => _buildNodes(ast, fonts),
+      build: (context) => _buildNodes(ast, fonts, mermaidImages, mermaidErrors),
     ),
   );
 
@@ -129,16 +199,26 @@ pw.Widget _buildTitle(String title, _Fonts f) {
 
 // ── Top-level node list ───────────────────────────────────────────────
 
-List<pw.Widget> _buildNodes(List<md.Node> nodes, _Fonts f) {
+List<pw.Widget> _buildNodes(
+  List<md.Node> nodes,
+  _Fonts f,
+  Map<String, Uint8List> mermaidImages,
+  Map<String, String> mermaidErrors,
+) {
   final widgets = <pw.Widget>[];
   for (final node in nodes) {
-    final w = _buildNode(node, f);
+    final w = _buildNode(node, f, mermaidImages, mermaidErrors);
     if (w != null) widgets.add(w);
   }
   return widgets;
 }
 
-pw.Widget? _buildNode(md.Node node, _Fonts f) {
+pw.Widget? _buildNode(
+  md.Node node,
+  _Fonts f,
+  Map<String, Uint8List> mermaidImages,
+  Map<String, String> mermaidErrors,
+) {
   if (node is md.Text) {
     final trimmed = node.text.trim();
     if (trimmed.isEmpty) return null;
@@ -169,7 +249,7 @@ pw.Widget? _buildNode(md.Node node, _Fonts f) {
       return _paragraph(node, f);
 
     case 'pre':
-      return _codeBlock(node, f);
+      return _codeBlock(node, f, mermaidImages, mermaidErrors);
 
     case 'blockquote':
       return _blockquote(node, f);
@@ -362,16 +442,29 @@ pw.Font _resolveFont(
 
 // ── Code blocks ───────────────────────────────────────────────────────
 
-pw.Widget _codeBlock(md.Element preNode, _Fonts f) {
-  // A mermaid fence is useless as raw text in a PDF — show a placeholder.
+pw.Widget _codeBlock(
+  md.Element preNode,
+  _Fonts f,
+  Map<String, Uint8List> mermaidImages,
+  Map<String, String> mermaidErrors,
+) {
   final codeEl = preNode.children?.whereType<md.Element>().firstOrNull;
   final lang = codeEl?.attributes['class']?.replaceFirst('language-', '') ?? '';
-  final isMermaid = lang == 'mermaid';
 
-  final content =
-      isMermaid
-          ? '[ Diagram not included in PDF -- open in Markdown Viewer to view ]'
-          : _cleanText(_extractText(preNode));
+  if (lang == 'mermaid') {
+    final code = _mermaidCodeFromPre(preNode);
+    final pngBytes = mermaidImages[code];
+    if (pngBytes != null) {
+      // Embed the pre-rendered PNG, scaled to fill the content column.
+      return pw.Padding(
+        padding: const pw.EdgeInsets.only(bottom: 10),
+        child: pw.Image(pw.MemoryImage(pngBytes), fit: pw.BoxFit.contain),
+      );
+    }
+    // No pre-rendered image available — show a labelled placeholder so
+    // the PDF is still useful even without the WebView pipeline.
+    return _mermaidPlaceholder(f, mermaidErrors[code]);
+  }
 
   return pw.Padding(
     padding: const pw.EdgeInsets.only(bottom: 10),
@@ -385,11 +478,39 @@ pw.Widget _codeBlock(md.Element preNode, _Fonts f) {
         ),
       ),
       child: pw.Text(
-        content,
+        _cleanText(_extractText(preNode)),
         style: pw.TextStyle(
-          font: isMermaid ? f.italic : f.mono,
+          font: f.mono,
           fontSize: 9.5,
-          color: isMermaid ? PdfColors.grey600 : PdfColors.grey900,
+          color: PdfColors.grey900,
+        ),
+      ),
+    ),
+  );
+}
+
+pw.Widget _mermaidPlaceholder(_Fonts f, String? errorMessage) {
+  final text =
+      errorMessage != null && errorMessage.isNotEmpty
+          ? '[ Diagram failed to render: ${_cleanText(errorMessage)} ]'
+          : '[ Diagram not included in PDF -- open in Markdown Viewer to view ]';
+  return pw.Padding(
+    padding: const pw.EdgeInsets.only(bottom: 10),
+    child: pw.Container(
+      width: double.infinity,
+      padding: const pw.EdgeInsets.all(10),
+      decoration: const pw.BoxDecoration(
+        color: PdfColors.grey100,
+        border: pw.Border(
+          left: pw.BorderSide(color: PdfColors.grey400, width: 3),
+        ),
+      ),
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(
+          font: f.italic,
+          fontSize: 9.5,
+          color: PdfColors.grey600,
         ),
       ),
     ),
@@ -470,12 +591,15 @@ pw.Widget _list(md.Element node, _Fonts f, {required bool ordered}) {
 
 pw.Widget _table(md.Element tableNode, _Fonts f) {
   final rows = <pw.TableRow>[];
+  int colCount = 0;
   for (final section in (tableNode.children ?? []).whereType<md.Element>()) {
     final isHead = section.tag == 'thead';
     for (final tr in (section.children ?? []).whereType<md.Element>()) {
       if (tr.tag != 'tr') continue;
+      final cellElements = (tr.children ?? []).whereType<md.Element>().toList();
+      if (colCount == 0) colCount = cellElements.length;
       final cells =
-          (tr.children ?? []).whereType<md.Element>().map((cell) {
+          cellElements.map((cell) {
             final text = _cleanText(_extractText(cell)).trim();
             return pw.Padding(
               padding: const pw.EdgeInsets.symmetric(
@@ -503,10 +627,17 @@ pw.Widget _table(md.Element tableNode, _Fonts f) {
 
   if (rows.isEmpty) return pw.SizedBox();
 
+  // Distribute all columns equally so no column collapses to its minimum
+  // intrinsic width and causes mid-word wrapping.
+  final columnWidths = {
+    for (var i = 0; i < colCount; i++) i: const pw.FlexColumnWidth(1),
+  };
+
   return pw.Padding(
     padding: const pw.EdgeInsets.only(bottom: 10),
     child: pw.Table(
       border: pw.TableBorder.all(color: PdfColors.grey300, width: 0.5),
+      columnWidths: columnWidths,
       children: rows,
     ),
   );
@@ -575,6 +706,58 @@ String _cleanText(String text) {
       .replaceAll('\u2139', '[i]') // ℹ information source
       .replaceAll('\u2B50', '*') // ⭐ star
       .replaceAll('\u{1F525}', '[fire]') // 🔥
+      // Latin Extended-A transliteration — characters in U+0100–U+024F that
+      // are outside the Latin-1 range supported by the built-in PDF fonts.
+      // Turkish
+      .replaceAll('\u011E', 'G') // Ğ
+      .replaceAll('\u011F', 'g') // ğ
+      .replaceAll('\u0130', 'I') // İ
+      .replaceAll('\u0131', 'i') // ı
+      .replaceAll('\u015E', 'S') // Ş
+      .replaceAll('\u015F', 's') // ş
+      // Polish
+      .replaceAll('\u0104', 'A') // Ą
+      .replaceAll('\u0105', 'a') // ą
+      .replaceAll('\u0106', 'C') // Ć
+      .replaceAll('\u0107', 'c') // ć
+      .replaceAll('\u0118', 'E') // Ę
+      .replaceAll('\u0119', 'e') // ę
+      .replaceAll('\u0141', 'L') // Ł
+      .replaceAll('\u0142', 'l') // ł
+      .replaceAll('\u0143', 'N') // Ń
+      .replaceAll('\u0144', 'n') // ń
+      .replaceAll('\u015A', 'S') // Ś
+      .replaceAll('\u015B', 's') // ś
+      .replaceAll('\u0179', 'Z') // Ź
+      .replaceAll('\u017A', 'z') // ź
+      .replaceAll('\u017B', 'Z') // Ż
+      .replaceAll('\u017C', 'z') // ż
+      // Czech / Slovak
+      .replaceAll('\u010C', 'C') // Č
+      .replaceAll('\u010D', 'c') // č
+      .replaceAll('\u010E', 'D') // Ď
+      .replaceAll('\u010F', 'd') // ď
+      .replaceAll('\u011A', 'E') // Ě
+      .replaceAll('\u011B', 'e') // ě
+      .replaceAll('\u0147', 'N') // Ň
+      .replaceAll('\u0148', 'n') // ň
+      .replaceAll('\u0158', 'R') // Ř
+      .replaceAll('\u0159', 'r') // ř
+      .replaceAll('\u0160', 'S') // Š
+      .replaceAll('\u0161', 's') // š
+      .replaceAll('\u0164', 'T') // Ť
+      .replaceAll('\u0165', 't') // ť
+      .replaceAll('\u017D', 'Z') // Ž
+      .replaceAll('\u017E', 'z') // ž
+      // Romanian
+      .replaceAll('\u0102', 'A') // Ă
+      .replaceAll('\u0103', 'a') // ă
+      .replaceAll('\u0218', 'S') // Ș (comma below)
+      .replaceAll('\u0219', 's') // ș (comma below)
+      .replaceAll('\u021A', 'T') // Ț (comma below)
+      .replaceAll('\u021B', 't') // ț (comma below)
+      // Catch-all: drop any remaining character above U+00FF
+      .replaceAll(RegExp(r'[^\x00-\xFF]'), '')
       // PUA sentinels used by the viewer's search highlight system
       .replaceAll(RegExp('[\uE000-\uE003]'), '');
 }
