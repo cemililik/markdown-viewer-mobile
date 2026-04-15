@@ -39,7 +39,26 @@ fun resolveKeystoreField(propertyKey: String, envKey: String): String? {
     return null
 }
 
-val releaseStoreFile = resolveKeystoreField("storeFile", "ANDROID_KEYSTORE_PATH")
+// Gradle's `file()` resolves relative paths against the Gradle project
+// directory (`android/app/`) and does not expand `~` into the user home
+// directory. Both behaviours are surprising when key.properties is
+// hand-edited — a developer following the setup doc with a typical
+// `storeFile=~/Desktop/markdown-viewer-release.keystore` line would
+// see a confusing "file not found" error at the absurd resolved path
+// `android/app/~/Desktop/...`. Expand `~/` explicitly so the same
+// shell shorthand works in key.properties and in env vars.
+fun expandHome(path: String?): String? {
+    if (path == null) return null
+    val home = System.getProperty("user.home") ?: return path
+    return when {
+        path == "~" -> home
+        path.startsWith("~/") -> home + path.substring(1)
+        else -> path
+    }
+}
+
+val releaseStoreFile =
+    expandHome(resolveKeystoreField("storeFile", "ANDROID_KEYSTORE_PATH"))
 val releaseStorePassword = resolveKeystoreField("storePassword", "ANDROID_KEYSTORE_PASSWORD")
 val releaseKeyAlias = resolveKeystoreField("keyAlias", "ANDROID_KEY_ALIAS")
 val releaseKeyPassword = resolveKeystoreField("keyPassword", "ANDROID_KEY_PASSWORD")
