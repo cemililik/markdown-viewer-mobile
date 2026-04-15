@@ -47,7 +47,6 @@ class ErrorView extends StatelessWidget {
 
     return Semantics(
       liveRegion: true,
-      label: message,
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 360),

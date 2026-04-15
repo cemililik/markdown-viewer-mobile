@@ -764,6 +764,12 @@ abstract class AppLocalizations {
   /// **'No headings in this document'**
   String get viewerTocEmpty;
 
+  /// Accessibility hint on each TOC entry button, read by screen readers after the heading label to clarify the tap action.
+  ///
+  /// In en, this message translates to:
+  /// **'Navigate to heading'**
+  String get viewerTocNavigateHint;
+
   /// Tooltip on the viewer AppBar action that replaces the title with the in-document search field.
   ///
   /// In en, this message translates to:

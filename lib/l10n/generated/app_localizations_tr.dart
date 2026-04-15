@@ -389,6 +389,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get viewerTocEmpty => 'Bu belgede başlık yok';
 
   @override
+  String get viewerTocNavigateHint => 'Başlığa git';
+
+  @override
   String get viewerSearchOpenTooltip => 'Belgede ara';
 
   @override

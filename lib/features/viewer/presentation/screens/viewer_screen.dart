@@ -11,9 +11,11 @@ import 'package:markdown_viewer/features/library/application/preview_extractor.d
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
+import 'package:markdown_viewer/features/viewer/application/pdf_extract.dart';
 import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/viewer_document.dart';
-import 'package:markdown_viewer/features/viewer/data/services/pdf_exporter.dart';
+import 'package:markdown_viewer/features/viewer/data/services/pdf_exporter.dart'
+    hide extractMermaidCodes, extractPdfTitle;
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/reading_position.dart';
 import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
@@ -623,9 +625,17 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     // its own LRU cache slot (distinct from the viewer's Material-3
     // themed renders). No theme override — Mermaid's default theme
     // renders cleanly on a white PDF page.
+    //
+    // Suppressed when the diagram already carries its own %%{init:...}%%
+    // directive — user intent wins, matching the MermaidBlock widget's
+    // _sourceHasOwnDirective behaviour.
     const pdfInit = '%%{init: {"look": "classic"}}%%\n';
     for (final code in codes) {
-      final r = await renderer.render(code, initDirective: pdfInit);
+      final hasOwnDirective = code.trimLeft().startsWith('%%{init:');
+      final r = await renderer.render(
+        code,
+        initDirective: hasOwnDirective ? '' : pdfInit,
+      );
       if (r is MermaidRenderSuccess) {
         images[code] = r.pngBytes;
       } else if (r is MermaidRenderFailure) {

@@ -138,6 +138,7 @@
   "viewerPdfError": "PDF oluşturulamadı. Lütfen tekrar deneyin.",
   "viewerTocOpenTooltip": "İçindekiler",
   "viewerTocEmpty": "Bu belgede başlık yok",
+  "viewerTocNavigateHint": "Başlığa git",
   "viewerSearchOpenTooltip": "Belgede ara",
   "viewerSearchCloseTooltip": "Aramayı kapat",
   "viewerSearchPreviousTooltip": "Önceki eşleşme",

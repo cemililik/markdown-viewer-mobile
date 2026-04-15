@@ -392,6 +392,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewerTocEmpty => 'No headings in this document';
 
   @override
+  String get viewerTocNavigateHint => 'Navigate to heading';
+
+  @override
   String get viewerSearchOpenTooltip => 'Search in document';
 
   @override

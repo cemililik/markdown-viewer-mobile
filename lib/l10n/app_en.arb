@@ -473,6 +473,10 @@
   "@viewerTocEmpty": {
     "description": "Placeholder shown inside the TOC drawer when the active document has no headings the parser could extract."
   },
+  "viewerTocNavigateHint": "Navigate to heading",
+  "@viewerTocNavigateHint": {
+    "description": "Accessibility hint on each TOC entry button, read by screen readers after the heading label to clarify the tap action."
+  },
   "viewerSearchOpenTooltip": "Search in document",
   "@viewerSearchOpenTooltip": {
     "description": "Tooltip on the viewer AppBar action that replaces the title with the in-document search field."

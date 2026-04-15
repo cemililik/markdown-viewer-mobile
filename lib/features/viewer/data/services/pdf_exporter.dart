@@ -76,6 +76,7 @@ String _decodeMermaidHtmlEntities(String text) {
       .replaceAll('&gt;', '>')
       .replaceAll('&quot;', '"')
       .replaceAll('&#39;', "'")
+      .replaceAll('&apos;', "'")
       .replaceAll('&amp;', '&');
 }
 
@@ -597,7 +598,7 @@ pw.Widget _table(md.Element tableNode, _Fonts f) {
     for (final tr in (section.children ?? []).whereType<md.Element>()) {
       if (tr.tag != 'tr') continue;
       final cellElements = (tr.children ?? []).whereType<md.Element>().toList();
-      if (colCount == 0) colCount = cellElements.length;
+      if (cellElements.length > colCount) colCount = cellElements.length;
       final cells =
           cellElements.map((cell) {
             final text = _cleanText(_extractText(cell)).trim();

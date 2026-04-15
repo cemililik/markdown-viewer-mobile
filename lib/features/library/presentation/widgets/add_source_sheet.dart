@@ -32,7 +32,7 @@ Future<void> showAddSourceSheet(BuildContext context, WidgetRef ref) async {
 /// user intent clear (e.g. the "Open folder" button on the empty state
 /// where "Sync repository" is already a separate affordance).
 Future<void> pickAndAddFolder(BuildContext context, WidgetRef ref) =>
-    _AddSourceSheetBody._pickFolder(context, ref);
+    _AddSourceSheetBody._pickFolder(context, ref, popBeforePicker: false);
 
 class _AddSourceSheetBody extends ConsumerWidget {
   const _AddSourceSheetBody();
@@ -61,7 +61,12 @@ class _AddSourceSheetBody extends ConsumerWidget {
               title: l10n.libraryActionMenuOpenFolder,
               subtitle: l10n.libraryAddSourceFolderSubtitle,
               enabled: true,
-              onTap: () => _AddSourceSheetBody._pickFolder(context, ref),
+              onTap:
+                  () => _AddSourceSheetBody._pickFolder(
+                    context,
+                    ref,
+                    popBeforePicker: true,
+                  ),
             ),
             const SizedBox(height: 12),
             _AddSourceEntry(
@@ -80,7 +85,11 @@ class _AddSourceSheetBody extends ConsumerWidget {
     );
   }
 
-  static Future<void> _pickFolder(BuildContext context, WidgetRef ref) async {
+  static Future<void> _pickFolder(
+    BuildContext context,
+    WidgetRef ref, {
+    bool popBeforePicker = false,
+  }) async {
     final l10n = context.l10n;
     final messenger = ScaffoldMessenger.of(context);
     final logger = ref.read(appLoggerProvider);
@@ -90,7 +99,7 @@ class _AddSourceSheetBody extends ConsumerWidget {
     // directory picker UI does not race with the sheet's own
     // dismiss animation — on iOS a visible sheet under the
     // picker is a jarring double-modal.
-    unawaited(Navigator.of(context).maybePop());
+    if (popBeforePicker) unawaited(Navigator.of(context).maybePop());
 
     String? path;
     String? bookmark;

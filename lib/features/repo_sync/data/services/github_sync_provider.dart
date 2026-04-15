@@ -119,7 +119,7 @@ class GitHubSyncProvider implements RepoSyncProvider {
       throw const UnknownFailure(
         message:
             'Repository tree is too large for a single API call and was '
-            'truncated. Only a subset of files will be synced.',
+            'truncated. The sync has been aborted — no files will be synced.',
       );
     }
 
