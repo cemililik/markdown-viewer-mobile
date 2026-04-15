@@ -76,8 +76,33 @@
 		<string>????</string>
 		<key>CFBundleVersion</key>
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
+		<!--
+		  Export compliance — declares that the app only uses Apple's
+		  standard encryption (HTTPS via URLSession, keychain services,
+		  file data protection). Setting this to `false` lets App Store
+		  Connect auto-mark each build as "export exempt" so the
+		  maintainer does not have to click through the Missing
+		  Compliance dialog in TestFlight for every upload. If the app
+		  ever ships custom crypto code, flip this to `true` and follow
+		  https://developer.apple.com/documentation/security/complying_with_encryption_export_regulations .
+		-->
+		<key>ITSAppUsesNonExemptEncryption</key>
+		<false/>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
+		<!--
+		  Required by App Store Connect static analysis (ITMS-90683)
+		  because one or more Flutter plugins bundled with this app —
+		  most likely `printing` and/or `share_plus` — link against
+		  the PhotoKit framework for their "Save to Photos" share-sheet
+		  options. Markdown Viewer does not query the photo library
+		  itself, but if a user shares an exported PDF and chooses the
+		  system "Save to Photos" action, iOS surfaces this purpose
+		  string in the permission prompt. A purpose string is required
+		  even when the app never actually triggers that code path.
+		-->
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Markdown Viewer may access your photo library if you choose to save an exported document, such as a PDF, back to Photos.</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>
