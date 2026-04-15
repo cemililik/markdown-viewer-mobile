@@ -117,12 +117,6 @@ jobs:
   # signing jobs behind a green build.
   verify:
     name: Lint, analyze, test
-    # DEBUG: temporarily skipped while the iOS TestFlight upload path
-    # is being diagnosed in isolation. Re-enable by deleting the
-    # `if: false` line below (and the matching ones on
-    # android-release and github-release) once the iOS upload is
-    # known-good.
-    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 25
     needs: version
@@ -167,8 +161,6 @@ jobs:
   # ── 3. Android: signed AAB → Play Console internal track ─────────────
   android-release:
     name: Android (AAB → Play Console internal)
-    # DEBUG: temporarily skipped — see the note on `verify`.
-    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: [version, verify]
@@ -309,62 +301,24 @@ jobs:
     name: iOS (IPA → TestFlight)
     runs-on: macos-latest
     timeout-minutes: 60
-    # DEBUG: temporarily only depends on `version` while iOS is being
-    # diagnosed in isolation — `verify` is disabled via `if: false`
-    # above, so listing it here would block this job from running.
-    needs: [version]
+    needs: [version, verify]
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      # DEBUG one-shot: prints which Xcodes are preinstalled on the
-      # runner image so future maintainers can see at a glance what
-      # `latest-stable` will resolve to. Safe to remove once the
-      # Xcode 26 upgrade has been proven stable — the setup-xcode
-      # step below is the actual fix.
-      - name: Diagnostic — available Xcode versions on runner
-        run: |
-          echo "=============================================="
-          echo "== Preinstalled Xcodes                      =="
-          echo "=============================================="
-          ls -1 /Applications | grep -i '^Xcode' || true
-          echo ""
-          echo "=============================================="
-          echo "== Active Xcode before setup-xcode          =="
-          echo "=============================================="
-          xcode-select -p || true
-          xcodebuild -version || true
-
-      # ITMS-90725 fix: Apple requires all App Store uploads to be
-      # built with the iOS 26 SDK or later starting April 28, 2026.
-      # `macos-latest` runners ship multiple Xcodes pre-installed —
-      # setup-xcode's `latest-stable` selects whichever is the
-      # newest GA release on the current runner image, which is the
-      # iOS 26 SDK as soon as GitHub Actions rolls Xcode 26 onto
-      # their macOS images (already expected given the Apple
-      # deadline). If the runner does NOT yet have a sufficiently
-      # new Xcode, the `Post-setup diagnostic` step below will log
-      # exactly which version was picked and the Apple upload will
-      # continue to emit ITMS-90725 as a warning — that is the
-      # signal to revisit this pin with an explicit version
-      # (`xcode-version: "26.0"` etc.) or a runner image bump.
+      # Apple's App Store Connect upload pipeline rejects every binary
+      # built with an iOS SDK older than iOS 26 starting April 28,
+      # 2026 (ITMS-90725). GitHub Actions' macOS runner image ships
+      # several Xcodes side by side; `latest-stable` picks whichever
+      # is the newest GA release on the current image so the archive
+      # is compiled against the iOS 26 SDK automatically. If a future
+      # runner image ever fails to resolve a new-enough Xcode, pin
+      # `xcode-version` to an explicit version like "26.0" and open
+      # a follow-up to bump the runner image.
       - name: Pin Xcode to latest-stable for iOS 26 SDK (ITMS-90725)
         uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
         with:
           xcode-version: latest-stable
-
-      - name: Diagnostic — active Xcode after setup-xcode
-        run: |
-          echo "=============================================="
-          echo "== Active Xcode after setup-xcode           =="
-          echo "=============================================="
-          xcode-select -p
-          xcodebuild -version
-          echo ""
-          echo "=============================================="
-          echo "== iOS SDKs exposed by this Xcode           =="
-          echo "=============================================="
-          xcodebuild -showsdks | grep -i '^iOS' || true
 
       - name: Set up Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.22.0
@@ -399,38 +353,6 @@ jobs:
           api-key-id: ${{ secrets.APPSTORE_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_PRIVATE_KEY }}
 
-      # DEBUG: surface the exact state of the runner keychain and the
-      # downloaded provisioning profile before we spend time on a
-      # full Flutter archive. The `|| true` tail on each command stops
-      # a missing directory or a parsing glitch from turning this
-      # diagnostic into a hard failure — we want the log output
-      # regardless of outcome.
-      - name: Diagnostic — keychain identities and provisioning profiles
-        run: |
-          echo "=============================================="
-          echo "== Signing identities in default keychain   =="
-          echo "=============================================="
-          security find-identity -v -p codesigning || true
-          echo ""
-          echo "=============================================="
-          echo "== Provisioning profiles in ~/Library       =="
-          echo "=============================================="
-          ls -la ~/Library/MobileDevice/Provisioning\ Profiles/ 2>&1 || true
-          echo ""
-          for profile in ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision; do
-            if [ -f "$profile" ]; then
-              echo "-- $(basename "$profile") --"
-              security cms -D -i "$profile" 2>/dev/null > /tmp/profile.plist || true
-              echo "Name:                $(plutil -extract Name raw /tmp/profile.plist 2>/dev/null || echo '?')"
-              echo "UUID:                $(plutil -extract UUID raw /tmp/profile.plist 2>/dev/null || echo '?')"
-              echo "TeamName:            $(plutil -extract TeamName raw /tmp/profile.plist 2>/dev/null || echo '?')"
-              echo "AppIDName:           $(plutil -extract AppIDName raw /tmp/profile.plist 2>/dev/null || echo '?')"
-              echo "Application-ID:      $(plutil -extract Entitlements.application-identifier raw /tmp/profile.plist 2>/dev/null || echo '?')"
-              echo "ExpirationDate:      $(plutil -extract ExpirationDate raw /tmp/profile.plist 2>/dev/null || echo '?')"
-              echo ""
-            fi
-          done
-
       - name: Build signed IPA
         # --export-options-plist points at the ExportOptions.plist
         # committed in `ios/` — that file pins the teamID, signing
@@ -442,91 +364,31 @@ jobs:
             --build-number=${{ needs.version.outputs.build_number }} \
             --export-options-plist=ios/ExportOptions.plist
 
-      # DEBUG: confirm the freshly built IPA is well-formed and signed
-      # by the certificate we expected. `codesign --verify` catches a
-      # broken signing chain before we waste an upload round-trip.
-      - name: Diagnostic — verify IPA signature and metadata
-        run: |
-          echo "=============================================="
-          echo "== IPA file details                          =="
-          echo "=============================================="
-          ls -la build/ios/ipa/ || true
-          echo ""
-          IPA=build/ios/ipa/markdown_viewer.ipa
-          if [ ! -f "$IPA" ]; then
-            echo "::error::$IPA does not exist; earlier build step likely failed silently"
-            exit 1
-          fi
-          echo "file: $(file "$IPA")"
-          echo ""
-          echo "=============================================="
-          echo "== Extracting .app from .ipa for inspection =="
-          echo "=============================================="
-          WORK=$(mktemp -d)
-          unzip -q "$IPA" -d "$WORK"
-          APP_PATH=$(find "$WORK/Payload" -maxdepth 1 -name "*.app" | head -1)
-          echo "App bundle: $APP_PATH"
-          echo ""
-          echo "== Info.plist (key fields) =="
-          INFO="$APP_PATH/Info.plist"
-          for key in CFBundleIdentifier CFBundleShortVersionString CFBundleVersion CFBundleExecutable MinimumOSVersion; do
-            echo "  $key = $(plutil -extract "$key" raw "$INFO" 2>/dev/null || echo '?')"
-          done
-          echo ""
-          echo "== codesign --display =="
-          codesign --display --verbose=4 "$APP_PATH" 2>&1 || true
-          echo ""
-          echo "== codesign --verify --deep --strict =="
-          codesign --verify --deep --strict --verbose=2 "$APP_PATH" 2>&1 || true
-
-      # DEBUG: altool --validate-app is the App Store Connect API's
-      # diagnostic surface. Unlike iTMSTransporter (which collapses
-      # every failure mode into OSStatus -10814), altool returns a
-      # structured JSON describing WHY an upload would be rejected —
-      # missing agreements, missing DSA trader info, app record not
-      # found, bundle ID mismatch, provisioning profile not ready,
-      # etc. We run validate first so the actual upload step below
-      # has a baseline of "the server accepts this IPA".
-      #
-      # `|| true` on the altool invocation because we want the pipeline
-      # to continue to the upload step even if validate reports
-      # warnings — the log output is the signal.
-      - name: Diagnostic — altool validate-app (dry-run upload)
+      - name: Upload to TestFlight via altool
+        # `xcrun altool --upload-app` is used in place of
+        # `apple-actions/upload-testflight-build@v4` because that
+        # action calls iTMSTransporter under the hood, which collapses
+        # every failure mode into the opaque `OSStatus error -10814`
+        # on arm64 macOS runners (regardless of the real cause). altool
+        # goes through Apple's REST API and returns a readable error
+        # envelope, and has handled every upload on this project
+        # reliably once Info.plist compliance was in place.
+        #
+        # The App Store Connect API `.p8` key is written into altool's
+        # canonical lookup path (`~/.appstoreconnect/private_keys/`)
+        # so the CLI can discover it by Key ID alone, then the command
+        # runs with `--verbose` so any future regression prints a
+        # diagnosable error instead of a silent exit.
         env:
           APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
           APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
           APPSTORE_PRIVATE_KEY: ${{ secrets.APPSTORE_PRIVATE_KEY }}
         run: |
-          set -uo pipefail
+          set -euo pipefail
           mkdir -p ~/.appstoreconnect/private_keys
           KEY_FILE=~/.appstoreconnect/private_keys/AuthKey_${APPSTORE_KEY_ID}.p8
           printf '%s' "$APPSTORE_PRIVATE_KEY" > "$KEY_FILE"
           chmod 600 "$KEY_FILE"
-          echo "=============================================="
-          echo "== xcrun altool --validate-app              =="
-          echo "=============================================="
-          xcrun altool --validate-app \
-            --type ios \
-            --file build/ios/ipa/markdown_viewer.ipa \
-            --apiKey "$APPSTORE_KEY_ID" \
-            --apiIssuer "$APPSTORE_ISSUER_ID" \
-            --verbose || echo "validate-app exit: $?"
-
-      # Replaces the apple-actions/upload-testflight-build action —
-      # that action uses iTMSTransporter under the hood, which has a
-      # history of returning OSStatus -10814 on arm64 macOS runners
-      # regardless of the real failure cause. altool's upload-app
-      # command exits with a human-readable JSON error envelope that
-      # is trivially diagnosable.
-      - name: Upload to TestFlight via altool
-        env:
-          APPSTORE_KEY_ID: ${{ secrets.APPSTORE_KEY_ID }}
-          APPSTORE_ISSUER_ID: ${{ secrets.APPSTORE_ISSUER_ID }}
-        run: |
-          set -euo pipefail
-          echo "=============================================="
-          echo "== xcrun altool --upload-app                =="
-          echo "=============================================="
           xcrun altool --upload-app \
             --type ios \
             --file build/ios/ipa/markdown_viewer.ipa \
@@ -545,10 +407,6 @@ jobs:
   # ── 5. GitHub Release with both artifacts attached ───────────────────
   github-release:
     name: Publish GitHub Release
-    # DEBUG: temporarily skipped — see the note on `verify`. Needs
-    # android-release artifacts which are disabled in this debug
-    # mode, so running it would fail on a missing download.
-    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 10
     needs: [version, android-release, ios-release]
