@@ -145,6 +145,7 @@ class MarkdownView extends StatelessWidget {
     this.blockKeys,
     this.readingSettings = ReadingSettings.defaults,
     this.onLinkTap,
+    this.onTocList,
     this.searchHighlight,
     super.key,
   });
@@ -190,6 +191,31 @@ class MarkdownView extends StatelessWidget {
   /// it calls `url_launcher` for every link — so callers that
   /// only care about external links can omit this.
   final void Function(String href)? onLinkTap;
+
+  /// Invoked during every build with the list of headings
+  /// `markdown_widget` discovered while constructing the rendered
+  /// block list, in document order. Each [Toc] carries the
+  /// `widgetIndex` of the heading's rendered widget — i.e. the
+  /// index into the list that the surrounding render loop uses to
+  /// look up its [blockKeys] entry.
+  ///
+  /// `ViewerScreen` uses this mapping to build its own
+  /// `HeadingRef → widgetIndex` table so TOC navigation drives
+  /// `Scrollable.ensureVisible` against the correct `GlobalKey`.
+  /// Earlier versions of the viewer reused `HeadingRef.blockIndex`
+  /// from the parser layer for this lookup, which quietly desynced
+  /// as soon as `markdown_widget`'s block split (driven by its own
+  /// regex + `encodeHtml: false`) diverged from the parser's block
+  /// list (driven by `LineSplitter` + `encodeHtml: true`) —
+  /// headings further down the document then either failed to
+  /// scroll at all (out-of-range key lookup) or landed on the
+  /// wrong block.
+  ///
+  /// The callback fires synchronously inside
+  /// `MarkdownGenerator.buildWidgets`, so listeners must avoid
+  /// calling `setState` directly; store the list in a plain field
+  /// and read it on the next user interaction instead.
+  final ValueChanged<List<Toc>>? onTocList;
 
   /// When non-null, enables inline search highlighting. [MarkdownView]
   /// inserts PUA markers around every match before rendering and uses a
@@ -319,14 +345,34 @@ class MarkdownView extends StatelessWidget {
             )
             : _markdownGenerator;
 
-    final widgets = generator.buildWidgets(sourceToRender, config: config);
+    // Forwarding `onTocList` through `buildWidgets` is what lets the
+    // viewer map `HeadingRef`s to the exact `widgetIndex` of each
+    // heading's rendered widget. `markdown_widget` runs its own parse
+    // (`encodeHtml: false` + a split regex) that can disagree with
+    // the parser-side block list in pathological-but-realistic cases
+    // (frontmatter, HTML blocks, trailing whitespace runs) — ignoring
+    // this callback silently desyncs TOC navigation.
+    final widgets = generator.buildWidgets(
+      sourceToRender,
+      config: config,
+      onTocList: onTocList,
+    );
 
-    // Wrap each block widget in a KeyedSubtree if the viewer
-    // handed us a GlobalKey for that index. The key lets
-    // Scrollable.ensureVisible target the rendered widget
-    // without any pixel measuring on our side — which is how
-    // the TOC drawer jumps to a heading and the in-doc search
-    // lands on the block that contains the current match.
+    // Wrap each rendered block in a `KeyedSubtree` whose `GlobalKey`
+    // comes from the shared [blockKeys] map. The keys let
+    // `Scrollable.ensureVisible` target the rendered widget without
+    // any pixel measuring on our side — which is how the TOC drawer
+    // jumps to a heading and the in-doc search lands on the block
+    // that contains the current match.
+    //
+    // The map grows lazily via `putIfAbsent`: the viewer starts with
+    // an empty (or partially-filled) map and every rebuild tops it
+    // up to match the current widget count. This avoids a stale-key
+    // class of bug where the parser's block count (which seeds the
+    // map in earlier versions) disagreed with `widgets.length`,
+    // leaving some widgets without a key and some keys without a
+    // widget. Growing on demand against the authoritative
+    // widget-count side keeps the two aligned by construction.
     final keys = blockKeys;
     final columnChildren = <Widget>[];
 
@@ -347,8 +393,11 @@ class MarkdownView extends StatelessWidget {
     );
 
     for (var i = 0; i < widgets.length; i += 1) {
-      final key = keys?[i];
-      if (key != null) {
+      if (keys != null) {
+        final key = keys.putIfAbsent(
+          i,
+          () => GlobalKey(debugLabel: 'doc-block-$i'),
+        );
         columnChildren.add(KeyedSubtree(key: key, child: widgets[i]));
       } else {
         columnChildren.add(widgets[i]);

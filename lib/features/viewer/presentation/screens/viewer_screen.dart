@@ -23,6 +23,7 @@ import 'package:markdown_viewer/features/viewer/presentation/widgets/toc_drawer.
 import 'package:markdown_viewer/features/viewer/presentation/widgets/viewer_reading_panel.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/viewer_search_bar.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
+import 'package:markdown_widget/markdown_widget.dart' show Toc;
 import 'package:path/path.dart' as p;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
@@ -80,15 +81,33 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   double _lastScrollOffset = 0;
   bool _isScrollingDown = false;
 
-  /// GlobalKeys attached to each rendered top-level block. Keyed
-  /// by block index. Populated lazily on the first data state
-  /// and re-allocated if the provider later returns a document
-  /// with a different block count (e.g. after a retry that
-  /// reloaded a changed file on disk). The TOC drawer + in-doc
-  /// search both look up keys here before driving
-  /// `Scrollable.ensureVisible`.
+  /// GlobalKeys attached to each rendered block in the
+  /// `markdown_widget` output. Keyed by `widgetIndex` — the
+  /// same index space `markdown_widget` uses internally, not
+  /// the parser-side block index. Grows lazily inside
+  /// [MarkdownView.build] via `putIfAbsent`, so we do not need
+  /// to know the final widget count ahead of time.
+  ///
+  /// The TOC drawer + in-doc search both look up keys here
+  /// before driving `Scrollable.ensureVisible`.
   final Map<int, GlobalKey> _blockKeys = {};
-  int _blockKeysLength = 0;
+
+  /// Maps each [HeadingRef] in the current document to the
+  /// `widgetIndex` of its rendered widget inside
+  /// `markdown_widget`'s output list. Populated on every
+  /// [MarkdownView] build via the `onTocList` callback.
+  ///
+  /// This map replaces the old practice of reading
+  /// `HeadingRef.blockIndex` (which comes from our own
+  /// `MarkdownParser` and counts blocks in a different index
+  /// space than `markdown_widget`'s render list). Because
+  /// `markdown_widget` parses with `encodeHtml: false` + a
+  /// private split regex while our parser uses
+  /// `encodeHtml: true` + `LineSplitter`, the two block lists
+  /// could diverge — headings further down the document would
+  /// either silently fail to scroll (out-of-range lookup) or
+  /// land on the wrong block.
+  Map<HeadingRef, int> _headingToWidgetIndex = const {};
 
   /// In-document search state. `_searchActive` flips the AppBar
   /// title slot between the document basename and the
@@ -363,27 +382,44 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     );
   }
 
-  /// Makes sure there is exactly one [GlobalKey] per top-level
-  /// block in [document]. Called from the data branch of
-  /// `build` so the keys stay aligned with whatever the parser
-  /// last returned.
-  void _ensureBlockKeys(Document document) {
-    final needed = document.topLevelBlockCount;
-    if (_blockKeysLength == needed) return;
-    _blockKeys.clear();
-    for (var i = 0; i < needed; i += 1) {
-      _blockKeys[i] = GlobalKey(debugLabel: 'doc-block-$i');
+  /// Handles `markdown_widget`'s `onTocList` callback by rebuilding
+  /// [_headingToWidgetIndex] against the current document's heading
+  /// list. Both lists walk the document in order, so the N-th entry
+  /// in each corresponds to the same heading.
+  ///
+  /// This method is called synchronously from inside
+  /// [MarkdownView.build] via the `onTocList` forwarding, so it
+  /// MUST NOT call `setState` — mutating the map directly is fine
+  /// because only `_scrollToHeading` reads it, and that happens on
+  /// user interaction (long after the build completes).
+  void _captureHeadingIndex(Document document, List<Toc> tocs) {
+    if (tocs.isEmpty && _headingToWidgetIndex.isEmpty) return;
+    final map = <HeadingRef, int>{};
+    final headings = document.headings;
+    final count = headings.length < tocs.length ? headings.length : tocs.length;
+    for (var i = 0; i < count; i += 1) {
+      map[headings[i]] = tocs[i].widgetIndex;
     }
-    _blockKeysLength = needed;
+    _headingToWidgetIndex = map;
   }
 
-  /// Animates the scroll so the block the heading sits in is
+  /// Animates the scroll so the widget containing [heading] is
   /// pinned near the top of the viewport. Uses
-  /// `Scrollable.ensureVisible` against the GlobalKey wrapped
-  /// around that block's rendered widget, so the jump is
-  /// pixel-perfect without any offset measuring on our side.
+  /// `Scrollable.ensureVisible` against the `GlobalKey` that
+  /// `MarkdownView` attached to the matching block, so the jump
+  /// is pixel-perfect without any offset measuring on our side.
+  ///
+  /// The lookup goes through [_headingToWidgetIndex] (populated on
+  /// every `MarkdownView` build via `onTocList`) so the widget
+  /// index matches `markdown_widget`'s internal block list rather
+  /// than the parser's. Using `HeadingRef.blockIndex` directly
+  /// would desync whenever the two parsers disagree on how to
+  /// split the document — the bug that originally sent TOC taps
+  /// to the wrong place (or to the top of the document).
   void _scrollToHeading(HeadingRef heading) {
-    final key = _blockKeys[heading.blockIndex];
+    final widgetIndex = _headingToWidgetIndex[heading];
+    if (widgetIndex == null) return;
+    final key = _blockKeys[widgetIndex];
     final target = key?.currentContext;
     if (target == null) return;
     Scrollable.ensureVisible(
@@ -833,7 +869,6 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
           },
           data: (document) {
             _maybeRestoreReadingPosition();
-            _ensureBlockKeys(document);
             final queryLength = _searchController.text.trim().length;
             return Column(
               children: [
@@ -848,6 +883,14 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                     blockKeys: _blockKeys,
                     readingSettings: readingSettings,
                     onLinkTap: (href) => _onLinkTap(href, document),
+                    // `onTocList` fires synchronously from inside
+                    // `MarkdownGenerator.buildWidgets`. The handler
+                    // mutates `_headingToWidgetIndex` directly
+                    // (no `setState`) because the map is read by
+                    // `_scrollToHeading` on user interaction, not
+                    // during the build — rebuilding here would
+                    // provoke a setState-during-build exception.
+                    onTocList: (tocs) => _captureHeadingIndex(document, tocs),
                     searchHighlight:
                         (_searchActive && _searchMatches.isNotEmpty)
                             ? SearchHighlightState(
