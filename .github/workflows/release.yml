@@ -317,6 +317,55 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+      # DEBUG one-shot: prints which Xcodes are preinstalled on the
+      # runner image so future maintainers can see at a glance what
+      # `latest-stable` will resolve to. Safe to remove once the
+      # Xcode 26 upgrade has been proven stable — the setup-xcode
+      # step below is the actual fix.
+      - name: Diagnostic — available Xcode versions on runner
+        run: |
+          echo "=============================================="
+          echo "== Preinstalled Xcodes                      =="
+          echo "=============================================="
+          ls -1 /Applications | grep -i '^Xcode' || true
+          echo ""
+          echo "=============================================="
+          echo "== Active Xcode before setup-xcode          =="
+          echo "=============================================="
+          xcode-select -p || true
+          xcodebuild -version || true
+
+      # ITMS-90725 fix: Apple requires all App Store uploads to be
+      # built with the iOS 26 SDK or later starting April 28, 2026.
+      # `macos-latest` runners ship multiple Xcodes pre-installed —
+      # setup-xcode's `latest-stable` selects whichever is the
+      # newest GA release on the current runner image, which is the
+      # iOS 26 SDK as soon as GitHub Actions rolls Xcode 26 onto
+      # their macOS images (already expected given the Apple
+      # deadline). If the runner does NOT yet have a sufficiently
+      # new Xcode, the `Post-setup diagnostic` step below will log
+      # exactly which version was picked and the Apple upload will
+      # continue to emit ITMS-90725 as a warning — that is the
+      # signal to revisit this pin with an explicit version
+      # (`xcode-version: "26.0"` etc.) or a runner image bump.
+      - name: Pin Xcode to latest-stable for iOS 26 SDK (ITMS-90725)
+        uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90 # v1.7.0
+        with:
+          xcode-version: latest-stable
+
+      - name: Diagnostic — active Xcode after setup-xcode
+        run: |
+          echo "=============================================="
+          echo "== Active Xcode after setup-xcode           =="
+          echo "=============================================="
+          xcode-select -p
+          xcodebuild -version
+          echo ""
+          echo "=============================================="
+          echo "== iOS SDKs exposed by this Xcode           =="
+          echo "=============================================="
+          xcodebuild -showsdks | grep -i '^iOS' || true
+
       - name: Set up Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.22.0
         with:
