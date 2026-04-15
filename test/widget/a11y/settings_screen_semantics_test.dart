@@ -19,10 +19,10 @@ void main() {
   Widget harness() {
     return ProviderScope(
       overrides: [settingsStoreProvider.overrideWithValue(store)],
-      child: MaterialApp(
+      child: const MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: const SettingsScreen(),
+        home: SettingsScreen(),
       ),
     );
   }

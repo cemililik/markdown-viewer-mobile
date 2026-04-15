@@ -1237,6 +1237,78 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Sync partially completed: {syncedCount} file(s) saved, {failedCount} failed.'**
   String errorPartialSync(int syncedCount, int failedCount);
+
+  /// Label of the button in the onboarding flow top bar that dismisses the remaining pages and returns the user to the library.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get onboardingSkip;
+
+  /// Label of the primary button on every onboarding page except the last — advances to the next page.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get onboardingNext;
+
+  /// Label of the primary button on the final onboarding page — dismisses the flow and opens the library.
+  ///
+  /// In en, this message translates to:
+  /// **'Get started'**
+  String get onboardingGetStarted;
+
+  /// Title of the first onboarding page, introducing the app.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to Markdown Viewer'**
+  String get onboardingWelcomeTitle;
+
+  /// Body copy of the first onboarding page, introducing the app's purpose.
+  ///
+  /// In en, this message translates to:
+  /// **'A focused mobile reader for your markdown notes, docs, and knowledge base — no editor, no distractions.'**
+  String get onboardingWelcomeBody;
+
+  /// Title of the second onboarding page, highlighting rendering features.
+  ///
+  /// In en, this message translates to:
+  /// **'Rich content, beautifully rendered'**
+  String get onboardingRenderingTitle;
+
+  /// Body copy of the second onboarding page, listing what the renderer supports.
+  ///
+  /// In en, this message translates to:
+  /// **'Tables, syntax-highlighted code, LaTeX math, Mermaid diagrams, admonitions and footnotes — all handled out of the box.'**
+  String get onboardingRenderingBody;
+
+  /// Title of the third onboarding page, covering personalization.
+  ///
+  /// In en, this message translates to:
+  /// **'Read the way you like'**
+  String get onboardingPersonalizeTitle;
+
+  /// Body copy of the third onboarding page, listing what users can personalise.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjust font size, line spacing, theme and language — or pin a bookmark and keep the screen awake while you read.'**
+  String get onboardingPersonalizeBody;
+
+  /// Title of the fourth and final onboarding page, directing the user to add content.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a folder to begin'**
+  String get onboardingGetStartedTitle;
+
+  /// Body copy of the fourth and final onboarding page, explaining how to add documents.
+  ///
+  /// In en, this message translates to:
+  /// **'Grant access to a folder of markdown files, or sync a public GitHub repository — your library is ready whenever you are.'**
+  String get onboardingGetStartedBody;
+
+  /// Label for the debug-only button in Settings that clears the stored onboarding completion marker and relaunches the flow. Only visible in debug builds; stripped from release binaries via kDebugMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Show onboarding again (debug)'**
+  String get settingsDebugResetOnboarding;
 }
 
 class _AppLocalizationsDelegate

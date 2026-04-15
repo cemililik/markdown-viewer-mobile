@@ -688,4 +688,44 @@ class AppLocalizationsEn extends AppLocalizations {
   String errorPartialSync(int syncedCount, int failedCount) {
     return 'Sync partially completed: $syncedCount file(s) saved, $failedCount failed.';
   }
+
+  @override
+  String get onboardingSkip => 'Skip';
+
+  @override
+  String get onboardingNext => 'Next';
+
+  @override
+  String get onboardingGetStarted => 'Get started';
+
+  @override
+  String get onboardingWelcomeTitle => 'Welcome to Markdown Viewer';
+
+  @override
+  String get onboardingWelcomeBody =>
+      'A focused mobile reader for your markdown notes, docs, and knowledge base — no editor, no distractions.';
+
+  @override
+  String get onboardingRenderingTitle => 'Rich content, beautifully rendered';
+
+  @override
+  String get onboardingRenderingBody =>
+      'Tables, syntax-highlighted code, LaTeX math, Mermaid diagrams, admonitions and footnotes — all handled out of the box.';
+
+  @override
+  String get onboardingPersonalizeTitle => 'Read the way you like';
+
+  @override
+  String get onboardingPersonalizeBody =>
+      'Adjust font size, line spacing, theme and language — or pin a bookmark and keep the screen awake while you read.';
+
+  @override
+  String get onboardingGetStartedTitle => 'Open a folder to begin';
+
+  @override
+  String get onboardingGetStartedBody =>
+      'Grant access to a folder of markdown files, or sync a public GitHub repository — your library is ready whenever you are.';
+
+  @override
+  String get settingsDebugResetOnboarding => 'Show onboarding again (debug)';
 }

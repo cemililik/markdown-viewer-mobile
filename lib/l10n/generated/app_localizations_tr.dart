@@ -683,4 +683,45 @@ class AppLocalizationsTr extends AppLocalizations {
   String errorPartialSync(int syncedCount, int failedCount) {
     return 'Senkronizasyon kısmen tamamlandı: $syncedCount dosya kaydedildi, $failedCount başarısız oldu.';
   }
+
+  @override
+  String get onboardingSkip => 'Atla';
+
+  @override
+  String get onboardingNext => 'İleri';
+
+  @override
+  String get onboardingGetStarted => 'Başlayalım';
+
+  @override
+  String get onboardingWelcomeTitle => 'Markdown Viewer\'a hoş geldiniz';
+
+  @override
+  String get onboardingWelcomeBody =>
+      'Not, döküman ve bilgi tabanınız için odaklanmış bir mobil okuyucu — editör yok, dikkat dağıtıcı unsur yok.';
+
+  @override
+  String get onboardingRenderingTitle => 'Zengin içerik, kusursuz gösterim';
+
+  @override
+  String get onboardingRenderingBody =>
+      'Tablolar, sözdizimi vurgulamalı kod, LaTeX matematik, Mermaid diyagramları, bilgi kutuları ve dipnotlar — hepsi kutudan çıktığı gibi çalışır.';
+
+  @override
+  String get onboardingPersonalizeTitle => 'Kendi tarzınızda okuyun';
+
+  @override
+  String get onboardingPersonalizeBody =>
+      'Yazı boyutu, satır aralığı, tema ve dili ayarlayın — ya da yer imi bırakıp okurken ekranı açık tutun.';
+
+  @override
+  String get onboardingGetStartedTitle => 'Başlamak için bir klasör açın';
+
+  @override
+  String get onboardingGetStartedBody =>
+      'Markdown dosyalarının bulunduğu bir klasöre erişim verin veya açık bir GitHub deposunu senkronize edin — kütüphaneniz hazır olduğunda sizi bekliyor.';
+
+  @override
+  String get settingsDebugResetOnboarding =>
+      'Onboarding\'i tekrar göster (debug)';
 }

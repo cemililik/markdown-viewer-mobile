@@ -1,6 +1,10 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
+import 'package:markdown_viewer/features/onboarding/application/onboarding_providers.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/settings/domain/app_locale.dart';
 import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
@@ -101,7 +105,7 @@ class SettingsScreen extends ConsumerWidget {
           ),
           const Divider(),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             child: Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
@@ -111,9 +115,41 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
           ),
+          // Debug-only affordance: relaunch the onboarding flow
+          // without reinstalling the app. `kDebugMode` is a compile-
+          // time constant, so the whole block — button, handler, and
+          // the onboarding-provider import path — is tree-shaken out
+          // of release builds.
+          if (kDebugMode)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  icon: const Icon(Icons.replay_circle_filled_outlined),
+                  label: Text(l10n.settingsDebugResetOnboarding),
+                  onPressed: () => _resetOnboarding(context, ref),
+                ),
+              ),
+            ),
+          if (!kDebugMode) const SizedBox(height: 24),
         ],
       ),
     );
+  }
+
+  /// Clears the stored "seen" marker and navigates straight to the
+  /// onboarding route so the developer can preview the flow on a
+  /// physical device without wiping the whole app. Gated to
+  /// `kDebugMode` at the call site so it cannot fire in a release
+  /// build.
+  void _resetOnboarding(BuildContext context, WidgetRef ref) {
+    ref.read(onboardingControllerProvider.notifier).reset();
+    // The router's redirect guard reads `shouldShowOnboardingProvider`
+    // on every navigation; now that the controller state is back to
+    // 0, sending the user to `/onboarding` will be allowed through
+    // and the flow reappears immediately.
+    context.go(OnboardingRoute.location());
   }
 
   /// Shows a confirmation dialog before wiping every user

@@ -829,5 +829,54 @@
       "syncedCount": { "type": "int", "example": "42" },
       "failedCount": { "type": "int", "example": "3" }
     }
+  },
+
+  "onboardingSkip": "Skip",
+  "@onboardingSkip": {
+    "description": "Label of the button in the onboarding flow top bar that dismisses the remaining pages and returns the user to the library."
+  },
+  "onboardingNext": "Next",
+  "@onboardingNext": {
+    "description": "Label of the primary button on every onboarding page except the last — advances to the next page."
+  },
+  "onboardingGetStarted": "Get started",
+  "@onboardingGetStarted": {
+    "description": "Label of the primary button on the final onboarding page — dismisses the flow and opens the library."
+  },
+  "onboardingWelcomeTitle": "Welcome to Markdown Viewer",
+  "@onboardingWelcomeTitle": {
+    "description": "Title of the first onboarding page, introducing the app."
+  },
+  "onboardingWelcomeBody": "A focused mobile reader for your markdown notes, docs, and knowledge base — no editor, no distractions.",
+  "@onboardingWelcomeBody": {
+    "description": "Body copy of the first onboarding page, introducing the app's purpose."
+  },
+  "onboardingRenderingTitle": "Rich content, beautifully rendered",
+  "@onboardingRenderingTitle": {
+    "description": "Title of the second onboarding page, highlighting rendering features."
+  },
+  "onboardingRenderingBody": "Tables, syntax-highlighted code, LaTeX math, Mermaid diagrams, admonitions and footnotes — all handled out of the box.",
+  "@onboardingRenderingBody": {
+    "description": "Body copy of the second onboarding page, listing what the renderer supports."
+  },
+  "onboardingPersonalizeTitle": "Read the way you like",
+  "@onboardingPersonalizeTitle": {
+    "description": "Title of the third onboarding page, covering personalization."
+  },
+  "onboardingPersonalizeBody": "Adjust font size, line spacing, theme and language — or pin a bookmark and keep the screen awake while you read.",
+  "@onboardingPersonalizeBody": {
+    "description": "Body copy of the third onboarding page, listing what users can personalise."
+  },
+  "onboardingGetStartedTitle": "Open a folder to begin",
+  "@onboardingGetStartedTitle": {
+    "description": "Title of the fourth and final onboarding page, directing the user to add content."
+  },
+  "onboardingGetStartedBody": "Grant access to a folder of markdown files, or sync a public GitHub repository — your library is ready whenever you are.",
+  "@onboardingGetStartedBody": {
+    "description": "Body copy of the fourth and final onboarding page, explaining how to add documents."
+  },
+  "settingsDebugResetOnboarding": "Show onboarding again (debug)",
+  "@settingsDebugResetOnboarding": {
+    "description": "Label for the debug-only button in Settings that clears the stored onboarding completion marker and relaunches the flow. Only visible in debug builds; stripped from release binaries via kDebugMode."
   }
 }

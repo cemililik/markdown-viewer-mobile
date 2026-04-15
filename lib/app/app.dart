@@ -8,6 +8,42 @@ import 'package:markdown_viewer/features/settings/application/settings_providers
 import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 
+/// Picks the locale to display when the user has left the language
+/// preference on "Follow system" (i.e. `MaterialApp.locale` is null).
+///
+/// Rule, per product requirement:
+/// - If any of the OS's preferred locales is Turkish → show Turkish.
+/// - Otherwise (including English as the OS primary, or a completely
+///   unsupported OS primary like German / Spanish / Japanese) → show
+///   English.
+///
+/// Iterating the full [preferredLocales] list rather than looking at
+/// `.first` respects multi-locale users: e.g. an OS list of
+/// `[de, tr, en]` (a German expat who speaks Turkish) still lands on
+/// Turkish because it's the first of the user's preferences that we
+/// can actually render, instead of bouncing straight to the English
+/// fallback after failing to match `de`.
+///
+/// This callback is NOT invoked when the user has explicitly picked
+/// `AppLocale.english` or `AppLocale.turkish` in settings —
+/// `MaterialApp.locale` is non-null in that case and Flutter bypasses
+/// the resolution callback entirely.
+Locale resolveSystemLocale(
+  List<Locale>? preferredLocales,
+  Iterable<Locale> supportedLocales,
+) {
+  const english = Locale('en');
+  const turkish = Locale('tr');
+  if (preferredLocales == null || preferredLocales.isEmpty) {
+    return english;
+  }
+  for (final locale in preferredLocales) {
+    if (locale.languageCode == 'tr') return turkish;
+    if (locale.languageCode == 'en') return english;
+  }
+  return english;
+}
+
 class MarkdownViewerApp extends ConsumerWidget {
   const MarkdownViewerApp({super.key});
 
@@ -61,11 +97,12 @@ class MarkdownViewerApp extends ConsumerWidget {
           darkTheme: AppTheme.dark(darkDynamic),
           themeMode: flutterThemeMode,
           // `null` means "follow the OS language list"; MaterialApp
-          // then runs its built-in delegate chain against the
-          // supported locales from [AppLocalizations].
+          // then runs the [localeListResolutionCallback] below against
+          // the supported locales from [AppLocalizations].
           locale: appLocale.locale,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
+          localeListResolutionCallback: resolveSystemLocale,
           routerConfig: router,
           debugShowCheckedModeBanner: false,
         );
