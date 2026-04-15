@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Export options consumed by `flutter build ipa` during the release
+  workflow. The TestFlight upload step in `.github/workflows/release.yml`
+  passes this file via `--export-options-plist=ios/ExportOptions.plist`
+  so Xcode knows how to package the .ipa for the App Store without
+  prompting interactively.
+
+  Manual signing style is chosen deliberately: the CI runner has no
+  Apple ID to drive automatic signing, and the `download-provisioning-
+  profiles` action materialises the profile into the keychain by name
+  right before the build step.
+
+  Renewing the distribution certificate or the provisioning profile
+  does NOT require updating this file — only the `teamID`, the bundle
+  id, and the profile name are referenced, all of which are stable
+  across cert/profile rotations.
+-->
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>app-store</string>
+
+    <key>teamID</key>
+    <string>MR66M75885</string>
+
+    <key>signingStyle</key>
+    <string>manual</string>
+
+    <key>provisioningProfiles</key>
+    <dict>
+        <key>com.cemililik.markdownViewer</key>
+        <string>MarkdownViewer App Store</string>
+    </dict>
+
+    <!-- Strip the symbol tables from the binary before upload and
+         attach them as a separate .dSYM artifact so App Store Connect
+         can symbolicate crash reports without shipping debug info
+         in the user-facing bundle. -->
+    <key>uploadSymbols</key>
+    <true/>
+
+    <!-- Bitcode has been removed from the App Store toolchain since
+         Xcode 14 and uploads with bitcode enabled are rejected, so
+         this must be explicitly disabled. -->
+    <key>uploadBitcode</key>
+    <false/>
+    <key>compileBitcode</key>
+    <false/>
+
+    <!-- Tell Xcode to strip Swift symbols from the final binary to
+         keep the App Store artifact as small as possible. -->
+    <key>stripSwiftSymbols</key>
+    <true/>
+</dict>
+</plist>

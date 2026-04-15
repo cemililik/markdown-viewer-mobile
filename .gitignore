@@ -104,7 +104,21 @@ assets/mermaid/mermaid.min.js
 # Secrets
 *.pem
 *.p12
+*.p8
 *.keystore
+
+# Play Store "what's new" files — generated on the CI runner at
+# release time from the annotated tag message (see release.yml).
+# Never committed.
+android/whatsnew/
+
+# Personal analysis / scratch notes — this directory is a private
+# working area for per-contributor checklists, one-off investigation
+# logs, and other "notebook" content that should never reach the
+# public history. Anything in docs/ that is part of the project
+# standards or release documentation lives OUTSIDE this directory
+# (e.g. docs/release-process.md, docs/standards/, docs/decisions/).
+docs/analysis/
 
 # OS
 Thumbs.db
