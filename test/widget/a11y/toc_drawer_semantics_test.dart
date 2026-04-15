@@ -78,7 +78,7 @@ void main() {
     },
   );
 
-  testWidgets('empty-document state renders a localized hint text', (
+  testWidgets('empty-document state renders a localized empty hint text', (
     tester,
   ) async {
     await tester.pumpWidget(harness(headings: const []));
@@ -86,6 +86,7 @@ void main() {
     scaffoldState.openEndDrawer();
     await tester.pumpAndSettle();
 
-    expect(find.byType(TocDrawer), findsOneWidget);
+    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+    expect(find.text(l10n.viewerTocEmpty), findsOneWidget);
   });
 }

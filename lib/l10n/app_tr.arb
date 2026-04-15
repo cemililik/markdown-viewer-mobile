@@ -138,6 +138,7 @@
   "viewerPdfError": "PDF oluşturulamadı. Lütfen tekrar deneyin.",
   "viewerTocOpenTooltip": "İçindekiler",
   "viewerTocEmpty": "Bu belgede başlık yok",
+  "viewerTocNavigateHint": "Başlığa git",
   "viewerSearchOpenTooltip": "Belgede ara",
   "viewerSearchCloseTooltip": "Aramayı kapat",
   "viewerSearchPreviousTooltip": "Önceki eşleşme",
@@ -255,5 +256,18 @@
   "errorRepoNotFound": "Depo veya yol bulunamadı. URL'yi kontrol edip tekrar deneyin.",
   "errorNetworkUnavailable": "Ağ bağlantısı yok. Senkronizasyon için internet gerekli.",
   "errorUnsupportedProvider": "Bu URL desteklenmiyor. Şu an yalnızca GitHub depo URL'leri kabul edilmektedir.",
-  "errorPartialSync": "Senkronizasyon kısmen tamamlandı: {syncedCount} dosya kaydedildi, {failedCount} başarısız oldu."
+  "errorPartialSync": "Senkronizasyon kısmen tamamlandı: {syncedCount} dosya kaydedildi, {failedCount} başarısız oldu.",
+
+  "onboardingSkip": "Atla",
+  "onboardingNext": "İleri",
+  "onboardingGetStarted": "Başlayalım",
+  "onboardingWelcomeTitle": "Markdown Viewer'a hoş geldiniz",
+  "onboardingWelcomeBody": "Not, döküman ve bilgi tabanınız için odaklanmış bir mobil okuyucu — editör yok, dikkat dağıtıcı unsur yok.",
+  "onboardingRenderingTitle": "Zengin içerik, kusursuz gösterim",
+  "onboardingRenderingBody": "Tablolar, sözdizimi vurgulamalı kod, LaTeX matematik, Mermaid diyagramları, bilgi kutuları ve dipnotlar — hepsi kutudan çıktığı gibi çalışır.",
+  "onboardingPersonalizeTitle": "Kendi tarzınızda okuyun",
+  "onboardingPersonalizeBody": "Yazı boyutu, satır aralığı, tema ve dili ayarlayın — ya da yer imi bırakıp okurken ekranı açık tutun.",
+  "onboardingGetStartedTitle": "Başlamak için bir klasör açın",
+  "onboardingGetStartedBody": "Markdown dosyalarının bulunduğu bir klasöre erişim verin veya açık bir GitHub deposunu senkronize edin — kütüphaneniz hazır olduğunda sizi bekliyor.",
+  "settingsDebugResetOnboarding": "Onboarding'i tekrar göster (debug)"
 }

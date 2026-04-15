@@ -7,6 +7,8 @@ import 'package:markdown_viewer/features/library/application/recent_documents_pr
 import 'package:markdown_viewer/features/library/data/repositories/library_folders_store_impl.dart';
 import 'package:markdown_viewer/features/library/data/repositories/recent_documents_store_impl.dart';
 import 'package:markdown_viewer/features/library/data/services/folder_enumerator_impl.dart';
+import 'package:markdown_viewer/features/onboarding/application/onboarding_providers.dart';
+import 'package:markdown_viewer/features/onboarding/data/onboarding_store.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/settings/data/settings_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -20,7 +22,14 @@ void main() {
       // controllers are read during `MaterialApp.router`'s build and
       // need a real-ish [SettingsStore] backing them. Use the
       // SharedPreferences in-memory mock.
-      SharedPreferences.setMockInitialValues(<String, Object>{});
+      //
+      // Pre-seed `onboarding.seenVersion` to match
+      // `currentOnboardingVersion` so the router's redirect guard
+      // does NOT push the smoke test into the onboarding flow —
+      // this test asserts the library empty state, not onboarding.
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'onboarding.seenVersion': currentOnboardingVersion,
+      });
       final prefs = await SharedPreferences.getInstance();
 
       await tester.pumpWidget(
@@ -36,6 +45,7 @@ void main() {
             folderEnumeratorProvider.overrideWithValue(
               const FolderEnumeratorImpl(),
             ),
+            onboardingStoreProvider.overrideWithValue(OnboardingStore(prefs)),
           ],
           child: const MarkdownViewerApp(),
         ),

@@ -129,7 +129,7 @@ class _TocEntry extends StatelessWidget {
     return Semantics(
       button: true,
       label: heading.text,
-      hint: 'Navigate to heading',
+      hint: context.l10n.viewerTocNavigateHint,
       child: InkWell(
         onTap: onTap,
         child: Padding(

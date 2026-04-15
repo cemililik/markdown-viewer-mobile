@@ -29,24 +29,30 @@ void main() {
     await tester.pumpWidget(harness(message: message));
     await tester.pumpAndSettle();
 
-    // The outer Semantics wraps the whole view as a live region so
-    // screen readers announce the error without the user navigating to it.
-    // We verify via the widget tree rather than the merged semantics node
-    // because the Semantics container merges with its Text child into a
-    // composite node that bySemanticsLabel cannot locate by label alone.
+    // The outer Semantics marks the subtree as a live region so screen
+    // readers announce the error without the user navigating to it.
+    // The label is intentionally NOT set on the Semantics node — the child
+    // Text widget supplies the accessible text, preventing a double
+    // announcement (label + text node) on TalkBack / VoiceOver.
     final liveRegion = find.byWidgetPredicate(
-      (w) =>
-          w is Semantics &&
-          w.properties.liveRegion == true &&
-          w.properties.label == message,
+      (w) => w is Semantics && w.properties.liveRegion == true,
     );
-
     expect(
       liveRegion,
       findsOneWidget,
       reason:
           'ErrorView must be a live region so screen readers announce the '
           'error message as soon as it appears on screen.',
+    );
+
+    // The message is supplied by the child Text, not duplicated on the
+    // Semantics node — verify it is findable via bySemanticsLabel.
+    expect(
+      find.bySemanticsLabel(message),
+      findsOneWidget,
+      reason:
+          'The error message must be readable by screen readers via the '
+          'child Text widget — not duplicated on the Semantics container.',
     );
   });
 

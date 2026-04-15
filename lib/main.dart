@@ -9,6 +9,8 @@ import 'package:markdown_viewer/features/library/application/recent_documents_pr
 import 'package:markdown_viewer/features/library/data/repositories/library_folders_store_impl.dart';
 import 'package:markdown_viewer/features/library/data/repositories/recent_documents_store_impl.dart';
 import 'package:markdown_viewer/features/library/data/services/folder_enumerator_impl.dart';
+import 'package:markdown_viewer/features/onboarding/application/onboarding_providers.dart';
+import 'package:markdown_viewer/features/onboarding/data/onboarding_store.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
 import 'package:markdown_viewer/features/repo_sync/data/database/app_database.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
@@ -40,6 +42,7 @@ Future<void> main() async {
   final readingPositionStore = ReadingPositionStoreImpl(prefs, logger: logger);
   final recentDocumentsStore = RecentDocumentsStoreImpl(prefs);
   final libraryFoldersStore = LibraryFoldersStoreImpl(prefs);
+  final onboardingStore = OnboardingStore(prefs);
   final appDatabase = AppDatabase();
 
   final mermaidRenderer = await _buildMermaidRenderer();
@@ -65,6 +68,7 @@ Future<void> main() async {
         readingPositionStoreProvider.overrideWithValue(readingPositionStore),
         recentDocumentsStoreProvider.overrideWithValue(recentDocumentsStore),
         libraryFoldersStoreProvider.overrideWithValue(libraryFoldersStore),
+        onboardingStoreProvider.overrideWithValue(onboardingStore),
         folderEnumeratorProvider.overrideWithValue(
           const FolderEnumeratorImpl(),
         ),

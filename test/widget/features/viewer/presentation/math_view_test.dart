@@ -205,6 +205,11 @@ void main() {
         // `getSize` reads the element's RenderBox so it reflects the
         // actual laid-out pixel size, not a placeholder.
         final mathFinder = find.byType(Math);
+        expect(
+          mathFinder,
+          findsWidgets,
+          reason: 'math.md must contain at least one Math widget',
+        );
         final sizesBeforeScroll =
             tester
                 .widgetList<Math>(mathFinder)

@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/core/widgets/error_view.dart';
 import 'package:markdown_viewer/features/library/library.dart';
+import 'package:markdown_viewer/features/onboarding/application/onboarding_providers.dart';
+import 'package:markdown_viewer/features/onboarding/presentation/screens/onboarding_screen.dart';
 import 'package:markdown_viewer/features/repo_sync/presentation/screens/repo_sync_screen.dart';
 import 'package:markdown_viewer/features/settings/presentation/screens/settings_screen.dart';
 import 'package:markdown_viewer/features/viewer/viewer.dart';
@@ -14,7 +16,34 @@ part 'router.g.dart';
 GoRouter router(Ref ref) {
   return GoRouter(
     initialLocation: LibraryRoute.path,
+    // Global redirect guards the onboarding flow. On every navigation
+    // event the router reads [shouldShowOnboardingProvider] (a cheap,
+    // sync-backed Riverpod read against the preloaded preferences):
+    //
+    // - Fresh install or post-update version bump → push the user
+    //   into [OnboardingRoute] no matter what destination they
+    //   requested. Deep links into the viewer still land on
+    //   onboarding first, and the library navigation is never
+    //   exposed before the user acknowledges the flow.
+    // - Already-seen user attempting to visit /onboarding directly
+    //   (e.g. from a stale deep link) → bounce them back to the
+    //   library so the flow is not re-enterable.
+    //
+    // The redirect must return `null` when no change is required,
+    // otherwise go_router enters a redirect loop.
+    redirect: (context, state) {
+      final shouldShow = ref.read(shouldShowOnboardingProvider);
+      final goingToOnboarding = state.matchedLocation == OnboardingRoute.path;
+      if (shouldShow && !goingToOnboarding) return OnboardingRoute.path;
+      if (!shouldShow && goingToOnboarding) return LibraryRoute.path;
+      return null;
+    },
     routes: [
+      GoRoute(
+        path: OnboardingRoute.path,
+        name: OnboardingRoute.name,
+        builder: (context, state) => const OnboardingScreen(),
+      ),
       GoRoute(
         path: LibraryRoute.path,
         name: LibraryRoute.name,
@@ -58,6 +87,21 @@ abstract final class LibraryRoute {
   /// Canonical location of the library screen, used by navigation
   /// fall-throughs (e.g. [ViewerScreen]'s back button when the stack
   /// is empty) so deep-linked routes still have a way home.
+  static String location() => path;
+}
+
+/// Route for the first-run / post-update onboarding flow.
+///
+/// Not meant to be navigated to explicitly — the router redirect
+/// takes any incoming request and sends it here when
+/// [shouldShowOnboardingProvider] reports `true`. Callers inside
+/// the onboarding screen finish the flow by calling
+/// `context.go(LibraryRoute.location())`, which triggers the
+/// redirect to re-evaluate against the now-updated state.
+abstract final class OnboardingRoute {
+  static const String path = '/onboarding';
+  static const String name = 'onboarding';
+
   static String location() => path;
 }
 
