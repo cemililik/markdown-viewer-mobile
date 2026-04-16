@@ -35,7 +35,7 @@ through one of these flows:
 Hard rules:
 
 - **No background network activity.** No periodic refresh, no
-  pre-fetching, no analytics, no crash reporting that calls home.
+  pre-fetching, no analytics.
 - **No automatic network calls on app start, navigation, or scroll.**
 - **All HTTP requests originate from the `repo_sync` feature** and use
   the project's single shared HTTP client.
@@ -43,7 +43,17 @@ Hard rules:
   WebView network rules are unchanged.
 - **The user can fully use the app with the network permission denied.**
   Sync simply fails with an actionable error.
-- **No telemetry or analytics ever.** This is unchanged.
+- **No analytics ever.** No event tracking, no growth metrics.
+
+> **Exception — Sentry crash reporting (ADR-0014).** When the user
+> explicitly opts in via **Settings > Send crash reports** AND the
+> build was produced with a non-empty `--dart-define=SENTRY_DSN`,
+> `sentry_flutter` may send crash reports to `*.ingest.sentry.io`.
+> This is the only permitted network activity outside `repo_sync`.
+> See [ADR-0014](0014-logging-and-observability.md) for the consent
+> model and the privacy rules that govern what Sentry sees (stack
+> traces, device model, OS/app version, route breadcrumbs — never
+> document content, file paths, or PATs).
 
 ## Consequences
 

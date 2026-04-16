@@ -46,7 +46,10 @@ Reviewers and authors share responsibility for the outcome.
 
 - [ ] Any new WebView usage? Is it sandboxed per security standards?
 - [ ] Any new file system access? Does it respect scoped storage?
-- [ ] Any new network calls? (Should be zero for v1.)
+- [ ] Any new network calls? Must originate from `repo_sync` and
+      target the allow-listed hosts (ADR-0011), or from
+      `sentry_flutter` to `*.ingest.sentry.io` under the consent model
+      (ADR-0014). New HTTP usage outside those two sites is a blocker.
 
 ### Docs
 

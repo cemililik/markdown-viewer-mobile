@@ -91,7 +91,13 @@ Both hooks are wired in `main.dart` before `runApp`:
 FlutterError.onError = (details) {
   FlutterError.presentError(details);  // red screen in debug
   logger.e('FlutterError', error: details.exception, stackTrace: details.stack);
-  // Sentry receives this automatically when active
+  // Forward to Sentry explicitly — `SentryFlutter.init` does NOT
+  // auto-hook `FlutterError.onError`. Guard with `Sentry.isEnabled`
+  // so the branch is a no-op when the user has not opted in or the
+  // build has no DSN.
+  if (Sentry.isEnabled) {
+    Sentry.captureException(details.exception, stackTrace: details.stack);
+  }
 };
 
 PlatformDispatcher.instance.onError = (error, stack) {

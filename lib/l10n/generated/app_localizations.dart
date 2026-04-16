@@ -536,13 +536,13 @@ abstract class AppLocalizations {
   /// **'Theme'**
   String get settingsThemeTitle;
 
-  /// No description provided for @settingsThemeLight.
+  /// Label of the 'light' option in the theme selector on the settings screen.
   ///
   /// In en, this message translates to:
   /// **'Light'**
   String get settingsThemeLight;
 
-  /// No description provided for @settingsThemeDark.
+  /// Label of the 'dark' option in the theme selector on the settings screen.
   ///
   /// In en, this message translates to:
   /// **'Dark'**

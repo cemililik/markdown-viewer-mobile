@@ -7,8 +7,8 @@ This file is the canonical summary.
 
 | Platform | Minimum | Target | Notes |
 |----------|---------|--------|-------|
-| iOS      | 14.0    | 17.x   | iPhone + iPad |
-| Android  | API 26 (8.0) | API 34 (14) | Phones + tablets |
+| iOS      | 14.0    | 26     | iPhone + iPad (Xcode 26 SDK pinned in CI per ITMS-90725) |
+| Android  | API 26 (8.0) | API 35 (15) | Phones + tablets |
 
 HarmonyOS native support is **out of scope for v1** — see
 [ADR-0009](decisions/0009-platform-scope.md).
@@ -52,6 +52,14 @@ and `pubspec.yaml` is a documentation defect.
 | Secure token storage | `flutter_secure_storage` | ^9.2.2 | [0012](decisions/0012-document-sync-architecture.md) |
 | Path utilities | `path` | ^1.9.0 | — |
 | Crypto (sha256 cache keys) | `crypto` | ^3.0.6 | — |
+| Crash reporting | `sentry_flutter` + `sentry_dio` | ^9.0.0 / ^9.0.0 | [0014](decisions/0014-logging-and-observability.md) |
+| PDF export | `pdf` + `printing` | ^3.12.0 / ^5.14.3 | — |
+| Share sheet | `share_plus` | ^12.0.2 | — |
+| External link launch | `url_launcher` | ^6.3.2 | — |
+| Path provider (app dirs) | `path_provider` | ^2.1.5 | [0007](decisions/0007-local-storage.md) |
+| Keep-screen-on | `wakelock_plus` | ^1.2.11 | — |
+| Splash screen generation | `flutter_native_splash` (dev only) | ^2.4.3 | — |
+| App icon generation | `flutter_launcher_icons` (dev only) | ^0.14.3 | — |
 
 ## Tooling
 

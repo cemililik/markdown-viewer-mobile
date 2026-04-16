@@ -319,7 +319,13 @@
     "description": "Section title for the theme selector in settings."
   },
   "settingsThemeLight": "Light",
+  "@settingsThemeLight": {
+    "description": "Label of the 'light' option in the theme selector on the settings screen."
+  },
   "settingsThemeDark": "Dark",
+  "@settingsThemeDark": {
+    "description": "Label of the 'dark' option in the theme selector on the settings screen."
+  },
   "settingsThemeSystem": "System",
   "@settingsThemeSystem": {
     "description": "Option in the theme selector that follows the OS light/dark preference."
