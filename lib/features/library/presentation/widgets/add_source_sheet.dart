@@ -129,6 +129,8 @@ class _AddSourceSheetBody extends ConsumerWidget {
       return;
     }
 
+    if (!context.mounted) return;
+
     if (path == null || path.isEmpty) {
       messenger.showSnackBar(
         SnackBar(content: Text(l10n.libraryFoldersAddCancelled)),

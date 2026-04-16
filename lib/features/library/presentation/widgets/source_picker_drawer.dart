@@ -288,6 +288,18 @@ class _SyncedRepoTile extends ConsumerWidget {
           color: theme.colorScheme.onSurfaceVariant,
         ),
       ),
+      trailing: IconButton(
+        icon: Icon(
+          Icons.sync,
+          size: 20,
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+        tooltip: l10n.syncRefreshTooltip,
+        onPressed: () {
+          Navigator.of(context).maybePop();
+          context.push(RepoSyncRoute.location(url: repo.githubTreeUrl));
+        },
+      ),
       selected: isActive,
       selectedTileColor: theme.colorScheme.primaryContainer.withValues(
         alpha: 0.25,
@@ -342,12 +354,7 @@ class _SyncedRepoTile extends ConsumerWidget {
     if (!context.mounted) return;
     if (action == 'update') {
       unawaited(Navigator.of(context).maybePop());
-      final base = 'https://github.com/${repo.owner}/${repo.repo}';
-      final url =
-          repo.subPath.isNotEmpty
-              ? '$base/tree/${repo.ref}/${repo.subPath}'
-              : '$base/tree/${repo.ref}';
-      unawaited(context.push(RepoSyncRoute.location(url: url)));
+      unawaited(context.push(RepoSyncRoute.location(url: repo.githubTreeUrl)));
     } else if (action == 'remove') {
       await ref.read(syncedReposStoreProvider).delete(repo.id);
       ref.invalidate(syncedReposProvider);

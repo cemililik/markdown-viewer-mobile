@@ -112,7 +112,8 @@ class SettingsScreen extends ConsumerWidget {
             onChanged: (value) {
               ref
                   .read(crashReportingControllerProvider.notifier)
-                  .setEnabled(value);
+                  .setEnabled(value)
+                  .ignore();
             },
             contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           ),
@@ -197,6 +198,10 @@ class SettingsScreen extends ConsumerWidget {
     ref.read(localeControllerProvider.notifier).set(AppLocale.system);
     ref.read(readingSettingsControllerProvider.notifier).resetToDefaults();
     ref.read(keepScreenOnControllerProvider.notifier).set(false);
+    ref
+        .read(crashReportingControllerProvider.notifier)
+        .setEnabled(false)
+        .ignore();
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(l10n.settingsResetSnack)));

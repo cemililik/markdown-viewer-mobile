@@ -548,6 +548,10 @@ class _HeroCluster extends StatelessWidget {
       Offset(0.85, -0.35), // top-right (slightly lower)
       Offset(0.15, 0.92), // bottom-centre
     ];
+    assert(
+      step.floatingIcons.length == anchors.length,
+      'Each onboarding step must have exactly ${anchors.length} floating icons',
+    );
 
     return SizedBox(
       width: _clusterSize,

@@ -60,4 +60,11 @@ abstract class SyncedRepo with _$SyncedRepo {
 
   /// `true` when the last sync left at least some files usable.
   bool get hasContent => fileCount > 0;
+
+  /// Reconstructs the GitHub tree URL from the stored locator fields.
+  String get githubTreeUrl {
+    final base = 'https://github.com/$owner/$repo';
+    if (subPath.isNotEmpty) return '$base/tree/$ref/$subPath';
+    return '$base/tree/$ref';
+  }
 }

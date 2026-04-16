@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Accessibility — MarkdownViewer</title>
+  <meta name="description" content="MarkdownViewer accessibility statement and commitment.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/i18n.js"></script>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar" role="navigation" aria-label="Main">
+  <div class="container">
+    <a href="index.html" class="nav-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M8 7h6"/><path d="M8 11h8"/></svg>
+      MarkdownViewer
+    </a>
+    <button class="nav-hamburger" aria-label="Menu" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="nav-menu">
+      <ul class="nav-links">
+        <li><a href="index.html"><span class="i18n-inline" data-lang="en">Home</span><span class="i18n-inline" data-lang="tr">Ana Sayfa</span></a></li>
+        <li><a href="privacy.html"><span class="i18n-inline" data-lang="en">Privacy</span><span class="i18n-inline" data-lang="tr">Gizlilik</span></a></li>
+        <li><a href="terms.html"><span class="i18n-inline" data-lang="en">Terms</span><span class="i18n-inline" data-lang="tr">Koşullar</span></a></li>
+        <li><a href="accessibility.html" class="active" aria-current="page"><span class="i18n-inline" data-lang="en">Accessibility</span><span class="i18n-inline" data-lang="tr">Erişilebilirlik</span></a></li>
+        <li><a href="contact.html"><span class="i18n-inline" data-lang="en">Contact</span><span class="i18n-inline" data-lang="tr">İletişim</span></a></li>
+      </ul>
+      <div class="lang-toggle" role="group" aria-label="Language">
+        <button data-set-lang="en">EN</button>
+        <button data-set-lang="tr">TR</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════ English ═══════ -->
+<section class="legal i18n-block" data-lang="en">
+  <div class="container">
+    <div class="legal-content">
+      <h1>Accessibility</h1>
+      <p class="legal-meta">Last updated: April 16, 2026</p>
+
+      <p>We believe everyone should be able to read and explore markdown documents comfortably. MarkdownViewer is built with accessibility in mind from the ground up, and we continuously work to improve the experience for all users.</p>
+
+      <h2>Our Commitment</h2>
+      <p>MarkdownViewer aims to conform to the <strong>Web Content Accessibility Guidelines (WCAG) 2.1</strong> at Level AA, adapted to mobile platform conventions. We follow Apple's Human Interface Guidelines and Google's Material Design accessibility guidance for iOS and Android respectively.</p>
+
+      <h2>Built-in Accessibility Features</h2>
+
+      <h3>Screen Reader Support</h3>
+      <ul>
+        <li>Full compatibility with <strong>VoiceOver</strong> (iOS) and <strong>TalkBack</strong> (Android).</li>
+        <li>All interactive elements carry meaningful semantic labels.</li>
+        <li>Section headers are marked with <code>isHeader</code> semantics so screen readers can jump between sections.</li>
+        <li>Decorative icons are excluded from the accessibility tree using <code>ExcludeSemantics</code>.</li>
+        <li>Live regions announce dynamic content changes (sync progress, search results).</li>
+      </ul>
+
+      <h3>Visual Accessibility</h3>
+      <ul>
+        <li><strong>Adjustable font size</strong> — font scale from 85% to 150% via Settings, stacking on top of the system's Dynamic Type / display size preference.</li>
+        <li><strong>Adjustable line height</strong> — Compact, Standard, and Airy presets for comfortable reading.</li>
+        <li><strong>Adjustable reading width</strong> — Comfortable, Wide, and Full width presets.</li>
+        <li><strong>Multiple themes</strong> — Light, Dark, Sepia, and System-automatic modes. Sepia provides a warm, low-contrast alternative for extended reading.</li>
+        <li><strong>Dynamic color</strong> — Material 3 dynamic color adapts to wallpaper-based palettes on supported devices.</li>
+        <li>Text contrast ratios meet WCAG AA minimums (4.5:1 for body text, 3:1 for large text).</li>
+      </ul>
+
+      <h3>Motor Accessibility</h3>
+      <ul>
+        <li>All touch targets meet the minimum <strong>44 &times; 44 dp</strong> size recommended by platform guidelines.</li>
+        <li>Long-press actions always have an equivalent tap path (no gesture-only interactions).</li>
+        <li>Haptic feedback on key actions (bookmark save, navigation jump, back-to-top) provides non-visual confirmation.</li>
+        <li>Immersive scroll mode auto-hides chrome to maximize reading area, but all controls remain accessible via scroll-up.</li>
+      </ul>
+
+      <h3>Navigation</h3>
+      <ul>
+        <li><strong>Table of contents drawer</strong> with heading-level navigation — tap any heading to jump directly.</li>
+        <li><strong>In-document search</strong> with match-by-match navigation (previous/next buttons).</li>
+        <li><strong>Back-to-top button</strong> appears after scrolling, providing quick return to the document start.</li>
+        <li><strong>Reading position bookmark</strong> — save your place and return to it later.</li>
+      </ul>
+
+      <h3>Content Accessibility</h3>
+      <ul>
+        <li>Mermaid diagrams are rendered as images with descriptive labels so screen readers can identify their presence and type.</li>
+        <li>Code blocks include language identification for context.</li>
+        <li>Tables maintain their structural semantics for assistive technology navigation.</li>
+      </ul>
+
+      <h2>Testing</h2>
+      <p>We test accessibility through:</p>
+      <ul>
+        <li>Automated widget-level accessibility tests in our test suite (semantic header annotations, touch target sizes).</li>
+        <li>Manual VoiceOver and TalkBack testing on physical devices.</li>
+        <li>Flutter's built-in accessibility inspector during development.</li>
+      </ul>
+
+      <h2>Known Limitations</h2>
+      <ul>
+        <li>Mermaid diagrams are rendered as raster images — their internal elements (nodes, labels, arrows) are not individually navigable by screen readers. We provide diagram-type labels as a partial mitigation.</li>
+        <li>LaTeX math expressions are rendered visually and may not be fully accessible to screen readers. We are investigating MathML alternatives for future releases.</li>
+        <li>A comprehensive end-to-end TalkBack and VoiceOver audit is planned for the v1.0 release.</li>
+      </ul>
+
+      <h2>Feedback</h2>
+      <p>If you encounter an accessibility barrier while using MarkdownViewer, we want to know. Please reach out through:</p>
+      <ul>
+        <li>Our <a href="contact.html">contact form</a></li>
+        <li><a href="https://github.com/cemililik/markdown-viewer-mobile/issues" target="_blank" rel="noopener">GitHub Issues</a> — use the label <code>accessibility</code></li>
+        <li><a href="https://github.com/cemililik/markdown-viewer-mobile/discussions" target="_blank" rel="noopener">GitHub Discussions</a></li>
+      </ul>
+      <p>We take accessibility reports seriously and aim to respond within one week.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ Turkish ═══════ -->
+<section class="legal i18n-block" data-lang="tr">
+  <div class="container">
+    <div class="legal-content">
+      <h1>Erişilebilirlik</h1>
+      <p class="legal-meta">Son güncelleme: 16 Nisan 2026</p>
+
+      <p>Herkesin markdown belgelerini rahatça okuyabilmesi ve keşfedebilmesi gerektiğine inanıyoruz. MarkdownViewer, erişilebilirlik düşünülerek sıfırdan tasarlanmıştır ve tüm kullanıcılar için deneyimi sürekli iyileştirmek amacıyla çalışıyoruz.</p>
+
+      <h2>Taahhüdümüz</h2>
+      <p>MarkdownViewer, mobil platform kurallarına uyarlanmış olarak <strong>Web İçerik Erişilebilirlik Kılavuzları (WCAG) 2.1</strong> Seviye AA'ya uymayı hedefler. iOS için Apple İnsan Arayüzü Kılavuzları'nı ve Android için Google Material Design erişilebilirlik yönlendirmelerini takip ediyoruz.</p>
+
+      <h2>Yerleşik Erişilebilirlik Özellikleri</h2>
+
+      <h3>Ekran Okuyucu Desteği</h3>
+      <ul>
+        <li><strong>VoiceOver</strong> (iOS) ve <strong>TalkBack</strong> (Android) ile tam uyumluluk.</li>
+        <li>Tüm etkileşimli öğeler anlamlı semantik etiketler taşır.</li>
+        <li>Bölüm başlıkları <code>isHeader</code> semantiği ile işaretlenmiştir, böylece ekran okuyucular bölümler arasında atlayabilir.</li>
+        <li>Dekoratif ikonlar <code>ExcludeSemantics</code> ile erişilebilirlik ağacından çıkarılmıştır.</li>
+        <li>Canlı bölgeler dinamik içerik değişikliklerini duyurur (senkronizasyon ilerlemesi, arama sonuçları).</li>
+      </ul>
+
+      <h3>Görsel Erişilebilirlik</h3>
+      <ul>
+        <li><strong>Ayarlanabilir yazı boyutu</strong> — Ayarlar üzerinden %85 ile %150 arasında, sistemin Dinamik Yazı Tipi / ekran boyutu tercihinin üzerine eklenir.</li>
+        <li><strong>Ayarlanabilir satır yüksekliği</strong> — Rahat okuma için Sıkışık, Standart ve Geniş ön ayarları.</li>
+        <li><strong>Ayarlanabilir okuma genişliği</strong> — Rahat, Geniş ve Tam genişlik ön ayarları.</li>
+        <li><strong>Birden fazla tema</strong> — Açık, Koyu, Sepya ve Sistem otomatik modları. Sepya, uzun süreli okuma için sıcak ve düşük kontrastlı bir alternatif sunar.</li>
+        <li><strong>Dinamik renk</strong> — Material 3 dinamik renk, desteklenen cihazlarda duvar kağıdına dayalı paletlere uyum sağlar.</li>
+        <li>Metin kontrast oranları WCAG AA minimumlarını karşılar (gövde metni için 4.5:1, büyük metin için 3:1).</li>
+      </ul>
+
+      <h3>Motor Erişilebilirlik</h3>
+      <ul>
+        <li>Tüm dokunma hedefleri, platform kılavuzlarının önerdiği minimum <strong>44 &times; 44 dp</strong> boyutunu karşılar.</li>
+        <li>Uzun basma eylemleri her zaman eşdeğer bir dokunma yoluna sahiptir (yalnızca hareketle erişilebilen etkileşim yoktur).</li>
+        <li>Önemli eylemlerde dokunsal geri bildirim (yer imi kaydetme, gezinme atlama, başa dönme) görsel olmayan onay sağlar.</li>
+        <li>Sürükleyici kaydırma modu, okuma alanını en üst düzeye çıkarmak için arayüzü gizler, ancak tüm kontroller yukarı kaydırma ile erişilebilir kalır.</li>
+      </ul>
+
+      <h3>Gezinme</h3>
+      <ul>
+        <li><strong>İçindekiler çekmecesi</strong> — başlık düzeyinde gezinme ile herhangi bir başlığa dokunarak doğrudan atlayın.</li>
+        <li><strong>Belge içi arama</strong> — eşleşme eşleşme gezinme (önceki/sonraki düğmeleri).</li>
+        <li><strong>Başa dön düğmesi</strong> — kaydırma sonrası belge başına hızlı dönüş sağlar.</li>
+        <li><strong>Okuma konumu yer imi</strong> — yerinizi kaydedin ve daha sonra geri dönün.</li>
+      </ul>
+
+      <h3>İçerik Erişilebilirliği</h3>
+      <ul>
+        <li>Mermaid diyagramları, ekran okuyucuların varlıklarını ve türlerini tanıyabilmesi için açıklayıcı etiketlerle resim olarak işlenir.</li>
+        <li>Kod blokları bağlam için dil tanımlaması içerir.</li>
+        <li>Tablolar, yardımcı teknoloji gezinmesi için yapısal semantiklerini korur.</li>
+      </ul>
+
+      <h2>Test</h2>
+      <p>Erişilebilirliği şu yöntemlerle test ediyoruz:</p>
+      <ul>
+        <li>Test paketimizde otomatik widget düzeyinde erişilebilirlik testleri (semantik başlık açıklamaları, dokunma hedef boyutları).</li>
+        <li>Fiziksel cihazlarda manuel VoiceOver ve TalkBack testi.</li>
+        <li>Geliştirme sırasında Flutter'ın yerleşik erişilebilirlik denetçisi.</li>
+      </ul>
+
+      <h2>Bilinen Kısıtlamalar</h2>
+      <ul>
+        <li>Mermaid diyagramları raster görüntüler olarak işlenir — iç öğeleri (düğümler, etiketler, oklar) ekran okuyucular tarafından ayrı ayrı gezinilebilir değildir. Kısmi bir çözüm olarak diyagram türü etiketleri sağlıyoruz.</li>
+        <li>LaTeX matematik ifadeleri görsel olarak işlenir ve ekran okuyucular için tam erişilebilir olmayabilir. Gelecek sürümler için MathML alternatiflerini araştırıyoruz.</li>
+        <li>Kapsamlı bir uçtan uca TalkBack ve VoiceOver denetimi v1.0 sürümü için planlanmıştır.</li>
+      </ul>
+
+      <h2>Geri Bildirim</h2>
+      <p>MarkdownViewer kullanırken bir erişilebilirlik engeli ile karşılaşırsanız, bilmek isteriz. Lütfen şu yollarla bize ulaşın:</p>
+      <ul>
+        <li><a href="contact.html">İletişim formumuz</a></li>
+        <li><a href="https://github.com/cemililik/markdown-viewer-mobile/issues" target="_blank" rel="noopener">GitHub Issues</a> — <code>accessibility</code> etiketini kullanın</li>
+        <li><a href="https://github.com/cemililik/markdown-viewer-mobile/discussions" target="_blank" rel="noopener">GitHub Tartışmaları</a></li>
+      </ul>
+      <p>Erişilebilirlik bildirimlerini ciddiye alıyoruz ve bir hafta içinde yanıt vermeyi hedefliyoruz.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; 2026 MarkdownViewer</span>
+      <span>
+        <a href="index.html"><span class="i18n-inline" data-lang="en">Home</span><span class="i18n-inline" data-lang="tr">Ana Sayfa</span></a> &middot;
+        <a href="privacy.html"><span class="i18n-inline" data-lang="en">Privacy Policy</span><span class="i18n-inline" data-lang="tr">Gizlilik Politikası</span></a> &middot;
+        <a href="terms.html"><span class="i18n-inline" data-lang="en">Terms of Use</span><span class="i18n-inline" data-lang="tr">Kullanım Koşulları</span></a> &middot;
+        <a href="contact.html"><span class="i18n-inline" data-lang="en">Contact</span><span class="i18n-inline" data-lang="tr">İletişim</span></a>
+      </span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

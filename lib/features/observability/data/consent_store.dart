@@ -33,7 +33,12 @@ class ConsentStore {
   /// Persists the user's crash-reporting preference. The caller is
   /// expected to also call `Sentry.close()` or re-init Sentry to
   /// reflect the new state at runtime.
-  Future<void> writeCrashReportingEnabled(bool enabled) {
-    return _prefs.setBool(_crashReportingKey, enabled);
+  Future<void> writeCrashReportingEnabled(bool enabled) async {
+    final success = await _prefs.setBool(_crashReportingKey, enabled);
+    if (!success) {
+      throw StateError(
+        'SharedPreferences.setBool failed for $_crashReportingKey=$enabled',
+      );
+    }
   }
 }

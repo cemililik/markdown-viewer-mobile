@@ -81,8 +81,14 @@ class MermaidRendererImpl implements MermaidRenderer {
   /// its caller. Distinct from [_inFlight], which is keyed by
   /// source hash and used for collapse; this map is keyed by the
   /// per-request id we send into JS.
-  final Map<String, Completer<MermaidRenderResult>> _activeRequests =
-      <String, Completer<MermaidRenderResult>>{};
+  /// Maps request-id → (completer, cacheKey) so [_handleChannelResult]
+  /// can store the bitmap in the LRU cache without scanning [_inFlight]
+  /// (which is cleared by the time the channel callback fires).
+  final Map<
+    String,
+    ({Completer<MermaidRenderResult> completer, String cacheKey})
+  >
+  _activeRequests = {};
 
   bool _isPumping = false;
   bool _initialized = false;
@@ -204,9 +210,9 @@ class MermaidRendererImpl implements MermaidRenderer {
       }
     }
     _queue.clear();
-    for (final completer in _activeRequests.values) {
-      if (!completer.isCompleted) {
-        completer.complete(pendingError);
+    for (final entry in _activeRequests.values) {
+      if (!entry.completer.isCompleted) {
+        entry.completer.complete(pendingError);
       }
     }
     _activeRequests.clear();
@@ -248,7 +254,10 @@ class MermaidRendererImpl implements MermaidRenderer {
 
         final pending = _queue.removeAt(0);
         final requestId = (_nextRequestSeq++).toString();
-        _activeRequests[requestId] = pending.completer;
+        _activeRequests[requestId] = (
+          completer: pending.completer,
+          cacheKey: pending.key,
+        );
         try {
           await _channel.render(id: requestId, source: pending.source);
           // The result will arrive asynchronously via
@@ -287,10 +296,12 @@ class MermaidRendererImpl implements MermaidRenderer {
     if (id == null || id == '__ready__' || id == '__init__') {
       return;
     }
-    final completer = _activeRequests[id];
-    if (completer == null || completer.isCompleted) {
+    final entry = _activeRequests[id];
+    if (entry == null || entry.completer.isCompleted) {
       return;
     }
+    final completer = entry.completer;
+    final cacheKey = entry.cacheKey;
     final error = message['error'];
     if (error is String && error.isNotEmpty) {
       completer.complete(MermaidRenderFailure(error));
@@ -334,10 +345,7 @@ class MermaidRendererImpl implements MermaidRenderer {
       return;
     }
     final bitmap = _CachedBitmap(pngBytes: bytes, width: width, height: height);
-    final pendingKey = _keyForCompleter(completer);
-    if (pendingKey != null) {
-      _cache.put(pendingKey, bitmap);
-    }
+    _cache.put(cacheKey, bitmap);
     completer.complete(
       MermaidRenderSuccess(
         pngBytes: bitmap.pngBytes,
@@ -345,15 +353,6 @@ class MermaidRendererImpl implements MermaidRenderer {
         height: bitmap.height,
       ),
     );
-  }
-
-  String? _keyForCompleter(Completer<MermaidRenderResult> completer) {
-    for (final entry in _inFlight.entries) {
-      if (identical(entry.value, completer)) {
-        return entry.key;
-      }
-    }
-    return null;
   }
 
   /// Splices [initDirective] into [source] at the correct position

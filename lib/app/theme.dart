@@ -60,6 +60,7 @@ abstract final class AppTheme {
       outlineVariant: Color(0xFFC8B89A),
       shadow: Color(0xFF000000),
       scrim: Color(0xFF000000),
+      surfaceTint: Color(0xFF8B6334),
       inverseSurface: Color(0xFF3C2A14),
       onInverseSurface: Color(0xFFF5ECD7),
       inversePrimary: Color(0xFFFFB96C),

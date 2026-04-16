@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:logger/logger.dart';
 import 'package:markdown_viewer/core/errors/failure.dart';
 import 'package:markdown_viewer/core/logging/logger.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
@@ -133,6 +134,7 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
         knownShas: knownShas,
         store: store,
         gitHubProvider: gitHubProvider,
+        logger: logger,
       );
 
       state = SyncComplete(result);
@@ -178,6 +180,7 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
     required Map<String, String> knownShas,
     required SyncedReposStore store,
     required RepoSyncProvider gitHubProvider,
+    required Logger logger,
   }) async {
     var persistedRepo = await store.upsert(
       SyncedRepo(
@@ -232,6 +235,7 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
             localRoot,
             file.path.replaceAll('/', p.separator),
           );
+          _validateLocalPath(localPath, localRoot);
           if (file.sha.isNotEmpty &&
               knownShas[file.path] == file.sha &&
               await File(localPath).exists()) {
@@ -263,7 +267,11 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
               status: 'synced',
             );
             downloadedCount++;
-          } on Object {
+          } on Object catch (e) {
+            logger.w(
+              'File download failed: ${p.basename(file.path)}',
+              error: e,
+            );
             await store.upsertFile(
               repoId: persistedRepo.id,
               remotePath: file.path,
@@ -306,7 +314,19 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
 
   /// Returns the absolute path to the local mirror directory:
   /// `<app-docs>/synced_repos/<provider>/<owner>/<repo>/<ref-encoded>/[subPath]`
+  ///
+  /// Every segment derived from user input is validated against path
+  /// traversal attacks (`..' , absolute paths, null bytes).
   static Future<String> _buildLocalRoot(RepoLocator locator) async {
+    _validatePathSegment(locator.provider);
+    _validatePathSegment(locator.owner);
+    _validatePathSegment(locator.repo);
+    if (locator.subPath.isNotEmpty) {
+      for (final part in locator.subPath.split('/')) {
+        _validatePathSegment(part);
+      }
+    }
+
     final base = await getApplicationDocumentsDirectory();
     final refSafe = Uri.encodeComponent(locator.ref);
     final segments = [
@@ -319,6 +339,28 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
       if (locator.subPath.isNotEmpty) locator.subPath,
     ];
     return p.joinAll(segments);
+  }
+
+  /// Rejects path segments that could escape the sync sandbox.
+  static void _validatePathSegment(String segment) {
+    if (segment == '..' ||
+        segment.startsWith('/') ||
+        segment.contains('\x00')) {
+      throw const UnsupportedProviderFailure(
+        message: 'Invalid path segment: contains traversal characters',
+      );
+    }
+  }
+
+  /// Validates that a remote file path does not escape [localRoot]
+  /// after joining.
+  static void _validateLocalPath(String localPath, String localRoot) {
+    final normalized = p.normalize(localPath);
+    if (!normalized.startsWith(localRoot)) {
+      throw const UnsupportedProviderFailure(
+        message: 'Remote path escapes the sync sandbox',
+      );
+    }
   }
 }
 

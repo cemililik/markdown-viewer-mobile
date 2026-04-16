@@ -149,7 +149,7 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
 
     do {
       let bookmarkData = try url.bookmarkData(
-        options: [.minimalBookmark],
+        options: [],
         includingResourceValuesForKeys: nil,
         relativeTo: nil
       )
@@ -282,6 +282,21 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
         relativeTo: nil,
         bookmarkDataIsStale: &isStale
       )
+      if isStale {
+        let started = rootUrl.startAccessingSecurityScopedResource()
+        defer { if started { rootUrl.stopAccessingSecurityScopedResource() } }
+        let freshData = try rootUrl.bookmarkData(
+          options: [],
+          includingResourceValuesForKeys: nil,
+          relativeTo: nil
+        )
+        result(FlutterError(
+          code: "BOOKMARK_STALE",
+          message: "bookmark was stale and has been refreshed",
+          details: freshData.base64EncodedString()
+        ))
+        return
+      }
       let started = rootUrl.startAccessingSecurityScopedResource()
       defer { if started { rootUrl.stopAccessingSecurityScopedResource() } }
       if !started {
@@ -335,6 +350,21 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
         relativeTo: nil,
         bookmarkDataIsStale: &isStale
       )
+      if isStale {
+        let started = url.startAccessingSecurityScopedResource()
+        defer { if started { url.stopAccessingSecurityScopedResource() } }
+        let freshData = try url.bookmarkData(
+          options: [],
+          includingResourceValuesForKeys: nil,
+          relativeTo: nil
+        )
+        result(FlutterError(
+          code: "BOOKMARK_STALE",
+          message: "bookmark was stale and has been refreshed",
+          details: freshData.base64EncodedString()
+        ))
+        return
+      }
       let started = url.startAccessingSecurityScopedResource()
       defer { if started { url.stopAccessingSecurityScopedResource() } }
       if !started {
