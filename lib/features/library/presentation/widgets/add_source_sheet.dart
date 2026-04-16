@@ -6,8 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/core/logging/logger.dart';
+import 'package:markdown_viewer/features/library/application/folder_file_materializer_provider.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
-import 'package:markdown_viewer/features/library/data/services/native_library_folders_channel.dart';
 
 /// Opens the "Add source" bottom sheet that lets the user pick
 /// between adding a local folder and (eventually) syncing a
@@ -118,7 +118,12 @@ class _AddSourceSheetBody extends ConsumerWidget {
       //   bookmark. `dart:io` cannot read SAF content URIs at
       //   all, so every later access is also routed back through
       //   the channel.
-      final pick = await NativeLibraryFoldersChannel().pickDirectory();
+      // Route through the shared provider instead of constructing a
+      // new channel per call. Keeps the widget testable (tests can
+      // override the provider with a fake) and satisfies the
+      // architecture-standards "no DI bypass" rule.
+      final pick =
+          await ref.read(nativeLibraryFoldersChannelProvider).pickDirectory();
       path = pick?.path;
       bookmark = pick?.bookmark;
     } on Object catch (error, stackTrace) {

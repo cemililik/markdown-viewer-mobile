@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/features/library/data/services/native_library_folders_channel.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:path/path.dart' as p;
@@ -35,16 +34,13 @@ import 'package:path_provider/path_provider.dart';
 /// any edits the user made on disk between sessions.
 class FolderFileMaterializer {
   const FolderFileMaterializer({
-    NativeLibraryFoldersChannel? channel,
+    required NativeLibraryFoldersChannel channel,
     Future<Directory> Function()? cacheDirectoryProvider,
-  }) : _channel = channel,
+  }) : _native = channel,
        _cacheDirectoryProvider = cacheDirectoryProvider;
 
-  final NativeLibraryFoldersChannel? _channel;
+  final NativeLibraryFoldersChannel _native;
   final Future<Directory> Function()? _cacheDirectoryProvider;
-
-  NativeLibraryFoldersChannel get _native =>
-      _channel ?? NativeLibraryFoldersChannel();
 
   Future<Directory> _resolveCacheDirectory() {
     final override = _cacheDirectoryProvider;
@@ -121,12 +117,7 @@ class FolderFileMaterializer {
   }
 }
 
-/// Application-layer binding for [FolderFileMaterializer].
-///
-/// Defaulted to the production implementation so callers can
-/// `ref.read(folderFileMaterializerProvider)` without an explicit
-/// override; tests replace it with a fake that returns a
-/// deterministic path.
-final folderFileMaterializerProvider = Provider<FolderFileMaterializer>(
-  (ref) => const FolderFileMaterializer(),
-);
+// `folderFileMaterializerProvider` lives in
+// `application/folder_file_materializer_provider.dart`. Keeping DI
+// constructs out of the data layer is the architecture-standards rule
+// the port here was originally violating; see P2-4.
