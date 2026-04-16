@@ -20,6 +20,7 @@ Violations must be caught by linter configuration, code review, or CI.
 | [Performance](performance-standards.md) | Budgets, profiling, regressions |
 | [Accessibility](accessibility-standards.md) | Semantics, contrast, touch targets |
 | [Localization](localization-standards.md) | i18n keys, plurals, RTL |
+| [Observability](observability-standards.md) | Logging, crash reporting, Sentry |
 
 ## How These Integrate with AI Agents
 

@@ -17,10 +17,15 @@ mobile-first `.md` preview application targeting iOS and Android.
 - [Rendering Pipeline](rendering-pipeline.md)
 - [Project Structure](project-structure.md)
 - [Platform Support](platform-support.md)
+- [Release Process](release-process.md)
 
 ### Process
 - [Standards](standards/README.md) — binding rules for all contributions
 - [Architecture Decision Records](decisions/README.md)
+
+### External
+- [Website](https://cemililik.github.io/markdown-viewer-mobile/) — landing page, privacy policy, terms of use
+- [GitHub Discussions](https://github.com/cemililik/markdown-viewer-mobile/discussions)
 
 ## Reading Order for New Contributors
 

@@ -37,6 +37,7 @@ supersedes an old one with a new ADR.
 | [0011](0011-network-access-policy.md) | Network access policy — user-initiated only | Accepted |
 | [0012](0012-document-sync-architecture.md) | Document sync from public git repositories | Accepted |
 | [0013](0013-codegen-ecosystem-alignment.md) | Align codegen ecosystem on Riverpod 3.x and freezed 3.x (updates ADR-0002) | Accepted |
+| [0014](0014-logging-and-observability.md) | Logging, crash reporting, and observability | Accepted |
 
 ## Template
 
