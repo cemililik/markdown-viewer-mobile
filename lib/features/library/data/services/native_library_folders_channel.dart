@@ -41,6 +41,16 @@ class NativeFolderBookmarkStaleException implements Exception {
     this.refreshedBookmark,
   });
   final String message;
+
+  /// Base64-encoded `.withSecurityScope` bookmark blob returned by
+  /// iOS when the OS flagged the original bookmark as stale but was
+  /// still able to mint a fresh replacement. Persist this into the
+  /// `LibraryFolder.bookmark` field and retry the original operation
+  /// once; the caller does not need to re-prompt the user.
+  ///
+  /// `null` on Android (tree URIs do not go stale) and on iOS when
+  /// the refresh itself failed — in the `null` case the user needs
+  /// to re-add the folder via the picker.
   final String? refreshedBookmark;
 
   @override

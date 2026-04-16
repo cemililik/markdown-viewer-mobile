@@ -18,6 +18,7 @@ String mapFailureToViewerMessage(Failure failure, AppLocalizations l10n) {
     RenderFailure() => l10n.errorRenderFailed,
     NetworkUnavailableFailure() => l10n.errorNetworkUnavailable,
     RateLimitedFailure() => l10n.errorRateLimited,
+    AuthFailure() => l10n.errorAuthFailed,
     RepoNotFoundFailure() => l10n.errorRepoNotFound,
     PartialSyncFailure() => l10n.errorUnknown,
     UnsupportedProviderFailure() => l10n.errorUnknown,

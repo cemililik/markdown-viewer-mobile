@@ -828,6 +828,14 @@
   "@errorNetworkUnavailable": {
     "description": "User-facing message when the device has no connectivity during a sync."
   },
+  "errorAuthFailed": "Authentication failed. Check your personal access token in Settings and try again.",
+  "@errorAuthFailed": {
+    "description": "User-facing message when the GitHub API responds with 401 (invalid or expired token) or a non-rate-limit 403 (private repository without sufficient access)."
+  },
+  "errorCrashReportingToggleFailed": "Could not update crash-reporting preference. Please try again.",
+  "@errorCrashReportingToggleFailed": {
+    "description": "Snackbar text shown when flipping the Settings > Send crash reports toggle throws — e.g. a full disk blocked SharedPreferences.setBool or Sentry.close() failed to tear down hooks cleanly."
+  },
   "errorUnsupportedProvider": "This URL is not supported. Only GitHub repository URLs are currently accepted.",
   "@errorUnsupportedProvider": {
     "description": "User-facing message when the entered URL is not a recognised sync provider."

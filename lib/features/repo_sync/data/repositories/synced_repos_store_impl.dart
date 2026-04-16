@@ -130,14 +130,12 @@ class SyncedReposStoreImpl implements SyncedReposStore {
   Future<void> deleteFilesForRepo(int repoId) => _db.deleteFilesForRepo(repoId);
 
   @override
-  Future<void> deleteFilesNotIn(int repoId, Set<String> retainedPaths) async {
-    final existing = await _db.getFilesForRepo(repoId);
-    final toRemove = existing.where(
-      (f) => !retainedPaths.contains(f.remotePath),
-    );
-    for (final file in toRemove) {
-      await _db.deleteFile(repoId: repoId, remotePath: file.remotePath);
-    }
+  Future<void> deleteFilesNotIn(int repoId, Set<String> retainedPaths) {
+    // Single batched SQL statement (`DELETE … WHERE … NOT IN`)
+    // handled by the drift DAO. The previous per-row loop issued one
+    // round-trip per orphan, which was O(n) on the number of files
+    // the user no longer has.
+    return _db.deleteFilesNotIn(repoId: repoId, retainedPaths: retainedPaths);
   }
 
   // ── Mapping helpers ──────────────────────────────────────────────────

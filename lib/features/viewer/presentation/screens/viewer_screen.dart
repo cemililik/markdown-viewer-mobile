@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -130,11 +132,22 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// a slow compute() reply for an earlier query cannot overwrite
   /// the match list for a newer one.
   int _searchScanGen = 0;
-  // Above this source length the scan moves to a background isolate
-  // via `compute`. Below it the overhead of the isolate hop is larger
-  // than the scan itself, so we stay synchronous. Threshold matches
-  // the 200 KB floor the performance standard applies to heavy
-  // string work.
+
+  /// Scrollback debounce timer. Search input fires one change event
+  /// per keystroke; without a short debounce fast typing either
+  /// spawns an isolate per keystroke (wasteful) or recomputes on the
+  /// UI thread on every keystroke (janky). The timer resets on every
+  /// new query and fires the actual scan once the user pauses.
+  Timer? _searchDebounceTimer;
+  static const Duration _searchDebounceDuration = Duration(milliseconds: 200);
+
+  /// Above this source length (measured in UTF-16 code units — the
+  /// units `String.length` returns) the scan moves to a background
+  /// isolate via `compute`. Below it the isolate-hop overhead exceeds
+  /// the scan itself, so we stay synchronous. 200 * 1024 code units
+  /// mirrors the 200 KB floor in the performance standard — note
+  /// these are not bytes, they are UTF-16 code units, so pure-ASCII
+  /// files of this size are 200 KB while CJK-heavy files are ~400 KB.
   static const int _searchScanIsolateThreshold = 200 * 1024;
 
   @override
@@ -203,6 +216,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     _isBookmarked.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _searchDebounceTimer?.cancel();
     // Always release the wakelock when leaving the viewer so the OS
     // can sleep normally again. Fire-and-forget is fine here.
     WakelockPlus.disable().ignore();
@@ -492,6 +506,10 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     final trimmed = query.trim();
     _searchScanGen += 1;
     final scanGen = _searchScanGen;
+    // Reset the debounce timer on every keystroke so the actual scan
+    // only fires once the user pauses typing. Empty queries clear
+    // synchronously (feels instant, no scan to schedule).
+    _searchDebounceTimer?.cancel();
     if (trimmed.isEmpty) {
       setState(() {
         _searchMatches = const <int>[];
@@ -500,18 +518,45 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       return;
     }
     final source = document.source;
+    _searchDebounceTimer = Timer(_searchDebounceDuration, () {
+      if (!mounted) return;
+      if (scanGen != _searchScanGen) return;
+      _runSearchScan(source, trimmed, scanGen, document);
+    });
+  }
+
+  void _runSearchScan(
+    String source,
+    String trimmed,
+    int scanGen,
+    Document document,
+  ) {
     if (source.length < _searchScanIsolateThreshold) {
       final matches = _scanSourceForMatches(source, trimmed);
       _applySearchResult(matches, scanGen, document);
       return;
     }
-    compute(_scanSourceForMatchesIsolate, (
-      source: source,
-      query: trimmed,
-    )).then((matches) {
-      if (!mounted) return;
-      _applySearchResult(matches, scanGen, document);
-    });
+    compute(_scanSourceForMatchesIsolate, (source: source, query: trimmed))
+        .then((matches) {
+          if (!mounted) return;
+          _applySearchResult(matches, scanGen, document);
+        })
+        .catchError((Object error, StackTrace stackTrace) {
+          // Isolate scan failed. Log through the shared logger so the
+          // error does not silently vanish, and leave the match list
+          // untouched so the user sees the previous generation's
+          // results rather than a surprise "0 matches" badge. `mounted`
+          // and the generation check still gate side effects.
+          if (!mounted) return;
+          if (scanGen != _searchScanGen) return;
+          ref
+              .read(appLoggerProvider)
+              .w(
+                'Search scan isolate failed',
+                error: error,
+                stackTrace: stackTrace,
+              );
+        });
   }
 
   void _applySearchResult(List<int> matches, int scanGen, Document document) {

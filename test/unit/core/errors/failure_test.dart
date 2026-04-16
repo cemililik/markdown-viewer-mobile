@@ -78,6 +78,7 @@ void main() {
         RepoNotFoundFailure() => 'repo-not-found',
         PartialSyncFailure() => 'partial-sync',
         UnsupportedProviderFailure() => 'unsupported-provider',
+        AuthFailure() => 'auth',
         UnknownFailure() => 'unknown',
       };
 

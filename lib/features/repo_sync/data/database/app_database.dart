@@ -107,6 +107,27 @@ class AppDatabase extends _$AppDatabase {
       (t) => t.repoId.equals(repoId) & t.remotePath.equals(remotePath),
     )).go();
   }
+
+  /// Removes every `synced_files` row for [repoId] whose `remote_path`
+  /// is NOT in [retainedPaths]. Single SQL statement (a `DELETE ...
+  /// WHERE NOT IN`) instead of per-row round trips so a large repo
+  /// can be cleaned up in one transaction. When [retainedPaths] is
+  /// empty the condition degenerates to "delete every row for this
+  /// repo" which is the same behaviour as [deleteFilesForRepo].
+  Future<void> deleteFilesNotIn({
+    required int repoId,
+    required Set<String> retainedPaths,
+  }) async {
+    if (retainedPaths.isEmpty) {
+      await deleteFilesForRepo(repoId);
+      return;
+    }
+    await (delete(syncedFiles)..where(
+      (t) =>
+          t.repoId.equals(repoId) &
+          t.remotePath.isNotIn(retainedPaths.toList()),
+    )).go();
+  }
 }
 
 // ── Connection factory ─────────────────────────────────────────────────────

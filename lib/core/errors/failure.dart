@@ -123,3 +123,14 @@ final class UnsupportedProviderFailure extends Failure {
   const UnsupportedProviderFailure({required super.message, super.cause})
     : super(name: 'UnsupportedProviderFailure');
 }
+
+/// The remote provider rejected the request for authentication or
+/// authorisation reasons — HTTP 401 (missing / invalid / expired
+/// token) or HTTP 403 outside the rate-limit branch (private repo
+/// without a PAT, SAML-enforced org the token cannot access, etc.).
+/// Distinct from [RateLimitedFailure] so the UI can render "fix your
+/// token" copy instead of "wait for the quota to reset".
+final class AuthFailure extends Failure {
+  const AuthFailure({required super.message, super.cause})
+    : super(name: 'AuthFailure');
+}

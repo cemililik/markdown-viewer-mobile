@@ -147,9 +147,25 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
     let started = url.startAccessingSecurityScopedResource()
     defer { if started { url.stopAccessingSecurityScopedResource() } }
 
+    // If the scope claim failed we must NOT attempt to build a
+    // security-scoped bookmark — the call raises, but more
+    // importantly a bookmark built without the scope would be
+    // unresolvable with `.withSecurityScope` later, leading to a
+    // silently-broken folder that only surfaces on first cold start.
+    if !started {
+      result(FlutterError(
+        code: "BOOKMARK_FAILED",
+        message: "could not claim security scope on picked folder",
+        details: nil
+      ))
+      return
+    }
+
     do {
+      // Must use `.withSecurityScope` so
+      // `resolveBookmarkOrFail` can re-claim access on cold start.
       let bookmarkData = try url.bookmarkData(
-        options: [],
+        options: [.withSecurityScope],
         includingResourceValuesForKeys: nil,
         relativeTo: nil
       )
@@ -158,10 +174,15 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
         "bookmark": bookmarkData.base64EncodedString(),
       ])
     } catch {
+      // `error.localizedDescription` can include the full user path
+      // (security-standards §Logs says "never log full filesystem
+      // paths"), so we surface the description in `details` for
+      // developer diagnostics but keep the user-facing `message` to
+      // a constant string.
       result(FlutterError(
         code: "BOOKMARK_FAILED",
-        message: "could not build security-scoped bookmark: \(error.localizedDescription)",
-        details: nil
+        message: "could not build security-scoped bookmark",
+        details: error.localizedDescription
       ))
     }
   }
@@ -369,6 +390,19 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
       if isStale {
         let started = url.startAccessingSecurityScopedResource()
         defer { if started { url.stopAccessingSecurityScopedResource() } }
+        // If we could not claim the scope we can't mint a fresh
+        // `.withSecurityScope` bookmark either — report the stale
+        // state so the caller can prompt the user to re-pick the
+        // folder. Don't attempt bookmarkData() in that branch; it
+        // would throw NSFileReadNoPermission on out-of-sandbox URLs.
+        if !started {
+          result(FlutterError(
+            code: "BOOKMARK_STALE",
+            message: "bookmark is stale and could not be refreshed",
+            details: nil
+          ))
+          return nil
+        }
         let freshData = try url.bookmarkData(
           options: [.withSecurityScope],
           includingResourceValuesForKeys: nil,

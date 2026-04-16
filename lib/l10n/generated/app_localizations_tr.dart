@@ -679,6 +679,14 @@ class AppLocalizationsTr extends AppLocalizations {
       'Ağ bağlantısı yok. Senkronizasyon için internet gerekli.';
 
   @override
+  String get errorAuthFailed =>
+      'Kimlik doğrulama başarısız. Ayarlar\'daki kişisel erişim anahtarınızı kontrol edip tekrar deneyin.';
+
+  @override
+  String get errorCrashReportingToggleFailed =>
+      'Çökme raporlama tercihi güncellenemedi. Lütfen tekrar deneyin.';
+
+  @override
   String get errorUnsupportedProvider =>
       'Bu URL desteklenmiyor. Şu an yalnızca GitHub depo URL\'leri kabul edilmektedir.';
 

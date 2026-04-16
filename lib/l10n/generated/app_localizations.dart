@@ -1232,6 +1232,18 @@ abstract class AppLocalizations {
   /// **'No network connection. Sync needs internet access.'**
   String get errorNetworkUnavailable;
 
+  /// User-facing message when the GitHub API responds with 401 (invalid or expired token) or a non-rate-limit 403 (private repository without sufficient access).
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication failed. Check your personal access token in Settings and try again.'**
+  String get errorAuthFailed;
+
+  /// Snackbar text shown when flipping the Settings > Send crash reports toggle throws — e.g. a full disk blocked SharedPreferences.setBool or Sentry.close() failed to tear down hooks cleanly.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update crash-reporting preference. Please try again.'**
+  String get errorCrashReportingToggleFailed;
+
   /// User-facing message when the entered URL is not a recognised sync provider.
   ///
   /// In en, this message translates to:

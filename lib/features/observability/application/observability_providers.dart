@@ -27,8 +27,11 @@ final consentStoreProvider = Provider<ConsentStore>((ref) {
 /// Mutable view of the crash-reporting consent state.
 ///
 /// Seeded synchronously from the store on first read so `main.dart`
-/// can evaluate consent before `runApp`. Calls to [setEnabled]
-/// update the state immediately and fire-and-forget the disk write.
+/// can evaluate consent before `runApp`. Calls to [setEnabled] flip
+/// the in-memory state immediately, then await the disk write and
+/// the Sentry lifecycle transition — errors from either step
+/// propagate to the caller so the UI can surface a snackbar instead
+/// of silently swallowing the failure.
 ///
 /// When the user flips the toggle:
 ///
@@ -38,6 +41,10 @@ final consentStoreProvider = Provider<ConsentStore>((ref) {
 /// - **OFF:** `Sentry.close()` is called, tearing down all hooks
 ///   and stopping all network traffic. Any buffered events are
 ///   discarded.
+///
+/// The Sentry lifecycle always runs, even when the prefs write fails
+/// (a full disk on Android, a revoked protection class on iOS) — see
+/// the `finally` block inside [setEnabled].
 class CrashReportingController extends Notifier<bool> {
   @override
   bool build() {
@@ -54,15 +61,21 @@ class CrashReportingController extends Notifier<bool> {
     // Await the consent write so `writeCrashReportingEnabled`'s
     // StateError (on SharedPreferences.setBool returning false) can
     // propagate to the settings-screen error path instead of being
-    // silently dropped. If persistence fails the in-memory state and
-    // Sentry lifecycle still reflect the toggle, but the caller gets
-    // a chance to surface the failure in the UI.
-    await ref.read(consentStoreProvider).writeCrashReportingEnabled(enabled);
-
-    if (enabled && sentryAvailable) {
-      await _initSentry();
-    } else {
-      await Sentry.close();
+    // silently dropped.
+    //
+    // The Sentry lifecycle transition runs in a `finally` so a failed
+    // prefs write never leaves Sentry in a state that contradicts the
+    // in-memory `state` flag the UI binds to. If the write fails the
+    // user is told (snackbar from the settings screen) but the
+    // runtime behaviour still matches the toggle they flipped.
+    try {
+      await ref.read(consentStoreProvider).writeCrashReportingEnabled(enabled);
+    } finally {
+      if (enabled && sentryAvailable) {
+        await _initSentry();
+      } else {
+        await Sentry.close();
+      }
     }
   }
 

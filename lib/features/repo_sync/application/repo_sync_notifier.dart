@@ -143,11 +143,13 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
         logger: logger,
       );
 
-      if (existing != null) {
-        // Only reached when _downloadAll completed without throwing
-        // or cancelling. Evict rows for files that disappeared from
-        // the remote since the previous sync; keep everything we
-        // just observed.
+      // Orphan cleanup runs only on a completed, non-cancelled sync.
+      // _downloadAll returns normally on cancellation (it breaks out
+      // of the batch loop rather than throwing), so we must check the
+      // cancel token here — otherwise a cancelled sync would evict
+      // file rows for every entry the user did not reach, breaking
+      // the very metadata P1-14 preserved.
+      if (existing != null && _cancelToken?.isCancelled != true) {
         final retained = {for (final f in files) f.path};
         await store.deleteFilesNotIn(existing.id, retained);
       }
@@ -241,11 +243,11 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
       final batch = files.skip(i).take(concurrency).toList();
       await Future.wait(
         batch.map((file) async {
-          // Skip unchanged files detected via SHA comparison, but re-insert
-          // their metadata so the next sync can still detect them as unchanged.
-          // Without this re-insert, deleteFilesForRepo (called before this
-          // loop) would have wiped the records, leaving knownShas empty on the
-          // following sync and causing unnecessary re-downloads.
+          // Skip unchanged files detected via SHA comparison, but
+          // still upsert a row so `lastSyncedAt` and `status` reflect
+          // this sync run for the unchanged path. Without the upsert
+          // the metadata would drift behind — the skipped files would
+          // still carry the previous sync's timestamp/status.
           final localPath = p.join(
             localRoot,
             file.path.replaceAll('/', p.separator),

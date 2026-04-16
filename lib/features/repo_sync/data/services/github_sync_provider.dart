@@ -273,13 +273,8 @@ class GitHubSyncProvider implements RepoSyncProvider {
       // 401 = invalid or expired token. A missing token on a public
       // repo never hits this branch — GitHub answers with a 200 — so
       // this is always actionable for the user (regenerate the PAT
-      // and paste it again). Reuses RateLimitedFailure's "add a token"
-      // UX slot because the user-facing recovery is the same shape:
-      // go to Settings, update your token, try again.
-      return RateLimitedFailure(
-        message: 'Invalid or expired GitHub token',
-        cause: e,
-      );
+      // and paste it again).
+      return AuthFailure(message: 'Invalid or expired GitHub token', cause: e);
     }
     if (status == 403) {
       final remaining = e.response?.headers.value('x-ratelimit-remaining');
@@ -290,9 +285,10 @@ class GitHubSyncProvider implements RepoSyncProvider {
         );
       }
       // Non-rate-limit 403 = private repo without a PAT, SAML-enforced
-      // org the token cannot access, etc. Same user fix as 401, so
-      // the same Failure type keeps the message copy aligned.
-      return RateLimitedFailure(
+      // org the token cannot access, etc. Distinct from rate-limit
+      // because the user fix is different: update your token, not
+      // wait for a quota reset.
+      return AuthFailure(
         message: 'Access denied — repository may be private',
         cause: e,
       );

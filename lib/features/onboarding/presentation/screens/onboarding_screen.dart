@@ -77,6 +77,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Sync the controllers with the platform "Reduce Motion" flag
+    // here rather than inside `build`. `didChangeDependencies` fires
+    // on first mount and any time the inherited widgets (MediaQuery)
+    // change — which includes the accessibility flag toggling — and
+    // unlike `build` it is the correct place to mutate animation
+    // controllers, per Flutter's framework contract (mutating state
+    // during build throws in debug).
+    _syncMotionControllers(disabled: MediaQuery.disableAnimationsOf(context));
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
     _pulseController.dispose();
@@ -158,13 +171,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     // preference. When enabled, every time-driven animation on this
     // screen collapses to zero duration so the cross-fade gradient,
     // pulsing hero, orbiting chips, and entrance tween all render
-    // as static state changes.
+    // as static state changes. Controller mutation happens in
+    // [didChangeDependencies] (the correct hook for MediaQuery-
+    // driven side effects); `build` only reads the flag.
     final disableAnimations = MediaQuery.disableAnimationsOf(context);
-    // Sync the controllers' state with the accessibility flag each
-    // build. This is a no-op when nothing changed; when it does
-    // change (user flips the toggle mid-flow) the animations stop
-    // or resume without rebuilding the screen tree.
-    _syncMotionControllers(disabled: disableAnimations);
 
     return Scaffold(
       body: AnimatedContainer(

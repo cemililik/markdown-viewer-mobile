@@ -684,6 +684,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'No network connection. Sync needs internet access.';
 
   @override
+  String get errorAuthFailed =>
+      'Authentication failed. Check your personal access token in Settings and try again.';
+
+  @override
+  String get errorCrashReportingToggleFailed =>
+      'Could not update crash-reporting preference. Please try again.';
+
+  @override
   String get errorUnsupportedProvider =>
       'This URL is not supported. Only GitHub repository URLs are currently accepted.';
 

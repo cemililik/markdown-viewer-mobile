@@ -85,6 +85,24 @@ class LibraryFoldersController extends Notifier<List<LibraryFolder>> {
     return true;
   }
 
+  /// Replaces the bookmark blob on the entry at [path] with
+  /// [bookmark]. Used by the folder body's retry path when iOS
+  /// hands back a refreshed `.withSecurityScope` bookmark via
+  /// [NativeFolderBookmarkStaleException.refreshedBookmark]. No-op
+  /// when no entry matches [path].
+  void updateBookmark({required String path, required String bookmark}) {
+    final index = state.indexWhere((folder) => folder.path == path);
+    if (index < 0) return;
+    final updatedList = [...state];
+    updatedList[index] = LibraryFolder(
+      path: state[index].path,
+      addedAt: state[index].addedAt,
+      bookmark: bookmark,
+    );
+    state = _ordered(updatedList);
+    ref.read(libraryFoldersStoreProvider).write(state).ignore();
+  }
+
   /// Removes the entry with the matching [path]. No-op when the
   /// list does not contain such an entry.
   void remove(String path) {
