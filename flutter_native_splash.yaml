@@ -15,8 +15,8 @@ flutter_native_splash:
   # sizes (120 pt on iOS, varies by density on Android). The
   # `image` key places it as a centred bitmap on top of the
   # background colour.
-  image: assets/icon/icon.png
-  image_dark: assets/icon/icon.png
+  image: assets/icon/splash_icon.png
+  image_dark: assets/icon/splash_icon.png
 
   # ── Android 12+ branded splash ──────────────────────────────────
   # Material You guidelines require a circular icon background on
