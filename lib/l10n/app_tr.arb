@@ -259,6 +259,7 @@
   "errorPartialSync": "Senkronizasyon kısmen tamamlandı: {syncedCount} dosya kaydedildi, {failedCount} başarısız oldu.",
 
   "onboardingSkip": "Atla",
+  "onboardingPageIndicator": "Sayfa {current} / {total}",
   "onboardingNext": "İleri",
   "onboardingGetStarted": "Başlayalım",
   "onboardingWelcomeTitle": "Markdown Viewer'a hoş geldiniz",

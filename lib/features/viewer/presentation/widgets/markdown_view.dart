@@ -140,6 +140,21 @@ class SearchHighlightState {
 ///   talks to the `mermaidRendererProvider` port. See ADR-0005 for
 ///   the rendering contract and `docs/standards/security-standards.md`
 ///   §WebView Rules for the sandbox configuration.
+/// Per-document cache for [extractMermaidCodes] output. Keyed by
+/// [Document] identity so a given document is parsed at most once
+/// across the many rebuilds that `markdown_widget` triggers during
+/// normal use (theme flips, scroll ticks, reading-setting changes).
+/// `Expando` entries are garbage-collected with the Document, so the
+/// cache never pins an otherwise-dead object alive.
+final Expando<List<String>> _mermaidCodesCache = Expando<List<String>>(
+  'markdown_view.mermaidCodes',
+);
+
+/// Per-document cache for [extractFootnotes] output. Same rationale
+/// as [_mermaidCodesCache].
+final Expando<Map<String, String>> _footnotesCache =
+    Expando<Map<String, String>>('markdown_view.footnotes');
+
 class MarkdownView extends StatelessWidget {
   const MarkdownView({
     required this.document,
@@ -291,8 +306,11 @@ class MarkdownView extends StatelessWidget {
         highlight != null && highlight.matchOffsets.isNotEmpty;
 
     // Pre-extract footnotes so the inline syntax can look up content
-    // on tap. Empty when the document has no footnote definitions.
-    final footnotes = extractFootnotes(document.source);
+    // on tap. Cache per Document — same motivation as the mermaid
+    // extraction cache above: `build` runs many times per document
+    // and the extractor does a full line walk.
+    final footnotes =
+        _footnotesCache[document] ??= extractFootnotes(document.source);
     final hasFootnotes = footnotes.isNotEmpty;
 
     // Build the source string that will be fed to the markdown pipeline:
@@ -480,7 +498,15 @@ class MarkdownView extends StatelessWidget {
     // correctly preserves Unicode characters (em-dash, etc.).
     // markdown_widget's internal extraction corrupts em-dash
     // (U+2014) to colon (U+003A), breaking gantt task names.
-    final cleanMermaidCodes = extractMermaidCodes(doc.source);
+    //
+    // `_buildPreConfig` runs on every build (theme flips, scroll-
+    // driven `markdown_widget` rebuilds, reading-settings changes,
+    // etc.) and `extractMermaidCodes` is a full markdown parse. Cache
+    // per-document via [Expando] so any given Document instance is
+    // parsed at most once for its mermaid code list — entries are
+    // collected automatically when the Document is GC'd.
+    final cleanMermaidCodes =
+        _mermaidCodesCache[doc] ??= extractMermaidCodes(doc.source);
     var mermaidIndex = 0;
     //
     final scheme = theme.colorScheme;

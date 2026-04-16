@@ -839,6 +839,14 @@
   "@onboardingSkip": {
     "description": "Label of the button in the onboarding flow top bar that dismisses the remaining pages and returns the user to the library."
   },
+  "onboardingPageIndicator": "Page {current} of {total}",
+  "@onboardingPageIndicator": {
+    "description": "Screen-reader-only label for the page-indicator dot row on the onboarding screen. Announced as a single node so TalkBack / VoiceOver users hear the current position once rather than six separate dot widgets.",
+    "placeholders": {
+      "current": { "type": "int", "example": "2" },
+      "total": { "type": "int", "example": "4" }
+    }
+  },
   "onboardingNext": "Next",
   "@onboardingNext": {
     "description": "Label of the primary button on every onboarding page except the last — advances to the next page."

@@ -691,6 +691,11 @@ class AppLocalizationsTr extends AppLocalizations {
   String get onboardingSkip => 'Atla';
 
   @override
+  String onboardingPageIndicator(int current, int total) {
+    return 'Sayfa $current / $total';
+  }
+
+  @override
   String get onboardingNext => 'İleri';
 
   @override

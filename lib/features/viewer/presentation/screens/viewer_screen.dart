@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -122,6 +123,19 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   bool _searchActive = false;
   List<int> _searchMatches = const <int>[];
   int _currentMatchIndex = 0;
+
+  /// Generation counter for [_onSearchQueryChanged]. Each keystroke
+  /// bumps the counter before kicking off the (possibly async) scan;
+  /// when a result arrives with a stale generation it is dropped, so
+  /// a slow compute() reply for an earlier query cannot overwrite
+  /// the match list for a newer one.
+  int _searchScanGen = 0;
+  // Above this source length the scan moves to a background isolate
+  // via `compute`. Below it the overhead of the isolate hop is larger
+  // than the scan itself, so we stay synchronous. Threshold matches
+  // the 200 KB floor the performance standard applies to heavy
+  // string work.
+  static const int _searchScanIsolateThreshold = 200 * 1024;
 
   @override
   void initState() {
@@ -466,8 +480,18 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
 
   /// Recomputes the match list for [query] against [document.source].
   /// Case-insensitive substring scan; auto-jumps to the first match.
+  ///
+  /// For large documents (`source.length >= _searchScanIsolateThreshold`)
+  /// the scan runs on a background isolate via `compute()` so fast
+  /// typing does not drop frames — a 1 MB source + common query hits
+  /// every byte of the string on every keystroke. [_searchScanGen]
+  /// protects against out-of-order results: if the user types another
+  /// character while the previous scan is still running, the stale
+  /// reply lands with an older generation number and is discarded.
   void _onSearchQueryChanged(String query, Document document) {
     final trimmed = query.trim();
+    _searchScanGen += 1;
+    final scanGen = _searchScanGen;
     if (trimmed.isEmpty) {
       setState(() {
         _searchMatches = const <int>[];
@@ -475,14 +499,23 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       });
       return;
     }
-    final matches = <int>[];
-    final lowerSource = document.source.toLowerCase();
-    final lowerQuery = trimmed.toLowerCase();
-    var index = lowerSource.indexOf(lowerQuery);
-    while (index != -1) {
-      matches.add(index);
-      index = lowerSource.indexOf(lowerQuery, index + 1);
+    final source = document.source;
+    if (source.length < _searchScanIsolateThreshold) {
+      final matches = _scanSourceForMatches(source, trimmed);
+      _applySearchResult(matches, scanGen, document);
+      return;
     }
+    compute(_scanSourceForMatchesIsolate, (
+      source: source,
+      query: trimmed,
+    )).then((matches) {
+      if (!mounted) return;
+      _applySearchResult(matches, scanGen, document);
+    });
+  }
+
+  void _applySearchResult(List<int> matches, int scanGen, Document document) {
+    if (scanGen != _searchScanGen) return; // stale result
     setState(() {
       _searchMatches = matches;
       _currentMatchIndex = 0;
@@ -944,3 +977,27 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
 
 /// Two-entry menu surfaced by the bookmark long-press.
 enum _BookmarkMenuAction { goTo, remove }
+
+// ── Search scan helpers ──────────────────────────────────────────
+
+/// Case-insensitive substring scan returning every match offset of
+/// [query] in [source] (or `trimmed` from the caller). Used both on
+/// the UI thread (small documents) and from [compute] (large ones).
+List<int> _scanSourceForMatches(String source, String query) {
+  final matches = <int>[];
+  final lowerSource = source.toLowerCase();
+  final lowerQuery = query.toLowerCase();
+  var index = lowerSource.indexOf(lowerQuery);
+  while (index != -1) {
+    matches.add(index);
+    index = lowerSource.indexOf(lowerQuery, index + 1);
+  }
+  return matches;
+}
+
+/// `compute`-compatible wrapper that unpacks the
+/// (source, query) record and forwards to [_scanSourceForMatches].
+/// Lives at the top level because isolate entrypoints cannot close
+/// over instance state.
+List<int> _scanSourceForMatchesIsolate(({String source, String query}) args) =>
+    _scanSourceForMatches(args.source, args.query);
