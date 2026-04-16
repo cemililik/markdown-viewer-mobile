@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
-import 'package:markdown_viewer/features/settings/data/settings_store.dart';
+import 'package:markdown_viewer/features/settings/data/settings_store_impl.dart';
 import 'package:markdown_viewer/features/settings/domain/app_locale.dart';
 import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
 import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
@@ -24,7 +24,7 @@ void main() {
 
   Future<ProviderContainer> buildContainer() async {
     final prefs = await SharedPreferences.getInstance();
-    final store = SettingsStore(prefs);
+    final store = SettingsStoreImpl(prefs);
     final container = ProviderContainer(
       overrides: [settingsStoreProvider.overrideWithValue(store)],
     );
@@ -63,7 +63,7 @@ void main() {
 
     test('set persists the value through the underlying store', () async {
       final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStore(prefs);
+      final store = SettingsStoreImpl(prefs);
       final container = ProviderContainer(
         overrides: [settingsStoreProvider.overrideWithValue(store)],
       );
@@ -80,7 +80,7 @@ void main() {
 
     test('set persists AppThemeMode.sepia correctly', () async {
       final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStore(prefs);
+      final store = SettingsStoreImpl(prefs);
       final container = ProviderContainer(
         overrides: [settingsStoreProvider.overrideWithValue(store)],
       );
@@ -124,7 +124,7 @@ void main() {
 
     test('set updates in-memory state and persists', () async {
       final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStore(prefs);
+      final store = SettingsStoreImpl(prefs);
       final container = ProviderContainer(
         overrides: [settingsStoreProvider.overrideWithValue(store)],
       );
@@ -150,7 +150,7 @@ void main() {
 
     test('setFontScale updates in-memory state and persists', () async {
       final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStore(prefs);
+      final store = SettingsStoreImpl(prefs);
       final container = ProviderContainer(
         overrides: [settingsStoreProvider.overrideWithValue(store)],
       );
@@ -206,7 +206,7 @@ void main() {
 
     test('resetToDefaults restores all three knobs and persists', () async {
       final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStore(prefs);
+      final store = SettingsStoreImpl(prefs);
       final container = ProviderContainer(
         overrides: [settingsStoreProvider.overrideWithValue(store)],
       );
@@ -261,7 +261,7 @@ void main() {
 
     test('set persists the value through the underlying store', () async {
       final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStore(prefs);
+      final store = SettingsStoreImpl(prefs);
       final container = ProviderContainer(
         overrides: [settingsStoreProvider.overrideWithValue(store)],
       );

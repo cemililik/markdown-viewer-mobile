@@ -1,9 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/core/logging/logger.dart';
-import 'package:markdown_viewer/features/settings/data/settings_store.dart';
 import 'package:markdown_viewer/features/settings/domain/app_locale.dart';
 import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
 import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
+import 'package:markdown_viewer/features/settings/domain/repositories/settings_store.dart';
 
 /// Shared persistence tail for every settings-controller setter: fire
 /// the prefs write in the background so the UI does not block on

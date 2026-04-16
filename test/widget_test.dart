@@ -12,7 +12,7 @@ import 'package:markdown_viewer/features/observability/data/consent_store.dart';
 import 'package:markdown_viewer/features/onboarding/application/onboarding_providers.dart';
 import 'package:markdown_viewer/features/onboarding/data/onboarding_store.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
-import 'package:markdown_viewer/features/settings/data/settings_store.dart';
+import 'package:markdown_viewer/features/settings/data/settings_store_impl.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,7 +29,7 @@ void main() {
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
-            settingsStoreProvider.overrideWithValue(SettingsStore(prefs)),
+            settingsStoreProvider.overrideWithValue(SettingsStoreImpl(prefs)),
             recentDocumentsStoreProvider.overrideWithValue(
               RecentDocumentsStoreImpl(prefs),
             ),

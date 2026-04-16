@@ -17,7 +17,7 @@ import 'package:markdown_viewer/features/onboarding/data/onboarding_store.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
 import 'package:markdown_viewer/features/repo_sync/data/database/app_database.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
-import 'package:markdown_viewer/features/settings/data/settings_store.dart';
+import 'package:markdown_viewer/features/settings/data/settings_store_impl.dart';
 import 'package:markdown_viewer/features/viewer/application/document_repository_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
@@ -81,7 +81,7 @@ Future<void> main() async {
   // backs the reading-position store so its synchronous `read` can
   // run inside a post-frame callback without an extra disk hop.
   final prefs = await SharedPreferences.getInstance();
-  final settingsStore = SettingsStore(prefs);
+  final settingsStore = SettingsStoreImpl(prefs);
   final readingPositionStore = ReadingPositionStoreImpl(prefs, logger: logger);
   final recentDocumentsStore = RecentDocumentsStoreImpl(prefs);
   final libraryFoldersStore = LibraryFoldersStoreImpl(prefs, logger: logger);
