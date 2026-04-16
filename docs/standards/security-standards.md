@@ -46,8 +46,8 @@ Mermaid source is treated as **untrusted input** even when the file is local.
 
 ## Network Rules
 
-Network access is allowed only for the `repo_sync` feature, subject to
-all of:
+Network access is allowed only for the `repo_sync` feature and the
+consent-gated Sentry crash reporter, subject to all of:
 
 - All HTTP requests go through the **single shared `dio` client** in
   `repo_sync` — no other feature creates HTTP clients
@@ -61,7 +61,10 @@ all of:
 - No cookies stored, no session resumption
 - No automatic retry on 4xx — only on transient 5xx with bounded backoff
 - Network requests are gated behind explicit user action (tap "Sync" or
-  "Refresh") and never fired from app start, navigation, or scroll
+  "Refresh") and never fired from app start, navigation, or scroll —
+  except Sentry, which sends crash reports only when the user has opted
+  in via Settings (default: off); allowed host: `*.ingest.sentry.io`
+  (see [ADR-0014](../decisions/0014-logging-and-observability.md))
 - Any failure surfaces as a typed `Failure` and logs the basename of the
   affected resource only
 

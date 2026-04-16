@@ -727,4 +727,11 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get settingsDebugResetOnboarding =>
       'Onboarding\'i tekrar göster (debug)';
+
+  @override
+  String get settingsCrashReportingTitle => 'Hata raporları gönder';
+
+  @override
+  String get settingsCrashReportingSubtitle =>
+      'Anonim hata verileri göndererek uygulamanın geliştirilmesine yardımcı olun. Dosya içerikleri veya kişisel bilgiler asla toplanmaz.';
 }

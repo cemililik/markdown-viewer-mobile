@@ -139,3 +139,25 @@ repositories. See [ADR-0011](decisions/0011-network-access-policy.md) and
 - Automatic refresh on a schedule (opt-in only)
 - Conflict resolution when local files have been edited externally
 - Sub-tree filters and exclusion patterns
+
+## App Infrastructure
+
+### Shipped
+
+- **First-run onboarding** — four-page animated walkthrough shown on
+  fresh install and after each `currentOnboardingVersion` bump;
+  version-gated via router redirect guard
+- **Localization** — English and Turkish with system locale detection;
+  explicit `localeListResolutionCallback` for correct resolution
+- **Themes** — System, Light, Dark, and Sepia reading themes with
+  Material 3 dynamic color
+- **Crash reporting** — consent-gated Sentry integration
+  (`sentry_flutter` + `sentry_dio`); default off, user opts in via
+  Settings; see [ADR-0014](decisions/0014-logging-and-observability.md)
+- **Structured logging** — `LogfmtPrinter` in release mode at
+  `Level.warning`; `PrettyPrinter` in debug mode; error hooks wired
+  in `main.dart`
+- **CI/CD** — tag-triggered release pipeline to TestFlight + Play
+  Console; lint + test CI on every push
+- **GitHub Pages** — landing page, privacy policy, terms of use,
+  contact form; English and Turkish

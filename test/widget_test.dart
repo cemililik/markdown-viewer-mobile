@@ -7,6 +7,8 @@ import 'package:markdown_viewer/features/library/application/recent_documents_pr
 import 'package:markdown_viewer/features/library/data/repositories/library_folders_store_impl.dart';
 import 'package:markdown_viewer/features/library/data/repositories/recent_documents_store_impl.dart';
 import 'package:markdown_viewer/features/library/data/services/folder_enumerator_impl.dart';
+import 'package:markdown_viewer/features/observability/application/observability_providers.dart';
+import 'package:markdown_viewer/features/observability/data/consent_store.dart';
 import 'package:markdown_viewer/features/onboarding/application/onboarding_providers.dart';
 import 'package:markdown_viewer/features/onboarding/data/onboarding_store.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
@@ -18,15 +20,6 @@ void main() {
     testWidgets('should boot and render the library empty state', (
       tester,
     ) async {
-      // The smoke test boots the whole app, which means the settings
-      // controllers are read during `MaterialApp.router`'s build and
-      // need a real-ish [SettingsStore] backing them. Use the
-      // SharedPreferences in-memory mock.
-      //
-      // Pre-seed `onboarding.seenVersion` to match
-      // `currentOnboardingVersion` so the router's redirect guard
-      // does NOT push the smoke test into the onboarding flow —
-      // this test asserts the library empty state, not onboarding.
       SharedPreferences.setMockInitialValues(<String, Object>{
         'onboarding.seenVersion': currentOnboardingVersion,
       });
@@ -46,13 +39,13 @@ void main() {
               const FolderEnumeratorImpl(),
             ),
             onboardingStoreProvider.overrideWithValue(OnboardingStore(prefs)),
+            consentStoreProvider.overrideWithValue(ConsentStore(prefs)),
           ],
           child: const MarkdownViewerApp(),
         ),
       );
       await tester.pumpAndSettle();
 
-      // The default test locale is en_US, so we should see the English copy.
       expect(find.byType(MaterialApp), findsOneWidget);
       expect(find.byIcon(Icons.menu_book_outlined), findsOneWidget);
       expect(find.text('Library'), findsOneWidget);

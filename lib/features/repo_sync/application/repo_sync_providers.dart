@@ -13,6 +13,7 @@ import 'package:markdown_viewer/features/repo_sync/data/services/pat_store.dart'
 import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/repositories/synced_repos_store.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/services/repo_sync_provider.dart';
+import 'package:sentry_dio/sentry_dio.dart';
 
 /// The shared drift database. Created once at app start and kept
 /// alive for the app lifetime. Overridden in the composition root
@@ -77,6 +78,10 @@ final syncDioProvider = Provider<Dio>((ref) {
       },
     ),
   );
+  // Sentry Dio integration — records HTTP breadcrumbs and performance
+  // spans when Sentry is active (consent + DSN both present). When
+  // Sentry is dormant the extension is a no-op with zero overhead.
+  dio.addSentry();
   ref.onDispose(dio.close);
   return dio;
 });

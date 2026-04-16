@@ -1315,6 +1315,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show onboarding again (debug)'**
   String get settingsDebugResetOnboarding;
+
+  /// Title of the toggle in Settings that enables anonymous crash reporting via Sentry.
+  ///
+  /// In en, this message translates to:
+  /// **'Send crash reports'**
+  String get settingsCrashReportingTitle;
+
+  /// Subtitle below the crash reporting toggle explaining what data is sent and what is not.
+  ///
+  /// In en, this message translates to:
+  /// **'Help improve the app by sending anonymous crash data. No file contents or personal information are ever collected.'**
+  String get settingsCrashReportingSubtitle;
 }
 
 class _AppLocalizationsDelegate

@@ -25,6 +25,7 @@ review output. Consult the relevant document for any non-trivial task.
 - [docs/standards/performance-standards.md](docs/standards/performance-standards.md)
 - [docs/standards/accessibility-standards.md](docs/standards/accessibility-standards.md)
 - [docs/standards/localization-standards.md](docs/standards/localization-standards.md)
+- [docs/standards/observability-standards.md](docs/standards/observability-standards.md)
 
 ## Architecture Summary
 
@@ -36,8 +37,10 @@ review output. Consult the relevant document for any non-trivial task.
 - All documentation in **English**
 - **Network access is allowed only inside the `repo_sync` feature**, only
   on explicit user action, and only against an allow-list of hosts —
-  see [ADR-0011](docs/decisions/0011-network-access-policy.md). No other
-  feature creates HTTP clients or makes outbound calls.
+  see [ADR-0011](docs/decisions/0011-network-access-policy.md). The only
+  exception is `sentry_flutter` which may send crash reports to
+  `*.ingest.sentry.io` when the user has opted in — see
+  [ADR-0014](docs/decisions/0014-logging-and-observability.md).
 - **Use mermaid diagrams** in documentation wherever they explain
   structure, flow, or state more clearly than prose
 

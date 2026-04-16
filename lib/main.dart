@@ -9,6 +9,8 @@ import 'package:markdown_viewer/features/library/application/recent_documents_pr
 import 'package:markdown_viewer/features/library/data/repositories/library_folders_store_impl.dart';
 import 'package:markdown_viewer/features/library/data/repositories/recent_documents_store_impl.dart';
 import 'package:markdown_viewer/features/library/data/services/folder_enumerator_impl.dart';
+import 'package:markdown_viewer/features/observability/application/observability_providers.dart';
+import 'package:markdown_viewer/features/observability/data/consent_store.dart';
 import 'package:markdown_viewer/features/onboarding/application/onboarding_providers.dart';
 import 'package:markdown_viewer/features/onboarding/data/onboarding_store.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
@@ -23,12 +25,46 @@ import 'package:markdown_viewer/features/viewer/data/repositories/document_repos
 import 'package:markdown_viewer/features/viewer/data/repositories/reading_position_store_impl.dart';
 import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_renderer_impl.dart';
 import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
   // Required so we can load asset bundles, hit SharedPreferences,
   // and run the mermaid pre-warm before the first frame.
   WidgetsFlutterBinding.ensureInitialized();
+
+  // ── Global error hooks (ADR-0014 Phase 1) ──────────────────────
+  //
+  // Catch framework-level errors (layout, paint, build) and
+  // uncaught async exceptions from the platform so they are logged
+  // instead of silently vanishing. Both handlers keep the default
+  // debug-mode behaviour (red error screen / console dump) and add
+  // a structured log entry on top. In release mode the log entry
+  // is the ONLY record — without these hooks a production crash
+  // leaves zero trace.
+
+  FlutterError.onError = (details) {
+    // Preserve the default red-screen / console-dump in debug.
+    FlutterError.presentError(details);
+    Logger().w(
+      'FlutterError: ${details.exceptionAsString()}',
+      error: details.exception,
+      stackTrace: details.stack,
+    );
+    // Forward to Sentry when active (consent + DSN both present).
+    // Sentry.isEnabled is false when init was skipped.
+    if (Sentry.isEnabled) {
+      Sentry.captureException(details.exception, stackTrace: details.stack);
+    }
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    Logger().w('Uncaught platform error', error: error, stackTrace: stack);
+    if (Sentry.isEnabled) {
+      Sentry.captureException(error, stackTrace: stack);
+    }
+    return true;
+  };
 
   // Preload SharedPreferences so the settings controllers can seed
   // their initial state synchronously — otherwise the very first
@@ -43,7 +79,16 @@ Future<void> main() async {
   final recentDocumentsStore = RecentDocumentsStoreImpl(prefs);
   final libraryFoldersStore = LibraryFoldersStoreImpl(prefs);
   final onboardingStore = OnboardingStore(prefs);
+  final consentStore = ConsentStore(prefs);
   final appDatabase = AppDatabase();
+
+  // Sentry — initialise only when the user has opted in AND a DSN
+  // was supplied at build time. On first install both conditions are
+  // false (consent defaults to off, local builds omit the DSN), so
+  // no Sentry code runs until the user consciously enables the
+  // toggle in Settings AND the build was produced with
+  // `--dart-define=SENTRY_DSN=...`.
+  await CrashReportingController.initIfConsented(consentStore);
 
   final mermaidRenderer = await _buildMermaidRenderer();
 
@@ -69,6 +114,7 @@ Future<void> main() async {
         recentDocumentsStoreProvider.overrideWithValue(recentDocumentsStore),
         libraryFoldersStoreProvider.overrideWithValue(libraryFoldersStore),
         onboardingStoreProvider.overrideWithValue(onboardingStore),
+        consentStoreProvider.overrideWithValue(consentStore),
         folderEnumeratorProvider.overrideWithValue(
           const FolderEnumeratorImpl(),
         ),

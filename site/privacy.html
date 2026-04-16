@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy — MarkdownViewer</title>
+  <meta name="description" content="MarkdownViewer privacy policy. Learn how we handle your data.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="js/i18n.js"></script>
+</head>
+<body>
+
+<!-- Navbar (same as index) -->
+<nav class="navbar" role="navigation" aria-label="Main">
+  <div class="container">
+    <a href="index.html" class="nav-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M8 7h6"/><path d="M8 11h8"/></svg>
+      MarkdownViewer
+    </a>
+    <button class="nav-hamburger" aria-label="Menu" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
+    <div class="nav-menu">
+      <ul class="nav-links">
+        <li><a href="index.html"><span class="i18n-inline" data-lang="en">Home</span><span class="i18n-inline" data-lang="tr">Ana Sayfa</span></a></li>
+        <li><a href="privacy.html" class="active"><span class="i18n-inline" data-lang="en">Privacy</span><span class="i18n-inline" data-lang="tr">Gizlilik</span></a></li>
+        <li><a href="terms.html"><span class="i18n-inline" data-lang="en">Terms</span><span class="i18n-inline" data-lang="tr">Koşullar</span></a></li>
+        <li><a href="contact.html"><span class="i18n-inline" data-lang="en">Contact</span><span class="i18n-inline" data-lang="tr">İletişim</span></a></li>
+      </ul>
+      <div class="lang-toggle" role="group" aria-label="Language">
+        <button data-set-lang="en">EN</button>
+        <button data-set-lang="tr">TR</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════ English ═══════ -->
+<section class="legal i18n-block" data-lang="en">
+  <div class="container">
+    <div class="legal-content">
+      <h1>Privacy Policy</h1>
+      <p class="legal-meta">Last updated: April 16, 2026</p>
+
+      <p>MarkdownViewer ("the App") is an open-source mobile application for reading markdown documents. Your privacy is important to us. This policy explains what data the App collects, how it is used, and your choices.</p>
+
+      <h2>1. Data We Do Not Collect</h2>
+      <p>The App is designed to work entirely on your device. By default:</p>
+      <ul>
+        <li>We do <strong>not</strong> collect personal information (name, email, phone number).</li>
+        <li>We do <strong>not</strong> track your location.</li>
+        <li>We do <strong>not</strong> use advertising SDKs or sell your data.</li>
+        <li>We do <strong>not</strong> access your documents beyond what is required to display them on screen.</li>
+      </ul>
+
+      <h2>2. Local Storage</h2>
+      <p>The App stores the following data locally on your device:</p>
+      <ul>
+        <li><strong>Settings</strong> — your theme preference, language preference, and onboarding state.</li>
+        <li><strong>Recent documents</strong> — file paths and timestamps of recently opened documents.</li>
+        <li><strong>Library folders</strong> — paths to folders you have added to your library.</li>
+        <li><strong>GitHub Personal Access Token</strong> — if you choose to sync repositories, an optional PAT is stored in your device's secure keychain (iOS Keychain / Android Keystore), encrypted at rest.</li>
+      </ul>
+      <p>This data never leaves your device unless you explicitly enable crash reporting (see below).</p>
+
+      <h2>3. Crash Reporting (Optional)</h2>
+      <p>The App includes an optional crash reporting feature powered by Sentry. This feature is <strong>disabled by default</strong> and requires your explicit consent to activate.</p>
+      <p>When enabled, the following data may be sent to Sentry's servers:</p>
+      <ul>
+        <li>Crash stack traces and error messages.</li>
+        <li>Device type, OS version, and app version.</li>
+        <li>Navigation breadcrumbs (which screens were visited).</li>
+      </ul>
+      <p>Crash reports do <strong>not</strong> include your document content, file paths, GitHub tokens, or any personally identifiable information.</p>
+      <p>You can enable or disable crash reporting at any time from <strong>Settings &gt; Crash Reporting</strong>.</p>
+
+      <h2>4. GitHub Sync</h2>
+      <p>If you choose to sync a GitHub repository, the App connects to the GitHub API (<code>api.github.com</code> and <code>raw.githubusercontent.com</code>) to download markdown files. Network requests are only made when you explicitly trigger a sync. The App does not make background network requests.</p>
+      <p>Your optional GitHub PAT is transmitted only to GitHub's servers during sync operations and is never sent to any other service.</p>
+
+      <h2>5. Third-Party Services</h2>
+      <p>The App may interact with the following third-party services only when you explicitly opt in:</p>
+      <ul>
+        <li><strong>GitHub</strong> (api.github.com, raw.githubusercontent.com) — for repository sync.</li>
+        <li><strong>Sentry</strong> (sentry.io) — for crash reporting, when consent is given.</li>
+      </ul>
+
+      <h2>6. Children's Privacy</h2>
+      <p>The App does not knowingly collect any data from children under 13. Since the App does not collect personal information by default, it is suitable for all ages.</p>
+
+      <h2>7. Changes to This Policy</h2>
+      <p>We may update this privacy policy from time to time. Changes will be posted on this page with an updated revision date. Continued use of the App after changes constitutes acceptance of the updated policy.</p>
+
+      <h2>8. Contact</h2>
+      <p>If you have questions about this privacy policy, please reach out through our <a href="contact.html">contact page</a> or open an issue on <a href="https://github.com/cemililik/markdown-viewer-mobile/issues" target="_blank" rel="noopener">GitHub</a>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════ Turkish ═══════ -->
+<section class="legal i18n-block" data-lang="tr">
+  <div class="container">
+    <div class="legal-content">
+      <h1>Gizlilik Politikası</h1>
+      <p class="legal-meta">Son güncelleme: 16 Nisan 2026</p>
+
+      <p>MarkdownViewer ("Uygulama"), markdown belgeleri okumak için geliştirilmiş açık kaynaklı bir mobil uygulamadır. Gizliliğiniz bizim için önemlidir. Bu politika, Uygulamanın hangi verileri topladığını, nasıl kullandığını ve tercihlerinizi açıklar.</p>
+
+      <h2>1. Toplamadığımız Veriler</h2>
+      <p>Uygulama tamamen cihazınızda çalışacak şekilde tasarlanmıştır. Varsayılan olarak:</p>
+      <ul>
+        <li>Kişisel bilgi (isim, e-posta, telefon numarası) <strong>toplamayız</strong>.</li>
+        <li>Konumunuzu <strong>takip etmeyiz</strong>.</li>
+        <li>Reklam SDK'ları <strong>kullanmayız</strong> veya verilerinizi <strong>satmayız</strong>.</li>
+        <li>Belgelerinize, ekranda görüntülemek için gerekenin ötesinde <strong>erişmeyiz</strong>.</li>
+      </ul>
+
+      <h2>2. Yerel Depolama</h2>
+      <p>Uygulama aşağıdaki verileri cihazınızda yerel olarak saklar:</p>
+      <ul>
+        <li><strong>Ayarlar</strong> — tema tercihiniz, dil tercihiniz ve tanıtım ekranı durumu.</li>
+        <li><strong>Son belgeler</strong> — son açılan belgelerin dosya yolları ve zaman damgaları.</li>
+        <li><strong>Kütüphane klasörleri</strong> — kütüphanenize eklediğiniz klasörlerin yolları.</li>
+        <li><strong>GitHub Kişisel Erişim Anahtarı</strong> — depo senkronizasyonu kullanmayı seçerseniz, isteğe bağlı PAT, cihazınızın güvenli anahtar deposunda (iOS Keychain / Android Keystore) şifrelenmiş olarak saklanır.</li>
+      </ul>
+      <p>Bu veriler, çökme raporlamayı açıkça etkinleştirmediğiniz sürece cihazınızdan asla çıkmaz (aşağıya bakın).</p>
+
+      <h2>3. Çökme Raporlama (İsteğe Bağlı)</h2>
+      <p>Uygulama, Sentry tarafından desteklenen isteğe bağlı bir çökme raporlama özelliği içerir. Bu özellik <strong>varsayılan olarak kapalıdır</strong> ve etkinleştirilmesi için açık onayınızı gerektirir.</p>
+      <p>Etkinleştirildiğinde, aşağıdaki veriler Sentry sunucularına gönderilebilir:</p>
+      <ul>
+        <li>Çökme yığın izleri ve hata mesajları.</li>
+        <li>Cihaz türü, işletim sistemi sürümü ve uygulama sürümü.</li>
+        <li>Gezinme kırıntıları (hangi ekranların ziyaret edildiği).</li>
+      </ul>
+      <p>Çökme raporları belge içeriğinizi, dosya yollarınızı, GitHub anahtarlarınızı veya herhangi bir kişisel tanımlayıcı bilgiyi <strong>içermez</strong>.</p>
+      <p>Çökme raporlamayı istediğiniz zaman <strong>Ayarlar &gt; Çökme Raporlama</strong> bölümünden etkinleştirebilir veya devre dışı bırakabilirsiniz.</p>
+
+      <h2>4. GitHub Senkronizasyonu</h2>
+      <p>Bir GitHub deposunu senkronize etmeyi seçerseniz, Uygulama markdown dosyalarını indirmek için GitHub API'sine (<code>api.github.com</code> ve <code>raw.githubusercontent.com</code>) bağlanır. Ağ istekleri yalnızca siz açıkça bir senkronizasyon başlattığınızda yapılır. Uygulama arka planda ağ isteği yapmaz.</p>
+      <p>İsteğe bağlı GitHub PAT'ınız yalnızca senkronizasyon işlemleri sırasında GitHub sunucularına iletilir ve başka hiçbir hizmete gönderilmez.</p>
+
+      <h2>5. Üçüncü Taraf Hizmetler</h2>
+      <p>Uygulama, yalnızca açıkça kabul ettiğinizde aşağıdaki üçüncü taraf hizmetlerle etkileşime girebilir:</p>
+      <ul>
+        <li><strong>GitHub</strong> (api.github.com, raw.githubusercontent.com) — depo senkronizasyonu için.</li>
+        <li><strong>Sentry</strong> (sentry.io) — onay verildiğinde çökme raporlama için.</li>
+      </ul>
+
+      <h2>6. Çocukların Gizliliği</h2>
+      <p>Uygulama, 13 yaşın altındaki çocuklardan bilerek herhangi bir veri toplamaz. Uygulama varsayılan olarak kişisel bilgi toplamadığından, tüm yaşlara uygundur.</p>
+
+      <h2>7. Bu Politikadaki Değişiklikler</h2>
+      <p>Bu gizlilik politikasını zaman zaman güncelleyebiliriz. Değişiklikler, güncellenmiş bir revizyon tarihi ile bu sayfada yayınlanacaktır. Değişikliklerden sonra Uygulamayı kullanmaya devam etmeniz, güncellenmiş politikanın kabul edilmesi anlamına gelir.</p>
+
+      <h2>8. İletişim</h2>
+      <p>Bu gizlilik politikası hakkında sorularınız varsa, lütfen <a href="contact.html">iletişim sayfamız</a> aracılığıyla bize ulaşın veya <a href="https://github.com/cemililik/markdown-viewer-mobile/issues" target="_blank" rel="noopener">GitHub</a>'da bir sorun açın.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-bottom">
+      <span>&copy; 2026 MarkdownViewer</span>
+      <span>
+        <a href="index.html"><span class="i18n-inline" data-lang="en">Home</span><span class="i18n-inline" data-lang="tr">Ana Sayfa</span></a> &middot;
+        <a href="terms.html"><span class="i18n-inline" data-lang="en">Terms of Use</span><span class="i18n-inline" data-lang="tr">Kullanım Koşulları</span></a> &middot;
+        <a href="contact.html"><span class="i18n-inline" data-lang="en">Contact</span><span class="i18n-inline" data-lang="tr">İletişim</span></a>
+      </span>
+    </div>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

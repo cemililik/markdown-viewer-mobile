@@ -30,8 +30,10 @@ syntax-highlighted code, tables, footnotes, admonitions, and more.
 8. **Network access is limited.** All HTTP traffic must originate from
    the `repo_sync` feature, must be triggered by an explicit user action,
    and must target a host on the allow-list (`api.github.com`,
-   `raw.githubusercontent.com`). The mermaid WebView remains sandboxed
-   with network disabled. No telemetry, no background traffic.
+   `raw.githubusercontent.com`). The only exception is `sentry_flutter`
+   which may send crash reports to `*.ingest.sentry.io` when the user
+   has opted in via Settings. The mermaid WebView remains sandboxed
+   with network disabled.
    See [ADR-0011](docs/decisions/0011-network-access-policy.md) and
    [security-standards.md](docs/standards/security-standards.md).
 9. **No comments unless the *why* is non-obvious.**
