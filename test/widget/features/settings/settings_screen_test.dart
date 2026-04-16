@@ -45,13 +45,15 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Theme'), findsOneWidget);
-        expect(find.text('System'), findsOneWidget);
+        // "System" is the label for BOTH the theme "System" segment
+        // and the language "System" segment — they share the same
+        // copy after the l10n shortening. Expect two matches.
+        expect(find.text('System'), findsNWidgets(2));
         expect(find.text('Light'), findsOneWidget);
         expect(find.text('Dark'), findsOneWidget);
         expect(find.text('Sepia'), findsOneWidget);
 
         expect(find.text('Language'), findsOneWidget);
-        expect(find.text('System default'), findsOneWidget);
         expect(find.text('English'), findsOneWidget);
         expect(find.text('Turkish'), findsOneWidget);
       },

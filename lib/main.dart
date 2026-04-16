@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 import 'package:markdown_viewer/app/app.dart';
 import 'package:markdown_viewer/core/logging/logger.dart';
+import 'package:markdown_viewer/core/path/sandbox_path.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
 import 'package:markdown_viewer/features/library/data/repositories/library_folders_store_impl.dart';
@@ -73,6 +74,14 @@ Future<void> main() async {
     }
     return true;
   };
+
+  // Cache the sandbox roots BEFORE any stored paths are read back.
+  // `RecentDocumentsStoreImpl.read` uses the cached roots to rewrite
+  // portable `sandbox:cache:foo.md` tokens to their current absolute
+  // form, which is necessary after an iOS dev reinstall changes the
+  // container UUID (and keeps production resilient against any future
+  // fresh-install scenarios).
+  await SandboxPath.initialize();
 
   // Preload SharedPreferences so the settings controllers can seed
   // their initial state synchronously — otherwise the very first

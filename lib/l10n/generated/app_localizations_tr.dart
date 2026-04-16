@@ -286,7 +286,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get settingsLanguageTitle => 'Dil';
 
   @override
-  String get settingsLanguageSystem => 'Sistem varsayılanı';
+  String get settingsLanguageSystem => 'Sistem';
 
   @override
   String get settingsLanguageEnglish => 'İngilizce';

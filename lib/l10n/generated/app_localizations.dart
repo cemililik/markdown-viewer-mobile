@@ -569,7 +569,7 @@ abstract class AppLocalizations {
   /// Option in the language selector that follows the OS language.
   ///
   /// In en, this message translates to:
-  /// **'System default'**
+  /// **'System'**
   String get settingsLanguageSystem;
 
   /// Label for the English option in the settings language selector.
@@ -833,7 +833,7 @@ abstract class AppLocalizations {
   /// Reading width preset that caps the column at roughly 680 dp for long-form prose.
   ///
   /// In en, this message translates to:
-  /// **'Comfortable'**
+  /// **'Comfort'**
   String get settingsReadingWidthComfortable;
 
   /// Reading width preset that caps the column at roughly 840 dp so code blocks breathe on tablets.

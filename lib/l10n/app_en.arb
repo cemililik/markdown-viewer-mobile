@@ -339,7 +339,7 @@
   "@settingsLanguageTitle": {
     "description": "Section title for the language selector in settings."
   },
-  "settingsLanguageSystem": "System default",
+  "settingsLanguageSystem": "System",
   "@settingsLanguageSystem": {
     "description": "Option in the language selector that follows the OS language."
   },
@@ -531,7 +531,7 @@
   "@settingsReadingWidthTitle": {
     "description": "Label above the reading-column width segmented button."
   },
-  "settingsReadingWidthComfortable": "Comfortable",
+  "settingsReadingWidthComfortable": "Comfort",
   "@settingsReadingWidthComfortable": {
     "description": "Reading width preset that caps the column at roughly 680 dp for long-form prose."
   },
