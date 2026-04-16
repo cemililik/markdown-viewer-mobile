@@ -15,8 +15,8 @@ import 'package:markdown_viewer/features/library/application/preview_extractor.d
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
-import 'package:markdown_viewer/features/viewer/application/pdf_extract.dart';
 import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
+import 'package:markdown_viewer/features/viewer/application/services/pdf_exporter.dart';
 import 'package:markdown_viewer/features/viewer/application/viewer_document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/reading_position.dart';

@@ -5,7 +5,7 @@ import 'package:markdown/markdown.dart' as md;
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
 import 'package:markdown_viewer/features/viewer/application/markdown_extensions/math_syntax.dart';
-import 'package:markdown_viewer/features/viewer/application/pdf_extract.dart'
+import 'package:markdown_viewer/features/viewer/application/services/pdf_exporter.dart'
     show extractMermaidCodes;
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_view.dart';

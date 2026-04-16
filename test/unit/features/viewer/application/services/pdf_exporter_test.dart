@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:markdown_viewer/features/viewer/data/services/pdf_exporter.dart';
+import 'package:markdown_viewer/features/viewer/application/services/pdf_exporter.dart';
 
 // Minimal 1×1 RGBA PNG (70 bytes).
 // Verified with: base64 iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQ...
