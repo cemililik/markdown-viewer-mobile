@@ -731,4 +731,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsDebugResetOnboarding => 'Show onboarding again (debug)';
+
+  @override
+  String get settingsCrashReportingTitle => 'Send crash reports';
+
+  @override
+  String get settingsCrashReportingSubtitle =>
+      'Help improve the app by sending anonymous crash data. No file contents or personal information are ever collected.';
 }

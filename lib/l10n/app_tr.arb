@@ -269,5 +269,7 @@
   "onboardingPersonalizeBody": "Yazı boyutu, satır aralığı, tema ve dili ayarlayın — ya da yer imi bırakıp okurken ekranı açık tutun.",
   "onboardingGetStartedTitle": "Başlamak için bir klasör açın",
   "onboardingGetStartedBody": "Markdown dosyalarının bulunduğu bir klasöre erişim verin veya açık bir GitHub deposunu senkronize edin — kütüphaneniz hazır olduğunda sizi bekliyor.",
-  "settingsDebugResetOnboarding": "Onboarding'i tekrar göster (debug)"
+  "settingsDebugResetOnboarding": "Onboarding'i tekrar göster (debug)",
+  "settingsCrashReportingTitle": "Hata raporları gönder",
+  "settingsCrashReportingSubtitle": "Anonim hata verileri göndererek uygulamanın geliştirilmesine yardımcı olun. Dosya içerikleri veya kişisel bilgiler asla toplanmaz."
 }

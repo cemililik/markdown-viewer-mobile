@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
+import 'package:markdown_viewer/features/observability/application/observability_providers.dart';
 import 'package:markdown_viewer/features/onboarding/application/onboarding_providers.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/settings/domain/app_locale.dart';
@@ -23,6 +24,7 @@ class SettingsScreen extends ConsumerWidget {
     final locale = ref.watch(localeControllerProvider);
     final readingSettings = ref.watch(readingSettingsControllerProvider);
     final keepScreenOn = ref.watch(keepScreenOnControllerProvider);
+    final crashReporting = ref.watch(crashReportingControllerProvider);
 
     return Scaffold(
       appBar: AppBar(title: Text(l10n.navSettings)),
@@ -100,6 +102,17 @@ class SettingsScreen extends ConsumerWidget {
             value: keepScreenOn,
             onChanged: (value) {
               ref.read(keepScreenOnControllerProvider.notifier).set(value);
+            },
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+          ),
+          SwitchListTile(
+            title: Text(l10n.settingsCrashReportingTitle),
+            subtitle: Text(l10n.settingsCrashReportingSubtitle),
+            value: crashReporting,
+            onChanged: (value) {
+              ref
+                  .read(crashReportingControllerProvider.notifier)
+                  .setEnabled(value);
             },
             contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           ),

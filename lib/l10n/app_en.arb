@@ -882,5 +882,13 @@
   "settingsDebugResetOnboarding": "Show onboarding again (debug)",
   "@settingsDebugResetOnboarding": {
     "description": "Label for the debug-only button in Settings that clears the stored onboarding completion marker and relaunches the flow. Only visible in debug builds; stripped from release binaries via kDebugMode."
+  },
+  "settingsCrashReportingTitle": "Send crash reports",
+  "@settingsCrashReportingTitle": {
+    "description": "Title of the toggle in Settings that enables anonymous crash reporting via Sentry."
+  },
+  "settingsCrashReportingSubtitle": "Help improve the app by sending anonymous crash data. No file contents or personal information are ever collected.",
+  "@settingsCrashReportingSubtitle": {
+    "description": "Subtitle below the crash reporting toggle explaining what data is sent and what is not."
   }
 }

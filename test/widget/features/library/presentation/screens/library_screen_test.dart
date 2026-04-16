@@ -11,8 +11,11 @@ import 'package:markdown_viewer/features/library/domain/repositories/library_fol
 import 'package:markdown_viewer/features/library/domain/repositories/recent_documents_store.dart';
 import 'package:markdown_viewer/features/library/domain/services/folder_enumerator.dart';
 import 'package:markdown_viewer/features/library/presentation/screens/library_screen.dart';
+import 'package:markdown_viewer/features/observability/application/observability_providers.dart';
+import 'package:markdown_viewer/features/observability/data/consent_store.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// In-memory store so each test can seed the library in whatever
 /// state the scenario needs without touching SharedPreferences.
@@ -61,6 +64,9 @@ class _NoopEnumerator implements FolderEnumerator {
   ) async => const <FolderFileEntry>[];
 }
 
+/// Shared prefs instance, initialized once in the file's setUp.
+late SharedPreferences _testPrefs;
+
 Widget _harness(
   RecentDocumentsStore store, {
   LibraryFoldersStore? foldersStore,
@@ -85,6 +91,7 @@ Widget _harness(
       folderEnumeratorProvider.overrideWithValue(
         enumerator ?? const _NoopEnumerator(),
       ),
+      consentStoreProvider.overrideWithValue(ConsentStore(_testPrefs)),
     ],
     child: MaterialApp.router(
       routerConfig: router,
@@ -102,6 +109,11 @@ Widget _harness(
 }
 
 void main() {
+  setUp(() async {
+    SharedPreferences.setMockInitialValues(<String, Object>{});
+    _testPrefs = await SharedPreferences.getInstance();
+  });
+
   group('LibraryScreen', () {
     testWidgets(
       'empty state shows the welcome icon plus three onboarding buttons',

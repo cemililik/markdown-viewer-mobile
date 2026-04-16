@@ -9,6 +9,7 @@ import 'package:markdown_viewer/features/repo_sync/presentation/screens/repo_syn
 import 'package:markdown_viewer/features/settings/presentation/screens/settings_screen.dart';
 import 'package:markdown_viewer/features/viewer/viewer.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 
 part 'router.g.dart';
 
@@ -20,6 +21,10 @@ GoRouter router(Ref ref) {
   ref.watch(shouldShowOnboardingProvider);
   return GoRouter(
     initialLocation: LibraryRoute.path,
+    // Sentry screen-name tracking — records route transitions as
+    // breadcrumbs and performance spans when Sentry is active.
+    // No-op when Sentry is dormant (no DSN or no consent).
+    observers: [SentryNavigatorObserver()],
     // Global redirect guards the onboarding flow. On every navigation
     // event the router reads [shouldShowOnboardingProvider] (a cheap,
     // sync-backed Riverpod read against the preloaded preferences):
