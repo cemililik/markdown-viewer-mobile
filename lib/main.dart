@@ -4,6 +4,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 import 'package:markdown_viewer/app/app.dart';
+import 'package:markdown_viewer/core/logging/logger.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
 import 'package:markdown_viewer/features/library/data/repositories/library_folders_store_impl.dart';
@@ -37,6 +38,7 @@ Future<void> main() async {
   // instance with ProductionFilter — the default Logger() constructor
   // uses DevelopmentFilter which suppresses all output in release mode.
   final logger = Logger(
+    filter: ProductionFilter(),
     printer: kReleaseMode ? LogfmtPrinter() : PrettyPrinter(),
     level: kReleaseMode ? Level.warning : Level.debug,
   );
@@ -52,7 +54,7 @@ Future<void> main() async {
   FlutterError.onError = (details) {
     // Preserve the default red-screen / console-dump in debug.
     FlutterError.presentError(details);
-    logger.w(
+    logger.e(
       'FlutterError: ${details.exceptionAsString()}',
       error: details.exception,
       stackTrace: details.stack,
@@ -65,7 +67,7 @@ Future<void> main() async {
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
-    logger.w('Uncaught platform error', error: error, stackTrace: stack);
+    logger.e('Uncaught platform error', error: error, stackTrace: stack);
     if (Sentry.isEnabled) {
       Sentry.captureException(error, stackTrace: stack);
     }
@@ -95,7 +97,7 @@ Future<void> main() async {
   // `--dart-define=SENTRY_DSN=...`.
   await CrashReportingController.initIfConsented(consentStore);
 
-  final mermaidRenderer = await _buildMermaidRenderer();
+  final mermaidRenderer = await _buildMermaidRenderer(logger);
 
   runApp(
     ProviderScope(
@@ -107,6 +109,7 @@ Future<void> main() async {
       // integration harnesses) without touching application or
       // presentation code.
       overrides: [
+        appLoggerProvider.overrideWithValue(logger),
         documentRepositoryProvider.overrideWithValue(
           const DocumentRepositoryImpl(parser: MarkdownParser()),
         ),
@@ -146,7 +149,7 @@ Future<void> main() async {
 /// renderer instance constructed with an empty JS payload so the
 /// rest of the document continues to load — a diagram-less reading
 /// experience is strictly better than a crashed app.
-Future<MermaidRenderer> _buildMermaidRenderer() async {
+Future<MermaidRenderer> _buildMermaidRenderer(Logger logger) async {
   try {
     final mermaidJs = await rootBundle.loadString(
       'assets/mermaid/mermaid.min.js',
@@ -162,14 +165,11 @@ Future<MermaidRenderer> _buildMermaidRenderer() async {
     // + `kDebugMode` keeps release builds silent so the user never
     // sees raw stack traces, matching the project's logging
     // policy in `docs/standards/error-handling-standards.md`.
-    if (kDebugMode) {
-      debugPrint(
-        'Failed to load assets/mermaid/mermaid.min.js — falling back '
-        'to an empty renderer so the rest of the document still '
-        'loads. Error: $error',
-      );
-      debugPrint(stackTrace.toString());
-    }
+    logger.w(
+      'Failed to load mermaid.min.js — falling back to empty renderer',
+      error: error,
+      stackTrace: stackTrace,
+    );
     return MermaidRendererImpl.production(mermaidJs: '');
   }
 }

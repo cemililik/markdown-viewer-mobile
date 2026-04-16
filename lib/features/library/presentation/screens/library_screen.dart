@@ -805,7 +805,7 @@ class _LibraryPopulatedBody extends ConsumerWidget {
         );
       },
     );
-    if (confirmed == true) {
+    if (confirmed == true && context.mounted) {
       ref.read(recentDocumentsControllerProvider.notifier).clear();
     }
   }

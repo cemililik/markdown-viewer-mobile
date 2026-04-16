@@ -297,12 +297,7 @@ class _SyncedRepoTile extends ConsumerWidget {
         tooltip: l10n.syncRefreshTooltip,
         onPressed: () {
           Navigator.of(context).maybePop();
-          final base = 'https://github.com/${repo.owner}/${repo.repo}';
-          final url =
-              repo.subPath.isNotEmpty
-                  ? '$base/tree/${repo.ref}/${repo.subPath}'
-                  : '$base/tree/${repo.ref}';
-          context.push(RepoSyncRoute.location(url: url));
+          context.push(RepoSyncRoute.location(url: repo.githubTreeUrl));
         },
       ),
       selected: isActive,
@@ -359,12 +354,7 @@ class _SyncedRepoTile extends ConsumerWidget {
     if (!context.mounted) return;
     if (action == 'update') {
       unawaited(Navigator.of(context).maybePop());
-      final base = 'https://github.com/${repo.owner}/${repo.repo}';
-      final url =
-          repo.subPath.isNotEmpty
-              ? '$base/tree/${repo.ref}/${repo.subPath}'
-              : '$base/tree/${repo.ref}';
-      unawaited(context.push(RepoSyncRoute.location(url: url)));
+      unawaited(context.push(RepoSyncRoute.location(url: repo.githubTreeUrl)));
     } else if (action == 'remove') {
       await ref.read(syncedReposStoreProvider).delete(repo.id);
       ref.invalidate(syncedReposProvider);

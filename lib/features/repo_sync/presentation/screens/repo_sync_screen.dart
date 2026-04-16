@@ -633,6 +633,7 @@ class _TryItCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final syncedReposAsync = ref.watch(syncedReposProvider);
+    if (syncedReposAsync.isLoading) return const SizedBox.shrink();
     final syncedRepos = syncedReposAsync.value ?? <SyncedRepo>[];
     if (syncedRepos.isNotEmpty) return const SizedBox.shrink();
 
@@ -708,6 +709,7 @@ class _RecentSyncsList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final syncedReposAsync = ref.watch(syncedReposProvider);
+    if (syncedReposAsync.isLoading) return const SizedBox.shrink();
     final syncedRepos = syncedReposAsync.value ?? <SyncedRepo>[];
     if (syncedRepos.isEmpty) return const SizedBox.shrink();
 
@@ -792,7 +794,7 @@ class _RecentSyncTile extends ConsumerWidget {
                   minimumSize: const Size(0, 34),
                   textStyle: Theme.of(context).textTheme.labelMedium,
                 ),
-                onPressed: () => onResync(_buildUrl(repo)),
+                onPressed: () => onResync(repo.githubTreeUrl),
                 child: Text(l10n.syncRecentResync),
               ),
               const SizedBox(width: 8),
@@ -831,13 +833,5 @@ class _RecentSyncTile extends ConsumerWidget {
     if (diff.inHours < 1) return l10n.syncLastSyncedMinutes(diff.inMinutes);
     if (diff.inDays < 1) return l10n.syncLastSyncedHours(diff.inHours);
     return l10n.syncLastSyncedDays(diff.inDays);
-  }
-
-  static String _buildUrl(SyncedRepo repo) {
-    final base = 'https://github.com/${repo.owner}/${repo.repo}';
-    if (repo.subPath.isNotEmpty) {
-      return '$base/tree/${repo.ref}/${repo.subPath}';
-    }
-    return '$base/tree/${repo.ref}';
   }
 }

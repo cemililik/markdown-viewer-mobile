@@ -144,23 +144,48 @@ class FileOpenChannel :
     /**
      * Converts [uri] to an absolute filesystem path readable by Dart.
      *
-     * - `file://` → strip scheme, return path directly.
-     * - `content://` → copy to `cacheDir/file_open/<filename>` and
-     *   return that path.
+     * Both `file://` and `content://` URIs are copied into
+     * `cacheDir/file_open/<sanitised-name>` so Dart always receives a
+     * path inside the app sandbox. `file://` URIs are additionally
+     * validated to be inside the app's cache or files directory.
      */
     private fun resolveUri(uri: Uri): String? {
         val context = applicationContext ?: return null
 
+        // file:// URIs: validate the path is inside the app sandbox,
+        // then copy to cache just like content:// URIs to avoid
+        // granting Dart access to arbitrary filesystem locations.
         if (uri.scheme == "file") {
-            return uri.path
+            val decoded = uri.path ?: return null
+            val canonical = File(decoded).canonicalFile
+            val cacheRoot = context.cacheDir.canonicalFile
+            val filesRoot = context.filesDir.canonicalFile
+            if (!canonical.path.startsWith(cacheRoot.path + File.separator) &&
+                !canonical.path.startsWith(filesRoot.path + File.separator) &&
+                canonical != cacheRoot && canonical != filesRoot
+            ) {
+                return null
+            }
+            return try {
+                val safeName = sanitizeFileName(canonical.name)
+                val cacheDir = File(context.cacheDir, "file_open").also { it.mkdirs() }
+                val dest = File(cacheDir, safeName)
+                canonical.inputStream().use { input ->
+                    FileOutputStream(dest).use { output -> input.copyTo(output) }
+                }
+                dest.absolutePath
+            } catch (_: Exception) {
+                null
+            }
         }
 
         // content:// or any other provider URI — copy to cache.
         return try {
-            val fileName = uri.lastPathSegment
+            val rawName = uri.lastPathSegment
                 ?.substringAfterLast('/')
                 ?.ifBlank { null }
                 ?: "opened_file.md"
+            val fileName = sanitizeFileName(rawName)
             val cacheDir = File(context.cacheDir, "file_open").also { it.mkdirs() }
             val dest = File(cacheDir, fileName)
             context.contentResolver.openInputStream(uri)?.use { input ->
@@ -170,6 +195,20 @@ class FileOpenChannel :
         } catch (_: Exception) {
             null
         }
+    }
+
+    /**
+     * Strips path separators and `..` sequences so the name cannot
+     * escape the target directory when used with [File] constructor.
+     */
+    private fun sanitizeFileName(name: String): String {
+        val stripped = name
+            .replace("..", "")
+            .replace('/', '_')
+            .replace('\\', '_')
+            .trim()
+        if (stripped.isBlank()) return "opened_file.md"
+        return stripped
     }
 
     private fun deliver(path: String) {

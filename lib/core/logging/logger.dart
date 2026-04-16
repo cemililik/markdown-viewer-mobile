@@ -45,6 +45,7 @@ import 'package:logger/logger.dart';
 /// dangling until the VM exits.
 final appLoggerProvider = Provider<Logger>((ref) {
   final logger = Logger(
+    filter: ProductionFilter(),
     printer: kReleaseMode ? LogfmtPrinter() : PrettyPrinter(),
     level: kReleaseMode ? Level.warning : Level.debug,
   );

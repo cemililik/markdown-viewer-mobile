@@ -243,7 +243,12 @@ class LibraryFoldersChannel :
       val target: DocumentFile = if (subPath == null || subPath == bookmark) {
         root
       } else {
-        DocumentFile.fromTreeUri(context, Uri.parse(subPath))
+        val subUri = Uri.parse(subPath)
+        if (!isDescendantUri(rootUri, subUri)) {
+          result.error("ACCESS_DENIED", "subPath is not a descendant of the root tree", null)
+          return
+        }
+        DocumentFile.fromTreeUri(context, subUri)
             ?: run {
               result.error("BOOKMARK_STALE", "could not resolve sub tree uri", null)
               return
@@ -322,6 +327,18 @@ class LibraryFoldersChannel :
     }
   }
 
+  /**
+   * Returns `true` when [childUri] sits under the tree rooted at [rootUri].
+   * SAF tree URIs share a common prefix so a string-prefix check is sufficient.
+   */
+  private fun isDescendantUri(rootUri: Uri, childUri: Uri): Boolean {
+    val rootStr = rootUri.toString()
+    val childStr = childUri.toString()
+    return childStr == rootStr ||
+        childStr.startsWith("$rootStr/") ||
+        childStr.startsWith("$rootStr%2F")
+  }
+
   // MARK: - File bytes
 
   private fun readFileBytes(bookmark: String, path: String, result: MethodChannel.Result) {
@@ -331,7 +348,12 @@ class LibraryFoldersChannel :
       return
     }
     try {
+      val rootUri = Uri.parse(bookmark)
       val uri = Uri.parse(path)
+      if (!isDescendantUri(rootUri, uri)) {
+        result.error("ACCESS_DENIED", "path is not a descendant of the root tree", null)
+        return
+      }
       val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
         val buffer = ByteArrayOutputStream()
         input.copyTo(buffer)
