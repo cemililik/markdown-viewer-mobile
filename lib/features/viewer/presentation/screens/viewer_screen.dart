@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/errors/failure.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
+import 'package:markdown_viewer/core/logging/logger.dart';
 import 'package:markdown_viewer/core/widgets/error_view.dart';
 import 'package:markdown_viewer/core/widgets/loading_view.dart';
 import 'package:markdown_viewer/features/library/application/preview_extractor.dart';
@@ -674,6 +675,9 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
         images[code] = r.pngBytes;
       } else if (r is MermaidRenderFailure) {
         errors[code] = r.message;
+        ref
+            .read(appLoggerProvider)
+            .w('Mermaid render failed for PDF export: ${r.message}');
       }
     }
     return (images: images, errors: errors);

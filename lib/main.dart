@@ -30,6 +30,34 @@ Future<void> main() async {
   // and run the mermaid pre-warm before the first frame.
   WidgetsFlutterBinding.ensureInitialized();
 
+  // ── Global error hooks (ADR-0014 Phase 1) ──────────────────────
+  //
+  // Catch framework-level errors (layout, paint, build) and
+  // uncaught async exceptions from the platform so they are logged
+  // instead of silently vanishing. Both handlers keep the default
+  // debug-mode behaviour (red error screen / console dump) and add
+  // a structured log entry on top. In release mode the log entry
+  // is the ONLY record — without these hooks a production crash
+  // leaves zero trace.
+
+  FlutterError.onError = (details) {
+    // Preserve the default red-screen / console-dump in debug.
+    FlutterError.presentError(details);
+    Logger().w(
+      'FlutterError: ${details.exceptionAsString()}',
+      error: details.exception,
+      stackTrace: details.stack,
+    );
+  };
+
+  PlatformDispatcher.instance.onError = (error, stack) {
+    Logger().w('Uncaught platform error', error: error, stackTrace: stack);
+    // Returning true marks the error as handled so the app does
+    // not terminate. A future Sentry integration (ADR-0014 Phase 2)
+    // would capture the event before returning.
+    return true;
+  };
+
   // Preload SharedPreferences so the settings controllers can seed
   // their initial state synchronously — otherwise the very first
   // frame would render with the default light theme / system locale
