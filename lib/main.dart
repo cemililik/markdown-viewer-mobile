@@ -12,7 +12,7 @@ import 'package:markdown_viewer/features/library/data/repositories/library_folde
 import 'package:markdown_viewer/features/library/data/repositories/recent_documents_store_impl.dart';
 import 'package:markdown_viewer/features/library/data/services/folder_enumerator_impl.dart';
 import 'package:markdown_viewer/features/observability/application/observability_providers.dart';
-import 'package:markdown_viewer/features/observability/data/consent_store.dart';
+import 'package:markdown_viewer/features/observability/data/consent_store_impl.dart';
 import 'package:markdown_viewer/features/onboarding/application/onboarding_providers.dart';
 import 'package:markdown_viewer/features/onboarding/data/onboarding_store.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
@@ -95,7 +95,7 @@ Future<void> main() async {
   final recentDocumentsStore = RecentDocumentsStoreImpl(prefs);
   final libraryFoldersStore = LibraryFoldersStoreImpl(prefs, logger: logger);
   final onboardingStore = OnboardingStore(prefs);
-  final consentStore = ConsentStore(prefs);
+  final consentStore = ConsentStoreImpl(prefs);
   final appDatabase = AppDatabase();
 
   // Sentry — initialise only when the user has opted in AND a DSN

@@ -8,7 +8,7 @@ import 'package:markdown_viewer/features/library/data/repositories/library_folde
 import 'package:markdown_viewer/features/library/data/repositories/recent_documents_store_impl.dart';
 import 'package:markdown_viewer/features/library/data/services/folder_enumerator_impl.dart';
 import 'package:markdown_viewer/features/observability/application/observability_providers.dart';
-import 'package:markdown_viewer/features/observability/data/consent_store.dart';
+import 'package:markdown_viewer/features/observability/data/consent_store_impl.dart';
 import 'package:markdown_viewer/features/onboarding/application/onboarding_providers.dart';
 import 'package:markdown_viewer/features/onboarding/data/onboarding_store.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
@@ -40,7 +40,7 @@ void main() {
               const FolderEnumeratorImpl(),
             ),
             onboardingStoreProvider.overrideWithValue(OnboardingStore(prefs)),
-            consentStoreProvider.overrideWithValue(ConsentStore(prefs)),
+            consentStoreProvider.overrideWithValue(ConsentStoreImpl(prefs)),
           ],
           child: const MarkdownViewerApp(),
         ),

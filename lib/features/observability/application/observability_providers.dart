@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:markdown_viewer/features/observability/data/consent_store.dart';
+import 'package:markdown_viewer/features/observability/domain/repositories/consent_store.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 /// Build-time Sentry DSN injected via `--dart-define=SENTRY_DSN=...`.
