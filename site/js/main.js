@@ -55,7 +55,7 @@
               var lang = document.documentElement.lang || 'en';
               status.textContent =
                 lang === 'tr'
-                  ? 'Mesajiniz gonderildi. Tesekkurler!'
+                  ? 'Mesajınız gönderildi. Teşekkürler!'
                   : 'Message sent successfully. Thank you!';
               form.reset();
             } else {
@@ -67,7 +67,7 @@
             var lang = document.documentElement.lang || 'en';
             status.textContent =
               lang === 'tr'
-                ? 'Gonderilemedi. Lutfen daha sonra tekrar deneyin.'
+                ? 'Gönderilemedi. Lütfen daha sonra tekrar deneyin.'
                 : 'Could not send. Please try again later.';
           })
           .finally(function () {

@@ -24,7 +24,16 @@ GoRouter router(Ref ref) {
     // Sentry screen-name tracking — records route transitions as
     // breadcrumbs and performance spans when Sentry is active.
     // No-op when Sentry is dormant (no DSN or no consent).
-    observers: [SentryNavigatorObserver()],
+    observers: [
+      SentryNavigatorObserver(
+        // Redact route arguments from Sentry breadcrumbs and spans.
+        // ViewerRoute passes absolute file paths as arguments — these
+        // are PII under ADR-0014's security rules.
+        routeNameExtractor:
+            (settings) =>
+                settings == null ? null : RouteSettings(name: settings.name),
+      ),
+    ],
     // Global redirect guards the onboarding flow. On every navigation
     // event the router reads [shouldShowOnboardingProvider] (a cheap,
     // sync-backed Riverpod read against the preloaded preferences):

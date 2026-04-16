@@ -33,20 +33,26 @@ Future<void> main() async {
   // and run the mermaid pre-warm before the first frame.
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Create the logger before the error hooks so they use the shared
+  // instance with ProductionFilter — the default Logger() constructor
+  // uses DevelopmentFilter which suppresses all output in release mode.
+  final logger = Logger(
+    printer: kReleaseMode ? LogfmtPrinter() : PrettyPrinter(),
+    level: kReleaseMode ? Level.warning : Level.debug,
+  );
+
   // ── Global error hooks (ADR-0014 Phase 1) ──────────────────────
   //
   // Catch framework-level errors (layout, paint, build) and
   // uncaught async exceptions from the platform so they are logged
   // instead of silently vanishing. Both handlers keep the default
   // debug-mode behaviour (red error screen / console dump) and add
-  // a structured log entry on top. In release mode the log entry
-  // is the ONLY record — without these hooks a production crash
-  // leaves zero trace.
+  // a structured log entry on top.
 
   FlutterError.onError = (details) {
     // Preserve the default red-screen / console-dump in debug.
     FlutterError.presentError(details);
-    Logger().w(
+    logger.w(
       'FlutterError: ${details.exceptionAsString()}',
       error: details.exception,
       stackTrace: details.stack,
@@ -59,7 +65,7 @@ Future<void> main() async {
   };
 
   PlatformDispatcher.instance.onError = (error, stack) {
-    Logger().w('Uncaught platform error', error: error, stackTrace: stack);
+    logger.w('Uncaught platform error', error: error, stackTrace: stack);
     if (Sentry.isEnabled) {
       Sentry.captureException(error, stackTrace: stack);
     }
@@ -73,7 +79,6 @@ Future<void> main() async {
   // backs the reading-position store so its synchronous `read` can
   // run inside a post-frame callback without an extra disk hop.
   final prefs = await SharedPreferences.getInstance();
-  final logger = Logger();
   final settingsStore = SettingsStore(prefs);
   final readingPositionStore = ReadingPositionStoreImpl(prefs, logger: logger);
   final recentDocumentsStore = RecentDocumentsStoreImpl(prefs);
