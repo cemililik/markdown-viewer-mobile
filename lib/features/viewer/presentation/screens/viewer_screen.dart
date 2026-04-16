@@ -413,8 +413,33 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
 
   /// Handles `markdown_widget`'s `onTocList` callback by rebuilding
   /// [_headingToWidgetIndex] against the current document's heading
-  /// list. Both lists walk the document in order, so the N-th entry
-  /// in each corresponds to the same heading.
+  /// list.
+  ///
+  /// Earlier revisions relied on positional alignment — `headings[i]`
+  /// paired with `tocs[i]` — but that silently desyncs whenever the
+  /// two parsers disagree on what counts as a heading. Divergence
+  /// sources include:
+  ///
+  /// * `markdown_widget` uses `encodeHtml: false` and a custom
+  ///   `splitRegExp`; our parser uses `encodeHtml: true` and
+  ///   `LineSplitter`.
+  /// * `markdown_widget` runs extra block syntaxes (math, admonitions)
+  ///   that consume ranges our parser sees as paragraphs / headings.
+  /// * Container walks can diverge for the same reason.
+  ///
+  /// When tocs has fewer entries than headings, the old `min()` loop
+  /// left the tail HeadingRefs unmapped — tapping a bottom heading
+  /// would silently no-op or (through `putIfAbsent` race timing)
+  /// scroll to an early block index, which presents to the user as
+  /// "clicked bottom-of-TOC, ended up near the top of the document".
+  ///
+  /// The current implementation matches by `(level, text)` with a
+  /// consuming cursor over `tocs` so duplicates survive: the first
+  /// `HeadingRef` with text "Details" claims the first TOC entry
+  /// named "Details", the second claims the second, etc. Headings
+  /// with no counterpart in `tocs` simply do not get mapped —
+  /// `_scrollToHeading` then no-ops for them, which is strictly
+  /// better than landing on the wrong block.
   ///
   /// This method is called synchronously from inside
   /// [MarkdownView.build] via the `onTocList` forwarding, so it
@@ -425,11 +450,42 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     if (tocs.isEmpty && _headingToWidgetIndex.isEmpty) return;
     final map = <HeadingRef, int>{};
     final headings = document.headings;
-    final count = headings.length < tocs.length ? headings.length : tocs.length;
-    for (var i = 0; i < count; i += 1) {
-      map[headings[i]] = tocs[i].widgetIndex;
+
+    // Pre-compute `(level, text)` for every toc entry so each
+    // HeadingRef can scan forward to the next matching one without
+    // re-walking the HeadingNode's span tree per comparison.
+    final tocDescriptors = tocs.map(_describeToc).toList(growable: false);
+    final consumed = List<bool>.filled(tocs.length, false);
+
+    for (final h in headings) {
+      for (var j = 0; j < tocs.length; j += 1) {
+        if (consumed[j]) continue;
+        final desc = tocDescriptors[j];
+        if (desc.level == h.level && desc.text == h.text) {
+          map[h] = tocs[j].widgetIndex;
+          consumed[j] = true;
+          break;
+        }
+      }
     }
     _headingToWidgetIndex = map;
+  }
+
+  /// Extracts `(level, text)` from a `markdown_widget` [Toc] entry
+  /// so it can be compared against our own [HeadingRef]s without
+  /// depending on positional alignment.
+  ///
+  /// The level is carried on `HeadingConfig.tag` as one of `h1`..`h6`.
+  /// The text comes from the node's span tree via `toPlainText()` —
+  /// TextSpan collects every descendant `TextSpan.text` in order,
+  /// which is exactly the whitespace-collapsed plain-text form our
+  /// parser stores in `HeadingRef.text`.
+  ({int level, String text}) _describeToc(Toc toc) {
+    final tag = toc.node.headingConfig.tag;
+    final level =
+        tag.length == 2 && tag[0] == 'h' ? int.tryParse(tag[1]) ?? 0 : 0;
+    final text = toc.node.childrenSpan.toPlainText().trim();
+    return (level: level, text: text);
   }
 
   /// Animates the scroll so the widget containing [heading] is
