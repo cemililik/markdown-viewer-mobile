@@ -14,7 +14,11 @@ const String sentryDsn = String.fromEnvironment('SENTRY_DSN');
 /// `false` when `SENTRY_DSN` was not supplied at build time. Even
 /// when `true`, Sentry only activates if the user has also opted in
 /// via the Settings toggle ([crashReportingControllerProvider]).
-bool get sentryAvailable => sentryDsn.isNotEmpty;
+// Evaluated at compile time: `String.fromEnvironment` is a const
+// constructor, so `sentryDsn.isNotEmpty` folds to a plain bool the
+// tree-shaker can eliminate. `const` also documents that the value
+// cannot change between calls — a mutable getter hid that invariant.
+const bool sentryAvailable = sentryDsn != '';
 
 /// Holds the [ConsentStore]. Overridden in `main.dart` with an
 /// instance backed by the preloaded `SharedPreferences`.

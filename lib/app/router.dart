@@ -28,10 +28,12 @@ GoRouter router(Ref ref) {
       SentryNavigatorObserver(
         // Redact route arguments from Sentry breadcrumbs and spans.
         // ViewerRoute passes absolute file paths as arguments — these
-        // are PII under ADR-0014's security rules.
+        // are PII under ADR-0014's security rules. When `settings` is
+        // null (cold-start pop to root) we still emit a "/" breadcrumb
+        // instead of `null`, otherwise the very first screen the user
+        // lands on is invisible in the navigation history.
         routeNameExtractor:
-            (settings) =>
-                settings == null ? null : RouteSettings(name: settings.name),
+            (settings) => RouteSettings(name: settings?.name ?? '/'),
       ),
     ],
     // Global redirect guards the onboarding flow. On every navigation

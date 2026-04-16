@@ -13,6 +13,7 @@ import 'package:markdown_viewer/features/onboarding/application/onboarding_provi
 import 'package:markdown_viewer/features/onboarding/data/onboarding_store.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/settings/data/settings_store.dart';
+import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -46,10 +47,18 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // Load the English localizations so the test matches the ARB
+      // values by key instead of coupling the assertions to a
+      // specific English string — a key rename or a locale change
+      // would otherwise surface as a mystery test failure. See the
+      // testing-standards rule: "Never use `find.text` for strings
+      // that will be localized."
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+
       expect(find.byType(MaterialApp), findsOneWidget);
       expect(find.byIcon(Icons.menu_book_outlined), findsOneWidget);
-      expect(find.text('Library'), findsOneWidget);
-      expect(find.text('No documents yet'), findsOneWidget);
+      expect(find.text(l10n.navLibrary), findsOneWidget);
+      expect(find.text(l10n.libraryEmptyTitle), findsOneWidget);
     });
   });
 }

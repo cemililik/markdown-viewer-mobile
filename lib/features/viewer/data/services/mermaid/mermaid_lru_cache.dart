@@ -59,6 +59,10 @@ class MermaidLruCache<V> {
       _misses++;
       return null;
     }
+    // `containsKey` above guarantees `remove` returns a non-null V.
+    // `as V` rather than `!` because V is a generic type parameter —
+    // the `!` form trips the analyzer's "null check on potentially
+    // nullable type parameter" hint when V is unconstrained.
     final value = _entries.remove(key) as V;
     _hits++;
     _entries[key] = value;

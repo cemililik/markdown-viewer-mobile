@@ -112,10 +112,19 @@ surface. Rules:
   keystore fails the build instead of silently shipping with the debug
   key. CI release pipelines populate `key.properties` from secrets at
   build time.
-- **iOS development teams are not pinned in `project.pbxproj`.** Forcing
-  a specific Apple `DEVELOPMENT_TEAM` leaks it to every contributor and
-  CI runner. Each developer supplies their own team locally; CI uses
+- **iOS development teams are not pinned in `project.pbxproj`** once
+  the project has more than one contributor. Forcing a specific Apple
+  `DEVELOPMENT_TEAM` leaks it to every contributor and CI runner.
+  Each developer supplies their own team locally; CI uses
   `--no-codesign` for debug builds.
+
+  > **Current deviation** — the project ships with the single-owner
+  > team ID pinned because the release pipeline's `flutter build ipa
+  > --release` archive step consumes it directly and there is exactly
+  > one contributor today. Migrate this to an external `.xcconfig`
+  > read from a GitHub secret when the project gains a second iOS
+  > contributor, or convert the release archive step to pass
+  > `DEVELOPMENT_TEAM` via `xcodebuild` flags instead.
 
 ## Codegen and Drift Detection
 

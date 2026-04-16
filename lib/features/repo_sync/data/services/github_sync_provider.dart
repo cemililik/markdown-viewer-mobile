@@ -104,8 +104,17 @@ class GitHubSyncProvider implements RepoSyncProvider {
     // sync entirely. The user still gets the file, just without the
     // skip-unchanged optimisation.
     if (locator.singleFile) {
+      // URI-encode each ref / sub-path segment so branch names with
+      // slashes (`feature/foo`) and paths with spaces or unicode
+      // survive the round-trip. Owner and repo are restricted by
+      // GitHub to `[A-Za-z0-9._-]`, no encoding required.
+      final rawRef = locator.ref.split('/').map(Uri.encodeComponent).join('/');
+      final rawSub = locator.subPath
+          .split('/')
+          .map(Uri.encodeComponent)
+          .join('/');
       final rawUrl =
-          '$_rawBase/${locator.owner}/${locator.repo}/${locator.ref}/${locator.subPath}';
+          '$_rawBase/${locator.owner}/${locator.repo}/$rawRef/$rawSub';
       String sha = '';
       try {
         final meta = await _fetchBlobMetadata(
@@ -160,8 +169,10 @@ class GitHubSyncProvider implements RepoSyncProvider {
 
       final sha = entry['sha'] as String? ?? '';
       final size = (entry['size'] as num?)?.toInt() ?? 0;
+      final rawRef = locator.ref.split('/').map(Uri.encodeComponent).join('/');
+      final rawPath = path.split('/').map(Uri.encodeComponent).join('/');
       final rawUrl =
-          '$_rawBase/${locator.owner}/${locator.repo}/${locator.ref}/$path';
+          '$_rawBase/${locator.owner}/${locator.repo}/$rawRef/$rawPath';
 
       yield RemoteFile(path: path, sha: sha, size: size, rawUrl: rawUrl);
     }

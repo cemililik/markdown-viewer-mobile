@@ -314,13 +314,22 @@ class _SyncedRepoTile extends ConsumerWidget {
 
   /// Combines subPath (if set) with a relative last-synced time.
   static String _buildSubtitle(SyncedRepo repo, AppLocalizations l10n) {
-    final timeStr = _formatLastSynced(repo.lastSyncedAt, l10n);
+    final timeStr = formatLastSynced(repo.lastSyncedAt, l10n);
     if (repo.subPath.isNotEmpty) return '${repo.subPath} · $timeStr';
     return timeStr;
   }
 
-  static String _formatLastSynced(DateTime at, AppLocalizations l10n) {
-    final diff = DateTime.now().difference(at);
+  /// Relative-time formatter with an injectable [now] so unit tests
+  /// can pin the reference point without manipulating the system
+  /// clock. Production callers omit [now] and fall through to
+  /// `DateTime.now()`.
+  @visibleForTesting
+  static String formatLastSynced(
+    DateTime at,
+    AppLocalizations l10n, {
+    DateTime? now,
+  }) {
+    final diff = (now ?? DateTime.now()).difference(at);
     if (diff.inMinutes < 1) return l10n.syncLastSyncedJustNow;
     if (diff.inHours < 1) return l10n.syncLastSyncedMinutes(diff.inMinutes);
     if (diff.inDays < 1) return l10n.syncLastSyncedHours(diff.inHours);

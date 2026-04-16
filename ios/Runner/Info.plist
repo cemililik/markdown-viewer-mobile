@@ -20,10 +20,16 @@
 				<string>Viewer</string>
 				<key>LSHandlerRank</key>
 				<string>Default</string>
+				<!-- Register ONLY the markdown UTI. `public.plain-text`
+				     was dropped because it caused the app to appear in the
+				     system "Open With" list for every .txt, .csv, and
+				     .log file on the device — well beyond the intended
+				     scope. Apps that export as
+				     `net.daringfireball.markdown` still open here via UTI
+				     inheritance. -->
 				<key>LSItemContentTypes</key>
 				<array>
 					<string>net.daringfireball.markdown</string>
-					<string>public.plain-text</string>
 				</array>
 			</dict>
 		</array>
