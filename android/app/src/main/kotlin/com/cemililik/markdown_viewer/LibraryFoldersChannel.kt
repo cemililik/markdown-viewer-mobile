@@ -334,9 +334,13 @@ class LibraryFoldersChannel :
   private fun isDescendantUri(rootUri: Uri, childUri: Uri): Boolean {
     val rootStr = rootUri.toString()
     val childStr = childUri.toString()
+    // SAF producers may emit either uppercase or lowercase percent-encoding
+    // for the path separator; accept both without lowercasing the whole URI
+    // (which would clobber case-sensitive authority/scheme components).
     return childStr == rootStr ||
         childStr.startsWith("$rootStr/") ||
-        childStr.startsWith("$rootStr%2F")
+        childStr.startsWith("$rootStr%2F") ||
+        childStr.startsWith("$rootStr%2f")
   }
 
   // MARK: - File bytes

@@ -51,7 +51,13 @@ class CrashReportingController extends Notifier<bool> {
   Future<void> setEnabled(bool enabled) async {
     if (state == enabled) return;
     state = enabled;
-    ref.read(consentStoreProvider).writeCrashReportingEnabled(enabled).ignore();
+    // Await the consent write so `writeCrashReportingEnabled`'s
+    // StateError (on SharedPreferences.setBool returning false) can
+    // propagate to the settings-screen error path instead of being
+    // silently dropped. If persistence fails the in-memory state and
+    // Sentry lifecycle still reflect the toggle, but the caller gets
+    // a chance to surface the failure in the UI.
+    await ref.read(consentStoreProvider).writeCrashReportingEnabled(enabled);
 
     if (enabled && sentryAvailable) {
       await _initSentry();

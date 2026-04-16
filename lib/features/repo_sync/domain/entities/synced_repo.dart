@@ -61,10 +61,23 @@ abstract class SyncedRepo with _$SyncedRepo {
   /// `true` when the last sync left at least some files usable.
   bool get hasContent => fileCount > 0;
 
-  /// Reconstructs the GitHub tree URL from the stored locator fields.
+  /// Reconstructs the GitHub tree URL from the stored locator fields,
+  /// URI-encoding each path segment so `ref`s and sub-paths containing
+  /// spaces, unicode, or other reserved characters round-trip safely
+  /// through [RepoSyncProvider.parse].
+  ///
+  /// Always emits `/tree/...` rather than `/blob/...` because the
+  /// stored schema does not distinguish the original kind. For sync
+  /// purposes either form produces the same `RepoLocator` — this is
+  /// a UI-link quirk only (users see `/tree` in the address bar on
+  /// re-sync even if they originally pasted a `/blob` URL).
   String get githubTreeUrl {
     final base = 'https://github.com/$owner/$repo';
-    if (subPath.isNotEmpty) return '$base/tree/$ref/$subPath';
-    return '$base/tree/$ref';
+    // `ref` may itself contain `/` for slash-nested branch names
+    // (`feature/foo`); split, encode each segment, re-join.
+    final refEncoded = ref.split('/').map(Uri.encodeComponent).join('/');
+    if (subPath.isEmpty) return '$base/tree/$refEncoded';
+    final subEncoded = subPath.split('/').map(Uri.encodeComponent).join('/');
+    return '$base/tree/$refEncoded/$subEncoded';
   }
 }

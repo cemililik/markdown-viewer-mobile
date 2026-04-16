@@ -76,14 +76,24 @@ class MermaidRendererImpl implements MermaidRenderer {
   /// channel. Drained by [_pump] one at a time.
   final List<_PendingRender> _queue = <_PendingRender>[];
 
-  /// Per-request bookkeeping for `[id] -> completer` so the
-  /// asynchronous `onResult` callback can match a JS reply back to
-  /// its caller. Distinct from [_inFlight], which is keyed by
-  /// source hash and used for collapse; this map is keyed by the
-  /// per-request id we send into JS.
-  /// Maps request-id → (completer, cacheKey) so [_handleChannelResult]
-  /// can store the bitmap in the LRU cache without scanning [_inFlight]
-  /// (which is cleared by the time the channel callback fires).
+  /// Maps per-request JS bridge id → (completer, cacheKey).
+  ///
+  /// Two maps track pending work in parallel:
+  /// * [_inFlight] is keyed by source hash and exists so that two
+  ///   concurrent `render()` calls for the same diagram collapse onto
+  ///   a single completer. It is populated in [render] and cleared in
+  ///   [_pump] once `pending.completer.future` resolves.
+  /// * [_activeRequests] (this map) is keyed by the per-request id we
+  ///   send into JS so [_handleChannelResult] can look up the
+  ///   completer when the `onResult` callback fires.
+  ///
+  /// We carry the cache key inside this record so
+  /// [_handleChannelResult] can write the resulting bitmap into the
+  /// LRU cache directly. An earlier implementation tried to reverse-
+  /// look up the key by identity-scanning [_inFlight], but `_pump`
+  /// removes the in-flight entry in its `finally` block before the
+  /// channel callback fires — the scan always returned `null` and
+  /// cache writes silently no-oped.
   final Map<
     String,
     ({Completer<MermaidRenderResult> completer, String cacheKey})

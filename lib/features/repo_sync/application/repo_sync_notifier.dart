@@ -354,9 +354,17 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
 
   /// Validates that a remote file path does not escape [localRoot]
   /// after joining.
+  ///
+  /// Uses `p.isWithin` instead of `String.startsWith` because a naive
+  /// prefix check treats `/foo/bar` and `/foo/bar2/evil` as related
+  /// (they share the same string prefix but the second is outside the
+  /// first). `p.isWithin` normalises both paths and enforces proper
+  /// filesystem-boundary containment.
   static void _validateLocalPath(String localPath, String localRoot) {
-    final normalized = p.normalize(localPath);
-    if (!normalized.startsWith(localRoot)) {
+    final rootNormalized = p.normalize(localRoot);
+    final pathNormalized = p.normalize(localPath);
+    if (pathNormalized == rootNormalized) return;
+    if (!p.isWithin(rootNormalized, pathNormalized)) {
       throw const UnsupportedProviderFailure(
         message: 'Remote path escapes the sync sandbox',
       );
