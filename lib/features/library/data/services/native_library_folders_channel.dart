@@ -30,11 +30,10 @@ class NativeFolderEntry {
 /// this to the localized "could not read this folder" state.
 ///
 /// When the underlying platform could refresh the bookmark
-/// (iOS — OS returns a fresh bookmark blob via
-/// `bookmarkData(options: [.withSecurityScope])` after detecting
-/// staleness), [refreshedBookmark] carries the new base64 blob so
-/// the caller can persist it and retry without re-prompting the
-/// user. `null` when no refresh was possible.
+/// (iOS — OS returns a fresh bookmark blob from the resolved URL
+/// after detecting staleness), [refreshedBookmark] carries the new
+/// base64 blob so the caller can persist it and retry without
+/// re-prompting the user. `null` when no refresh was possible.
 class NativeFolderBookmarkStaleException implements Exception {
   const NativeFolderBookmarkStaleException(
     this.message, {

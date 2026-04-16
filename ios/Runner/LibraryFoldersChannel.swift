@@ -162,10 +162,15 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
     }
 
     do {
-      // Must use `.withSecurityScope` so
-      // `resolveBookmarkOrFail` can re-claim access on cold start.
+      // `.withSecurityScope` is macOS-only — on iOS the URL returned
+      // by UIDocumentPickerViewController is already security-scoped
+      // and `bookmarkData(options: [])` preserves that scope through
+      // the round trip. `startAccessingSecurityScopedResource()`
+      // above is the load-bearing call; the option flag is a no-op
+      // here and was removed after Xcode flagged
+      // "'withSecurityScope' is unavailable in iOS".
       let bookmarkData = try url.bookmarkData(
-        options: [.withSecurityScope],
+        options: [],
         includingResourceValuesForKeys: nil,
         relativeTo: nil
       )
@@ -381,20 +386,23 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
     }
     do {
       var isStale = false
+      // `.withSecurityScope` is macOS-only. On iOS the default
+      // resolve options preserve the scope from a bookmark originally
+      // captured through UIDocumentPickerViewController.
       let url = try URL(
         resolvingBookmarkData: data,
-        options: [.withSecurityScope],
+        options: [],
         relativeTo: nil,
         bookmarkDataIsStale: &isStale
       )
       if isStale {
         let started = url.startAccessingSecurityScopedResource()
         defer { if started { url.stopAccessingSecurityScopedResource() } }
-        // If we could not claim the scope we can't mint a fresh
-        // `.withSecurityScope` bookmark either — report the stale
-        // state so the caller can prompt the user to re-pick the
-        // folder. Don't attempt bookmarkData() in that branch; it
-        // would throw NSFileReadNoPermission on out-of-sandbox URLs.
+        // If we could not claim the scope we cannot mint a fresh
+        // bookmark either — report the stale state so the caller can
+        // prompt the user to re-pick the folder. Don't attempt
+        // bookmarkData() in that branch; it would throw
+        // NSFileReadNoPermission on out-of-sandbox URLs.
         if !started {
           result(FlutterError(
             code: "BOOKMARK_STALE",
@@ -404,7 +412,7 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
           return nil
         }
         let freshData = try url.bookmarkData(
-          options: [.withSecurityScope],
+          options: [],
           includingResourceValuesForKeys: nil,
           relativeTo: nil
         )
