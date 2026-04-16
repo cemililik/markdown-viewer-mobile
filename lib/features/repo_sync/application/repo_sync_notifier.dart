@@ -101,19 +101,17 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
       }
 
       final localRoot = await _buildLocalRoot(locator);
-      final allRepos = await store.readAll();
-
-      SyncedRepo? existing;
-      for (final r in allRepos) {
-        if (r.provider == locator.provider &&
-            r.owner == locator.owner &&
-            r.repo == locator.repo &&
-            r.ref == locator.ref &&
-            r.subPath == locator.subPath) {
-          existing = r;
-          break;
-        }
-      }
+      // Natural-key lookup hits a drift index directly instead of
+      // scanning the full repo list — the old implementation iterated
+      // `store.readAll()` manually, which grew O(n) with the number
+      // of synced repos.
+      final existing = await store.findByNaturalKey(
+        provider: locator.provider,
+        owner: locator.owner,
+        repo: locator.repo,
+        ref: locator.ref,
+        subPath: locator.subPath,
+      );
 
       final knownShas =
           existing != null

@@ -90,7 +90,17 @@ class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
 
   void _clearSearch() {
     _searchController.clear();
-    setState(() => _searchQuery = '');
+    // Reset the cached recursive walk alongside the query. Without
+    // this, a future that resolved to an error (stale bookmark,
+    // transient I/O failure) stays cached: the next non-empty query
+    // `??=` keeps the errored future and the user sees the same
+    // error message with no way to retry short of leaving and
+    // re-entering the folder source. Resetting here means a fresh
+    // "type → walk" cycle starts after every clear.
+    setState(() {
+      _searchQuery = '';
+      _recursiveFuture = null;
+    });
   }
 
   @override

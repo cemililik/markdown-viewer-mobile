@@ -785,6 +785,14 @@ class _LibraryPopulatedBody extends ConsumerWidget {
   }
 
   Future<void> _confirmClear(BuildContext context, WidgetRef ref) async {
+    // Guard against a double-tap on the trailing "Clear all" button
+    // presenting two confirmation dialogs at the same time: the
+    // dialog's own open animation means the first tap has not yet
+    // blocked input when the second one lands. Tracked through the
+    // file-scope [_clearDialogOpen] flag because this widget is a
+    // ConsumerWidget and cannot hold instance state.
+    if (_clearDialogOpen) return;
+    _clearDialogOpen = true;
     final l10n = context.l10n;
     final confirmed = await showDialog<bool>(
       context: context,
@@ -805,11 +813,16 @@ class _LibraryPopulatedBody extends ConsumerWidget {
         );
       },
     );
+    _clearDialogOpen = false;
     if (confirmed == true && context.mounted) {
       ref.read(recentDocumentsControllerProvider.notifier).clear();
     }
   }
 }
+
+/// File-scope "clear-all confirm dialog in flight" flag. See
+/// [_LibraryPopulatedBody._confirmClear] for rationale.
+bool _clearDialogOpen = false;
 
 /// Greeting card at the top of the populated library body.
 /// Chooses one of three salutations based on the local hour of

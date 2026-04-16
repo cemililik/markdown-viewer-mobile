@@ -62,15 +62,22 @@ class SyncedReposStoreImpl implements SyncedReposStore {
 
   @override
   Future<void> delete(int id) async {
-    // Retrieve localRoot before deleting so we can wipe the directory.
+    // Retrieve localRoot BEFORE touching the DB so we still know
+    // which directory to wipe. Delete the directory first and the DB
+    // row second so that a directory-delete failure (iOS sandbox
+    // permission hiccup, Android content:// URI transient failure,
+    // etc.) leaves the DB row intact — the user can retry from the
+    // UI and the bookkeeping still reflects reality. The reverse
+    // order would orphan the on-disk files with no DB pointer to
+    // find them again.
     final row = await _db.getRepoById(id);
-    await _db.deleteRepo(id);
     if (row != null) {
       final dir = Directory(row.localRoot);
       if (dir.existsSync()) {
         await dir.delete(recursive: true);
       }
     }
+    await _db.deleteRepo(id);
   }
 
   @override
@@ -99,6 +106,24 @@ class SyncedReposStoreImpl implements SyncedReposStore {
       for (final f in files)
         if (f.status == 'synced') f.remotePath: f.sha,
     };
+  }
+
+  @override
+  Future<SyncedRepo?> findByNaturalKey({
+    required String provider,
+    required String owner,
+    required String repo,
+    required String ref,
+    required String subPath,
+  }) async {
+    final row = await _db.getRepoByNaturalKey(
+      provider: provider,
+      owner: owner,
+      repo: repo,
+      ref: ref,
+      subPath: subPath,
+    );
+    return row == null ? null : _rowToEntity(row);
   }
 
   @override

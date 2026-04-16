@@ -15,6 +15,19 @@ abstract interface class SyncedReposStore {
   /// entity with its database-assigned [SyncedRepo.id].
   Future<SyncedRepo> upsert(SyncedRepo repo);
 
+  /// Finds an existing repo by its natural key so the application
+  /// layer can decide whether a sync is a first run or an update
+  /// without iterating [readAll] (an O(n) linear scan over the
+  /// entire repo list, vs. the O(log n) index the underlying drift
+  /// query uses). Returns `null` when no record matches.
+  Future<SyncedRepo?> findByNaturalKey({
+    required String provider,
+    required String owner,
+    required String repo,
+    required String ref,
+    required String subPath,
+  });
+
   /// Permanently removes the record with [id] and all associated
   /// per-file rows. Also deletes the local mirror directory.
   Future<void> delete(int id);

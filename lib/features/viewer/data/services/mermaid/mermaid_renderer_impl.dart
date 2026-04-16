@@ -143,6 +143,15 @@ class MermaidRendererImpl implements MermaidRenderer {
     } catch (e) {
       _permanentFailure = 'Unexpected mermaid renderer init error: $e';
     } finally {
+      // Deliberate ordering: any caller waiting on [_prewarmInFlight]
+      // gets released here, but by this point [_initialized] has
+      // already flipped to true (or [_permanentFailure] is set). A
+      // third concurrent [prewarm] arriving between the state write
+      // and the in-flight clear would have observed `_initialized ==
+      // true` at the top guard and returned immediately; arriving
+      // AFTER the clear it would still observe the same terminal
+      // state and short-circuit. No race window remains in which a
+      // caller could trigger a second initialization cycle.
       _prewarmInFlight = null;
     }
   }

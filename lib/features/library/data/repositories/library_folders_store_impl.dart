@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:logger/logger.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/repositories/library_folders_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -33,9 +34,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// the list. This mirrors the pattern in `RecentDocumentsStoreImpl`
 /// and `ReadingPositionStoreImpl`.
 class LibraryFoldersStoreImpl implements LibraryFoldersStore {
-  LibraryFoldersStoreImpl(this._prefs);
+  LibraryFoldersStoreImpl(this._prefs, {Logger? logger}) : _logger = logger;
 
   final SharedPreferences _prefs;
+
+  /// Optional logger used to record corrupt-prefs recoveries. Nullable
+  /// so tests can omit it; production wires this from
+  /// `appLoggerProvider` at the composition root.
+  final Logger? _logger;
 
   static const String _storageKey = 'library.folders';
 
@@ -72,7 +78,16 @@ class LibraryFoldersStoreImpl implements LibraryFoldersStore {
         );
       }
       return entries;
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      // Corrupt prefs fall through as an empty list so the drawer's
+      // empty state can recover gracefully, but the decode error is
+      // worth seeing in the log — a repeating entry here means a
+      // schema bug or a hand-edited prefs file.
+      _logger?.w(
+        'Corrupt library.folders blob — treating as empty',
+        error: error,
+        stackTrace: stackTrace,
+      );
       return const <LibraryFolder>[];
     }
   }

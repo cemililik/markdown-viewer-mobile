@@ -62,9 +62,15 @@ class ReadingPositionStoreImpl implements ReadingPositionStore {
       // Treat every failure as "no bookmark" so the document
       // opens normally; the next explicit save overwrites the
       // bad blob.
+      // Deliberately omit the full `_keyFor(documentId)` hash from
+      // the log message. The key is a SHA-256 of the file path —
+      // cross-referencing a set of known paths against the logged
+      // hashes would let a reader reconstruct which documents the
+      // user opened. Per observability-standards.md "never log full
+      // filesystem paths" we only include the exception, which is
+      // enough to debug decode drift without the privacy exposure.
       _logger.e(
-        'ReadingPositionStore: could not decode entry for key '
-        '${_keyFor(documentId)}',
+        'ReadingPositionStore: could not decode stored entry',
         error: e,
         stackTrace: st,
       );

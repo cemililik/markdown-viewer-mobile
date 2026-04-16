@@ -84,7 +84,7 @@ Future<void> main() async {
   final settingsStore = SettingsStore(prefs);
   final readingPositionStore = ReadingPositionStoreImpl(prefs, logger: logger);
   final recentDocumentsStore = RecentDocumentsStoreImpl(prefs);
-  final libraryFoldersStore = LibraryFoldersStoreImpl(prefs);
+  final libraryFoldersStore = LibraryFoldersStoreImpl(prefs, logger: logger);
   final onboardingStore = OnboardingStore(prefs);
   final consentStore = ConsentStore(prefs);
   final appDatabase = AppDatabase();
