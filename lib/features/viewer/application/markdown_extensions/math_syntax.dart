@@ -98,9 +98,35 @@ class DisplayMathBlockSyntax extends md.BlockSyntax {
     parser.advance();
 
     final bodyLines = <String>[];
+    // Heuristics that stop the math body from swallowing the rest of
+    // the document when the user forgot the closing `$$`. Without
+    // these guards a single unclosed fence would absorb every heading,
+    // code fence, list marker, and paragraph that follows it into one
+    // giant math element that fails to render and hides the prose.
+    // Any of these lines ends the implicit body so paragraph parsing
+    // picks up where the math block left off:
+    //
+    // * ATX headings (`# `, `## `, …)
+    // * fenced code blocks (``` or ~~~)
+    // * horizontal rules (`---`, `***`, `___`)
+    // * blank lines that separate markdown paragraphs
+    final blockBoundary = RegExp(
+      r'^(#{1,6}\s|```|~~~|\s*(?:-{3,}|\*{3,}|_{3,})\s*$)',
+    );
     while (!parser.isDone) {
       final line = parser.current.content;
       if (_bareFence.hasMatch(line)) {
+        parser.advance();
+        break;
+      }
+      if (blockBoundary.hasMatch(line)) {
+        // Implicit close — do NOT advance past the boundary line so
+        // the next syntax can consume it (heading/fence/hr).
+        break;
+      }
+      if (line.trim().isEmpty && bodyLines.isNotEmpty) {
+        // Blank line after some body content terminates the implicit
+        // math block, matching how CommonMark paragraphs close.
         parser.advance();
         break;
       }

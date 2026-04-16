@@ -28,9 +28,20 @@ class NativeFolderEntry {
 /// or [NativeLibraryFoldersChannel.listDirectoryRecursive] when
 /// the stored bookmark no longer resolves. The folder body maps
 /// this to the localized "could not read this folder" state.
+///
+/// When the underlying platform could refresh the bookmark
+/// (iOS — OS returns a fresh bookmark blob via
+/// `bookmarkData(options: [.withSecurityScope])` after detecting
+/// staleness), [refreshedBookmark] carries the new base64 blob so
+/// the caller can persist it and retry without re-prompting the
+/// user. `null` when no refresh was possible.
 class NativeFolderBookmarkStaleException implements Exception {
-  const NativeFolderBookmarkStaleException(this.message);
+  const NativeFolderBookmarkStaleException(
+    this.message, {
+    this.refreshedBookmark,
+  });
   final String message;
+  final String? refreshedBookmark;
 
   @override
   String toString() => 'NativeFolderBookmarkStaleException: $message';
@@ -151,7 +162,14 @@ class NativeLibraryFoldersChannel {
   Exception _mapError(PlatformException error) {
     switch (error.code) {
       case 'BOOKMARK_STALE':
-        return NativeFolderBookmarkStaleException(error.message ?? '');
+        // iOS hands a freshly-minted `.withSecurityScope` bookmark back
+        // in `details` so the caller can persist and retry without
+        // re-prompting. Android has no equivalent — tree URIs do not
+        // go stale and the same exception type is reused for parity.
+        return NativeFolderBookmarkStaleException(
+          error.message ?? '',
+          refreshedBookmark: error.details as String?,
+        );
       case 'ACCESS_DENIED':
         return NativeFolderAccessDeniedException(error.message ?? '');
       default:

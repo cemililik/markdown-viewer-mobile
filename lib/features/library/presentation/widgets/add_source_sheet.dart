@@ -129,8 +129,11 @@ class _AddSourceSheetBody extends ConsumerWidget {
       return;
     }
 
-    if (!context.mounted) return;
-
+    // No `context.mounted` guard here: `popBeforePicker: true` deliberately
+    // dismisses the sheet before the native picker returns, so `context`
+    // is expected to be unmounted. We captured `messenger`, `l10n`, and
+    // `controller` before the async gap for exactly this reason — all
+    // three are safe to use after the sheet is gone.
     if (path == null || path.isEmpty) {
       messenger.showSnackBar(
         SnackBar(content: Text(l10n.libraryFoldersAddCancelled)),

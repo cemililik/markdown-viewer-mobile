@@ -127,12 +127,23 @@ String _stripInlineMarkup(String line) {
 }
 
 final RegExp _horizontalRule = RegExp(r'^(?:-{3,}|\*{3,}|_{3,})\s*$');
-final RegExp _setextUnderline = RegExp(r'^(?:=+|-+)\s*$');
+// CommonMark setext underlines require at least two `=` or `-` characters
+// on their own line; anything shorter is prose (e.g. an em-dash written
+// as `--` at the start of a sentence, or a `--help` flag reference).
+final RegExp _setextUnderline = RegExp(r'^(?:={2,}|-{2,})\s*$');
 final RegExp _orderedListMarker = RegExp(r'^\d+[.)]\s');
 final RegExp _imageLink = RegExp(r'!\[([^\]]*)\]\([^)]*\)');
 final RegExp _link = RegExp(r'\[([^\]]+)\]\([^)]*\)');
 final RegExp _inlineCode = RegExp('`([^`]+)`');
 final RegExp _bold = RegExp('\\*\\*|__');
-final RegExp _italic = RegExp('[*_]');
+// Italic delimiters: a single `*` or `_` that is NOT part of a double
+// marker (`**` or `__`, already consumed by [_bold]) AND not an
+// underscore embedded inside a word. The word-boundary guard
+// preserves identifiers like `snake_case` and `my_var_name` that
+// would otherwise be mangled into `snakecase` / `myvarname` —
+// Markdown itself treats intra-word `_` as literal for this reason.
+final RegExp _italic = RegExp(
+  r'(?<!\*)\*(?!\*)|(?<![\w_])_(?![\w_])|(?<=[\W])_(?=[\W])',
+);
 final RegExp _strike = RegExp('~~');
 final RegExp _anyWhitespace = RegExp(r'\s+');

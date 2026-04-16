@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
+import 'package:markdown_viewer/core/logging/logger.dart';
 import 'package:markdown_viewer/features/observability/application/observability_providers.dart';
 import 'package:markdown_viewer/features/onboarding/application/onboarding_providers.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
@@ -109,12 +110,7 @@ class SettingsScreen extends ConsumerWidget {
             title: Text(l10n.settingsCrashReportingTitle),
             subtitle: Text(l10n.settingsCrashReportingSubtitle),
             value: crashReporting,
-            onChanged: (value) {
-              ref
-                  .read(crashReportingControllerProvider.notifier)
-                  .setEnabled(value)
-                  .ignore();
-            },
+            onChanged: (value) => _onCrashReportingToggled(context, ref, value),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           ),
           const Divider(),
@@ -150,6 +146,36 @@ class SettingsScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// Toggle handler for the crash-reporting switch. Extracted so the
+  /// `SwitchListTile.onChanged` synchronous closure can delegate to a
+  /// real async method that waits for Sentry init/close to complete,
+  /// surfaces persistence failures through the logger, and shows a
+  /// localized snackbar on error instead of silently swallowing the
+  /// Future returned by [CrashReportingController.setEnabled].
+  Future<void> _onCrashReportingToggled(
+    BuildContext context,
+    WidgetRef ref,
+    bool value,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final logger = ref.read(appLoggerProvider);
+    final l10n = context.l10n;
+    try {
+      await ref
+          .read(crashReportingControllerProvider.notifier)
+          .setEnabled(value);
+    } on Object catch (error, stackTrace) {
+      logger.e(
+        'Failed to toggle crash reporting',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(l10n.errorUnknown)));
+    }
   }
 
   /// Clears the stored "seen" marker and navigates straight to the
@@ -198,10 +224,22 @@ class SettingsScreen extends ConsumerWidget {
     ref.read(localeControllerProvider.notifier).set(AppLocale.system);
     ref.read(readingSettingsControllerProvider.notifier).resetToDefaults();
     ref.read(keepScreenOnControllerProvider.notifier).set(false);
-    ref
-        .read(crashReportingControllerProvider.notifier)
-        .setEnabled(false)
-        .ignore();
+    // Crash reporting toggle is async (Sentry.close needs to settle).
+    // Await it so the snackbar only fires after the reset actually took
+    // effect; surface errors through the logger rather than silently
+    // dropping them via `.ignore()`.
+    final logger = ref.read(appLoggerProvider);
+    try {
+      await ref
+          .read(crashReportingControllerProvider.notifier)
+          .setEnabled(false);
+    } on Object catch (error, stackTrace) {
+      logger.e(
+        'Failed to disable crash reporting during reset',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    }
     messenger
       ..hideCurrentSnackBar()
       ..showSnackBar(SnackBar(content: Text(l10n.settingsResetSnack)));

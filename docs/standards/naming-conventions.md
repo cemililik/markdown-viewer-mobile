@@ -59,5 +59,7 @@
 ## Localization Keys
 
 - `lowerCamelCase` describing intent: `viewerEmptyStateTitle`
-- Scoped by screen or feature: `settings.themeLightLabel`
+- Scoped by screen or feature with a flat prefix (ARB files do not
+  support nested keys): `settingsThemeLightLabel`,
+  `viewerTocTitle`, `libraryFoldersAddedSnack`
 - See [localization-standards.md](localization-standards.md)

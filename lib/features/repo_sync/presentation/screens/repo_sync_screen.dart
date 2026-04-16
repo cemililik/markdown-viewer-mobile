@@ -633,8 +633,12 @@ class _TryItCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final syncedReposAsync = ref.watch(syncedReposProvider);
-    if (syncedReposAsync.isLoading) return const SizedBox.shrink();
-    final syncedRepos = syncedReposAsync.value ?? <SyncedRepo>[];
+    // Only render once the provider has resolved to data. During load
+    // we can't distinguish "first-time user" from "list still arriving"
+    // and during error `.value` is null, which would wrongly fall
+    // through to the first-run CTA.
+    if (!syncedReposAsync.hasValue) return const SizedBox.shrink();
+    final syncedRepos = syncedReposAsync.requireValue;
     if (syncedRepos.isNotEmpty) return const SizedBox.shrink();
 
     final l10n = context.l10n;
@@ -709,8 +713,10 @@ class _RecentSyncsList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final syncedReposAsync = ref.watch(syncedReposProvider);
-    if (syncedReposAsync.isLoading) return const SizedBox.shrink();
-    final syncedRepos = syncedReposAsync.value ?? <SyncedRepo>[];
+    // Render nothing until the provider resolves to data — an error
+    // state should collapse silently, not look like an empty history.
+    if (!syncedReposAsync.hasValue) return const SizedBox.shrink();
+    final syncedRepos = syncedReposAsync.requireValue;
     if (syncedRepos.isEmpty) return const SizedBox.shrink();
 
     final l10n = context.l10n;

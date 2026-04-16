@@ -120,9 +120,17 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
               ? await store.knownShas(existing.id)
               : <String, String>{};
 
-      if (existing != null) {
-        await store.deleteFilesForRepo(existing.id);
-      }
+      // Deliberately do NOT wipe the file rows up-front. `upsertFile`
+      // is keyed on (repoId, remotePath), so refreshed downloads just
+      // overwrite the old row, and the [knownShas] snapshot above stays
+      // valid for the duration of this sync. If the user cancels
+      // mid-batch, the pre-existing rows for files we did not reach
+      // survive — a subsequent re-sync can still skip them via SHA
+      // match + on-disk file-exists check, rather than re-downloading
+      // the entire repo.
+      //
+      // Orphan cleanup (rows for remote paths that no longer exist)
+      // happens below, only on a successful completion.
 
       state = SyncDownloading(current: 0, total: files.length);
 
@@ -136,6 +144,15 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
         gitHubProvider: gitHubProvider,
         logger: logger,
       );
+
+      if (existing != null) {
+        // Only reached when _downloadAll completed without throwing
+        // or cancelling. Evict rows for files that disappeared from
+        // the remote since the previous sync; keep everything we
+        // just observed.
+        final retained = {for (final f in files) f.path};
+        await store.deleteFilesNotIn(existing.id, retained);
+      }
 
       state = SyncComplete(result);
       ref.invalidate(syncedReposProvider);
@@ -354,9 +371,17 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
 
   /// Validates that a remote file path does not escape [localRoot]
   /// after joining.
+  ///
+  /// Uses `p.isWithin` instead of `String.startsWith` because a naive
+  /// prefix check treats `/foo/bar` and `/foo/bar2/evil` as related
+  /// (they share the same string prefix but the second is outside the
+  /// first). `p.isWithin` normalises both paths and enforces proper
+  /// filesystem-boundary containment.
   static void _validateLocalPath(String localPath, String localRoot) {
-    final normalized = p.normalize(localPath);
-    if (!normalized.startsWith(localRoot)) {
+    final rootNormalized = p.normalize(localRoot);
+    final pathNormalized = p.normalize(localPath);
+    if (pathNormalized == rootNormalized) return;
+    if (!p.isWithin(rootNormalized, pathNormalized)) {
       throw const UnsupportedProviderFailure(
         message: 'Remote path escapes the sync sandbox',
       );

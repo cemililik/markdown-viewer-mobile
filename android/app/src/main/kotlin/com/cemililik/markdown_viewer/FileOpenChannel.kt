@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
 import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
@@ -131,7 +132,17 @@ class FileOpenChannel :
         if (action != Intent.ACTION_VIEW && action != Intent.ACTION_SEND) return false
 
         val uri: Uri? = when (action) {
-            Intent.ACTION_SEND -> intent.getParcelableExtra(Intent.EXTRA_STREAM)
+            // Use the typed, class-loader-aware overload on API 33+
+            // (Tiramisu). The single-arg form is deprecated there and
+            // will silently return null on a future SDK version, which
+            // would break ACTION_SEND warm-start delivery.
+            Intent.ACTION_SEND ->
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(Intent.EXTRA_STREAM)
+                }
             else -> intent.data
         }
         if (uri == null) return false

@@ -1250,6 +1250,12 @@ abstract class AppLocalizations {
   /// **'Skip'**
   String get onboardingSkip;
 
+  /// Screen-reader-only label for the page-indicator dot row on the onboarding screen. Announced as a single node so TalkBack / VoiceOver users hear the current position once rather than six separate dot widgets.
+  ///
+  /// In en, this message translates to:
+  /// **'Page {current} of {total}'**
+  String onboardingPageIndicator(int current, int total);
+
   /// Label of the primary button on every onboarding page except the last — advances to the next page.
   ///
   /// In en, this message translates to:

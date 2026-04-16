@@ -1,8 +1,16 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:markdown/markdown.dart' as md;
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
+
+/// Splits [source] into lines matching the markdown parser's own
+/// newline handling. Using `String.split('\n')` drops `\r` on every
+/// CRLF-line-ended file — those end up in the following "line" and
+/// corrupt heading, table, and list extraction. `LineSplitter` handles
+/// `\r\n`, `\r`, and `\n` identically.
+List<String> _splitLines(String source) => const LineSplitter().convert(source);
 
 /// Returns the text of the first H1 heading in [source], cleaned and
 /// ready to use as a PDF filename or display title. Falls back to
@@ -13,7 +21,7 @@ import 'package:pdf/widgets.dart' as pw;
 String extractPdfTitle(String source, String fallback) {
   final ast = md.Document(
     extensionSet: md.ExtensionSet.gitHubFlavored,
-  ).parseLines(source.split('\n'));
+  ).parseLines(_splitLines(source));
   // Run the fallback through the same cleaning path that _firstH1 applies to
   // heading text so the output is always Latin-1 safe and entity-free.
   return _firstH1(ast) ?? _cleanText(fallback);
@@ -31,7 +39,7 @@ String extractPdfTitle(String source, String fallback) {
 List<String> extractMermaidCodes(String source) {
   final ast = md.Document(
     extensionSet: md.ExtensionSet.gitHubFlavored,
-  ).parseLines(source.split('\n'));
+  ).parseLines(_splitLines(source));
   final codes = <String>[];
   final seen = <String>{};
   for (final node in ast) {
@@ -113,7 +121,7 @@ Future<Uint8List> exportToPdf(
 }) async {
   final ast = md.Document(
     extensionSet: md.ExtensionSet.gitHubFlavored,
-  ).parseLines(source.split('\n'));
+  ).parseLines(_splitLines(source));
 
   // Prefer the document's own H1 as the display title so that files with
   // GUID or hash-based filenames still show a meaningful header in the PDF.

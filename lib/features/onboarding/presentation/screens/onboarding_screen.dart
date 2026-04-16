@@ -121,6 +121,31 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     HapticFeedback.selectionClick().ignore();
   }
 
+  /// Aligns the pulse + entrance controllers with the platform
+  /// "Reduce Motion" preference. When [disabled] is true the pulse
+  /// loop stops at rest and the entrance controller snaps to 1.0,
+  /// so downstream Animation-driven widgets render their final
+  /// state without any time-driven tween.
+  void _syncMotionControllers({required bool disabled}) {
+    if (disabled) {
+      if (_pulseController.isAnimating) {
+        _pulseController
+          ..stop()
+          ..value = 0;
+      }
+      if (_entranceController.status != AnimationStatus.completed) {
+        _entranceController.value = 1;
+      }
+    } else {
+      if (!_pulseController.isAnimating) {
+        _pulseController.repeat(reverse: true);
+      }
+      if (_entranceController.status == AnimationStatus.dismissed) {
+        _entranceController.forward();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -129,10 +154,24 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     final isLastPage = _currentIndex == _onboardingSteps.length - 1;
     final currentStep = _onboardingSteps[_currentIndex];
     final currentAccent = _accentFor(currentStep.accent, colorScheme);
+    // Respect the platform "Reduce Motion" / "Remove Animations"
+    // preference. When enabled, every time-driven animation on this
+    // screen collapses to zero duration so the cross-fade gradient,
+    // pulsing hero, orbiting chips, and entrance tween all render
+    // as static state changes.
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
+    // Sync the controllers' state with the accessibility flag each
+    // build. This is a no-op when nothing changed; when it does
+    // change (user flips the toggle mid-flow) the animations stop
+    // or resume without rebuilding the screen tree.
+    _syncMotionControllers(disabled: disableAnimations);
 
     return Scaffold(
       body: AnimatedContainer(
-        duration: const Duration(milliseconds: 600),
+        duration:
+            disableAnimations
+                ? Duration.zero
+                : const Duration(milliseconds: 600),
         curve: Curves.easeOutCubic,
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -180,6 +219,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                 currentIndex: _currentIndex,
                 activeColor: currentAccent.accent,
                 inactiveColor: colorScheme.outlineVariant,
+                semanticsLabel: l10n.onboardingPageIndicator(
+                  _currentIndex + 1,
+                  _onboardingSteps.length,
+                ),
               ),
               const SizedBox(height: 24),
               Padding(
@@ -405,10 +448,19 @@ class _SkipBar extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: Padding(
               padding: const EdgeInsets.only(right: 12),
-              child: TextButton(
-                onPressed: onSkip,
-                style: TextButton.styleFrom(foregroundColor: accentColor),
-                child: Text(label),
+              child: Semantics(
+                // TextButton already announces as a button but the
+                // label parameter pins the spoken text to the
+                // localized "Skip" / "Atla" string regardless of any
+                // future styling that might wrap the child in a
+                // decorator that interferes with auto-label pickup.
+                button: true,
+                label: label,
+                child: TextButton(
+                  onPressed: onSkip,
+                  style: TextButton.styleFrom(foregroundColor: accentColor),
+                  child: Text(label),
+                ),
               ),
             ),
           ),
@@ -661,37 +713,44 @@ class _FloatingChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: pulse,
-      builder: (context, _) {
-        // Independent sine wave — each chip drifts up to 3 px on its
-        // own schedule even though they all share the single
-        // `_pulseController` for cheapness.
-        final drift = math.sin((pulse.value * math.pi * 2) + phase) * 3;
-        return Transform.translate(
-          offset: Offset(0, drift),
-          child: Container(
-            width: _HeroCluster._chipSize,
-            height: _HeroCluster._chipSize,
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: accent.accent.withValues(alpha: 0.25),
-                width: 1.5,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
+    // Floating chips are purely decorative — the icons (`description`,
+    // `menu_book`, etc.) convey no information beyond visual
+    // atmosphere. Excluding them from the semantics tree stops
+    // TalkBack / VoiceOver from announcing six irrelevant icon names
+    // before the user reaches the actual page copy.
+    return ExcludeSemantics(
+      child: AnimatedBuilder(
+        animation: pulse,
+        builder: (context, _) {
+          // Independent sine wave — each chip drifts up to 3 px on its
+          // own schedule even though they all share the single
+          // `_pulseController` for cheapness.
+          final drift = math.sin((pulse.value * math.pi * 2) + phase) * 3;
+          return Transform.translate(
+            offset: Offset(0, drift),
+            child: Container(
+              width: _HeroCluster._chipSize,
+              height: _HeroCluster._chipSize,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surface,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: accent.accent.withValues(alpha: 0.25),
+                  width: 1.5,
                 ),
-              ],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Icon(icon, size: 24, color: accent.accent),
             ),
-            child: Icon(icon, size: 24, color: accent.accent),
-          ),
-        );
-      },
+          );
+        },
+      ),
     );
   }
 }
@@ -702,6 +761,7 @@ class _PageIndicator extends StatelessWidget {
     required this.currentIndex,
     required this.activeColor,
     required this.inactiveColor,
+    required this.semanticsLabel,
   });
 
   final int count;
@@ -709,24 +769,43 @@ class _PageIndicator extends StatelessWidget {
   final Color activeColor;
   final Color inactiveColor;
 
+  /// Localized "page N of total" string read aloud as the single
+  /// semantics node for the whole dot row.
+  final String semanticsLabel;
+
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(count, (index) {
-        final isActive = index == currentIndex;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 280),
-          curve: Curves.easeOutCubic,
-          margin: const EdgeInsets.symmetric(horizontal: 5),
-          width: isActive ? 28 : 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: isActive ? activeColor : inactiveColor,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        );
-      }),
+    // The dots are a single logical "position indicator" to a screen
+    // reader — announcing six separate pill widgets produces noise,
+    // so the whole row speaks as one node with a "page N of total"
+    // label. The individual containers are excluded to prevent
+    // duplicate announcements.
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
+    return Semantics(
+      container: true,
+      label: semanticsLabel,
+      child: ExcludeSemantics(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(count, (index) {
+            final isActive = index == currentIndex;
+            return AnimatedContainer(
+              duration:
+                  disableAnimations
+                      ? Duration.zero
+                      : const Duration(milliseconds: 280),
+              curve: Curves.easeOutCubic,
+              margin: const EdgeInsets.symmetric(horizontal: 5),
+              width: isActive ? 28 : 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: isActive ? activeColor : inactiveColor,
+                borderRadius: BorderRadius.circular(4),
+              ),
+            );
+          }),
+        ),
+      ),
     );
   }
 }

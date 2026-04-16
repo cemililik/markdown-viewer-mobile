@@ -270,43 +270,14 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
   /// root as long as the root scope stays active, mirroring the
   /// pattern used by `listImmediate` + `subPath`.
   private func readFileBytes(bookmark base64: String, filePath: String, result: @escaping FlutterResult) {
-    guard let data = Data(base64Encoded: base64) else {
-      result(FlutterError(code: "BOOKMARK_STALE", message: "bookmark not base64", details: nil))
-      return
-    }
+    guard let rootUrl = resolveBookmarkOrFail(
+      bookmark: base64,
+      errorCode: "READ_FAILED",
+      result: result
+    ) else { return }
+    defer { rootUrl.stopAccessingSecurityScopedResource() }
+
     do {
-      var isStale = false
-      let rootUrl = try URL(
-        resolvingBookmarkData: data,
-        options: [],
-        relativeTo: nil,
-        bookmarkDataIsStale: &isStale
-      )
-      if isStale {
-        let started = rootUrl.startAccessingSecurityScopedResource()
-        defer { if started { rootUrl.stopAccessingSecurityScopedResource() } }
-        let freshData = try rootUrl.bookmarkData(
-          options: [],
-          includingResourceValuesForKeys: nil,
-          relativeTo: nil
-        )
-        result(FlutterError(
-          code: "BOOKMARK_STALE",
-          message: "bookmark was stale and has been refreshed",
-          details: freshData.base64EncodedString()
-        ))
-        return
-      }
-      let started = rootUrl.startAccessingSecurityScopedResource()
-      defer { if started { rootUrl.stopAccessingSecurityScopedResource() } }
-      if !started {
-        result(FlutterError(
-          code: "ACCESS_DENIED",
-          message: "could not claim security-scoped access on bookmark",
-          details: nil
-        ))
-        return
-      }
       let fileUrl = URL(fileURLWithPath: filePath).standardized
       let rootStandard = rootUrl.standardized
       let rootPath = rootStandard.path
@@ -338,43 +309,14 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
     result: @escaping FlutterResult,
     work: (URL) throws -> [[String: Any]]
   ) {
-    guard let data = Data(base64Encoded: base64) else {
-      result(FlutterError(code: "BOOKMARK_STALE", message: "bookmark not base64", details: nil))
-      return
-    }
+    guard let url = resolveBookmarkOrFail(
+      bookmark: base64,
+      errorCode: "LIST_FAILED",
+      result: result
+    ) else { return }
+    defer { url.stopAccessingSecurityScopedResource() }
+
     do {
-      var isStale = false
-      let url = try URL(
-        resolvingBookmarkData: data,
-        options: [],
-        relativeTo: nil,
-        bookmarkDataIsStale: &isStale
-      )
-      if isStale {
-        let started = url.startAccessingSecurityScopedResource()
-        defer { if started { url.stopAccessingSecurityScopedResource() } }
-        let freshData = try url.bookmarkData(
-          options: [],
-          includingResourceValuesForKeys: nil,
-          relativeTo: nil
-        )
-        result(FlutterError(
-          code: "BOOKMARK_STALE",
-          message: "bookmark was stale and has been refreshed",
-          details: freshData.base64EncodedString()
-        ))
-        return
-      }
-      let started = url.startAccessingSecurityScopedResource()
-      defer { if started { url.stopAccessingSecurityScopedResource() } }
-      if !started {
-        result(FlutterError(
-          code: "ACCESS_DENIED",
-          message: "could not claim security-scoped access on bookmark",
-          details: nil
-        ))
-        return
-      }
       let entries = try work(url)
       result(entries)
     } catch {
@@ -383,6 +325,79 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
         message: error.localizedDescription,
         details: nil
       ))
+    }
+  }
+
+  /// Shared bookmark-resolve path used by both `readFileBytes` and
+  /// `withResolvedUrl`. On success returns a URL with the security
+  /// scope already claimed — the caller **must** stop access via
+  /// `defer { url.stopAccessingSecurityScopedResource() }`.
+  ///
+  /// ## Stale-refresh contract
+  ///
+  /// When the OS flags the bookmark as stale, this helper mints a
+  /// fresh `.withSecurityScope` bookmark and surfaces the base64 blob
+  /// in `FlutterError.details`. The Dart wrapper reads it into
+  /// `NativeFolderBookmarkStaleException.refreshedBookmark` so the
+  /// caller can persist and retry without re-prompting the user.
+  ///
+  /// On any other failure the helper sends a typed `FlutterError`
+  /// (`BOOKMARK_STALE` for bad base64, `ACCESS_DENIED` for a failed
+  /// scope claim, [genericErrorCode] for everything else) and returns
+  /// `nil`.
+  private func resolveBookmarkOrFail(
+    bookmark base64: String,
+    errorCode genericErrorCode: String,
+    result: @escaping FlutterResult
+  ) -> URL? {
+    guard let data = Data(base64Encoded: base64) else {
+      result(FlutterError(
+        code: "BOOKMARK_STALE",
+        message: "bookmark not base64",
+        details: nil
+      ))
+      return nil
+    }
+    do {
+      var isStale = false
+      let url = try URL(
+        resolvingBookmarkData: data,
+        options: [.withSecurityScope],
+        relativeTo: nil,
+        bookmarkDataIsStale: &isStale
+      )
+      if isStale {
+        let started = url.startAccessingSecurityScopedResource()
+        defer { if started { url.stopAccessingSecurityScopedResource() } }
+        let freshData = try url.bookmarkData(
+          options: [.withSecurityScope],
+          includingResourceValuesForKeys: nil,
+          relativeTo: nil
+        )
+        result(FlutterError(
+          code: "BOOKMARK_STALE",
+          message: "bookmark was stale and has been refreshed",
+          details: freshData.base64EncodedString()
+        ))
+        return nil
+      }
+      let started = url.startAccessingSecurityScopedResource()
+      if !started {
+        result(FlutterError(
+          code: "ACCESS_DENIED",
+          message: "could not claim security-scoped access on bookmark",
+          details: nil
+        ))
+        return nil
+      }
+      return url
+    } catch {
+      result(FlutterError(
+        code: genericErrorCode,
+        message: error.localizedDescription,
+        details: nil
+      ))
+      return nil
     }
   }
 

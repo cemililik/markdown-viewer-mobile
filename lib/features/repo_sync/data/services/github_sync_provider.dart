@@ -94,11 +94,31 @@ class GitHubSyncProvider implements RepoSyncProvider {
 
   @override
   Stream<RemoteFile> listFiles(RepoLocator locator) async* {
-    // Single-file blob URL — yield exactly one RemoteFile.
+    // Single-file blob URL — look up the blob SHA via the Contents API
+    // so incremental re-sync can skip unchanged files. Without this,
+    // a hardcoded empty SHA would fail the `knownShas[path] == sha`
+    // check on every re-sync and force a redundant raw download.
+    //
+    // If the Contents API call fails for any reason we fall back to
+    // an empty SHA and continue — a download cost beats aborting the
+    // sync entirely. The user still gets the file, just without the
+    // skip-unchanged optimisation.
     if (locator.singleFile) {
       final rawUrl =
           '$_rawBase/${locator.owner}/${locator.repo}/${locator.ref}/${locator.subPath}';
-      yield RemoteFile(path: locator.subPath, sha: '', rawUrl: rawUrl);
+      String sha = '';
+      try {
+        final meta = await _fetchBlobMetadata(
+          owner: locator.owner,
+          repo: locator.repo,
+          ref: locator.ref,
+          path: locator.subPath,
+        );
+        sha = meta['sha'] as String? ?? '';
+      } on Failure {
+        // Leave sha empty; download path still works.
+      }
+      yield RemoteFile(path: locator.subPath, sha: sha, rawUrl: rawUrl);
       return;
     }
 
@@ -204,13 +224,44 @@ class GitHubSyncProvider implements RepoSyncProvider {
     }
   }
 
+  /// Fetches a single blob's metadata from the Contents API so we can
+  /// populate [RemoteFile.sha] for `/blob/` single-file URLs. Only
+  /// used by the single-file path; batch tree discovery uses the
+  /// Trees API which already carries SHAs per entry.
+  Future<Map<String, dynamic>> _fetchBlobMetadata({
+    required String owner,
+    required String repo,
+    required String ref,
+    required String path,
+  }) async {
+    try {
+      final encodedPath = path.split('/').map(Uri.encodeComponent).join('/');
+      final response = await dio.get<Map<String, dynamic>>(
+        '$_apiBase/repos/$owner/$repo/contents/$encodedPath',
+        queryParameters: {'ref': ref},
+      );
+      return response.data ?? const {};
+    } on DioException catch (e) {
+      throw _mapDioError(e);
+    }
+  }
+
   static bool _isMarkdown(String path) {
     final lower = path.toLowerCase();
     return lower.endsWith('.md') || lower.endsWith('.markdown');
   }
 
   static Failure _mapDioError(DioException e) {
+    // Treat every connection-family Dio error as "no network" so the
+    // user gets the actionable "check your connection" message rather
+    // than an opaque "HTTP null" — this includes connection refused
+    // (`connectionError`), DNS failure (`unknown`), and both timeout
+    // flavours (`connectionTimeout` / `receiveTimeout` / `sendTimeout`)
+    // where the response is never populated.
     if (e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
         e.type == DioExceptionType.unknown) {
       return NetworkUnavailableFailure(
         message: 'No network connection',
@@ -218,6 +269,18 @@ class GitHubSyncProvider implements RepoSyncProvider {
       );
     }
     final status = e.response?.statusCode;
+    if (status == 401) {
+      // 401 = invalid or expired token. A missing token on a public
+      // repo never hits this branch — GitHub answers with a 200 — so
+      // this is always actionable for the user (regenerate the PAT
+      // and paste it again). Reuses RateLimitedFailure's "add a token"
+      // UX slot because the user-facing recovery is the same shape:
+      // go to Settings, update your token, try again.
+      return RateLimitedFailure(
+        message: 'Invalid or expired GitHub token',
+        cause: e,
+      );
+    }
     if (status == 403) {
       final remaining = e.response?.headers.value('x-ratelimit-remaining');
       if (remaining == '0') {
@@ -226,6 +289,13 @@ class GitHubSyncProvider implements RepoSyncProvider {
           cause: e,
         );
       }
+      // Non-rate-limit 403 = private repo without a PAT, SAML-enforced
+      // org the token cannot access, etc. Same user fix as 401, so
+      // the same Failure type keeps the message copy aligned.
+      return RateLimitedFailure(
+        message: 'Access denied — repository may be private',
+        cause: e,
+      );
     }
     if (status == 404) {
       return RepoNotFoundFailure(
