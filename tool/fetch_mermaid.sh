@@ -10,9 +10,9 @@
 # explicit diff review, not a silent CDN follow.
 set -euo pipefail
 
-readonly MERMAID_VERSION="11.4.1"
+readonly MERMAID_VERSION="11.14.0"
 readonly MERMAID_URL="https://cdn.jsdelivr.net/npm/mermaid@${MERMAID_VERSION}/dist/mermaid.min.js"
-readonly EXPECTED_SHA256="a43bc1afd446f9c4cc66ac5dd45d02e8d65e26fc5344ec0ef787f88d6ddb6f9e"
+readonly EXPECTED_SHA256="217b66ef4279c33c141b4afe22effad10a91c02558dc70917be2c0981e78ed87"
 
 # Resolve the project root regardless of where the script is invoked
 # from, so `bash tool/fetch_mermaid.sh` and `./tool/fetch_mermaid.sh`
