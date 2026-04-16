@@ -5,6 +5,8 @@ import 'package:markdown/markdown.dart' as md;
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
 import 'package:markdown_viewer/features/viewer/application/markdown_extensions/math_syntax.dart';
+import 'package:markdown_viewer/features/viewer/application/pdf_extract.dart'
+    show extractMermaidCodes;
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_view.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/footnote_view.dart';
@@ -250,7 +252,7 @@ class MarkdownView extends StatelessWidget {
     );
     final config = base.copy(
       configs: [
-        _buildPreConfig(theme),
+        _buildPreConfig(theme, document),
         _buildTableConfig(),
         pConfigWithLineHeight,
         if (onLinkTap != null) LinkConfig(onTap: onLinkTap),
@@ -473,7 +475,14 @@ class MarkdownView extends StatelessWidget {
     );
   }
 
-  PreConfig _buildPreConfig(ThemeData theme) {
+  PreConfig _buildPreConfig(ThemeData theme, Document doc) {
+    // Extract mermaid codes using our own parser path which
+    // correctly preserves Unicode characters (em-dash, etc.).
+    // markdown_widget's internal extraction corrupts em-dash
+    // (U+2014) to colon (U+003A), breaking gantt task names.
+    final cleanMermaidCodes = extractMermaidCodes(doc.source);
+    var mermaidIndex = 0;
+    //
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
@@ -527,9 +536,23 @@ class MarkdownView extends StatelessWidget {
       // rendering for every non-mermaid block. With `wrapper` we
       // intercept only `mermaid` and let everything else fall
       // through unchanged.
+      // `markdown_widget`'s internal `package:markdown` pipeline
+      // can silently corrupt certain Unicode characters in code
+      // block content — most notably em-dash (U+2014) gets
+      // replaced with colon (U+003A), which breaks mermaid gantt
+      // task names that use em-dash as a separator. Our own
+      // `extractMermaidCodes` (which goes through a different
+      // extraction path with explicit HTML entity decoding)
+      // preserves the original characters, so we use it as the
+      // authoritative source and match by document order.
       wrapper: (child, code, language) {
         if (language.toLowerCase() == 'mermaid') {
-          return MermaidBlock(code: code);
+          final cleanCode =
+              mermaidIndex < cleanMermaidCodes.length
+                  ? cleanMermaidCodes[mermaidIndex]
+                  : code;
+          mermaidIndex += 1;
+          return MermaidBlock(code: cleanCode);
         }
         return child;
       },

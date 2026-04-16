@@ -76,17 +76,6 @@ class _MermaidBlockState extends ConsumerState<MermaidBlock> {
       return;
     }
     _renderedDirective = directive;
-    // DIAGNOSTIC: log the first 300 chars of the code MermaidBlock
-    // receives from markdown_widget's PreConfig.wrapper so we can
-    // see whether em-dash / special chars survive the extraction.
-    // Remove this debugPrint once the gantt bug is diagnosed.
-    assert(() {
-      debugPrint(
-        '[MermaidBlock] code (${widget.code.length} chars):\n'
-        '${widget.code.substring(0, widget.code.length.clamp(0, 300))}',
-      );
-      return true;
-    }());
     _future = ref
         .read(mermaidRendererProvider)
         .render(widget.code, initDirective: directive);
