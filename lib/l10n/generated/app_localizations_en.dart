@@ -738,4 +738,37 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get settingsCrashReportingSubtitle =>
       'Help improve the app by sending anonymous crash data. No file contents or personal information are ever collected.';
+
+  @override
+  String get syncTryItTitle => 'Try it with MarkdownViewer docs';
+
+  @override
+  String get syncTryItBody =>
+      'Sync this app\'s own documentation to explore the feature.';
+
+  @override
+  String get syncTryItFileCount => '~30 markdown files';
+
+  @override
+  String get syncTryItButton => 'Try it';
+
+  @override
+  String get syncRecentSyncsHeader => 'Synced repositories';
+
+  @override
+  String syncRecentFileCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count files',
+      one: '1 file',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncRecentResync => 'Re-sync';
+
+  @override
+  String get syncRecentOpen => 'Open';
 }

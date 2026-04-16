@@ -11,6 +11,8 @@ import 'package:markdown_viewer/features/library/application/active_library_sour
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_notifier.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/sync_result.dart';
+import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
+import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 
 /// Full-page screen for syncing a remote git repository.
 ///
@@ -261,6 +263,25 @@ class _RepoSyncScreenState extends ConsumerState<RepoSyncScreen> {
 
             // ── Progress / result area ─────────────────────────────
             _SyncStatusArea(syncState: syncState),
+
+            // ── Try-it card + recent syncs (shown when idle) ──────
+            if (syncState is SyncIdle) ...[
+              _TryItCard(
+                onTry: (String url) {
+                  _urlController.text = url;
+                  _onUrlChanged(url);
+                  _startSync();
+                },
+              ),
+              const SizedBox(height: 24),
+              _RecentSyncsList(
+                onResync: (String url) {
+                  _urlController.text = url;
+                  _onUrlChanged(url);
+                  _startSync();
+                },
+              ),
+            ],
           ],
         ),
       ),
@@ -593,5 +614,230 @@ class _ErrorCard extends ConsumerWidget {
         ],
       ),
     );
+  }
+}
+
+// ── Try-it example card ───────────────────────────────────────────────────
+
+/// Shown when no repos have been synced yet. One-tap sync of
+/// the MarkdownViewer documentation repo so the user can explore
+/// the feature without hunting for a URL.
+class _TryItCard extends ConsumerWidget {
+  const _TryItCard({required this.onTry});
+
+  static const _exampleUrl =
+      'https://github.com/cemililik/markdown-viewer-mobile/tree/main/docs';
+
+  final ValueChanged<String> onTry;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final syncedReposAsync = ref.watch(syncedReposProvider);
+    final syncedRepos = syncedReposAsync.value ?? <SyncedRepo>[];
+    if (syncedRepos.isNotEmpty) return const SizedBox.shrink();
+
+    final l10n = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: scheme.primaryContainer.withValues(alpha: 0.35),
+        borderRadius: const BorderRadius.all(Radius.circular(16)),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.menu_book_outlined, color: scheme.primary, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  l10n.syncTryItTitle,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: scheme.onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            l10n.syncTryItBody,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(Icons.description_outlined, size: 14, color: scheme.primary),
+              const SizedBox(width: 6),
+              Text(
+                l10n.syncTryItFileCount,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          FilledButton.tonal(
+            onPressed: () => onTry(_exampleUrl),
+            child: Text(l10n.syncTryItButton),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Recent syncs list ─────────────────────────────────────────────────────
+
+/// Shows all previously synced repos with re-sync and open actions.
+/// Renders nothing when the list is empty.
+class _RecentSyncsList extends ConsumerWidget {
+  const _RecentSyncsList({required this.onResync});
+
+  final ValueChanged<String> onResync;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final syncedReposAsync = ref.watch(syncedReposProvider);
+    final syncedRepos = syncedReposAsync.value ?? <SyncedRepo>[];
+    if (syncedRepos.isEmpty) return const SizedBox.shrink();
+
+    final l10n = context.l10n;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text(
+            l10n.syncRecentSyncsHeader,
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
+        for (final repo in syncedRepos)
+          _RecentSyncTile(repo: repo, onResync: onResync),
+      ],
+    );
+  }
+}
+
+class _RecentSyncTile extends ConsumerWidget {
+  const _RecentSyncTile({required this.repo, required this.onResync});
+
+  final SyncedRepo repo;
+  final ValueChanged<String> onResync;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l10n = context.l10n;
+    final scheme = Theme.of(context).colorScheme;
+    final isPartial = repo.status == SyncStatus.partial;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHigh,
+        borderRadius: const BorderRadius.all(Radius.circular(12)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                isPartial
+                    ? Icons.cloud_off_outlined
+                    : Icons.cloud_done_outlined,
+                size: 18,
+                color: isPartial ? scheme.error : scheme.primary,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  repo.displayName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _buildMeta(repo, l10n),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              FilledButton.tonal(
+                style: FilledButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  minimumSize: const Size(0, 34),
+                  textStyle: Theme.of(context).textTheme.labelMedium,
+                ),
+                onPressed: () => onResync(_buildUrl(repo)),
+                child: Text(l10n.syncRecentResync),
+              ),
+              const SizedBox(width: 8),
+              TextButton(
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  minimumSize: const Size(0, 34),
+                  textStyle: Theme.of(context).textTheme.labelMedium,
+                ),
+                onPressed: () {
+                  ref
+                      .read(activeLibrarySourceProvider.notifier)
+                      .selectSyncedRepo(repo);
+                  context.go(LibraryRoute.location());
+                },
+                child: Text(l10n.syncRecentOpen),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _buildMeta(SyncedRepo repo, AppLocalizations l10n) {
+    final parts = <String>[];
+    if (repo.subPath.isNotEmpty) parts.add(repo.subPath);
+    parts.add(l10n.syncRecentFileCount(repo.fileCount));
+    parts.add(_formatLastSynced(repo.lastSyncedAt, l10n));
+    return parts.join(' · ');
+  }
+
+  static String _formatLastSynced(DateTime at, AppLocalizations l10n) {
+    final diff = DateTime.now().difference(at);
+    if (diff.inMinutes < 1) return l10n.syncLastSyncedJustNow;
+    if (diff.inHours < 1) return l10n.syncLastSyncedMinutes(diff.inMinutes);
+    if (diff.inDays < 1) return l10n.syncLastSyncedHours(diff.inHours);
+    return l10n.syncLastSyncedDays(diff.inDays);
+  }
+
+  static String _buildUrl(SyncedRepo repo) {
+    final base = 'https://github.com/${repo.owner}/${repo.repo}';
+    if (repo.subPath.isNotEmpty) {
+      return '$base/tree/${repo.ref}/${repo.subPath}';
+    }
+    return '$base/tree/${repo.ref}';
   }
 }

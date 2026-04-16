@@ -271,5 +271,14 @@
   "onboardingGetStartedBody": "Markdown dosyalarının bulunduğu bir klasöre erişim verin veya açık bir GitHub deposunu senkronize edin — kütüphaneniz hazır olduğunda sizi bekliyor.",
   "settingsDebugResetOnboarding": "Onboarding'i tekrar göster (debug)",
   "settingsCrashReportingTitle": "Hata raporları gönder",
-  "settingsCrashReportingSubtitle": "Anonim hata verileri göndererek uygulamanın geliştirilmesine yardımcı olun. Dosya içerikleri veya kişisel bilgiler asla toplanmaz."
+  "settingsCrashReportingSubtitle": "Anonim hata verileri göndererek uygulamanın geliştirilmesine yardımcı olun. Dosya içerikleri veya kişisel bilgiler asla toplanmaz.",
+
+  "syncTryItTitle": "MarkdownViewer dokümanlarıyla deneyin",
+  "syncTryItBody": "Bu uygulamanın kendi dokümanlarını senkronize ederek özelliği keşfedin.",
+  "syncTryItFileCount": "~30 markdown dosyası",
+  "syncTryItButton": "Deneyin",
+  "syncRecentSyncsHeader": "Senkronize edilmiş depolar",
+  "syncRecentFileCount": "{count, plural, =1{1 dosya} other{{count} dosya}}",
+  "syncRecentResync": "Güncelle",
+  "syncRecentOpen": "Aç"
 }

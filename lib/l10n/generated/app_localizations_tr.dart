@@ -734,4 +734,37 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get settingsCrashReportingSubtitle =>
       'Anonim hata verileri göndererek uygulamanın geliştirilmesine yardımcı olun. Dosya içerikleri veya kişisel bilgiler asla toplanmaz.';
+
+  @override
+  String get syncTryItTitle => 'MarkdownViewer dokümanlarıyla deneyin';
+
+  @override
+  String get syncTryItBody =>
+      'Bu uygulamanın kendi dokümanlarını senkronize ederek özelliği keşfedin.';
+
+  @override
+  String get syncTryItFileCount => '~30 markdown dosyası';
+
+  @override
+  String get syncTryItButton => 'Deneyin';
+
+  @override
+  String get syncRecentSyncsHeader => 'Senkronize edilmiş depolar';
+
+  @override
+  String syncRecentFileCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count dosya',
+      one: '1 dosya',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get syncRecentResync => 'Güncelle';
+
+  @override
+  String get syncRecentOpen => 'Aç';
 }

@@ -1327,6 +1327,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Help improve the app by sending anonymous crash data. No file contents or personal information are ever collected.'**
   String get settingsCrashReportingSubtitle;
+
+  /// Title of the example card shown on the sync screen for first-time users.
+  ///
+  /// In en, this message translates to:
+  /// **'Try it with MarkdownViewer docs'**
+  String get syncTryItTitle;
+
+  /// Body text of the try-it example card on the sync screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync this app\'s own documentation to explore the feature.'**
+  String get syncTryItBody;
+
+  /// Approximate file count shown in the try-it card.
+  ///
+  /// In en, this message translates to:
+  /// **'~30 markdown files'**
+  String get syncTryItFileCount;
+
+  /// Button label on the try-it card that starts syncing the example repo.
+  ///
+  /// In en, this message translates to:
+  /// **'Try it'**
+  String get syncTryItButton;
+
+  /// Section header above the list of previously synced repos on the sync screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Synced repositories'**
+  String get syncRecentSyncsHeader;
+
+  /// File count shown in the recent syncs list.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 file} other{{count} files}}'**
+  String syncRecentFileCount(int count);
+
+  /// Button label to re-sync a previously synced repo from the sync screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-sync'**
+  String get syncRecentResync;
+
+  /// Button label to open a synced repo in the library from the sync screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open'**
+  String get syncRecentOpen;
 }
 
 class _AppLocalizationsDelegate

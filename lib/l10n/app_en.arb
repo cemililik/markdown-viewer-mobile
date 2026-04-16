@@ -890,5 +890,41 @@
   "settingsCrashReportingSubtitle": "Help improve the app by sending anonymous crash data. No file contents or personal information are ever collected.",
   "@settingsCrashReportingSubtitle": {
     "description": "Subtitle below the crash reporting toggle explaining what data is sent and what is not."
+  },
+
+  "syncTryItTitle": "Try it with MarkdownViewer docs",
+  "@syncTryItTitle": {
+    "description": "Title of the example card shown on the sync screen for first-time users."
+  },
+  "syncTryItBody": "Sync this app's own documentation to explore the feature.",
+  "@syncTryItBody": {
+    "description": "Body text of the try-it example card on the sync screen."
+  },
+  "syncTryItFileCount": "~30 markdown files",
+  "@syncTryItFileCount": {
+    "description": "Approximate file count shown in the try-it card."
+  },
+  "syncTryItButton": "Try it",
+  "@syncTryItButton": {
+    "description": "Button label on the try-it card that starts syncing the example repo."
+  },
+  "syncRecentSyncsHeader": "Synced repositories",
+  "@syncRecentSyncsHeader": {
+    "description": "Section header above the list of previously synced repos on the sync screen."
+  },
+  "syncRecentFileCount": "{count, plural, =1{1 file} other{{count} files}}",
+  "@syncRecentFileCount": {
+    "description": "File count shown in the recent syncs list.",
+    "placeholders": {
+      "count": { "type": "int", "example": "32" }
+    }
+  },
+  "syncRecentResync": "Re-sync",
+  "@syncRecentResync": {
+    "description": "Button label to re-sync a previously synced repo from the sync screen."
+  },
+  "syncRecentOpen": "Open",
+  "@syncRecentOpen": {
+    "description": "Button label to open a synced repo in the library from the sync screen."
   }
 }
