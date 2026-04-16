@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:drift/drift.dart';
+import 'package:markdown_viewer/core/path/sandbox_path.dart';
 import 'package:markdown_viewer/features/repo_sync/data/database/app_database.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/repositories/synced_repos_store.dart';
@@ -27,6 +28,14 @@ class SyncedReposStoreImpl implements SyncedReposStore {
       subPath: repo.subPath,
     );
 
+    // Persist the repo's localRoot in portable `sandbox:docs:...` form
+    // so a container-UUID change (iOS dev reinstall, user uninstall +
+    // reinstall, factory reset restored from backup) does not strand
+    // the synced files — the next read resolves the token against the
+    // CURRENT container. App Store updates preserve the UUID so
+    // production users never hit this, but the indirection costs
+    // nothing and keeps dev-build state usable across fresh installs.
+    final portableLocalRoot = SandboxPath.toPortable(repo.localRoot);
     if (existing != null) {
       final companion = SyncedReposCompanion(
         id: Value(existing.id),
@@ -35,7 +44,7 @@ class SyncedReposStoreImpl implements SyncedReposStore {
         repo: Value(repo.repo),
         ref: Value(repo.ref),
         subPath: Value(repo.subPath),
-        localRoot: Value(repo.localRoot),
+        localRoot: Value(portableLocalRoot),
         lastSyncedAt: Value(repo.lastSyncedAt.millisecondsSinceEpoch),
         fileCount: Value(repo.fileCount),
         status: Value(_statusToString(repo.status)),
@@ -51,7 +60,7 @@ class SyncedReposStoreImpl implements SyncedReposStore {
         repo: repo.repo,
         ref: repo.ref,
         subPath: Value(repo.subPath),
-        localRoot: repo.localRoot,
+        localRoot: portableLocalRoot,
         lastSyncedAt: repo.lastSyncedAt.millisecondsSinceEpoch,
         fileCount: Value(repo.fileCount),
         status: Value(_statusToString(repo.status)),
@@ -72,7 +81,7 @@ class SyncedReposStoreImpl implements SyncedReposStore {
     // find them again.
     final row = await _db.getRepoById(id);
     if (row != null) {
-      final dir = Directory(row.localRoot);
+      final dir = Directory(SandboxPath.fromPortable(row.localRoot));
       if (dir.existsSync()) {
         await dir.delete(recursive: true);
       }
@@ -92,7 +101,10 @@ class SyncedReposStoreImpl implements SyncedReposStore {
     SyncedFilesCompanion.insert(
       repoId: repoId,
       remotePath: remotePath,
-      localPath: localPath,
+      // Per-file paths share the localRoot's portable-token treatment
+      // so `File(localPath)` resolves against the current container
+      // after a fresh install. See `upsert` above for the rationale.
+      localPath: SandboxPath.toPortable(localPath),
       sha: sha,
       size: Value(size),
       status: Value(status),
@@ -147,7 +159,12 @@ class SyncedReposStoreImpl implements SyncedReposStore {
     repo: row.repo,
     ref: row.ref,
     subPath: row.subPath,
-    localRoot: row.localRoot,
+    // Resolve any `sandbox:docs:<relative>` token written by an
+    // earlier session against the current container's absolute prefix
+    // so callers (library body, viewer) can feed the path straight to
+    // `File(...)` / `Directory(...)`. Legacy absolute paths left over
+    // from pre-portable sessions passthrough unchanged.
+    localRoot: SandboxPath.fromPortable(row.localRoot),
     lastSyncedAt: DateTime.fromMillisecondsSinceEpoch(
       row.lastSyncedAt,
       isUtc: true,
