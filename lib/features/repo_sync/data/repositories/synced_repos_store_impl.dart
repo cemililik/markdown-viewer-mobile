@@ -104,6 +104,17 @@ class SyncedReposStoreImpl implements SyncedReposStore {
   @override
   Future<void> deleteFilesForRepo(int repoId) => _db.deleteFilesForRepo(repoId);
 
+  @override
+  Future<void> deleteFilesNotIn(int repoId, Set<String> retainedPaths) async {
+    final existing = await _db.getFilesForRepo(repoId);
+    final toRemove = existing.where(
+      (f) => !retainedPaths.contains(f.remotePath),
+    );
+    for (final file in toRemove) {
+      await _db.deleteFile(repoId: repoId, remotePath: file.remotePath);
+    }
+  }
+
   // ── Mapping helpers ──────────────────────────────────────────────────
 
   static SyncedRepo _rowToEntity(SyncedRepoRow row) => SyncedRepo(

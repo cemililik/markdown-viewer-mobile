@@ -34,7 +34,20 @@ abstract interface class SyncedReposStore {
   /// to [repoId]. Used to skip unchanged files on re-sync.
   Future<Map<String, String>> knownShas(int repoId);
 
-  /// Removes all per-file rows for [repoId]. Called at the start
-  /// of a fresh sync to clear stale entries before re-populating.
+  /// Removes all per-file rows for [repoId]. Called when the repo
+  /// itself is being deleted; use [deleteFilesNotIn] for incremental
+  /// cleanup during a sync to preserve metadata for files that
+  /// might still be unchanged on disk.
   Future<void> deleteFilesForRepo(int repoId);
+
+  /// Removes file rows for [repoId] whose `remotePath` is not in
+  /// [retainedPaths]. Called at the end of a successful sync to
+  /// evict entries for files that were removed from the remote
+  /// while preserving metadata (SHA, localPath) for everything
+  /// that was just observed.
+  ///
+  /// Skipping this call on cancellation is deliberate: the pre-sync
+  /// [knownShas] map stays valid so a subsequent re-sync can still
+  /// detect unchanged files on disk and skip them.
+  Future<void> deleteFilesNotIn(int repoId, Set<String> retainedPaths);
 }

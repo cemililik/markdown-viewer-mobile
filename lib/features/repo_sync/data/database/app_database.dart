@@ -98,6 +98,15 @@ class AppDatabase extends _$AppDatabase {
 
   Future<void> deleteFilesForRepo(int repoId) =>
       (delete(syncedFiles)..where((t) => t.repoId.equals(repoId))).go();
+
+  Future<void> deleteFile({
+    required int repoId,
+    required String remotePath,
+  }) async {
+    await (delete(syncedFiles)..where(
+      (t) => t.repoId.equals(repoId) & t.remotePath.equals(remotePath),
+    )).go();
+  }
 }
 
 // ── Connection factory ─────────────────────────────────────────────────────

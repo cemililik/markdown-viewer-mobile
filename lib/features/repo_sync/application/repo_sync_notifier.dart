@@ -120,9 +120,17 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
               ? await store.knownShas(existing.id)
               : <String, String>{};
 
-      if (existing != null) {
-        await store.deleteFilesForRepo(existing.id);
-      }
+      // Deliberately do NOT wipe the file rows up-front. `upsertFile`
+      // is keyed on (repoId, remotePath), so refreshed downloads just
+      // overwrite the old row, and the [knownShas] snapshot above stays
+      // valid for the duration of this sync. If the user cancels
+      // mid-batch, the pre-existing rows for files we did not reach
+      // survive — a subsequent re-sync can still skip them via SHA
+      // match + on-disk file-exists check, rather than re-downloading
+      // the entire repo.
+      //
+      // Orphan cleanup (rows for remote paths that no longer exist)
+      // happens below, only on a successful completion.
 
       state = SyncDownloading(current: 0, total: files.length);
 
@@ -136,6 +144,15 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
         gitHubProvider: gitHubProvider,
         logger: logger,
       );
+
+      if (existing != null) {
+        // Only reached when _downloadAll completed without throwing
+        // or cancelling. Evict rows for files that disappeared from
+        // the remote since the previous sync; keep everything we
+        // just observed.
+        final retained = {for (final f in files) f.path};
+        await store.deleteFilesNotIn(existing.id, retained);
+      }
 
       state = SyncComplete(result);
       ref.invalidate(syncedReposProvider);

@@ -94,11 +94,31 @@ class GitHubSyncProvider implements RepoSyncProvider {
 
   @override
   Stream<RemoteFile> listFiles(RepoLocator locator) async* {
-    // Single-file blob URL — yield exactly one RemoteFile.
+    // Single-file blob URL — look up the blob SHA via the Contents API
+    // so incremental re-sync can skip unchanged files. Without this,
+    // a hardcoded empty SHA would fail the `knownShas[path] == sha`
+    // check on every re-sync and force a redundant raw download.
+    //
+    // If the Contents API call fails for any reason we fall back to
+    // an empty SHA and continue — a download cost beats aborting the
+    // sync entirely. The user still gets the file, just without the
+    // skip-unchanged optimisation.
     if (locator.singleFile) {
       final rawUrl =
           '$_rawBase/${locator.owner}/${locator.repo}/${locator.ref}/${locator.subPath}';
-      yield RemoteFile(path: locator.subPath, sha: '', rawUrl: rawUrl);
+      String sha = '';
+      try {
+        final meta = await _fetchBlobMetadata(
+          owner: locator.owner,
+          repo: locator.repo,
+          ref: locator.ref,
+          path: locator.subPath,
+        );
+        sha = meta['sha'] as String? ?? '';
+      } on Failure {
+        // Leave sha empty; download path still works.
+      }
+      yield RemoteFile(path: locator.subPath, sha: sha, rawUrl: rawUrl);
       return;
     }
 
@@ -199,6 +219,28 @@ class GitHubSyncProvider implements RepoSyncProvider {
       final body = response.data;
       if (body == null || body.isEmpty) return const {};
       return await Isolate.run(() => json.decode(body) as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw _mapDioError(e);
+    }
+  }
+
+  /// Fetches a single blob's metadata from the Contents API so we can
+  /// populate [RemoteFile.sha] for `/blob/` single-file URLs. Only
+  /// used by the single-file path; batch tree discovery uses the
+  /// Trees API which already carries SHAs per entry.
+  Future<Map<String, dynamic>> _fetchBlobMetadata({
+    required String owner,
+    required String repo,
+    required String ref,
+    required String path,
+  }) async {
+    try {
+      final encodedPath = path.split('/').map(Uri.encodeComponent).join('/');
+      final response = await dio.get<Map<String, dynamic>>(
+        '$_apiBase/repos/$owner/$repo/contents/$encodedPath',
+        queryParameters: {'ref': ref},
+      );
+      return response.data ?? const {};
     } on DioException catch (e) {
       throw _mapDioError(e);
     }
