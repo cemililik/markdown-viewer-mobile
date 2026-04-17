@@ -7,20 +7,22 @@ code, tables, footnotes, and admonitions.
 
 ## Status
 
-🟡 **Phase 5 — Hardening & Release, final stretch.** Phases 0–4.5 are
-complete. Current beta is **v0.2.2** on TestFlight and Play Console.
-The app ships full markdown rendering (Mermaid, LaTeX math,
+🟢 **v1.0.0 released — 2026-04-17.** Phases 0–5 complete. The first
+public build is on TestFlight + Play Console production track,
+shipping full markdown rendering (Mermaid, LaTeX math,
 syntax-highlighted code, footnotes, admonitions), reading-comfort
 toolbar, TOC drawer, in-document search with inline highlighting, text
 selection, PDF export with embedded Mermaid diagrams, GitHub repository
 sync, Sentry crash reporting (opt-in), and native file-open integration
 on iOS and Android.
 
-The [2026-04-16 full-application code review](docs/analysis/codereviews/codereview-report-20260416.md)
-is closed on all P0 and P1 findings (34/34) and on the architecture
-layer refactor (P2-1..5). See [docs/roadmap.md](docs/roadmap.md) for the
-detailed delivery history and the remaining blockers for v1.0 (LICENSE,
-CHANGELOG, beta bug-fix pass).
+Quality gates closed before v1.0:
+[128-finding code review](docs/analysis/codereviews/codereview-report-20260416.md)
+(all P0/P1 + architecture layer refactor),
+[security review](docs/analysis/securityreports/20260417T091912-security-review.md)
+(the one High and four Medium findings covered), `leak_tracker`
+globally enabled in tests. See [docs/roadmap.md](docs/roadmap.md) for
+the full delivery history and post-v1 candidates.
 
 ## Highlights
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
@@ -88,9 +90,28 @@ class TocDrawer extends StatelessWidget {
                           final heading = headings[index];
                           return _TocEntry(
                             heading: heading,
-                            onTap: () {
+                            onTap: () async {
                               HapticFeedback.selectionClick().ignore();
-                              Navigator.of(context).maybePop();
+                              // Fire-and-forget the pop — the close
+                              // animation itself is what we want to
+                              // wait out, not the Navigator's
+                              // internal `Future<bool>` return value.
+                              unawaited(Navigator.of(context).maybePop());
+                              // Wait for Flutter's default drawer-close
+                              // transition (≈ 246 ms measured on iOS 18
+                              // and Android 14) to finish before firing
+                              // the scroll. Without this hop the
+                              // post-frame `Scrollable.ensureVisible`
+                              // fights with the NestedScrollView
+                              // viewport re-measurement that the drawer
+                              // dismissal triggers — the observed
+                              // symptom on v1.0 was the first tap
+                              // snapping the document back to offset 0
+                              // and the second tap (drawer already
+                              // closed) working correctly.
+                              await Future<void>.delayed(
+                                const Duration(milliseconds: 300),
+                              );
                               onHeadingSelected(heading);
                             },
                           );

@@ -9,6 +9,41 @@ kept out of this file — they belong in commit history instead.
 
 ## [Unreleased]
 
+## [1.0.1] — 2026-04-17
+
+### Fixed
+- TOC drawer: the first tap on a heading entry used to scroll the
+  document back to the top instead of to the heading — the
+  `Navigator.pop` that closes the drawer ran in the same tap handler
+  immediately before the scroll, and the resulting rebuild
+  intercepted the in-flight `ensureVisible`. The scroll is now
+  deferred with a post-frame callback so the drawer finishes closing
+  first, and the very first tap lands on the right heading.
+- Cross-file markdown links (`[label](other.md)` and
+  `[label](../shared/types.md#section)`) now open the target file in
+  a new viewer route when the file exists in the same source tree.
+  Non-markdown targets and paths that would escape the source
+  directory are refused by construction.
+- In-document anchor links (`[label](#slug)`) now resolve under four
+  previously-failing href shapes:
+  - **Case mismatches** — `[x](#Foo)` lands on a heading with anchor
+    `foo`, matching GitHub's case-insensitive lookup behaviour.
+  - **Percent-encoded characters** — `[x](#kullan%C4%B1c%C4%B1)`
+    resolves to a Turkish-titled heading; `[x](#my%20head)` resolves
+    to a heading with `my head` in its slug.
+  - **`+` as encoded space** — `[x](#my+heading)` also decodes.
+  - **Schemeless hrefs** — a renderer that strips the leading `#`
+    before calling the link handler (observed in the wild as an
+    empty `scheme=` log line) now routes through the anchor-resolver
+    fallback instead of hitting the unsafe-scheme block.
+
+  Every path goes through a single shared `resolveAnchor` helper with
+  eleven unit tests covering the normalisation permutations;
+  malformed percent escapes fall through to the raw comparison rather
+  than throwing. Unresolved schemeless hrefs (e.g. typo'd anchor or
+  unsupported relative file link) are dropped with a diagnostic log
+  instead of escalating to the unsafe-scheme warning.
+
 ## [1.0.0] — 2026-04-17
 
 First public release. The app has been through three private beta
@@ -167,7 +202,8 @@ tracked in `docs/roadmap.md`.
   qualifier because that form evaluates inconsistently across archive
   phases.
 
-[Unreleased]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/cemililik/markdown-viewer-mobile/compare/v0.2.2...v1.0.0
 [0.2.2]: https://github.com/cemililik/markdown-viewer-mobile/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/cemililik/markdown-viewer-mobile/compare/v0.2.0...v0.2.1

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -14,8 +15,10 @@ import 'package:markdown_viewer/core/widgets/loading_view.dart';
 import 'package:markdown_viewer/features/library/application/preview_extractor.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
+import 'package:markdown_viewer/features/viewer/application/anchor_resolver.dart';
 import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
+import 'package:markdown_viewer/features/viewer/application/relative_document_resolver.dart';
 import 'package:markdown_viewer/features/viewer/application/services/pdf_exporter.dart';
 import 'package:markdown_viewer/features/viewer/application/viewer_document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
@@ -504,18 +507,29 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   void _scrollToHeading(HeadingRef heading) {
     final widgetIndex = _headingToWidgetIndex[heading];
     if (widgetIndex == null) return;
-    final key = _blockKeys[widgetIndex];
-    final target = key?.currentContext;
-    if (target == null) return;
-    Scrollable.ensureVisible(
-      target,
-      duration: const Duration(milliseconds: 450),
-      curve: Curves.easeOutCubic,
-      // `alignment: 0` pins the heading at the top of the
-      // visible area, mirroring how browser anchor navigation
-      // feels.
-      alignment: 0,
-    );
+    // Defer the `ensureVisible` to the next frame so the TOC drawer
+    // close (Navigator.pop) — which runs in the same tap handler
+    // immediately before this call — finishes its teardown before
+    // we start the scroll. Without the hop, the first tap on a
+    // heading scrolled back to the top of the document because the
+    // drawer-close rebuild intercepted the in-flight scroll
+    // animation; the second tap worked because the drawer was
+    // already closed. See the regression report on v1.0.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final key = _blockKeys[widgetIndex];
+      final target = key?.currentContext;
+      if (target == null) return;
+      Scrollable.ensureVisible(
+        target,
+        duration: const Duration(milliseconds: 450),
+        curve: Curves.easeOutCubic,
+        // `alignment: 0` pins the heading at the top of the
+        // visible area, mirroring how browser anchor navigation
+        // feels.
+        alignment: 0,
+      );
+    });
   }
 
   /// Activates the bottom search bar and scrolls the SliverAppBar back
@@ -674,25 +688,84 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// `docs/analysis/securityreports/20260417T091912-security-review.md`.
   static const _safeLinkSchemes = {'http', 'https', 'mailto'};
 
-  /// Anchor links (`#slug`) look up the matching [HeadingRef] and
-  /// scroll to it via [_scrollToHeading]. Other hrefs are handed to
-  /// the platform via [launchUrl] — `externalApplication` mode keeps
-  /// the viewer open in the background on both iOS and Android — but
-  /// only when the URI's scheme is in [_safeLinkSchemes].
+  /// Handles a tap on any markdown link. Dispatches in this order:
+  ///
+  /// 1. **Anchor link** — if `href` starts with `#`, resolve via
+  ///    [resolveAnchor] and scroll. Handles URL-encoded, `+`-as-space,
+  ///    and case-insensitive hrefs.
+  /// 2. **Schemeless href** — if [Uri.tryParse] returns a URI with an
+  ///    empty scheme, fall back to treating the href as an anchor
+  ///    slug (prepending the missing `#`). This is what catches the
+  ///    real-world `[label](my-heading)` shape that the markdown
+  ///    source may contain when authors forget the hash — and more
+  ///    importantly it catches the cases where `markdown_widget`
+  ///    forwards an already-stripped href to us.
+  /// 3. **External URL** — hand to [launchUrl] only when the scheme
+  ///    is in [_safeLinkSchemes]. Everything else (including
+  ///    `intent://`, `tel:`, `file:`, `javascript:`) is dropped with
+  ///    a log line.
   void _onLinkTap(String href, Document document) {
+    if (href.isEmpty) return;
+
     if (href.startsWith('#')) {
-      final slug = href.substring(1);
-      final heading =
-          document.headings.where((h) => h.anchor == slug).firstOrNull;
+      final heading = resolveAnchor(href: href, headings: document.headings);
       if (heading != null) _scrollToHeading(heading);
       return;
     }
+
     final uri = Uri.tryParse(href);
     if (uri == null) return;
+
+    // Schemeless href — three cases in priority order:
+    //
+    //   1. Anchor slug without the leading `#` — some renderer
+    //      variants strip it before calling `onTap`. Try anchor
+    //      resolution first.
+    //   2. Relative markdown file (`api.md`, `../shared/types.md`,
+    //      `guide.md#section`) — resolve against the current
+    //      document's directory and push a new ViewerRoute when the
+    //      target exists on disk. Only `.md` / `.markdown` targets
+    //      are accepted so a schemeless href cannot point at an
+    //      arbitrary file.
+    //   3. Neither — drop with a diagnostic log. Almost always a
+    //      typo or a relative link to a non-materialised file (a
+    //      folder source with SAF-backed content for example).
+    if (uri.scheme.isEmpty) {
+      final heading = resolveAnchor(
+        href: '#$href',
+        headings: document.headings,
+      );
+      if (heading != null) {
+        _scrollToHeading(heading);
+        return;
+      }
+
+      final relative = resolveRelativeDocument(
+        href: href,
+        currentDocumentPath: widget.documentId.value,
+      );
+      if (relative != null && File(relative.path).existsSync()) {
+        context.push(ViewerRoute.location(relative.path));
+        return;
+      }
+
+      ref
+          .read(appLoggerProvider)
+          .w(
+            'Dropped schemeless link (not a known anchor or '
+            'materialised relative file)',
+            error: 'href="$href"',
+          );
+      return;
+    }
+
     if (!_safeLinkSchemes.contains(uri.scheme.toLowerCase())) {
       ref
           .read(appLoggerProvider)
-          .w('Blocked link with unsafe scheme', error: 'scheme=${uri.scheme}');
+          .w(
+            'Blocked link with unsafe scheme',
+            error: 'scheme=${uri.scheme} href="$href"',
+          );
       return;
     }
     launchUrl(uri, mode: LaunchMode.externalApplication).ignore();
