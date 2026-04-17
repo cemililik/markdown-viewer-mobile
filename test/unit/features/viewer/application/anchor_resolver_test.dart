@@ -42,6 +42,18 @@ void main() {
       expect(result?.anchor, 'my heading');
     });
 
+    test('percent-encoded space-separated href resolves via slug pipeline', () {
+      // A renderer that URL-encodes a human-readable fragment
+      // (`#My Heading With Spaces` → `#My%20Heading%20With%20Spaces`)
+      // must land on the slugified heading anchor. Exercises the
+      // new slugify() candidate added to resolveAnchor.
+      final r = resolveAnchor(
+        href: '#My%20Heading%20With%20Spaces',
+        headings: [_h('My Heading With Spaces', 'my-heading-with-spaces')],
+      );
+      expect(r?.anchor, 'my-heading-with-spaces');
+    });
+
     test('percent-encoded unicode slug resolves', () {
       // `kullanıcı-ayarları` — Turkish characters encoded as
       // `kullan%C4%B1c%C4%B1-ayarlar%C4%B1`.

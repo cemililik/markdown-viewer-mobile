@@ -106,8 +106,10 @@ See [ADR-0011](decisions/0011-network-access-policy.md) and
 ## Phase 5 — Hardening & Release ✅
 
 Stabilize, harden, and ship v1.0 — tag `v1.0.0` pushed 2026-04-17,
-TestFlight + Play Console production upload triggered by the release
-pipeline.
+TestFlight + Play Console internal-track upload triggered by the
+release pipeline. Production-track rollout is a manual action in
+the Play Console UI once the internal build is verified, per
+[docs/release-process.md](release-process.md).
 
 ### Completed
 

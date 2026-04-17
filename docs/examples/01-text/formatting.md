@@ -76,10 +76,13 @@ render path.
 
 ## Things the viewer deliberately does **not** render
 
-- Raw HTML. `<div>` or `<span style="…">` survives as plain text by
-  default because the parser runs with `encodeHtml: true` so
-  markdown authors can write `<div>` literally in prose without it
-  being interpreted as an attack surface.
+- Raw HTML. `<div>` or `<span style="…">` survives as plain text
+  because `markdown_widget` — the rendering engine — does not
+  render raw HTML blocks and ships with no HTML-tag extensions
+  that would interpret them. (The parser's `encodeHtml` flag is a
+  separate concern: it controls whether inline HTML-entity
+  sequences like `<` are encoded as `&lt;` in the AST; it does
+  not determine whether raw HTML blocks are rendered.)
 - YAML frontmatter. A `---` block at the top of the file is treated
   as a thematic break, not as metadata — the viewer is a reader,
   not a build system.

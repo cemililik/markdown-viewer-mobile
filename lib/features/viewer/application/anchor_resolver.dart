@@ -1,3 +1,4 @@
+import 'package:markdown_viewer/core/slug/slugify.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 
 /// Resolves a markdown anchor link (`#slug`) to its target
@@ -33,10 +34,23 @@ HeadingRef? resolveAnchor({
   if (raw.isEmpty) return null;
 
   final candidates = <String>{raw, raw.toLowerCase()};
+  // Also try the raw href run through our own slug pipeline, so a
+  // hand-typed `[x](#Section Title)` or `[x](#Section-Title)` whose
+  // literal form doesn't match the parser-generated slug still
+  // resolves after the same lowercase + whitespace-to-hyphen dedupe
+  // the parser applied when stamping `HeadingRef.anchor`.
+  candidates.add(slugify(raw));
+
   final decoded = _tryDecode(raw);
   if (decoded != null) {
     candidates.add(decoded);
     candidates.add(decoded.toLowerCase());
+    // And the percent-decoded form through the slug pipeline —
+    // catches `#my%20heading%20with%20spaces` against a heading
+    // whose stored slug is `my-heading-with-spaces`, the realistic
+    // case where an author URL-encodes a human-readable fragment
+    // and expects it to land on the slug anyway.
+    candidates.add(slugify(decoded));
   }
 
   // Iterate headings once, return the first document-order match.

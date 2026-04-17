@@ -18,7 +18,7 @@ Tap any entry above and the viewer scrolls straight to that heading
 — no page reload, no network call. This is a pure in-document
 jump, identical to how GitHub renders heading links on the web.
 
-Jump back up: [go to the top](#anchors--the-basics).
+Jump back up: [go to the top](#anchors-the-basics).
 
 ## Slug rules
 
@@ -41,14 +41,18 @@ when you link backwards.
 
 | Heading as written | Generated slug |
 |---|---|
-| `# Anchors — the basics` | `anchors--the-basics` |
+| `# Anchors — the basics` | `anchors-the-basics` |
 | `## Slug rules` | `slug-rules` |
 | `## Heading (with parens)` | `heading-with-parens` |
 | `## Çözüm önerileri` | `çözüm-önerileri` |
 
-Note the double hyphen in the first row — the em dash (`—`) is
-stripped entirely, leaving the two surrounding spaces to collapse
-into `--`.
+The first row shows the whitespace-collapse step at work: the em
+dash (`—`) is stripped as a non-letter/digit/whitespace/hyphen
+character, leaving two consecutive spaces between `anchors` and
+`the basics`. The `\s+` regex matches the *entire* run of
+whitespace as one token and replaces it with a single hyphen —
+that is why the slug ends up with `anchors-the-basics`, not
+`anchors--the-basics`.
 
 ## Duplicate headings
 

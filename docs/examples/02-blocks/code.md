@@ -29,7 +29,7 @@ class CounterScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final count = ref.watch(counterProvider);
-    return Text('Count: \$count');
+    return Text('Count: $count');
   }
 }
 ```
@@ -152,9 +152,9 @@ func main() {
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="\$(grep '^version:' pubspec.yaml | awk '{print \$2}')"
-echo "Building v\${VERSION}..."
-flutter build appbundle --release --obfuscate \\
+VERSION="$(grep '^version:' pubspec.yaml | awk '{print $2}')"
+echo "Building v${VERSION}..."
+flutter build appbundle --release --obfuscate \
     --split-debug-info=build/symbols
 ```
 
@@ -201,7 +201,7 @@ jobs:
     name: Resolve version from tag
     runs-on: ubuntu-latest
     outputs:
-      version_name: \${{ steps.parse.outputs.version_name }}
+      version_name: ${{ steps.parse.outputs.version_name }}
 ```
 
 ## Inline code

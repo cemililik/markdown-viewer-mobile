@@ -501,11 +501,18 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     // `_initialAnchorConsumed` so the jump fires exactly once even
     // though `onTocList` runs on every rebuild.
     if (!_initialAnchorConsumed) {
+      // Consume the slot on the first attempt regardless of
+      // whether the lookup succeeded. `onTocList` fires on every
+      // rebuild, and an invalid / missing anchor would otherwise
+      // re-run `resolveAnchor` over the entire heading list on
+      // every scroll frame for the screen's lifetime. Missing one
+      // auto-scroll for a nonexistent anchor is strictly better
+      // than that cost.
+      _initialAnchorConsumed = true;
       final anchor = widget.initialAnchor;
       if (anchor != null && anchor.isNotEmpty) {
         final heading = resolveAnchor(href: '#$anchor', headings: headings);
         if (heading != null && map.containsKey(heading)) {
-          _initialAnchorConsumed = true;
           _scrollToHeading(heading);
         }
       }

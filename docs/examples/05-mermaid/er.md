@@ -77,9 +77,9 @@ Mermaid uses a shorthand for the two ends of a relationship line:
 
 | Notation | Meaning        |
 |----------|----------------|
-| `||`     | exactly one    |
-| `o|`     | zero or one    |
-| `|{`     | one or more    |
+| `\|\|`   | exactly one    |
+| `o\|`    | zero or one    |
+| `\|{`    | one or more    |
 | `o{`     | zero or more   |
 
 So `SYNCED_REPOS ||--o{ SYNCED_FILES` reads as "each repo has zero

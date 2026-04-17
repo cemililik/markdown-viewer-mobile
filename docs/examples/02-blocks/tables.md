@@ -30,7 +30,7 @@ Column alignment is encoded in the colons of the divider row.
 | *Italic*         | ✅ works      | same treatment as in body prose      |
 | ~~Strikethrough~~ | ✅ works      | decoration preserved                 |
 | `Inline code`    | ✅ works      | monospace cell content               |
-| [Link](https://example.com) | ✅ works | tap opens the URL          |
+| [Example website](https://example.com) | ✅ works | tap opens the URL  |
 | Images in cells  | ⚠️ limited    | plain text only; images not rendered inline |
 | Line break (`<br>`) | ❌ not rendered | HTML stays as literal text       |
 
