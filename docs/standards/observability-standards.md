@@ -102,6 +102,13 @@ FlutterError.onError = (details) {
 
 PlatformDispatcher.instance.onError = (error, stack) {
   logger.e('PlatformDispatcher', error: error, stackTrace: stack);
+  // Same Sentry forwarding policy as `FlutterError.onError` above —
+  // `Sentry.isEnabled` is false when init was skipped, so this branch
+  // is a no-op for users who have not opted in or for builds with no
+  // DSN.
+  if (Sentry.isEnabled) {
+    Sentry.captureException(error, stackTrace: stack);
+  }
   return true;  // handled
 };
 ```

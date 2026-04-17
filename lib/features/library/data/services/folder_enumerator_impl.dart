@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:markdown_viewer/features/library/data/services/native_library_folders_channel.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/services/folder_enumerator.dart';
+import 'package:markdown_viewer/features/library/domain/services/native_library_folders_channel.dart';
 import 'package:path/path.dart' as p;
 
 /// Production [FolderEnumerator] that routes between the native
@@ -41,7 +42,7 @@ class FolderEnumeratorImpl implements FolderEnumerator {
   final NativeLibraryFoldersChannel? _nativeChannel;
 
   NativeLibraryFoldersChannel get _native =>
-      _nativeChannel ?? NativeLibraryFoldersChannel();
+      _nativeChannel ?? NativeLibraryFoldersChannelImpl();
 
   @override
   Future<List<FolderEntry>> enumerate(

@@ -6,11 +6,14 @@ import 'package:logger/logger.dart';
 import 'package:markdown_viewer/app/app.dart';
 import 'package:markdown_viewer/core/logging/logger.dart';
 import 'package:markdown_viewer/core/path/sandbox_path.dart';
+import 'package:markdown_viewer/features/library/application/folder_file_materializer_provider.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
 import 'package:markdown_viewer/features/library/data/repositories/library_folders_store_impl.dart';
 import 'package:markdown_viewer/features/library/data/repositories/recent_documents_store_impl.dart';
 import 'package:markdown_viewer/features/library/data/services/folder_enumerator_impl.dart';
+import 'package:markdown_viewer/features/library/data/services/folder_file_materializer.dart';
+import 'package:markdown_viewer/features/library/data/services/native_library_folders_channel.dart';
 import 'package:markdown_viewer/features/observability/application/observability_providers.dart';
 import 'package:markdown_viewer/features/observability/data/consent_store_impl.dart';
 import 'package:markdown_viewer/features/onboarding/application/onboarding_providers.dart';
@@ -134,6 +137,14 @@ Future<void> main() async {
         consentStoreProvider.overrideWithValue(consentStore),
         folderEnumeratorProvider.overrideWithValue(
           const FolderEnumeratorImpl(),
+        ),
+        nativeLibraryFoldersChannelProvider.overrideWithValue(
+          NativeLibraryFoldersChannelImpl(),
+        ),
+        folderFileMaterializerProvider.overrideWith(
+          (ref) => FolderFileMaterializerImpl(
+            channel: ref.watch(nativeLibraryFoldersChannelProvider),
+          ),
         ),
         appDatabaseProvider.overrideWith((ref) {
           ref.onDispose(appDatabase.close);

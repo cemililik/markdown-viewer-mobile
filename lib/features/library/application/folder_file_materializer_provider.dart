@@ -1,30 +1,32 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:markdown_viewer/features/library/data/services/folder_file_materializer.dart';
-import 'package:markdown_viewer/features/library/data/services/native_library_folders_channel.dart';
+import 'package:markdown_viewer/features/library/domain/services/folder_file_materializer.dart';
+import 'package:markdown_viewer/features/library/domain/services/native_library_folders_channel.dart';
 
-/// Single shared [NativeLibraryFoldersChannel] for the whole app.
+/// Application-layer binding for [NativeLibraryFoldersChannel].
 ///
-/// The method channel is a stateless RPC proxy — there is no harm in
-/// sharing a single instance, and routing every caller through the
-/// provider lets widget tests swap in a fake that records calls
-/// without subclassing the widget tree. Overridden in `main.dart`
-/// with a `const NativeLibraryFoldersChannel()` and replaced in
-/// tests with an injectable fake.
+/// Overridden in `main.dart` with a `NativeLibraryFoldersChannelImpl`
+/// (data layer); unit / widget tests swap in a fake that records
+/// channel calls without subclassing the widget tree. Throws by
+/// default so a missing composition-root override fails loudly
+/// instead of silently calling into a method channel that may not
+/// exist in the test environment.
 final nativeLibraryFoldersChannelProvider =
-    Provider<NativeLibraryFoldersChannel>(
-      (ref) => NativeLibraryFoldersChannel(),
-    );
+    Provider<NativeLibraryFoldersChannel>((ref) {
+      throw UnimplementedError(
+        'nativeLibraryFoldersChannelProvider must be overridden in the '
+        'composition root (lib/main.dart) with '
+        'NativeLibraryFoldersChannelImpl, or in tests with a fake.',
+      );
+    });
 
 /// Application-layer binding for [FolderFileMaterializer].
 ///
-/// Resolves its [NativeLibraryFoldersChannel] through
-/// [nativeLibraryFoldersChannelProvider] so tests can inject a fake
-/// channel without subclassing [FolderFileMaterializer] itself. The
-/// materializer's optional cache-directory override is reserved for
-/// unit tests that want to redirect writes to a temp dir; production
-/// leaves it `null` and picks up the real app cache directory.
-final folderFileMaterializerProvider = Provider<FolderFileMaterializer>(
-  (ref) => FolderFileMaterializer(
-    channel: ref.watch(nativeLibraryFoldersChannelProvider),
-  ),
-);
+/// Overridden in `main.dart` with a `FolderFileMaterializerImpl` that
+/// pulls its channel from [nativeLibraryFoldersChannelProvider]; tests
+/// that don't exercise materialization leave this untouched.
+final folderFileMaterializerProvider = Provider<FolderFileMaterializer>((ref) {
+  throw UnimplementedError(
+    'folderFileMaterializerProvider must be overridden in the composition '
+    'root (lib/main.dart) with FolderFileMaterializerImpl, or in tests.',
+  );
+});

@@ -30,7 +30,7 @@ flowchart TB
 - **Domain** — zero dependencies on Flutter, no imports from other layers
 - **Application** — depends on domain; may also import pure Dart and
   Riverpod packages (`flutter_riverpod`, `riverpod_annotation`,
-  `compute` from `dart:async` / `flutter/foundation`, `markdown` for
+  `compute` from `package:flutter/foundation.dart`, `markdown` for
   pipeline extension). Must not import `package:flutter/widgets.dart`,
   `package:flutter/material.dart`, or any file under a feature's
   `data/` tree — see

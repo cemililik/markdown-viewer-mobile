@@ -1,16 +1,18 @@
 import 'dart:io';
+import 'dart:typed_data';
 
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/features/library/data/services/folder_file_materializer.dart';
-import 'package:markdown_viewer/features/library/data/services/native_library_folders_channel.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
+import 'package:markdown_viewer/features/library/domain/services/native_library_folders_channel.dart';
 
 /// Fake [NativeLibraryFoldersChannel] that records its read calls
-/// and yields a deterministic byte payload.
-class _FakeChannel extends NativeLibraryFoldersChannel {
-  _FakeChannel({required this.payload})
-    : super(channel: _UnusedMethodChannel());
+/// and yields a deterministic byte payload. Implements the domain
+/// port directly — no `MethodChannel` plumbing needed because every
+/// call route used by `FolderFileMaterializerImpl` (currently just
+/// `readFileBytes`) is overridden here.
+class _FakeChannel implements NativeLibraryFoldersChannel {
+  _FakeChannel({required this.payload});
 
   final Uint8List payload;
   final List<({String bookmark, String path})> reads = [];
@@ -23,14 +25,26 @@ class _FakeChannel extends NativeLibraryFoldersChannel {
     reads.add((bookmark: bookmark, path: path));
     return payload;
   }
-}
 
-/// Stand-in `MethodChannel` we never actually invoke. The fake
-/// channel above overrides every method we care about; the
-/// concrete super-class still expects a `MethodChannel` instance
-/// for its private field, so we hand it a no-op throwaway.
-class _UnusedMethodChannel extends MethodChannel {
-  _UnusedMethodChannel() : super('test/unused');
+  @override
+  Future<NativeFolderPick?> pickDirectory() async {
+    throw UnimplementedError('pickDirectory is not used by this test');
+  }
+
+  @override
+  Future<List<NativeFolderEntry>> listDirectory(
+    String bookmark, {
+    String? subPath,
+  }) async {
+    throw UnimplementedError('listDirectory is not used by this test');
+  }
+
+  @override
+  Future<List<NativeFolderEntry>> listDirectoryRecursive(
+    String bookmark,
+  ) async {
+    throw UnimplementedError('listDirectoryRecursive is not used by this test');
+  }
 }
 
 void main() {
@@ -46,8 +60,8 @@ void main() {
     }
   });
 
-  FolderFileMaterializer makeMaterializer(_FakeChannel fake) {
-    return FolderFileMaterializer(
+  FolderFileMaterializerImpl makeMaterializer(_FakeChannel fake) {
+    return FolderFileMaterializerImpl(
       channel: fake,
       cacheDirectoryProvider: () async => tmp,
     );

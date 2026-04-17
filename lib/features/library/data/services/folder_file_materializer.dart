@@ -2,17 +2,17 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:crypto/crypto.dart';
-import 'package:markdown_viewer/features/library/data/services/native_library_folders_channel.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
+import 'package:markdown_viewer/features/library/domain/services/folder_file_materializer.dart';
+import 'package:markdown_viewer/features/library/domain/services/native_library_folders_channel.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
-/// Copies the contents of a folder-sourced markdown file into the
-/// app's cache directory and returns the resulting filesystem
-/// path so the existing viewer pipeline (`File(...).readAsBytes`,
-/// reading-position store, recents controller) can keep using
-/// plain `dart:io` with no SAF / security-scope awareness of its
-/// own.
+/// Concrete [FolderFileMaterializer] that copies folder-sourced
+/// markdown files into the app's cache directory so the viewer
+/// pipeline (`File(...).readAsBytes`, reading-position store,
+/// recents controller) can keep using plain `dart:io` with no SAF
+/// / security-scope awareness of its own.
 ///
 /// Why not read the file directly from inside the viewer?
 ///
@@ -32,8 +32,8 @@ import 'package:path_provider/path_provider.dart';
 /// same cache slot. Repeated reads of the same document are
 /// idempotent; the second read overwrites the bytes, picking up
 /// any edits the user made on disk between sessions.
-class FolderFileMaterializer {
-  const FolderFileMaterializer({
+class FolderFileMaterializerImpl implements FolderFileMaterializer {
+  const FolderFileMaterializerImpl({
     required NativeLibraryFoldersChannel channel,
     Future<Directory> Function()? cacheDirectoryProvider,
   }) : _native = channel,
@@ -48,10 +48,7 @@ class FolderFileMaterializer {
     return getApplicationCacheDirectory();
   }
 
-  /// Materializes the file at [sourcePath] (which lives under
-  /// the [folder]'s bookmarked tree) into the app cache and
-  /// returns the cache path. Throws on any read error so the
-  /// caller can surface a localized snackbar.
+  @override
   Future<String> materialize({
     required LibraryFolder folder,
     required String sourcePath,

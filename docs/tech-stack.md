@@ -36,7 +36,7 @@ and `pubspec.yaml` is a documentation defect.
 | Navigation | `go_router` | ^14.6.2 | [0003](decisions/0003-navigation-go-router.md) |
 | Markdown AST | `markdown` | ^7.2.2 | [0004](decisions/0004-markdown-rendering.md) |
 | Markdown widget | `markdown_widget` | ^2.3.2+8 | [0004](decisions/0004-markdown-rendering.md) |
-| Code highlighting | `re_highlight` + `flutter_highlighting` | latest | [0004](decisions/0004-markdown-rendering.md) |
+| Code highlighting | `re_highlight` + `flutter_highlighting` | ^0.0.3 / ^0.9.0 | [0004](decisions/0004-markdown-rendering.md) |
 | Mermaid | `flutter_inappwebview` + bundled `mermaid.min.js` | ^6.1.5 | [0005](decisions/0005-mermaid-rendering.md) |
 | SVG rendering | `flutter_svg` | ^2.0.16 | — |
 | Math | `flutter_math_fork` | ^0.7.3 | [0006](decisions/0006-math-rendering.md) |

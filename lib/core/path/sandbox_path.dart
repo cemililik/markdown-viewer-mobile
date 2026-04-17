@@ -50,12 +50,25 @@ final class SandboxPath {
   static String? _support;
 
   /// Caches the three sandbox roots so later sync calls do not
-  /// await disk.
+  /// await disk. Each lookup is guarded independently: a platform
+  /// that does not expose one of the three well-known directories
+  /// leaves the matching field `null` and [toPortable]/[fromPortable]
+  /// passthrough paths that would have targeted it. In practice
+  /// iOS and Android expose all three, so a `null` here surfaces
+  /// only on unusual platforms (unit-test hosts, future platforms)
+  /// where aborting startup would be worse than losing portability
+  /// for that root.
   static Future<void> initialize() async {
-    _documents = (await getApplicationDocumentsDirectory()).path;
-    _cache = (await getApplicationCacheDirectory()).path;
-    // Not every platform exposes Application Support; ignore the
-    // failure and leave `_support` null.
+    try {
+      _documents = (await getApplicationDocumentsDirectory()).path;
+    } on Object {
+      _documents = null;
+    }
+    try {
+      _cache = (await getApplicationCacheDirectory()).path;
+    } on Object {
+      _cache = null;
+    }
     try {
       _support = (await getApplicationSupportDirectory()).path;
     } on Object {
@@ -83,10 +96,15 @@ final class SandboxPath {
     final match = _matchRoot(absolute);
     if (match == null) return absolute;
     final (kind, root) = match;
-    // +1 for the path separator between the root and the relative
-    // remainder. `Platform.pathSeparator` keeps this correct when
-    // the codebase ever runs outside iOS/Android.
-    final relative = absolute.substring(root.length + 1);
+    // When the path equals the root exactly, the relative remainder
+    // is empty. Otherwise strip the root and the following separator
+    // (the +1). `_matchRoot` guarantees the full-equality branch
+    // reaches here, so a naive `substring(root.length + 1)` would
+    // throw RangeError on the equality case.
+    final relative =
+        absolute.length == root.length
+            ? ''
+            : absolute.substring(root.length + 1);
     return 'sandbox:$kind:$relative';
   }
 

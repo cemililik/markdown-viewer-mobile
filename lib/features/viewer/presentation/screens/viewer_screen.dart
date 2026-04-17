@@ -133,7 +133,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// the match list for a newer one.
   int _searchScanGen = 0;
 
-  /// Scrollback debounce timer. Search input fires one change event
+  /// Search-scan debounce timer. Search input fires one change event
   /// per keystroke; without a short debounce fast typing either
   /// spawns an isolate per keystroke (wasteful) or recomputes on the
   /// UI thread on every keystroke (janky). The timer resets on every

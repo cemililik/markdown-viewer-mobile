@@ -12,13 +12,24 @@ import 'package:markdown_viewer/features/settings/domain/repositories/settings_s
 /// silently dropped by `.ignore()`.
 void _persistOrLog(Ref ref, Future<void> future, String label) {
   future.onError((error, stackTrace) {
-    ref
-        .read(appLoggerProvider)
-        .e(
-          'Failed to persist setting: $label',
-          error: error,
-          stackTrace: stackTrace,
-        );
+    // Guard the logger call itself: a provider container that has
+    // been torn down (tests that exit mid-write, hot-restart during
+    // a pending persist) throws on `ref.read`. Without this catch
+    // the nested throw would be swallowed by the outer `.ignore()`
+    // and the original persistence failure would also vanish.
+    try {
+      ref
+          .read(appLoggerProvider)
+          .e(
+            'Failed to persist setting: $label',
+            error: error,
+            stackTrace: stackTrace,
+          );
+    } catch (_) {
+      // Last-resort swallow — there is no higher layer to surface
+      // this to and the original persist error is already lost at
+      // this point.
+    }
   }).ignore();
 }
 

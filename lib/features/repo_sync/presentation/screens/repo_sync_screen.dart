@@ -12,6 +12,7 @@ import 'package:markdown_viewer/features/repo_sync/application/repo_sync_notifie
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/sync_result.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
+import 'package:markdown_viewer/features/repo_sync/presentation/sync_time_format.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 
 /// Full-page screen for syncing a remote git repository.
@@ -873,15 +874,7 @@ class _RecentSyncTile extends ConsumerWidget {
     final parts = <String>[];
     if (repo.subPath.isNotEmpty) parts.add(repo.subPath);
     parts.add(l10n.syncRecentFileCount(repo.fileCount));
-    parts.add(_formatLastSynced(repo.lastSyncedAt, l10n));
+    parts.add(formatLastSynced(repo.lastSyncedAt, l10n));
     return parts.join(' · ');
-  }
-
-  static String _formatLastSynced(DateTime at, AppLocalizations l10n) {
-    final diff = DateTime.now().difference(at);
-    if (diff.inMinutes < 1) return l10n.syncLastSyncedJustNow;
-    if (diff.inHours < 1) return l10n.syncLastSyncedMinutes(diff.inMinutes);
-    if (diff.inDays < 1) return l10n.syncLastSyncedHours(diff.inHours);
-    return l10n.syncLastSyncedDays(diff.inDays);
   }
 }

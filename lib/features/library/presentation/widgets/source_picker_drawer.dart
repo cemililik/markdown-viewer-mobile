@@ -12,6 +12,7 @@ import 'package:markdown_viewer/features/library/domain/entities/library_source.
 import 'package:markdown_viewer/features/library/presentation/widgets/add_source_sheet.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
+import 'package:markdown_viewer/features/repo_sync/presentation/sync_time_format.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:path/path.dart' as p;
 
@@ -317,23 +318,6 @@ class _SyncedRepoTile extends ConsumerWidget {
     final timeStr = formatLastSynced(repo.lastSyncedAt, l10n);
     if (repo.subPath.isNotEmpty) return '${repo.subPath} · $timeStr';
     return timeStr;
-  }
-
-  /// Relative-time formatter with an injectable [now] so unit tests
-  /// can pin the reference point without manipulating the system
-  /// clock. Production callers omit [now] and fall through to
-  /// `DateTime.now()`.
-  @visibleForTesting
-  static String formatLastSynced(
-    DateTime at,
-    AppLocalizations l10n, {
-    DateTime? now,
-  }) {
-    final diff = (now ?? DateTime.now()).difference(at);
-    if (diff.inMinutes < 1) return l10n.syncLastSyncedJustNow;
-    if (diff.inHours < 1) return l10n.syncLastSyncedMinutes(diff.inMinutes);
-    if (diff.inDays < 1) return l10n.syncLastSyncedHours(diff.inHours);
-    return l10n.syncLastSyncedDays(diff.inDays);
   }
 
   Future<void> _showActionsSheet(BuildContext context, WidgetRef ref) async {

@@ -158,6 +158,10 @@ class GitHubSyncProvider implements RepoSyncProvider {
             : locator.subPath.endsWith('/')
             ? locator.subPath
             : '${locator.subPath}/';
+    // Computed once — the encoded ref is the same for every blob in
+    // this tree. Previous revisions recomputed it inside the loop,
+    // wasting a split+map+join per file on large repos.
+    final rawRef = locator.ref.split('/').map(Uri.encodeComponent).join('/');
 
     for (final entry in tree) {
       if (entry is! Map<String, dynamic>) continue;
@@ -169,7 +173,6 @@ class GitHubSyncProvider implements RepoSyncProvider {
 
       final sha = entry['sha'] as String? ?? '';
       final size = (entry['size'] as num?)?.toInt() ?? 0;
-      final rawRef = locator.ref.split('/').map(Uri.encodeComponent).join('/');
       final rawPath = path.split('/').map(Uri.encodeComponent).join('/');
       final rawUrl =
           '$_rawBase/${locator.owner}/${locator.repo}/$rawRef/$rawPath';

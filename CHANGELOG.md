@@ -45,6 +45,19 @@ kept out of this file — they belong in commit history instead.
   "HTTP null" / "HTTP 401".
 
 ### Fixed
+- Library "Clear all" confirm-dialog guard is now per-widget state
+  instead of a file-scope mutable flag, and is released in a
+  `try/finally` so a rare `showDialog` throw cannot permanently
+  disable the button.
+- Sandbox-path resolution no longer throws `RangeError` when a
+  persisted path matches a sandbox root exactly (previously possible
+  only on unusual edge cases, but the code path is reachable because
+  the matcher does accept root-equality). Initialisation also now
+  guards each of the three well-known directories independently so
+  an unusual platform that exposes only a subset still boots.
+- Settings persistence: the logger invocation inside the persist-or-log
+  error handler is now wrapped in its own `try/catch` so a torn-down
+  provider container cannot swallow the original persist failure.
 - Router lifecycle: `routerProvider` now disposes the underlying
   `GoRouter` (delegate, parser, information provider) when the
   `ProviderScope` tears down. Caught by `leak_tracker`; visible in

@@ -570,7 +570,7 @@ class _LibraryEmptyState extends StatelessWidget {
 /// so the whole surface shares one scroll position (good for the
 /// thin theme-wide scrollbar) and the greeting scrolls with the
 /// content rather than staying sticky.
-class _LibraryPopulatedBody extends ConsumerWidget {
+class _LibraryPopulatedBody extends ConsumerStatefulWidget {
   const _LibraryPopulatedBody({
     required this.recents,
     required this.searchController,
@@ -586,7 +586,27 @@ class _LibraryPopulatedBody extends ConsumerWidget {
   final VoidCallback onClearSearch;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_LibraryPopulatedBody> createState() =>
+      _LibraryPopulatedBodyState();
+}
+
+class _LibraryPopulatedBodyState extends ConsumerState<_LibraryPopulatedBody> {
+  /// Guards against a double-tap on "Clear all" presenting two
+  /// confirmation dialogs at once — the dialog's open animation means
+  /// the first tap has not yet blocked input when the second one
+  /// lands. Instance-scoped (rather than file-scope) so multiple
+  /// mounted library bodies — unlikely in practice but possible under
+  /// go_router shell routes — each have their own guard.
+  bool _clearDialogOpen = false;
+
+  List<RecentDocument> get recents => widget.recents;
+  TextEditingController get searchController => widget.searchController;
+  String get searchQuery => widget.searchQuery;
+  ValueChanged<String> get onSearchChanged => widget.onSearchChanged;
+  VoidCallback get onClearSearch => widget.onClearSearch;
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = context.l10n;
     final theme = Theme.of(context);
     final filtered = _filter(recents, searchQuery);
@@ -646,7 +666,7 @@ class _LibraryPopulatedBody extends ConsumerWidget {
           _sectionTrailingSliver(
             context,
             onTapClearAll: () async {
-              await _confirmClear(context, ref);
+              await _confirmClear(context);
             },
           ),
         // Extra bottom padding so the last tile is not hidden
@@ -775,36 +795,37 @@ class _LibraryPopulatedBody extends ConsumerWidget {
     );
   }
 
-  Future<void> _confirmClear(BuildContext context, WidgetRef ref) async {
-    // Guard against a double-tap on the trailing "Clear all" button
-    // presenting two confirmation dialogs at the same time: the
-    // dialog's own open animation means the first tap has not yet
-    // blocked input when the second one lands. Tracked through the
-    // file-scope [_clearDialogOpen] flag because this widget is a
-    // ConsumerWidget and cannot hold instance state.
+  Future<void> _confirmClear(BuildContext context) async {
     if (_clearDialogOpen) return;
     _clearDialogOpen = true;
     final l10n = context.l10n;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) {
-        return AlertDialog(
-          title: Text(l10n.libraryRecentClearConfirmTitle),
-          content: Text(l10n.libraryRecentClearConfirmBody),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text(l10n.actionCancel),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              child: Text(l10n.libraryRecentClearAll),
-            ),
-          ],
-        );
-      },
-    );
-    _clearDialogOpen = false;
+    bool? confirmed;
+    try {
+      confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            title: Text(l10n.libraryRecentClearConfirmTitle),
+            content: Text(l10n.libraryRecentClearConfirmBody),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(l10n.actionCancel),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                child: Text(l10n.libraryRecentClearAll),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      // Always clear the guard so a showDialog that throws (rare, but
+      // possible under unusual Navigator states) does not leave the
+      // button permanently disabled.
+      _clearDialogOpen = false;
+    }
     if (confirmed == true && context.mounted) {
       // mediumImpact matches the destructive-action haptic pattern
       // the viewer uses for bookmark save so the two surfaces feel
@@ -814,10 +835,6 @@ class _LibraryPopulatedBody extends ConsumerWidget {
     }
   }
 }
-
-/// File-scope "clear-all confirm dialog in flight" flag. See
-/// [_LibraryPopulatedBody._confirmClear] for rationale.
-bool _clearDialogOpen = false;
 
 /// Greeting card at the top of the populated library body.
 /// Chooses one of three salutations based on the local hour of
