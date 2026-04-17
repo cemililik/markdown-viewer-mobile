@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.provider.OpenableColumns
 import androidx.documentfile.provider.DocumentFile
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.embedding.engine.plugins.activity.ActivityAware
@@ -75,6 +76,15 @@ class LibraryFoldersChannel :
   companion object {
     private const val CHANNEL_NAME = "dev.markdownviewer/library_folders"
     private const val REQUEST_CODE_PICK_DIRECTORY = 0x4D4456 // "MDV"
+
+    /**
+     * Hard cap on the size of a single file returned through
+     * `readFileBytes`. Matches the per-file cap documented in
+     * `docs/standards/security-standards.md` §File System Rules —
+     * loading a larger file fully into memory risks an OOM on
+     * low-end Android devices.
+     */
+    private const val MAX_FILE_BYTES: Long = 10L * 1024L * 1024L
   }
 
   private var channel: MethodChannel? = null
@@ -358,9 +368,34 @@ class LibraryFoldersChannel :
         result.error("ACCESS_DENIED", "path is not a descendant of the root tree", null)
         return
       }
+      // Size-cap pre-check — ask the content provider for
+      // OpenableColumns.SIZE first so a huge file is rejected
+      // before any bytes are pulled into memory. SAF providers
+      // that do not populate SIZE fall through to the streaming
+      // guard below. See security-standards.md §File System Rules
+      // and the 2026-04-17 security review §M-7.
+      val advertisedSize = queryFileSize(context, uri)
+      if (advertisedSize != null && advertisedSize > MAX_FILE_BYTES) {
+        result.error(
+            "FILE_TOO_LARGE",
+            "file $advertisedSize bytes exceeds the $MAX_FILE_BYTES-byte cap",
+            null,
+        )
+        return
+      }
       val bytes = context.contentResolver.openInputStream(uri)?.use { input ->
         val buffer = ByteArrayOutputStream()
-        input.copyTo(buffer)
+        val chunk = ByteArray(8 * 1024)
+        var total = 0L
+        while (true) {
+          val n = input.read(chunk)
+          if (n < 0) break
+          total += n
+          if (total > MAX_FILE_BYTES) {
+            throw FileTooLargeException(total)
+          }
+          buffer.write(chunk, 0, n)
+        }
         buffer.toByteArray()
       }
       if (bytes == null) {
@@ -368,10 +403,43 @@ class LibraryFoldersChannel :
         return
       }
       result.success(bytes)
+    } catch (error: FileTooLargeException) {
+      result.error(
+          "FILE_TOO_LARGE",
+          "file ${error.bytesRead} bytes exceeds the $MAX_FILE_BYTES-byte cap",
+          null,
+      )
     } catch (error: SecurityException) {
       result.error("ACCESS_DENIED", error.localizedMessage, null)
     } catch (error: Exception) {
       result.error("READ_FAILED", error.localizedMessage, null)
+    }
+  }
+
+  /** Thrown when a streaming read exceeds the per-file cap. */
+  private class FileTooLargeException(val bytesRead: Long) :
+      RuntimeException("file exceeds $MAX_FILE_BYTES-byte cap at $bytesRead bytes")
+
+  /**
+   * Reads `OpenableColumns.SIZE` from the content resolver for a
+   * SAF URI. Returns null when the provider does not populate the
+   * column — callers must fall back to a streaming cumulative-bytes
+   * guard in that case.
+   */
+  private fun queryFileSize(context: Context, uri: Uri): Long? {
+    return context.contentResolver.query(
+        uri,
+        arrayOf(OpenableColumns.SIZE),
+        null,
+        null,
+        null,
+    )?.use { cursor ->
+      if (cursor.moveToFirst()) {
+        val index = cursor.getColumnIndex(OpenableColumns.SIZE)
+        if (index >= 0 && !cursor.isNull(index)) cursor.getLong(index) else null
+      } else {
+        null
+      }
     }
   }
 }

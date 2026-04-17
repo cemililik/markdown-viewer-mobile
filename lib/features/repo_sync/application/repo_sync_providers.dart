@@ -67,12 +67,27 @@ final syncDioProvider = Provider<Dio>((ref) {
   dio.interceptors.add(
     InterceptorsWrapper(
       onRequest: (options, handler) async {
+        // Host allow-list — enforced on every request (direct calls
+        // and redirect follow-ups both pass through this interceptor)
+        // so a misconfigured base URL, an interpolation bug, or a
+        // 3xx to a third-party host is rejected before the socket
+        // opens. Reference: security-standards.md §Network Rules and
+        // securityreports/20260417T091912 §M-1.
+        const allowedHosts = {'api.github.com', 'raw.githubusercontent.com'};
         final host = options.uri.host.toLowerCase();
-        if (host == 'api.github.com' || host == 'raw.githubusercontent.com') {
-          final pat = await patStore.read();
-          if (pat != null && pat.isNotEmpty) {
-            options.headers['Authorization'] = 'token $pat';
-          }
+        if (!allowedHosts.contains(host)) {
+          return handler.reject(
+            DioException.connectionError(
+              requestOptions: options,
+              reason:
+                  'Host "$host" is not in the GitHub sync allow-list '
+                  '(${allowedHosts.join(", ")})',
+            ),
+          );
+        }
+        final pat = await patStore.read();
+        if (pat != null && pat.isNotEmpty) {
+          options.headers['Authorization'] = 'token $pat';
         }
         handler.next(options);
       },

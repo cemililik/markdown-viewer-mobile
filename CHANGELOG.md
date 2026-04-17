@@ -27,6 +27,28 @@ kept out of this file — they belong in commit history instead.
 - GitHub Discussions enabled on the repository, with welcome / feature-
   request template / Q&A guide discussions.
 
+### Security
+- Markdown links now pass through a URI-scheme allow-list
+  (`http`, `https`, `mailto`) before reaching `launchUrl`. A malicious
+  markdown file can no longer trigger `intent://`, `tel:`, `sms:`,
+  `market:`, or `file:` handlers to launch third-party apps or probe
+  local files.
+- GitHub sync Dio client enforces a host allow-list in the request
+  interceptor — `api.github.com` and `raw.githubusercontent.com`
+  only. Any other host (direct call or 3xx redirect follow-up) is
+  rejected before the socket opens, which also prevents the stored
+  PAT from being forwarded to an untrusted redirect target.
+- GitHub sync response size caps: 5 MB per file download, 25 MB per
+  discovery call (Trees API / Contents API / default-branch
+  metadata). Enforced via `CancelToken` + `onReceiveProgress` so an
+  oversized response is aborted mid-stream rather than buffered
+  into memory.
+- Native library-folder and share-intent channels refuse to load
+  files larger than 10 MB. iOS pre-checks `fileSizeKey`, Android
+  pre-checks `OpenableColumns.SIZE` and, for providers that omit
+  it, streams with a cumulative-bytes guard that deletes any
+  partial copy on abort.
+
 ### Changed
 - Onboarding now respects the platform "Reduce Motion" preference —
   the pulsing hero, floating chips, gradient cross-fade, and entrance

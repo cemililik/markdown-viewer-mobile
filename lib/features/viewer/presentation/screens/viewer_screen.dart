@@ -665,11 +665,20 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
 
   /// Routes a link tap from [MarkdownView].
   ///
+  /// URI schemes a markdown link is allowed to launch. Anything
+  /// outside this set is silently dropped — a malicious markdown
+  /// file otherwise could trigger `intent://` / `android-app://` /
+  /// `tel:` / `market:` / `file:` handlers to launch third-party
+  /// apps, phish for call confirmations, or probe local files. This
+  /// allow-list is the documented mitigation for the H-1 finding in
+  /// `docs/analysis/securityreports/20260417T091912-security-review.md`.
+  static const _safeLinkSchemes = {'http', 'https', 'mailto'};
+
   /// Anchor links (`#slug`) look up the matching [HeadingRef] and
-  /// scroll to it via [_scrollToHeading]. All other hrefs are
-  /// handed to the platform via [launchUrl] — `externalApplication`
-  /// mode keeps the viewer open in the background on both iOS and
-  /// Android.
+  /// scroll to it via [_scrollToHeading]. Other hrefs are handed to
+  /// the platform via [launchUrl] — `externalApplication` mode keeps
+  /// the viewer open in the background on both iOS and Android — but
+  /// only when the URI's scheme is in [_safeLinkSchemes].
   void _onLinkTap(String href, Document document) {
     if (href.startsWith('#')) {
       final slug = href.substring(1);
@@ -679,9 +688,14 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       return;
     }
     final uri = Uri.tryParse(href);
-    if (uri != null) {
-      launchUrl(uri, mode: LaunchMode.externalApplication).ignore();
+    if (uri == null) return;
+    if (!_safeLinkSchemes.contains(uri.scheme.toLowerCase())) {
+      ref
+          .read(appLoggerProvider)
+          .w('Blocked link with unsafe scheme', error: 'scheme=${uri.scheme}');
+      return;
     }
+    launchUrl(uri, mode: LaunchMode.externalApplication).ignore();
   }
 
   /// Shows a bottom sheet that lets the user choose between sharing the

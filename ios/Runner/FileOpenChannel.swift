@@ -27,6 +27,14 @@ import UIKit
 /// `FileOpenChannel`.
 final class FileOpenChannel: NSObject, FlutterStreamHandler {
 
+    /// Hard cap on the size of a share-intent / `ACTION_VIEW` file
+    /// copied into the app's cache directory. Matches the per-file
+    /// cap documented in `docs/standards/security-standards.md` and
+    /// keeps a malicious content provider from filling up disk /
+    /// RAM with an oversized payload.
+    static let maxFileBytes: Int = 10 * 1024 * 1024
+
+
     static let shared = FileOpenChannel()
     static let channelName = "com.cemililik.markdown_viewer/file_open"
 
@@ -116,7 +124,33 @@ final class FileOpenChannel: NSObject, FlutterStreamHandler {
             if FileManager.default.fileExists(atPath: dest.path) {
                 try FileManager.default.removeItem(at: dest)
             }
+            // Per-file size cap — see security-standards.md §File
+            // System Rules and the 2026-04-17 security review §M-8.
+            // A share-intent provider that hands us a multi-gigabyte
+            // file would otherwise fill the cache directory before
+            // the viewer realises anything is wrong.
+            let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey])
+            if let size = resourceValues.fileSize,
+               size > FileOpenChannel.maxFileBytes {
+                NSLog(
+                    "[FileOpenChannel] dropping oversized share-intent file (%d bytes > %d cap)",
+                    size, FileOpenChannel.maxFileBytes
+                )
+                return
+            }
             try FileManager.default.copyItem(at: url, to: dest)
+            // Belt-and-suspenders check — some providers omit the
+            // size key. Remove the copy if the post-copy measurement
+            // shows it exceeded the cap.
+            let copiedSize = (try? dest.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0
+            if copiedSize > FileOpenChannel.maxFileBytes {
+                try? FileManager.default.removeItem(at: dest)
+                NSLog(
+                    "[FileOpenChannel] deleted oversized copy (%d bytes > %d cap)",
+                    copiedSize, FileOpenChannel.maxFileBytes
+                )
+                return
+            }
             emit(dest.path)
         } catch {
             if scoped {

@@ -47,6 +47,13 @@ import UniformTypeIdentifiers
 final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
   static let channelName = "dev.markdownviewer/library_folders"
 
+  /// Hard cap on the size of a single file returned through
+  /// `readFileBytes`. Matches the per-file cap documented in
+  /// `docs/standards/security-standards.md` §File System Rules.
+  /// Loading a file larger than this fully into memory risks an OOM
+  /// crash on low-end devices.
+  static let maxFileBytes: Int = 10 * 1024 * 1024
+
   /// Registers the channel against the main Flutter messenger. Called
   /// exactly once from `AppDelegate` on launch. The singleton instance
   /// is retained by the method-call handler closure so the delegate
@@ -315,7 +322,34 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
         ))
         return
       }
+      // Per-file size cap — see `docs/standards/security-standards.md`
+      // §File System Rules and the 2026-04-17 security review §M-5.
+      // A user accidentally dropping a large log into a bookmarked
+      // folder (or a malicious actor planting a big `.md`) would
+      // otherwise load the entire file into RAM and OOM the process.
+      let resourceValues = try fileUrl.resourceValues(forKeys: [.fileSizeKey])
+      if let size = resourceValues.fileSize, size > Self.maxFileBytes {
+        result(FlutterError(
+          code: "FILE_TOO_LARGE",
+          message:
+            "file \(size) bytes exceeds the \(Self.maxFileBytes)-byte cap",
+          details: nil
+        ))
+        return
+      }
       let bytes = try Data(contentsOf: fileUrl)
+      if bytes.count > Self.maxFileBytes {
+        // Defensive post-read check for filesystems that do not
+        // populate `fileSizeKey` (unusual, but network mounts like
+        // SMB / WebDAV / some iCloud states can omit it).
+        result(FlutterError(
+          code: "FILE_TOO_LARGE",
+          message:
+            "file \(bytes.count) bytes exceeds the \(Self.maxFileBytes)-byte cap",
+          details: nil
+        ))
+        return
+      }
       result(FlutterStandardTypedData(bytes: bytes))
     } catch {
       result(FlutterError(
