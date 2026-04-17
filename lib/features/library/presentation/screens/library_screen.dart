@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/app/router.dart';
@@ -157,15 +158,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             IconButton(
               icon: const Icon(Icons.sync),
               tooltip: l10n.syncRefreshTooltip,
-              onPressed: () {
-                final base =
-                    'https://github.com/${syncedRepo.owner}/${syncedRepo.repo}';
-                final url =
-                    syncedRepo.subPath.isNotEmpty
-                        ? '$base/tree/${syncedRepo.ref}/${syncedRepo.subPath}'
-                        : '$base/tree/${syncedRepo.ref}';
-                context.push(RepoSyncRoute.location(url: url));
-              },
+              onPressed:
+                  () => context.push(
+                    RepoSyncRoute.location(url: syncedRepo.githubTreeUrl),
+                  ),
             ),
           IconButton(
             icon: const Icon(Icons.settings_outlined),
@@ -373,12 +369,7 @@ class _RecentsEmptyWithSources extends ConsumerWidget {
     );
     if (!context.mounted) return;
     if (action == 'update') {
-      final base = 'https://github.com/${repo.owner}/${repo.repo}';
-      final url =
-          repo.subPath.isNotEmpty
-              ? '$base/tree/${repo.ref}/${repo.subPath}'
-              : '$base/tree/${repo.ref}';
-      unawaited(context.push(RepoSyncRoute.location(url: url)));
+      unawaited(context.push(RepoSyncRoute.location(url: repo.githubTreeUrl)));
     } else if (action == 'remove') {
       await ref.read(syncedReposStoreProvider).delete(repo.id);
       ref.invalidate(syncedReposProvider);
@@ -815,6 +806,10 @@ class _LibraryPopulatedBody extends ConsumerWidget {
     );
     _clearDialogOpen = false;
     if (confirmed == true && context.mounted) {
+      // mediumImpact matches the destructive-action haptic pattern
+      // the viewer uses for bookmark save so the two surfaces feel
+      // consistent when the user clears state.
+      HapticFeedback.mediumImpact().ignore();
       ref.read(recentDocumentsControllerProvider.notifier).clear();
     }
   }

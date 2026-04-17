@@ -1043,9 +1043,15 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                 // bottom search bar. Height collapses to zero when
                 // search is inactive so the document fills the full
                 // viewport; expands to the bar's natural height when
-                // the user opens search.
+                // the user opens search. Respect the platform
+                // reduce-motion flag so vestibular-sensitive users
+                // get an immediate expand/collapse instead of a
+                // height tween.
                 AnimatedSize(
-                  duration: const Duration(milliseconds: 220),
+                  duration:
+                      MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 220),
                   curve: Curves.easeOutCubic,
                   child:
                       _searchActive
