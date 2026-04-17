@@ -9,6 +9,40 @@ kept out of this file — they belong in commit history instead.
 
 ## [Unreleased]
 
+## [1.0.2] — 2026-04-17
+
+### Changed
+- Release pipeline now builds the Android AAB and iOS IPA with
+  `--obfuscate --split-debug-info=build/symbols` and Android's
+  R8 / `shrinkResources` pass enabled. The resulting AAB is
+  ~15–20% smaller — a shorter download for users on slower
+  networks and a smaller cold-start code-load cost on older
+  devices. `flutter symbolize` rehydrates Sentry stack traces
+  from the artifacts the release workflow now attaches to each
+  GitHub Release (`android-symbols`, `ios-symbols`, 90-day
+  retention).
+
+### Fixed
+- Reading-time estimate is now computed once per document and
+  cached in an `Expando` — the full-source whitespace split that
+  produced the `viewerReadingTime` label used to re-run on every
+  scroll tick, theme flip, and search-highlight refresh.
+- The one-shot reading-position restore no longer dispatches its
+  guarded no-op method on every rebuild of the viewer's `data:`
+  branch — the `_restoreAttempted` check is hoisted to the call
+  site so rebuilds long after the restore already fired skip the
+  method dispatch entirely.
+
+### Internal
+- `SearchHighlightState` gained value equality so any downstream
+  `updateShouldNotify` / `Selector` that we plug in later can
+  short-circuit when the search state has not actually changed.
+- `docs/standards/performance-standards.md` targets cross-checked
+  against hot paths; seven items confirmed already-optimal
+  (mermaid LRU cache, footnote / mermaid-code Expandos, scroll
+  listener change-detect, search-scan isolate + debounce,
+  `ref.watch` scoping, stateless parser, router builders).
+
 ## [1.0.1] — 2026-04-17
 
 ### Fixed
@@ -202,7 +236,8 @@ tracked in `docs/roadmap.md`.
   qualifier because that form evaluates inconsistently across archive
   phases.
 
-[Unreleased]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/cemililik/markdown-viewer-mobile/compare/v0.2.2...v1.0.0
 [0.2.2]: https://github.com/cemililik/markdown-viewer-mobile/compare/v0.2.1...v0.2.2

@@ -118,6 +118,25 @@ android {
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }
+            // R8 / resource shrinking — requested by the 2026-04-17
+            // security review (L-3) and the performance audit. Cuts
+            // roughly 15–20 % off the shipped AAB by stripping unused
+            // Kotlin metadata, obfuscating class names, and pruning
+            // unreachable resource entries.
+            //
+            // `proguard-android-optimize.txt` is AGP's default rule
+            // file with optimisation passes enabled. The additional
+            // `proguard-rules.pro` (committed at the sibling path) is
+            // where project-specific keep-rules live — anything that
+            // gets reflected on at runtime (Sentry, Drift codegen,
+            // GoRouter's generated route table) needs an explicit
+            // keep rule there.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
         }
     }
 }

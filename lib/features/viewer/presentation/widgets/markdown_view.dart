@@ -58,11 +58,19 @@ final MarkdownGenerator _markdownGenerator = MarkdownGenerator(
 /// reading speed and not worth the cost of a full-text strip.
 ///
 /// Returns at least 1 so even a one-line document shows "1 min read".
-int _estimateReadingMinutes(String source) {
+int _estimateReadingMinutes(Document document) {
+  final cached = _readingMinutesCache[document];
+  if (cached != null) return cached;
   final wordCount =
-      source.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).length;
+      document.source
+          .trim()
+          .split(RegExp(r'\s+'))
+          .where((w) => w.isNotEmpty)
+          .length;
   final minutes = (wordCount / 200).ceil();
-  return minutes < 1 ? 1 : minutes;
+  final result = minutes < 1 ? 1 : minutes;
+  _readingMinutesCache[document] = result;
+  return result;
 }
 
 /// Task-list checkbox builder used by the [CheckBoxConfig]
@@ -108,6 +116,28 @@ class SearchHighlightState {
   final List<int> matchOffsets;
   final int queryLength;
   final int currentMatchIndex;
+
+  // Value equality so `widget.searchHighlight != oldWidget.searchHighlight`
+  // checks — and any `Selector` / `updateShouldNotify` path we plug in
+  // later — can short-circuit when the search state has not actually
+  // changed. `matchOffsets` uses identity equality because the list is
+  // immutable from the viewer's perspective (a new list is assigned on
+  // every scan) and element-wise comparison would defeat the point on
+  // documents with many matches.
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SearchHighlightState &&
+          identical(matchOffsets, other.matchOffsets) &&
+          queryLength == other.queryLength &&
+          currentMatchIndex == other.currentMatchIndex);
+
+  @override
+  int get hashCode => Object.hash(
+    identityHashCode(matchOffsets),
+    queryLength,
+    currentMatchIndex,
+  );
 }
 
 /// Renders a parsed [Document] using `markdown_widget`.
@@ -148,6 +178,17 @@ class SearchHighlightState {
 /// cache never pins an otherwise-dead object alive.
 final Expando<List<String>> _mermaidCodesCache = Expando<List<String>>(
   'markdown_view.mermaidCodes',
+);
+
+/// Per-[Document] cache for [_estimateReadingMinutes]. The helper
+/// splits the entire source on whitespace with a compiled regex —
+/// cheap per call, but `MarkdownView.build` runs on every scroll
+/// tick, theme change, and search-highlight refresh, so the word-
+/// count scan would otherwise re-run tens of times per second on
+/// an actively-read document. Expando keying on the Document
+/// instance means a reload (new Document) naturally invalidates.
+final Expando<int> _readingMinutesCache = Expando<int>(
+  'markdown_view.readingMinutes',
 );
 
 /// Per-document cache for [extractFootnotes] output. Same rationale
@@ -402,9 +443,7 @@ class MarkdownView extends StatelessWidget {
       Padding(
         padding: const EdgeInsets.only(bottom: 4),
         child: Text(
-          context.l10n.viewerReadingTime(
-            _estimateReadingMinutes(document.source),
-          ),
+          context.l10n.viewerReadingTime(_estimateReadingMinutes(document)),
           style: theme.textTheme.labelSmall?.copyWith(
             color: scheme.onSurfaceVariant,
           ),

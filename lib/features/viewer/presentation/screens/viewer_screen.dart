@@ -1093,7 +1093,13 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
             );
           },
           data: (document) {
-            _maybeRestoreReadingPosition();
+            // Gate the one-shot restore call before the method
+            // dispatch — the `data:` closure runs on every rebuild
+            // (scroll tick, theme flip, search-highlight refresh,
+            // reading-settings change) and the vast majority of
+            // those rebuilds happen long after the restore
+            // already fired.
+            if (!_restoreAttempted) _maybeRestoreReadingPosition();
             final queryLength = _searchController.text.trim().length;
             return Column(
               children: [
