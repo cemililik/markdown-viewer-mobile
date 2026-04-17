@@ -29,8 +29,7 @@ timeline
     2026-04-15 : v0.2.1 (Sentry + onboarding)
                : v0.2.2 (Xcode iOS 26 pin)
     2026-04-17 : v1.0.0 (first public)
-               : v1.0.1 (anchor + cross-file fix)
-               : v1.0.2 (perf + release hardening)
+               : v1.0.1 (nav fixes + perf + release hardening)
 ```
 
 ## Day-in-the-life of a release

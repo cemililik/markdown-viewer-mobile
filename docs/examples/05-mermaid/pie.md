@@ -8,7 +8,7 @@ matter less than the distribution.
 
 ```mermaid
 pie showData
-    title Release AAB composition (v1.0.2 — ~60 MB)
+    title Release AAB composition (v1.0.1 — ~60 MB)
     "libflutter.so" : 33
     "libapp.so (our Dart)" : 32
     "Obfuscation symbols (not shipped)" : 22

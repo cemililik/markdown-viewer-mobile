@@ -179,7 +179,7 @@ CREATE TABLE synced_repos (
 ```json
 {
   "name": "markdown_viewer",
-  "version": "1.0.2+1",
+  "version": "1.0.1+1",
   "dependencies": {
     "flutter_riverpod": "^3.2.1",
     "markdown_widget": "^2.3.2+8",

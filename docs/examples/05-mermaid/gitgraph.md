@@ -44,19 +44,19 @@ gitGraph
 ```mermaid
 gitGraph
     commit id: "v1.0.0"
-    branch hotfix/anchor
-    checkout hotfix/anchor
+    branch hotfix/nav
+    checkout hotfix/nav
     commit id: "anchor encoding"
     commit id: "cross-file links"
-    checkout main
-    merge hotfix/anchor id: "v1.0.1"
+    commit id: "TOC direct scroll"
     branch perf/hardening
     checkout perf/hardening
     commit id: "R8 + obfuscate"
     commit id: "reading-time cache"
-    commit id: "TOC direct scroll"
+    checkout hotfix/nav
+    merge perf/hardening
     checkout main
-    merge perf/hardening id: "v1.0.2"
+    merge hotfix/nav id: "v1.0.1"
 ```
 
 ## Cherry-picks

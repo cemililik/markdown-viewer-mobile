@@ -29,7 +29,7 @@ gantt
     Code review                   :done, p5a, 2026-04-15, 2d
     Security review               :done, p5b, after p5a, 1d
     v1.0.0 tag                    :milestone, p5m, 2026-04-17, 0d
-    v1.0.1 + v1.0.2 patches       :done, p5c, after p5m, 1d
+    v1.0.1 patch                  :done, p5c, after p5m, 1d
 ```
 
 ## Parallel tracks
