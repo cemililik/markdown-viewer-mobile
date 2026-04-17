@@ -109,11 +109,28 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Removes every `synced_files` row for [repoId] whose `remote_path`
-  /// is NOT in [retainedPaths]. Single SQL statement (a `DELETE ...
-  /// WHERE NOT IN`) instead of per-row round trips so a large repo
-  /// can be cleaned up in one transaction. When [retainedPaths] is
-  /// empty the condition degenerates to "delete every row for this
-  /// repo" which is the same behaviour as [deleteFilesForRepo].
+  /// is NOT in [retainedPaths].
+  ///
+  /// Implementation is "compute orphans in Dart, delete in batches":
+  ///
+  /// 1. Fetch the current row list (one SQL round trip).
+  /// 2. Subtract `retainedPaths` in Dart to get the orphan set —
+  ///    typically a handful of files a re-sync removed from the
+  ///    remote, occasionally the whole repo on a renamed/deleted
+  ///    subPath.
+  /// 3. `DELETE ... WHERE remote_path IN (?, ?, …)` in chunks of
+  ///    [_sqliteVariableBatchSize].
+  ///
+  /// Earlier revisions used `isNotIn(retainedPaths)` as a single
+  /// statement — concise but crashes with "too many SQL variables"
+  /// once [retainedPaths] exceeds the platform's
+  /// `SQLITE_LIMIT_VARIABLE_NUMBER` (999 on stock SQLite; some builds
+  /// raise it to 32_766 but the app can't assume that). Binding the
+  /// smaller orphan list in batches of 500 is immune to that limit
+  /// regardless of how many files the retained set contains.
+  ///
+  /// When [retainedPaths] is empty the method short-circuits to
+  /// [deleteFilesForRepo] (one SQL DELETE, no variables bound).
   Future<void> deleteFilesNotIn({
     required int repoId,
     required Set<String> retainedPaths,
@@ -122,12 +139,30 @@ class AppDatabase extends _$AppDatabase {
       await deleteFilesForRepo(repoId);
       return;
     }
-    await (delete(syncedFiles)..where(
-      (t) =>
-          t.repoId.equals(repoId) &
-          t.remotePath.isNotIn(retainedPaths.toList()),
-    )).go();
+    final existing = await getFilesForRepo(repoId);
+    final orphans = <String>[
+      for (final row in existing)
+        if (!retainedPaths.contains(row.remotePath)) row.remotePath,
+    ];
+    if (orphans.isEmpty) return;
+    // Batch the IN-list so a repo with many stale paths cannot
+    // trip the SQLite variable limit.
+    for (var i = 0; i < orphans.length; i += _sqliteVariableBatchSize) {
+      final chunk = orphans.sublist(
+        i,
+        (i + _sqliteVariableBatchSize).clamp(0, orphans.length),
+      );
+      await (delete(
+        syncedFiles,
+      )..where((t) => t.repoId.equals(repoId) & t.remotePath.isIn(chunk))).go();
+    }
   }
+
+  /// Conservative batch size that fits well under the stock SQLite
+  /// `SQLITE_LIMIT_VARIABLE_NUMBER` (999) while keeping round-trip
+  /// count low on repos with thousands of removed files. Plus one
+  /// for the `repoId` bind leaves plenty of headroom.
+  static const int _sqliteVariableBatchSize = 500;
 }
 
 // ── Connection factory ─────────────────────────────────────────────────────
