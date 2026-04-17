@@ -514,7 +514,10 @@ class _MermaidImageState extends State<_MermaidImage>
                       top: 8,
                       left: 8,
                       child: AnimatedOpacity(
-                        duration: const Duration(milliseconds: 150),
+                        duration:
+                            MediaQuery.disableAnimationsOf(context)
+                                ? Duration.zero
+                                : const Duration(milliseconds: 150),
                         opacity: _isTransformed ? 1 : 0,
                         child: IgnorePointer(
                           ignoring: !_isTransformed,

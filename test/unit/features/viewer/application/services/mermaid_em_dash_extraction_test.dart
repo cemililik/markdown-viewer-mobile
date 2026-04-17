@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:markdown_viewer/features/viewer/data/services/pdf_exporter.dart';
+import 'package:markdown_viewer/features/viewer/application/services/pdf_exporter.dart';
 
 /// Diagnostic test for the gantt rendering bug reported against
 /// the ForgeLM `05_content_strategy.md` document. The user's gantt

@@ -288,7 +288,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLanguageTitle => 'Language';
 
   @override
-  String get settingsLanguageSystem => 'System default';
+  String get settingsLanguageSystem => 'System';
 
   @override
   String get settingsLanguageEnglish => 'English';
@@ -429,7 +429,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsReadingWidthTitle => 'Reading width';
 
   @override
-  String get settingsReadingWidthComfortable => 'Comfortable';
+  String get settingsReadingWidthComfortable => 'Comfort';
 
   @override
   String get settingsReadingWidthWide => 'Wide';
@@ -682,6 +682,14 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get errorNetworkUnavailable =>
       'No network connection. Sync needs internet access.';
+
+  @override
+  String get errorAuthFailed =>
+      'Authentication failed. Check your personal access token in Settings and try again.';
+
+  @override
+  String get errorCrashReportingToggleFailed =>
+      'Could not update crash-reporting preference. Please try again.';
 
   @override
   String get errorUnsupportedProvider =>

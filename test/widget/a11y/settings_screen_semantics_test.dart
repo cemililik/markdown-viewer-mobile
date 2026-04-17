@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/features/observability/application/observability_providers.dart';
-import 'package:markdown_viewer/features/observability/data/consent_store.dart';
+import 'package:markdown_viewer/features/observability/data/consent_store_impl.dart';
+import 'package:markdown_viewer/features/observability/domain/repositories/consent_store.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
-import 'package:markdown_viewer/features/settings/data/settings_store.dart';
+import 'package:markdown_viewer/features/settings/data/settings_store_impl.dart';
+import 'package:markdown_viewer/features/settings/domain/repositories/settings_store.dart';
 import 'package:markdown_viewer/features/settings/presentation/screens/settings_screen.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,8 +18,8 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final prefs = await SharedPreferences.getInstance();
-    store = SettingsStore(prefs);
-    consentStore = ConsentStore(prefs);
+    store = SettingsStoreImpl(prefs);
+    consentStore = ConsentStoreImpl(prefs);
   });
 
   Widget harness() {

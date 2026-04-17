@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/markdown_view.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
@@ -21,6 +22,15 @@ void main() {
     VisibilityDetectorController.instance.updateInterval =
         originalUpdateInterval;
   });
+
+  // `markdown_widget` instantiates a `TapGestureRecognizer` per inline
+  // link / footnote reference and never disposes them when the widget
+  // unmounts (upstream issue, not under our control). Ignore that
+  // class for this file so the package's bug does not mask real
+  // application-side leaks; everything else continues to be tracked.
+  LeakTesting.settings = LeakTesting.settings.withIgnored(
+    classes: const ['TapGestureRecognizer'],
+  );
 
   Document parseFixture(String name) => parseMarkdownFixture(name);
 

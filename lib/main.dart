@@ -5,19 +5,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:logger/logger.dart';
 import 'package:markdown_viewer/app/app.dart';
 import 'package:markdown_viewer/core/logging/logger.dart';
+import 'package:markdown_viewer/core/path/sandbox_path.dart';
+import 'package:markdown_viewer/features/library/application/folder_file_materializer_provider.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
 import 'package:markdown_viewer/features/library/data/repositories/library_folders_store_impl.dart';
 import 'package:markdown_viewer/features/library/data/repositories/recent_documents_store_impl.dart';
 import 'package:markdown_viewer/features/library/data/services/folder_enumerator_impl.dart';
+import 'package:markdown_viewer/features/library/data/services/folder_file_materializer.dart';
+import 'package:markdown_viewer/features/library/data/services/native_library_folders_channel.dart';
 import 'package:markdown_viewer/features/observability/application/observability_providers.dart';
-import 'package:markdown_viewer/features/observability/data/consent_store.dart';
+import 'package:markdown_viewer/features/observability/data/consent_store_impl.dart';
 import 'package:markdown_viewer/features/onboarding/application/onboarding_providers.dart';
 import 'package:markdown_viewer/features/onboarding/data/onboarding_store.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
 import 'package:markdown_viewer/features/repo_sync/data/database/app_database.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
-import 'package:markdown_viewer/features/settings/data/settings_store.dart';
+import 'package:markdown_viewer/features/settings/data/settings_store_impl.dart';
 import 'package:markdown_viewer/features/viewer/application/document_repository_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
@@ -74,6 +78,14 @@ Future<void> main() async {
     return true;
   };
 
+  // Cache the sandbox roots BEFORE any stored paths are read back.
+  // `RecentDocumentsStoreImpl.read` uses the cached roots to rewrite
+  // portable `sandbox:cache:foo.md` tokens to their current absolute
+  // form, which is necessary after an iOS dev reinstall changes the
+  // container UUID (and keeps production resilient against any future
+  // fresh-install scenarios).
+  await SandboxPath.initialize();
+
   // Preload SharedPreferences so the settings controllers can seed
   // their initial state synchronously — otherwise the very first
   // frame would render with the default light theme / system locale
@@ -81,12 +93,12 @@ Future<void> main() async {
   // backs the reading-position store so its synchronous `read` can
   // run inside a post-frame callback without an extra disk hop.
   final prefs = await SharedPreferences.getInstance();
-  final settingsStore = SettingsStore(prefs);
+  final settingsStore = SettingsStoreImpl(prefs);
   final readingPositionStore = ReadingPositionStoreImpl(prefs, logger: logger);
   final recentDocumentsStore = RecentDocumentsStoreImpl(prefs);
-  final libraryFoldersStore = LibraryFoldersStoreImpl(prefs);
+  final libraryFoldersStore = LibraryFoldersStoreImpl(prefs, logger: logger);
   final onboardingStore = OnboardingStore(prefs);
-  final consentStore = ConsentStore(prefs);
+  final consentStore = ConsentStoreImpl(prefs);
   final appDatabase = AppDatabase();
 
   // Sentry — initialise only when the user has opted in AND a DSN
@@ -125,6 +137,14 @@ Future<void> main() async {
         consentStoreProvider.overrideWithValue(consentStore),
         folderEnumeratorProvider.overrideWithValue(
           const FolderEnumeratorImpl(),
+        ),
+        nativeLibraryFoldersChannelProvider.overrideWithValue(
+          NativeLibraryFoldersChannelImpl(),
+        ),
+        folderFileMaterializerProvider.overrideWith(
+          (ref) => FolderFileMaterializerImpl(
+            channel: ref.watch(nativeLibraryFoldersChannelProvider),
+          ),
         ),
         appDatabaseProvider.overrideWith((ref) {
           ref.onDispose(appDatabase.close);

@@ -19,7 +19,7 @@ GoRouter router(Ref ref) {
   // the onboarding state changes at runtime — e.g. a debug reset from the
   // settings screen via OnboardingController.reset().
   ref.watch(shouldShowOnboardingProvider);
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: LibraryRoute.path,
     // Sentry screen-name tracking — records route transitions as
     // breadcrumbs and performance spans when Sentry is active.
@@ -28,10 +28,12 @@ GoRouter router(Ref ref) {
       SentryNavigatorObserver(
         // Redact route arguments from Sentry breadcrumbs and spans.
         // ViewerRoute passes absolute file paths as arguments — these
-        // are PII under ADR-0014's security rules.
+        // are PII under ADR-0014's security rules. When `settings` is
+        // null (cold-start pop to root) we still emit a "/" breadcrumb
+        // instead of `null`, otherwise the very first screen the user
+        // lands on is invisible in the navigation history.
         routeNameExtractor:
-            (settings) =>
-                settings == null ? null : RouteSettings(name: settings.name),
+            (settings) => RouteSettings(name: settings?.name ?? '/'),
       ),
     ],
     // Global redirect guards the onboarding flow. On every navigation
@@ -96,6 +98,14 @@ GoRouter router(Ref ref) {
       ),
     ],
   );
+  // Wire `GoRouter.dispose` into the provider lifecycle so the delegate
+  // and information provider release their listeners when the
+  // ProviderScope tears down (app shutdown, or a fresh container in
+  // tests). Without this hop the router internals would only be GC'd
+  // by reachability, leaving subscriptions behind that surface as
+  // leak_tracker `notDisposed` failures in widget tests.
+  ref.onDispose(router.dispose);
+  return router;
 }
 
 abstract final class LibraryRoute {

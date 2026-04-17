@@ -286,7 +286,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get settingsLanguageTitle => 'Dil';
 
   @override
-  String get settingsLanguageSystem => 'Sistem varsayılanı';
+  String get settingsLanguageSystem => 'Sistem';
 
   @override
   String get settingsLanguageEnglish => 'İngilizce';
@@ -677,6 +677,14 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get errorNetworkUnavailable =>
       'Ağ bağlantısı yok. Senkronizasyon için internet gerekli.';
+
+  @override
+  String get errorAuthFailed =>
+      'Kimlik doğrulama başarısız. Ayarlar\'daki kişisel erişim anahtarınızı kontrol edip tekrar deneyin.';
+
+  @override
+  String get errorCrashReportingToggleFailed =>
+      'Çökme raporlama tercihi güncellenemedi. Lütfen tekrar deneyin.';
 
   @override
   String get errorUnsupportedProvider =>

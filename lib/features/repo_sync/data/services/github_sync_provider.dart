@@ -27,6 +27,38 @@ class GitHubSyncProvider implements RepoSyncProvider {
   static const String _apiBase = 'https://api.github.com';
   static const String _rawBase = 'https://raw.githubusercontent.com';
 
+  /// Per-file download cap from `security-standards.md` §Network
+  /// Rules — protects against a malicious or corrupted repo serving a
+  /// multi-GB payload that would OOM the client.
+  static const int _maxFileBytes = 5 * 1024 * 1024;
+
+  /// Per discovery-call cap (Trees API JSON, Contents API JSON,
+  /// default-branch metadata) from the same standards section.
+  static const int _maxDiscoveryBytes = 25 * 1024 * 1024;
+
+  /// Builds a Dio [CancelToken] + `onReceiveProgress` pair that
+  /// aborts the request as soon as either the advertised content-
+  /// length or the cumulative received bytes exceed [maxBytes].
+  ///
+  /// Returning both pieces together keeps the call sites compact —
+  /// every GET gets `cancelToken: tok, onReceiveProgress: prog` and
+  /// the caller does not have to repeat the threshold logic.
+  ({CancelToken token, void Function(int, int) onProgress}) _sizeCap(
+    int maxBytes,
+    String label,
+  ) {
+    final token = CancelToken();
+    void onProgress(int received, int total) {
+      if (total > 0 && total > maxBytes) {
+        token.cancel('$label advertised $total bytes > cap $maxBytes');
+      } else if (received > maxBytes) {
+        token.cancel('$label received $received bytes > cap $maxBytes');
+      }
+    }
+
+    return (token: token, onProgress: onProgress);
+  }
+
   @override
   bool canHandle(Uri url) => url.host == 'github.com';
 
@@ -104,8 +136,17 @@ class GitHubSyncProvider implements RepoSyncProvider {
     // sync entirely. The user still gets the file, just without the
     // skip-unchanged optimisation.
     if (locator.singleFile) {
+      // URI-encode each ref / sub-path segment so branch names with
+      // slashes (`feature/foo`) and paths with spaces or unicode
+      // survive the round-trip. Owner and repo are restricted by
+      // GitHub to `[A-Za-z0-9._-]`, no encoding required.
+      final rawRef = locator.ref.split('/').map(Uri.encodeComponent).join('/');
+      final rawSub = locator.subPath
+          .split('/')
+          .map(Uri.encodeComponent)
+          .join('/');
       final rawUrl =
-          '$_rawBase/${locator.owner}/${locator.repo}/${locator.ref}/${locator.subPath}';
+          '$_rawBase/${locator.owner}/${locator.repo}/$rawRef/$rawSub';
       String sha = '';
       try {
         final meta = await _fetchBlobMetadata(
@@ -149,6 +190,10 @@ class GitHubSyncProvider implements RepoSyncProvider {
             : locator.subPath.endsWith('/')
             ? locator.subPath
             : '${locator.subPath}/';
+    // Computed once — the encoded ref is the same for every blob in
+    // this tree. Previous revisions recomputed it inside the loop,
+    // wasting a split+map+join per file on large repos.
+    final rawRef = locator.ref.split('/').map(Uri.encodeComponent).join('/');
 
     for (final entry in tree) {
       if (entry is! Map<String, dynamic>) continue;
@@ -160,8 +205,9 @@ class GitHubSyncProvider implements RepoSyncProvider {
 
       final sha = entry['sha'] as String? ?? '';
       final size = (entry['size'] as num?)?.toInt() ?? 0;
+      final rawPath = path.split('/').map(Uri.encodeComponent).join('/');
       final rawUrl =
-          '$_rawBase/${locator.owner}/${locator.repo}/${locator.ref}/$path';
+          '$_rawBase/${locator.owner}/${locator.repo}/$rawRef/$rawPath';
 
       yield RemoteFile(path: path, sha: sha, size: size, rawUrl: rawUrl);
     }
@@ -169,14 +215,27 @@ class GitHubSyncProvider implements RepoSyncProvider {
 
   @override
   Future<List<int>> downloadRaw(RemoteFile file) async {
+    final cap = _sizeCap(_maxFileBytes, 'file ${file.path}');
     try {
       final response = await dio.get<List<int>>(
         file.rawUrl,
         options: Options(responseType: ResponseType.bytes),
+        cancelToken: cap.token,
+        onReceiveProgress: cap.onProgress,
       );
       final data = response.data;
       if (data == null) {
         throw const UnknownFailure(message: 'Empty response body');
+      }
+      // Belt-and-suspenders: a server that omits Content-Length and
+      // delivers the payload in a single chunk skips `onReceiveProgress`
+      // between "0 bytes" and "done", so re-check the final size here.
+      if (data.length > _maxFileBytes) {
+        throw UnknownFailure(
+          message:
+              'File ${file.path} exceeds the '
+              '$_maxFileBytes-byte per-file cap',
+        );
       }
       return data;
     } on DioException catch (e) {
@@ -187,9 +246,12 @@ class GitHubSyncProvider implements RepoSyncProvider {
   // ── Private helpers ──────────────────────────────────────────────────
 
   Future<String> _defaultBranch(String owner, String repo) async {
+    final cap = _sizeCap(_maxDiscoveryBytes, 'repo metadata $owner/$repo');
     try {
       final response = await dio.get<Map<String, dynamic>>(
         '$_apiBase/repos/$owner/$repo',
+        cancelToken: cap.token,
+        onReceiveProgress: cap.onProgress,
       );
       final data = response.data;
       final branch = data?['default_branch'];
@@ -207,6 +269,7 @@ class GitHubSyncProvider implements RepoSyncProvider {
     required String repo,
     required String ref,
   }) async {
+    final cap = _sizeCap(_maxDiscoveryBytes, 'tree $owner/$repo@$ref');
     try {
       // Request raw text so we can decode on a background isolate.
       // Large repos return multi-MB JSON; decoding inline blocks the
@@ -215,9 +278,21 @@ class GitHubSyncProvider implements RepoSyncProvider {
         '$_apiBase/repos/$owner/$repo/git/trees/$ref',
         queryParameters: {'recursive': '1'},
         options: Options(responseType: ResponseType.plain),
+        cancelToken: cap.token,
+        onReceiveProgress: cap.onProgress,
       );
       final body = response.data;
       if (body == null || body.isEmpty) return const {};
+      // UTF-8 bytes may slightly exceed `body.length` (String is
+      // UTF-16 code units), but we already enforced the byte-level
+      // cap via `onReceiveProgress`. This guard catches the same
+      // single-chunk edge case as `downloadRaw`.
+      if (body.length > _maxDiscoveryBytes) {
+        throw const UnknownFailure(
+          message:
+              'Tree response exceeds the $_maxDiscoveryBytes-byte discovery cap',
+        );
+      }
       return await Isolate.run(() => json.decode(body) as Map<String, dynamic>);
     } on DioException catch (e) {
       throw _mapDioError(e);
@@ -234,11 +309,14 @@ class GitHubSyncProvider implements RepoSyncProvider {
     required String ref,
     required String path,
   }) async {
+    final cap = _sizeCap(_maxDiscoveryBytes, 'blob metadata $path');
     try {
       final encodedPath = path.split('/').map(Uri.encodeComponent).join('/');
       final response = await dio.get<Map<String, dynamic>>(
         '$_apiBase/repos/$owner/$repo/contents/$encodedPath',
         queryParameters: {'ref': ref},
+        cancelToken: cap.token,
+        onReceiveProgress: cap.onProgress,
       );
       return response.data ?? const {};
     } on DioException catch (e) {
@@ -273,13 +351,8 @@ class GitHubSyncProvider implements RepoSyncProvider {
       // 401 = invalid or expired token. A missing token on a public
       // repo never hits this branch — GitHub answers with a 200 — so
       // this is always actionable for the user (regenerate the PAT
-      // and paste it again). Reuses RateLimitedFailure's "add a token"
-      // UX slot because the user-facing recovery is the same shape:
-      // go to Settings, update your token, try again.
-      return RateLimitedFailure(
-        message: 'Invalid or expired GitHub token',
-        cause: e,
-      );
+      // and paste it again).
+      return AuthFailure(message: 'Invalid or expired GitHub token', cause: e);
     }
     if (status == 403) {
       final remaining = e.response?.headers.value('x-ratelimit-remaining');
@@ -290,9 +363,10 @@ class GitHubSyncProvider implements RepoSyncProvider {
         );
       }
       // Non-rate-limit 403 = private repo without a PAT, SAML-enforced
-      // org the token cannot access, etc. Same user fix as 401, so
-      // the same Failure type keeps the message copy aligned.
-      return RateLimitedFailure(
+      // org the token cannot access, etc. Distinct from rate-limit
+      // because the user fix is different: update your token, not
+      // wait for a quota reset.
+      return AuthFailure(
         message: 'Access denied — repository may be private',
         cause: e,
       );

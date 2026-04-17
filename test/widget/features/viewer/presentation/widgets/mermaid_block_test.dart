@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
 import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/mermaid_block.dart';
@@ -24,6 +25,16 @@ MermaidRenderSuccess _successResult({double width = 200, double height = 60}) {
 }
 
 void main() {
+  // `Image.memory` registers `ImageStreamCompleterHandle` and the
+  // framework-internal `_LiveImage` against the global Flutter image
+  // cache. The cache deliberately retains both past widget tear-down
+  // for reuse, so leak_tracker sees them as undisposed even though
+  // no application code is leaking. Ignore both classes for this
+  // file only.
+  LeakTesting.settings = LeakTesting.settings.withIgnored(
+    classes: const ['ImageStreamCompleterHandle', '_LiveImage'],
+  );
+
   Widget harness({
     required MermaidRenderer renderer,
     Locale locale = const Locale('en'),

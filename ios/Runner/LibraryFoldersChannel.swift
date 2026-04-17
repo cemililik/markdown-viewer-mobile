@@ -47,6 +47,13 @@ import UniformTypeIdentifiers
 final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
   static let channelName = "dev.markdownviewer/library_folders"
 
+  /// Hard cap on the size of a single file returned through
+  /// `readFileBytes`. Matches the per-file cap documented in
+  /// `docs/standards/security-standards.md` §File System Rules.
+  /// Loading a file larger than this fully into memory risks an OOM
+  /// crash on low-end devices.
+  static let maxFileBytes: Int = 10 * 1024 * 1024
+
   /// Registers the channel against the main Flutter messenger. Called
   /// exactly once from `AppDelegate` on launch. The singleton instance
   /// is retained by the method-call handler closure so the delegate
@@ -147,7 +154,28 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
     let started = url.startAccessingSecurityScopedResource()
     defer { if started { url.stopAccessingSecurityScopedResource() } }
 
+    // If the scope claim failed we must NOT attempt to build a
+    // security-scoped bookmark — the call raises, but more
+    // importantly a bookmark built without the scope would be
+    // unresolvable with `.withSecurityScope` later, leading to a
+    // silently-broken folder that only surfaces on first cold start.
+    if !started {
+      result(FlutterError(
+        code: "BOOKMARK_FAILED",
+        message: "could not claim security scope on picked folder",
+        details: nil
+      ))
+      return
+    }
+
     do {
+      // `.withSecurityScope` is macOS-only — on iOS the URL returned
+      // by UIDocumentPickerViewController is already security-scoped
+      // and `bookmarkData(options: [])` preserves that scope through
+      // the round trip. `startAccessingSecurityScopedResource()`
+      // above is the load-bearing call; the option flag is a no-op
+      // here and was removed after Xcode flagged
+      // "'withSecurityScope' is unavailable in iOS".
       let bookmarkData = try url.bookmarkData(
         options: [],
         includingResourceValuesForKeys: nil,
@@ -158,10 +186,15 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
         "bookmark": bookmarkData.base64EncodedString(),
       ])
     } catch {
+      // `error.localizedDescription` can include the full user path
+      // (security-standards §Logs says "never log full filesystem
+      // paths"), so we surface the description in `details` for
+      // developer diagnostics but keep the user-facing `message` to
+      // a constant string.
       result(FlutterError(
         code: "BOOKMARK_FAILED",
-        message: "could not build security-scoped bookmark: \(error.localizedDescription)",
-        details: nil
+        message: "could not build security-scoped bookmark",
+        details: error.localizedDescription
       ))
     }
   }
@@ -289,7 +322,34 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
         ))
         return
       }
+      // Per-file size cap — see `docs/standards/security-standards.md`
+      // §File System Rules and the 2026-04-17 security review §M-5.
+      // A user accidentally dropping a large log into a bookmarked
+      // folder (or a malicious actor planting a big `.md`) would
+      // otherwise load the entire file into RAM and OOM the process.
+      let resourceValues = try fileUrl.resourceValues(forKeys: [.fileSizeKey])
+      if let size = resourceValues.fileSize, size > Self.maxFileBytes {
+        result(FlutterError(
+          code: "FILE_TOO_LARGE",
+          message:
+            "file \(size) bytes exceeds the \(Self.maxFileBytes)-byte cap",
+          details: nil
+        ))
+        return
+      }
       let bytes = try Data(contentsOf: fileUrl)
+      if bytes.count > Self.maxFileBytes {
+        // Defensive post-read check for filesystems that do not
+        // populate `fileSizeKey` (unusual, but network mounts like
+        // SMB / WebDAV / some iCloud states can omit it).
+        result(FlutterError(
+          code: "FILE_TOO_LARGE",
+          message:
+            "file \(bytes.count) bytes exceeds the \(Self.maxFileBytes)-byte cap",
+          details: nil
+        ))
+        return
+      }
       result(FlutterStandardTypedData(bytes: bytes))
     } catch {
       result(FlutterError(
@@ -360,17 +420,33 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
     }
     do {
       var isStale = false
+      // `.withSecurityScope` is macOS-only. On iOS the default
+      // resolve options preserve the scope from a bookmark originally
+      // captured through UIDocumentPickerViewController.
       let url = try URL(
         resolvingBookmarkData: data,
-        options: [.withSecurityScope],
+        options: [],
         relativeTo: nil,
         bookmarkDataIsStale: &isStale
       )
       if isStale {
         let started = url.startAccessingSecurityScopedResource()
         defer { if started { url.stopAccessingSecurityScopedResource() } }
+        // If we could not claim the scope we cannot mint a fresh
+        // bookmark either — report the stale state so the caller can
+        // prompt the user to re-pick the folder. Don't attempt
+        // bookmarkData() in that branch; it would throw
+        // NSFileReadNoPermission on out-of-sandbox URLs.
+        if !started {
+          result(FlutterError(
+            code: "BOOKMARK_STALE",
+            message: "bookmark is stale and could not be refreshed",
+            details: nil
+          ))
+          return nil
+        }
         let freshData = try url.bookmarkData(
-          options: [.withSecurityScope],
+          options: [],
           includingResourceValuesForKeys: nil,
           relativeTo: nil
         )

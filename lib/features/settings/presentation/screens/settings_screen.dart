@@ -174,7 +174,9 @@ class SettingsScreen extends ConsumerWidget {
       );
       messenger
         ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(l10n.errorUnknown)));
+        ..showSnackBar(
+          SnackBar(content: Text(l10n.errorCrashReportingToggleFailed)),
+        );
     }
   }
 

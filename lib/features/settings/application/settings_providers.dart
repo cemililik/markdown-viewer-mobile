@@ -1,8 +1,37 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:markdown_viewer/features/settings/data/settings_store.dart';
+import 'package:markdown_viewer/core/logging/logger.dart';
 import 'package:markdown_viewer/features/settings/domain/app_locale.dart';
 import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
 import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
+import 'package:markdown_viewer/features/settings/domain/repositories/settings_store.dart';
+
+/// Shared persistence tail for every settings-controller setter: fire
+/// the prefs write in the background so the UI does not block on
+/// disk I/O, but attach an error handler so a failure (e.g. a full
+/// disk on Android) is surfaced through the logger instead of being
+/// silently dropped by `.ignore()`.
+void _persistOrLog(Ref ref, Future<void> future, String label) {
+  future.onError((error, stackTrace) {
+    // Guard the logger call itself: a provider container that has
+    // been torn down (tests that exit mid-write, hot-restart during
+    // a pending persist) throws on `ref.read`. Without this catch
+    // the nested throw would be swallowed by the outer `.ignore()`
+    // and the original persistence failure would also vanish.
+    try {
+      ref
+          .read(appLoggerProvider)
+          .e(
+            'Failed to persist setting: $label',
+            error: error,
+            stackTrace: stackTrace,
+          );
+    } catch (_) {
+      // Last-resort swallow — there is no higher layer to surface
+      // this to and the original persist error is already lost at
+      // this point.
+    }
+  }).ignore();
+}
 
 /// Application-layer binding for the [SettingsStore] port. Thrown by
 /// default so a missing composition-root override (tests that forget
@@ -37,7 +66,11 @@ class ThemeModeController extends Notifier<AppThemeMode> {
       return;
     }
     state = mode;
-    ref.read(settingsStoreProvider).writeAppThemeMode(mode).ignore();
+    _persistOrLog(
+      ref,
+      ref.read(settingsStoreProvider).writeAppThemeMode(mode),
+      'themeMode=$mode',
+    );
   }
 }
 
@@ -61,7 +94,11 @@ class LocaleController extends Notifier<AppLocale> {
       return;
     }
     state = locale;
-    ref.read(settingsStoreProvider).writeLocale(locale).ignore();
+    _persistOrLog(
+      ref,
+      ref.read(settingsStoreProvider).writeLocale(locale),
+      'locale=$locale',
+    );
   }
 }
 
@@ -93,19 +130,31 @@ class ReadingSettingsController extends Notifier<ReadingSettings> {
     );
     if ((clamped - state.fontScale).abs() < 1e-6) return;
     state = state.copyWith(fontScale: clamped);
-    ref.read(settingsStoreProvider).writeReadingSettings(state).ignore();
+    _persistOrLog(
+      ref,
+      ref.read(settingsStoreProvider).writeReadingSettings(state),
+      'readingSettings',
+    );
   }
 
   void setWidth(ReadingWidth width) {
     if (width == state.width) return;
     state = state.copyWith(width: width);
-    ref.read(settingsStoreProvider).writeReadingSettings(state).ignore();
+    _persistOrLog(
+      ref,
+      ref.read(settingsStoreProvider).writeReadingSettings(state),
+      'readingSettings',
+    );
   }
 
   void setLineHeight(ReadingLineHeight lineHeight) {
     if (lineHeight == state.lineHeight) return;
     state = state.copyWith(lineHeight: lineHeight);
-    ref.read(settingsStoreProvider).writeReadingSettings(state).ignore();
+    _persistOrLog(
+      ref,
+      ref.read(settingsStoreProvider).writeReadingSettings(state),
+      'readingSettings',
+    );
   }
 
   /// Restores all three reading knobs to [ReadingSettings.defaults].
@@ -118,7 +167,11 @@ class ReadingSettingsController extends Notifier<ReadingSettings> {
       return;
     }
     state = ReadingSettings.defaults;
-    ref.read(settingsStoreProvider).writeReadingSettings(state).ignore();
+    _persistOrLog(
+      ref,
+      ref.read(settingsStoreProvider).writeReadingSettings(state),
+      'readingSettings',
+    );
   }
 }
 
@@ -140,7 +193,11 @@ class KeepScreenOnController extends Notifier<bool> {
   void set(bool value) {
     if (state == value) return;
     state = value;
-    ref.read(settingsStoreProvider).writeKeepScreenOn(value).ignore();
+    _persistOrLog(
+      ref,
+      ref.read(settingsStoreProvider).writeKeepScreenOn(value),
+      'keepScreenOn=$value',
+    );
   }
 }
 

@@ -1,7 +1,7 @@
 name: markdown_viewer
 description: A mobile-first markdown viewer for iOS and Android with rich rendering for mermaid, math, code, tables, and more.
 publish_to: 'none'
-version: 0.2.2+1
+version: 1.0.0+1
 
 environment:
   sdk: ">=3.7.0 <4.0.0"
@@ -136,6 +136,13 @@ dev_dependencies:
   # ── Testing ─────────────────────────────────────────────────────────
   mocktail: ^1.0.4
   alchemist: ^0.12.1
+
+  # Flutter's official leak detector — ships with the SDK and is wired
+  # up globally in `test/flutter_test_config.dart` so every `testWidgets`
+  # call reports undisposed `ChangeNotifier` / `AnimationController` /
+  # `TextEditingController` / `Ticker` instances and objects that
+  # outlive their expected GC boundary.
+  leak_tracker_flutter_testing: ^3.0.9
 
   # Transitive dependency of `markdown_widget` that schedules a 500 ms
   # debounce timer on paint. Exposed here so widget tests can import

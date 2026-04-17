@@ -599,7 +599,13 @@ pw.Widget _list(md.Element node, _Fonts f, {required bool ordered}) {
 // ── Tables ────────────────────────────────────────────────────────────
 
 pw.Widget _table(md.Element tableNode, _Fonts f) {
-  final rows = <pw.TableRow>[];
+  // Collect every row's cell widgets and decoration in a first pass,
+  // then emit `pw.TableRow`s in a second pass where each row is padded
+  // up to the final `colCount`. `pw.Table` requires every row to have
+  // the same number of children as the first row — a malformed
+  // markdown table (`| a | b |` header, `| x |` body row) would
+  // otherwise throw at build time and wreck the whole PDF.
+  final rowBuilders = <({List<pw.Widget> cells, bool isHead})>[];
   int colCount = 0;
   for (final section in (tableNode.children ?? []).whereType<md.Element>()) {
     final isHead = section.tag == 'thead';
@@ -624,17 +630,28 @@ pw.Widget _table(md.Element tableNode, _Fonts f) {
               ),
             );
           }).toList();
-      rows.add(
-        pw.TableRow(
-          decoration:
-              isHead ? const pw.BoxDecoration(color: PdfColors.grey200) : null,
-          children: cells,
-        ),
-      );
+      rowBuilders.add((cells: cells, isHead: isHead));
     }
   }
 
-  if (rows.isEmpty) return pw.SizedBox();
+  if (rowBuilders.isEmpty) return pw.SizedBox();
+
+  final rows = <pw.TableRow>[];
+  for (final builder in rowBuilders) {
+    final padded = <pw.Widget>[...builder.cells];
+    while (padded.length < colCount) {
+      padded.add(pw.SizedBox());
+    }
+    rows.add(
+      pw.TableRow(
+        decoration:
+            builder.isHead
+                ? const pw.BoxDecoration(color: PdfColors.grey200)
+                : null,
+        children: padded,
+      ),
+    );
+  }
 
   // Distribute all columns equally so no column collapses to its minimum
   // intrinsic width and causes mid-word wrapping.

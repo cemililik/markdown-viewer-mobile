@@ -124,15 +124,32 @@ Stabilize, harden, and ship v1.0.
 - [x] Sentry crash reporting Phase 2 (consent-gated, full stack)
 - [x] GitHub Pages site (landing page, privacy policy, terms, contact)
 - [x] GitHub Discussions setup
+- [x] Full-application code review (128 findings across 8 streams; all P0/P1 closed, 32/40 P2 closed) — see [docs/analysis/codereviews/codereview-report-20260416.md](analysis/codereviews/codereview-report-20260416.md)
+- [x] Architecture layer refactor (P2-1..5): PDF exporter to application, SettingsStore / ConsentStore ports in domain, materializer provider in application, native channel DI
+- [x] TOC navigation hardening (heading match by `(level, text)` instead of positional zip; resolves misalignment when parser and `markdown_widget` produce different list counts)
+- [x] iOS container UUID resilience (`SandboxPath` translates absolute ↔ `sandbox:<kind>:<relative>` at the persistence boundary so dev reinstalls / restore-from-backup do not strand recents or synced repos)
+- [x] SQLite variable-limit hardening (orphan delete batched in chunks of 500 to stay under `SQLITE_LIMIT_VARIABLE_NUMBER`)
+- [x] Reduce-motion polish (onboarding animations + viewer `AnimatedSize` gate on `MediaQuery.disableAnimations`)
+- [x] UI copy shortening (language label, reading-width label) + destructive haptics on clear-all
+- [x] `sentry_flutter` bumped to `^9.0.0` for Kotlin 2.2.20 compatibility
+- [x] Self-clean stale recents (recents entries whose backing file no longer exists are purged on library load)
+- [x] `leak_tracker` integration — globally enabled in test harness, caught and fixed `routerProvider` GoRouter lifecycle leak; per-file opt-outs documented for upstream `markdown_widget` (`TapGestureRecognizer`) and Flutter image-cache (`ImageStreamCompleterHandle`, `_LiveImage`) leaks
 
-### Remaining
+### Remaining (blockers for v1.0)
+
+- [ ] Bug fixes from beta feedback (ongoing)
+- [ ] Public v1.0 release (tag + store submission)
+
+### Remaining (nice-to-have, can slip past v1.0)
 
 - [ ] Full a11y audit (TalkBack + VoiceOver end-to-end)
+- [ ] Tests for `repo_sync`, `onboarding`, `observability` (P2-6..8)
+- [ ] CI coverage floor enforcement (P2-9)
 - [ ] Performance regression suite enforcement
 - [ ] Memory leak profiling
 - [ ] Sentry performance tracing for key operations
-- [ ] Bug fixes from beta feedback
-- [ ] Public v1.0 release
+- [ ] Drift schema migration strategy (P2-12)
+- [ ] Remaining P2 / P3 nits — see code-review report
 
 ## Post-v1 Candidates
 

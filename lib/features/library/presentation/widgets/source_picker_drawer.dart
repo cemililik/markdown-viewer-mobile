@@ -12,6 +12,7 @@ import 'package:markdown_viewer/features/library/domain/entities/library_source.
 import 'package:markdown_viewer/features/library/presentation/widgets/add_source_sheet.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
+import 'package:markdown_viewer/features/repo_sync/presentation/sync_time_format.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:path/path.dart' as p;
 
@@ -314,17 +315,9 @@ class _SyncedRepoTile extends ConsumerWidget {
 
   /// Combines subPath (if set) with a relative last-synced time.
   static String _buildSubtitle(SyncedRepo repo, AppLocalizations l10n) {
-    final timeStr = _formatLastSynced(repo.lastSyncedAt, l10n);
+    final timeStr = formatLastSynced(repo.lastSyncedAt, l10n);
     if (repo.subPath.isNotEmpty) return '${repo.subPath} · $timeStr';
     return timeStr;
-  }
-
-  static String _formatLastSynced(DateTime at, AppLocalizations l10n) {
-    final diff = DateTime.now().difference(at);
-    if (diff.inMinutes < 1) return l10n.syncLastSyncedJustNow;
-    if (diff.inHours < 1) return l10n.syncLastSyncedMinutes(diff.inMinutes);
-    if (diff.inDays < 1) return l10n.syncLastSyncedHours(diff.inHours);
-    return l10n.syncLastSyncedDays(diff.inDays);
   }
 
   Future<void> _showActionsSheet(BuildContext context, WidgetRef ref) async {

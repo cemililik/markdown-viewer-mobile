@@ -1,5 +1,7 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:markdown_viewer/core/path/sandbox_path.dart';
 import 'package:markdown_viewer/features/library/domain/entities/recent_document.dart';
 import 'package:markdown_viewer/features/library/domain/repositories/recent_documents_store.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
@@ -62,9 +64,24 @@ class RecentDocumentsStoreImpl implements RecentDocumentsStore {
         final pinnedRaw = item['pinned'];
         final previewRaw = item['preview'];
         final displayNameRaw = item['displayName'];
+        // Resolve any `sandbox:<kind>:<relative>` token written by an
+        // earlier session against the CURRENT container's absolute
+        // prefix so File(...) can open the file. Absolute paths left
+        // over from the pre-sandbox-path version passthrough unchanged
+        // — they will either still resolve (unchanged container) or
+        // be self-cleaned by the repository on first open failure.
+        final absolutePath = SandboxPath.fromPortable(path);
+        // Self-clean stale entries whose backing file no longer
+        // exists. This catches the iOS dev-rebuild scenario (old
+        // container UUID baked into pre-sandbox-path entries), plus
+        // any other case where the file moved, was deleted, or was
+        // offloaded by iCloud — a tile the user cannot actually open
+        // is worse than no tile. `existsSync` is cheap; the read
+        // path already runs on app launch, not on every scroll.
+        if (!File(absolutePath).existsSync()) continue;
         entries.add(
           RecentDocument(
-            documentId: DocumentId(path),
+            documentId: DocumentId(absolutePath),
             openedAt: openedAt,
             isPinned: pinnedRaw is bool ? pinnedRaw : false,
             preview:
@@ -90,8 +107,14 @@ class RecentDocumentsStoreImpl implements RecentDocumentsStore {
   Future<void> write(List<RecentDocument> documents) {
     final encoded = jsonEncode(
       documents.map((doc) {
+        // Store paths in their container-relative `sandbox:cache:foo.md`
+        // form when they sit inside the app's own sandbox so a
+        // container-UUID change on reinstall / dev rebuild does not
+        // invalidate every recents tile. External paths (iCloud Drive,
+        // SAF content URIs) passthrough unchanged — those are stable
+        // outside our sandbox lifecycle.
         final map = <String, Object>{
-          'path': doc.documentId.value,
+          'path': SandboxPath.toPortable(doc.documentId.value),
           'openedAt': doc.openedAt.toUtc().toIso8601String(),
           'pinned': doc.isPinned,
         };

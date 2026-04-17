@@ -319,7 +319,13 @@
     "description": "Section title for the theme selector in settings."
   },
   "settingsThemeLight": "Light",
+  "@settingsThemeLight": {
+    "description": "Label of the 'light' option in the theme selector on the settings screen."
+  },
   "settingsThemeDark": "Dark",
+  "@settingsThemeDark": {
+    "description": "Label of the 'dark' option in the theme selector on the settings screen."
+  },
   "settingsThemeSystem": "System",
   "@settingsThemeSystem": {
     "description": "Option in the theme selector that follows the OS light/dark preference."
@@ -333,7 +339,7 @@
   "@settingsLanguageTitle": {
     "description": "Section title for the language selector in settings."
   },
-  "settingsLanguageSystem": "System default",
+  "settingsLanguageSystem": "System",
   "@settingsLanguageSystem": {
     "description": "Option in the language selector that follows the OS language."
   },
@@ -525,7 +531,7 @@
   "@settingsReadingWidthTitle": {
     "description": "Label above the reading-column width segmented button."
   },
-  "settingsReadingWidthComfortable": "Comfortable",
+  "settingsReadingWidthComfortable": "Comfort",
   "@settingsReadingWidthComfortable": {
     "description": "Reading width preset that caps the column at roughly 680 dp for long-form prose."
   },
@@ -821,6 +827,14 @@
   "errorNetworkUnavailable": "No network connection. Sync needs internet access.",
   "@errorNetworkUnavailable": {
     "description": "User-facing message when the device has no connectivity during a sync."
+  },
+  "errorAuthFailed": "Authentication failed. Check your personal access token in Settings and try again.",
+  "@errorAuthFailed": {
+    "description": "User-facing message when the GitHub API responds with 401 (invalid or expired token) or a non-rate-limit 403 (private repository without sufficient access)."
+  },
+  "errorCrashReportingToggleFailed": "Could not update crash-reporting preference. Please try again.",
+  "@errorCrashReportingToggleFailed": {
+    "description": "Snackbar text shown when flipping the Settings > Send crash reports toggle throws — e.g. a full disk blocked SharedPreferences.setBool or Sentry.close() failed to tear down hooks cleanly."
   },
   "errorUnsupportedProvider": "This URL is not supported. Only GitHub repository URLs are currently accepted.",
   "@errorUnsupportedProvider": {

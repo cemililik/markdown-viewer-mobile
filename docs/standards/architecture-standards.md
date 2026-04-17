@@ -72,6 +72,11 @@ Dart library, not a Flutter UI dependency.
 - Repositories are the only side-effect entry points — all I/O passes
   through them
 - Parsers, formatters, and validators are pure and live in `data/`
+  by default. They may also live in `application/` when they extend
+  a rendering pipeline configured at that layer (e.g. custom
+  `InlineSyntax` / `BlockSyntax` subclasses wired into
+  `markdown_widget` — see
+  `lib/features/viewer/application/markdown_extensions/`).
 
 ## Error Boundaries
 

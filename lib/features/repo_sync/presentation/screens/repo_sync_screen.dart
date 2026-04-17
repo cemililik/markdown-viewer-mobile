@@ -12,6 +12,7 @@ import 'package:markdown_viewer/features/repo_sync/application/repo_sync_notifie
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/sync_result.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
+import 'package:markdown_viewer/features/repo_sync/presentation/sync_time_format.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 
 /// Full-page screen for syncing a remote git repository.
@@ -49,6 +50,20 @@ class _RepoSyncScreenState extends ConsumerState<RepoSyncScreen> {
     caseSensitive: false,
   );
 
+  /// Placeholder text shown in place of the real PAT on first build
+  /// when one is already stored. Same width as a typical GitHub fine-
+  /// grained token so the field looks familiar; on submit the real
+  /// token is fetched from secure storage (the placeholder never
+  /// leaves the UI). Detected in [_startSync] via identity equality
+  /// against [_patPlaceholder] so a user who wipes the field to type
+  /// a new token does not get the old one re-submitted.
+  static const String _patPlaceholder = '••••••••••••••••';
+
+  /// `true` when [_patController] is currently showing
+  /// [_patPlaceholder] (the user has a stored PAT but has not
+  /// retyped it in this session).
+  bool _patIsPlaceholder = false;
+
   @override
   void initState() {
     super.initState();
@@ -56,6 +71,21 @@ class _RepoSyncScreenState extends ConsumerState<RepoSyncScreen> {
       _urlController.text = widget.initialUrl!;
       _urlValid = _githubPattern.hasMatch(widget.initialUrl!.trim());
     }
+    // Pre-populate the PAT field with a placeholder when a token is
+    // already stored. Avoids the old "retype your PAT on every
+    // session" friction while keeping the real token out of the UI
+    // until the user asks for it (opening the section, which is
+    // collapsed by default, does not reveal the real token either).
+    unawaited(_loadStoredPatPlaceholder());
+  }
+
+  Future<void> _loadStoredPatPlaceholder() async {
+    final existing = await ref.read(patStoreProvider).read();
+    if (!mounted || existing == null || existing.isEmpty) return;
+    setState(() {
+      _patController.text = _patPlaceholder;
+      _patIsPlaceholder = true;
+    });
   }
 
   @override
@@ -78,7 +108,12 @@ class _RepoSyncScreenState extends ConsumerState<RepoSyncScreen> {
     if (url.isEmpty || !_urlValid) return;
 
     final pat = _patController.text.trim();
-    if (pat.isNotEmpty) {
+    // Skip the write when the field still holds the placeholder — the
+    // stored PAT is unchanged, and writing the dots as a real token
+    // would lock the user out of private repos. The placeholder flag
+    // is cleared as soon as the user edits the field, so genuine
+    // retyping of a new token still flows through the write path.
+    if (pat.isNotEmpty && !_patIsPlaceholder) {
       await ref.read(patStoreProvider).write(pat);
     }
 
@@ -226,6 +261,15 @@ class _RepoSyncScreenState extends ConsumerState<RepoSyncScreen> {
                 controller: _patController,
                 enabled: !isRunning,
                 obscureText: true,
+                onChanged: (_) {
+                  // First keystroke clears the "field still shows
+                  // the stored-PAT placeholder" flag so the new
+                  // value is treated as a real user-entered token
+                  // in [_startSync].
+                  if (_patIsPlaceholder) {
+                    setState(() => _patIsPlaceholder = false);
+                  }
+                },
                 decoration: InputDecoration(
                   labelText: l10n.syncPatLabel,
                   hintText: l10n.syncPatHint,
@@ -575,6 +619,7 @@ class _ErrorCard extends ConsumerWidget {
     final message = switch (failure) {
       NetworkUnavailableFailure() => l10n.errorNetworkUnavailable,
       RateLimitedFailure() => l10n.errorRateLimited,
+      AuthFailure() => l10n.errorAuthFailed,
       RepoNotFoundFailure() => l10n.errorRepoNotFound,
       UnsupportedProviderFailure() => l10n.errorUnsupportedProvider,
       PartialSyncFailure(:final syncedCount, :final failedCount) => l10n
@@ -829,15 +874,7 @@ class _RecentSyncTile extends ConsumerWidget {
     final parts = <String>[];
     if (repo.subPath.isNotEmpty) parts.add(repo.subPath);
     parts.add(l10n.syncRecentFileCount(repo.fileCount));
-    parts.add(_formatLastSynced(repo.lastSyncedAt, l10n));
+    parts.add(formatLastSynced(repo.lastSyncedAt, l10n));
     return parts.join(' · ');
-  }
-
-  static String _formatLastSynced(DateTime at, AppLocalizations l10n) {
-    final diff = DateTime.now().difference(at);
-    if (diff.inMinutes < 1) return l10n.syncLastSyncedJustNow;
-    if (diff.inHours < 1) return l10n.syncLastSyncedMinutes(diff.inMinutes);
-    if (diff.inDays < 1) return l10n.syncLastSyncedHours(diff.inHours);
-    return l10n.syncLastSyncedDays(diff.inDays);
   }
 }

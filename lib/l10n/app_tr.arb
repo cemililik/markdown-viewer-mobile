@@ -102,7 +102,7 @@
   "settingsThemeSepia": "Sepya",
 
   "settingsLanguageTitle": "Dil",
-  "settingsLanguageSystem": "Sistem varsayılanı",
+  "settingsLanguageSystem": "Sistem",
   "settingsLanguageEnglish": "İngilizce",
   "settingsLanguageTurkish": "Türkçe",
 
@@ -255,6 +255,8 @@
   "errorRateLimited": "GitHub istek limitine ulaşıldı. Ayarlar'dan kişisel erişim belirteci ekleyin veya daha sonra tekrar deneyin.",
   "errorRepoNotFound": "Depo veya yol bulunamadı. URL'yi kontrol edip tekrar deneyin.",
   "errorNetworkUnavailable": "Ağ bağlantısı yok. Senkronizasyon için internet gerekli.",
+  "errorAuthFailed": "Kimlik doğrulama başarısız. Ayarlar'daki kişisel erişim anahtarınızı kontrol edip tekrar deneyin.",
+  "errorCrashReportingToggleFailed": "Çökme raporlama tercihi güncellenemedi. Lütfen tekrar deneyin.",
   "errorUnsupportedProvider": "Bu URL desteklenmiyor. Şu an yalnızca GitHub depo URL'leri kabul edilmektedir.",
   "errorPartialSync": "Senkronizasyon kısmen tamamlandı: {syncedCount} dosya kaydedildi, {failedCount} başarısız oldu.",
 

@@ -28,7 +28,14 @@ flowchart TB
 ## Layer Rules
 
 - **Domain** — zero dependencies on Flutter, no imports from other layers
-- **Application** — may depend on domain only (plus `compute` from Flutter)
+- **Application** — depends on domain; may also import pure Dart and
+  Riverpod packages (`flutter_riverpod`, `riverpod_annotation`,
+  `compute` from `package:flutter/foundation.dart`, `markdown` for
+  pipeline extension). Must not import `package:flutter/widgets.dart`,
+  `package:flutter/material.dart`, or any file under a feature's
+  `data/` tree — see
+  [standards/architecture-standards.md](standards/architecture-standards.md)
+  for the full matrix.
 - **Data** — depends on domain (implements ports); never on presentation
 - **Presentation** — depends on application and domain; never on data
 - **Wiring** — always through Riverpod providers, never via direct

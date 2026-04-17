@@ -57,6 +57,14 @@ class DisplayMathBlockSyntax extends md.BlockSyntax {
   /// (with optional surrounding whitespace).
   static final RegExp _bareFence = RegExp(r'^\s*\$\$\s*$');
 
+  /// Structural-boundary detector used to close an unclosed `$$`
+  /// block body on the next ATX heading, fenced code opener, or
+  /// horizontal rule. Compiled once at class-init time; was
+  /// previously rebuilt on every `parse` call.
+  static final RegExp _blockBoundary = RegExp(
+    r'^(#{1,6}\s|```|~~~|\s*(?:-{3,}|\*{3,}|_{3,})\s*$)',
+  );
+
   // No `canParse` override: the base [md.BlockSyntax.canParse]
   // already returns `pattern.hasMatch(parser.current.content)`,
   // which is exactly what we want, so a custom override would just
@@ -99,36 +107,42 @@ class DisplayMathBlockSyntax extends md.BlockSyntax {
 
     final bodyLines = <String>[];
     // Heuristics that stop the math body from swallowing the rest of
-    // the document when the user forgot the closing `$$`. Without
-    // these guards a single unclosed fence would absorb every heading,
-    // code fence, list marker, and paragraph that follows it into one
-    // giant math element that fails to render and hides the prose.
-    // Any of these lines ends the implicit body so paragraph parsing
-    // picks up where the math block left off:
+    // the document when the user forgot the closing `$$`. A single
+    // unclosed fence would otherwise absorb every heading, code
+    // fence, list marker, and paragraph that follows into one giant
+    // math element that fails to render.
+    //
+    // Any of these ends the implicit body so paragraph parsing picks
+    // up where the math block left off:
     //
     // * ATX headings (`# `, `## `, …)
     // * fenced code blocks (``` or ~~~)
     // * horizontal rules (`---`, `***`, `___`)
-    // * blank lines that separate markdown paragraphs
-    final blockBoundary = RegExp(
-      r'^(#{1,6}\s|```|~~~|\s*(?:-{3,}|\*{3,}|_{3,})\s*$)',
-    );
+    // * *two* consecutive blank lines (legitimate LaTeX environments
+    //   commonly contain a single blank line between equations, so
+    //   we require a paragraph-break pair to close rather than a
+    //   single blank line)
     while (!parser.isDone) {
       final line = parser.current.content;
       if (_bareFence.hasMatch(line)) {
         parser.advance();
         break;
       }
-      if (blockBoundary.hasMatch(line)) {
+      if (_blockBoundary.hasMatch(line)) {
         // Implicit close — do NOT advance past the boundary line so
         // the next syntax can consume it (heading/fence/hr).
         break;
       }
       if (line.trim().isEmpty && bodyLines.isNotEmpty) {
-        // Blank line after some body content terminates the implicit
-        // math block, matching how CommonMark paragraphs close.
-        parser.advance();
-        break;
+        // Peek at the next line. Two blanks in a row = paragraph
+        // break = implicit close; one blank line is kept as part of
+        // the math body (LaTeX environments can contain it).
+        final next = parser.peek(1);
+        final isDoubleBlank = next == null || next.content.trim().isEmpty;
+        if (isDoubleBlank) {
+          parser.advance();
+          break;
+        }
       }
       bodyLines.add(line);
       parser.advance();

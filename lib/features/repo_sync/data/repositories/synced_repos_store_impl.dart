@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:drift/drift.dart';
+import 'package:markdown_viewer/core/path/sandbox_path.dart';
 import 'package:markdown_viewer/features/repo_sync/data/database/app_database.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/repositories/synced_repos_store.dart';
@@ -27,6 +28,14 @@ class SyncedReposStoreImpl implements SyncedReposStore {
       subPath: repo.subPath,
     );
 
+    // Persist the repo's localRoot in portable `sandbox:docs:...` form
+    // so a container-UUID change (iOS dev reinstall, user uninstall +
+    // reinstall, factory reset restored from backup) does not strand
+    // the synced files — the next read resolves the token against the
+    // CURRENT container. App Store updates preserve the UUID so
+    // production users never hit this, but the indirection costs
+    // nothing and keeps dev-build state usable across fresh installs.
+    final portableLocalRoot = SandboxPath.toPortable(repo.localRoot);
     if (existing != null) {
       final companion = SyncedReposCompanion(
         id: Value(existing.id),
@@ -35,7 +44,7 @@ class SyncedReposStoreImpl implements SyncedReposStore {
         repo: Value(repo.repo),
         ref: Value(repo.ref),
         subPath: Value(repo.subPath),
-        localRoot: Value(repo.localRoot),
+        localRoot: Value(portableLocalRoot),
         lastSyncedAt: Value(repo.lastSyncedAt.millisecondsSinceEpoch),
         fileCount: Value(repo.fileCount),
         status: Value(_statusToString(repo.status)),
@@ -51,7 +60,7 @@ class SyncedReposStoreImpl implements SyncedReposStore {
         repo: repo.repo,
         ref: repo.ref,
         subPath: Value(repo.subPath),
-        localRoot: repo.localRoot,
+        localRoot: portableLocalRoot,
         lastSyncedAt: repo.lastSyncedAt.millisecondsSinceEpoch,
         fileCount: Value(repo.fileCount),
         status: Value(_statusToString(repo.status)),
@@ -62,15 +71,22 @@ class SyncedReposStoreImpl implements SyncedReposStore {
 
   @override
   Future<void> delete(int id) async {
-    // Retrieve localRoot before deleting so we can wipe the directory.
+    // Retrieve localRoot BEFORE touching the DB so we still know
+    // which directory to wipe. Delete the directory first and the DB
+    // row second so that a directory-delete failure (iOS sandbox
+    // permission hiccup, Android content:// URI transient failure,
+    // etc.) leaves the DB row intact — the user can retry from the
+    // UI and the bookkeeping still reflects reality. The reverse
+    // order would orphan the on-disk files with no DB pointer to
+    // find them again.
     final row = await _db.getRepoById(id);
-    await _db.deleteRepo(id);
     if (row != null) {
-      final dir = Directory(row.localRoot);
+      final dir = Directory(SandboxPath.fromPortable(row.localRoot));
       if (dir.existsSync()) {
         await dir.delete(recursive: true);
       }
     }
+    await _db.deleteRepo(id);
   }
 
   @override
@@ -85,7 +101,10 @@ class SyncedReposStoreImpl implements SyncedReposStore {
     SyncedFilesCompanion.insert(
       repoId: repoId,
       remotePath: remotePath,
-      localPath: localPath,
+      // Per-file paths share the localRoot's portable-token treatment
+      // so `File(localPath)` resolves against the current container
+      // after a fresh install. See `upsert` above for the rationale.
+      localPath: SandboxPath.toPortable(localPath),
       sha: sha,
       size: Value(size),
       status: Value(status),
@@ -102,17 +121,33 @@ class SyncedReposStoreImpl implements SyncedReposStore {
   }
 
   @override
+  Future<SyncedRepo?> findByNaturalKey({
+    required String provider,
+    required String owner,
+    required String repo,
+    required String ref,
+    required String subPath,
+  }) async {
+    final row = await _db.getRepoByNaturalKey(
+      provider: provider,
+      owner: owner,
+      repo: repo,
+      ref: ref,
+      subPath: subPath,
+    );
+    return row == null ? null : _rowToEntity(row);
+  }
+
+  @override
   Future<void> deleteFilesForRepo(int repoId) => _db.deleteFilesForRepo(repoId);
 
   @override
-  Future<void> deleteFilesNotIn(int repoId, Set<String> retainedPaths) async {
-    final existing = await _db.getFilesForRepo(repoId);
-    final toRemove = existing.where(
-      (f) => !retainedPaths.contains(f.remotePath),
-    );
-    for (final file in toRemove) {
-      await _db.deleteFile(repoId: repoId, remotePath: file.remotePath);
-    }
+  Future<void> deleteFilesNotIn(int repoId, Set<String> retainedPaths) {
+    // Single batched SQL statement (`DELETE … WHERE … NOT IN`)
+    // handled by the drift DAO. The previous per-row loop issued one
+    // round-trip per orphan, which was O(n) on the number of files
+    // the user no longer has.
+    return _db.deleteFilesNotIn(repoId: repoId, retainedPaths: retainedPaths);
   }
 
   // ── Mapping helpers ──────────────────────────────────────────────────
@@ -124,7 +159,12 @@ class SyncedReposStoreImpl implements SyncedReposStore {
     repo: row.repo,
     ref: row.ref,
     subPath: row.subPath,
-    localRoot: row.localRoot,
+    // Resolve any `sandbox:docs:<relative>` token written by an
+    // earlier session against the current container's absolute prefix
+    // so callers (library body, viewer) can feed the path straight to
+    // `File(...)` / `Directory(...)`. Legacy absolute paths left over
+    // from pre-portable sessions passthrough unchanged.
+    localRoot: SandboxPath.fromPortable(row.localRoot),
     lastSyncedAt: DateTime.fromMillisecondsSinceEpoch(
       row.lastSyncedAt,
       isUtc: true,

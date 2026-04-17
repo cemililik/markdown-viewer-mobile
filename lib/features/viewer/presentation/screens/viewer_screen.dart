@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,8 +15,8 @@ import 'package:markdown_viewer/features/library/application/preview_extractor.d
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
-import 'package:markdown_viewer/features/viewer/application/pdf_extract.dart';
 import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
+import 'package:markdown_viewer/features/viewer/application/services/pdf_exporter.dart';
 import 'package:markdown_viewer/features/viewer/application/viewer_document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/reading_position.dart';
@@ -130,11 +132,22 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// a slow compute() reply for an earlier query cannot overwrite
   /// the match list for a newer one.
   int _searchScanGen = 0;
-  // Above this source length the scan moves to a background isolate
-  // via `compute`. Below it the overhead of the isolate hop is larger
-  // than the scan itself, so we stay synchronous. Threshold matches
-  // the 200 KB floor the performance standard applies to heavy
-  // string work.
+
+  /// Search-scan debounce timer. Search input fires one change event
+  /// per keystroke; without a short debounce fast typing either
+  /// spawns an isolate per keystroke (wasteful) or recomputes on the
+  /// UI thread on every keystroke (janky). The timer resets on every
+  /// new query and fires the actual scan once the user pauses.
+  Timer? _searchDebounceTimer;
+  static const Duration _searchDebounceDuration = Duration(milliseconds: 200);
+
+  /// Above this source length (measured in UTF-16 code units — the
+  /// units `String.length` returns) the scan moves to a background
+  /// isolate via `compute`. Below it the isolate-hop overhead exceeds
+  /// the scan itself, so we stay synchronous. 200 * 1024 code units
+  /// mirrors the 200 KB floor in the performance standard — note
+  /// these are not bytes, they are UTF-16 code units, so pure-ASCII
+  /// files of this size are 200 KB while CJK-heavy files are ~400 KB.
   static const int _searchScanIsolateThreshold = 200 * 1024;
 
   @override
@@ -203,6 +216,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     _isBookmarked.dispose();
     _searchController.dispose();
     _searchFocusNode.dispose();
+    _searchDebounceTimer?.cancel();
     // Always release the wakelock when leaving the viewer so the OS
     // can sleep normally again. Fire-and-forget is fine here.
     WakelockPlus.disable().ignore();
@@ -399,8 +413,33 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
 
   /// Handles `markdown_widget`'s `onTocList` callback by rebuilding
   /// [_headingToWidgetIndex] against the current document's heading
-  /// list. Both lists walk the document in order, so the N-th entry
-  /// in each corresponds to the same heading.
+  /// list.
+  ///
+  /// Earlier revisions relied on positional alignment — `headings[i]`
+  /// paired with `tocs[i]` — but that silently desyncs whenever the
+  /// two parsers disagree on what counts as a heading. Divergence
+  /// sources include:
+  ///
+  /// * `markdown_widget` uses `encodeHtml: false` and a custom
+  ///   `splitRegExp`; our parser uses `encodeHtml: true` and
+  ///   `LineSplitter`.
+  /// * `markdown_widget` runs extra block syntaxes (math, admonitions)
+  ///   that consume ranges our parser sees as paragraphs / headings.
+  /// * Container walks can diverge for the same reason.
+  ///
+  /// When tocs has fewer entries than headings, the old `min()` loop
+  /// left the tail HeadingRefs unmapped — tapping a bottom heading
+  /// would silently no-op or (through `putIfAbsent` race timing)
+  /// scroll to an early block index, which presents to the user as
+  /// "clicked bottom-of-TOC, ended up near the top of the document".
+  ///
+  /// The current implementation matches by `(level, text)` with a
+  /// consuming cursor over `tocs` so duplicates survive: the first
+  /// `HeadingRef` with text "Details" claims the first TOC entry
+  /// named "Details", the second claims the second, etc. Headings
+  /// with no counterpart in `tocs` simply do not get mapped —
+  /// `_scrollToHeading` then no-ops for them, which is strictly
+  /// better than landing on the wrong block.
   ///
   /// This method is called synchronously from inside
   /// [MarkdownView.build] via the `onTocList` forwarding, so it
@@ -411,11 +450,42 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     if (tocs.isEmpty && _headingToWidgetIndex.isEmpty) return;
     final map = <HeadingRef, int>{};
     final headings = document.headings;
-    final count = headings.length < tocs.length ? headings.length : tocs.length;
-    for (var i = 0; i < count; i += 1) {
-      map[headings[i]] = tocs[i].widgetIndex;
+
+    // Pre-compute `(level, text)` for every toc entry so each
+    // HeadingRef can scan forward to the next matching one without
+    // re-walking the HeadingNode's span tree per comparison.
+    final tocDescriptors = tocs.map(_describeToc).toList(growable: false);
+    final consumed = List<bool>.filled(tocs.length, false);
+
+    for (final h in headings) {
+      for (var j = 0; j < tocs.length; j += 1) {
+        if (consumed[j]) continue;
+        final desc = tocDescriptors[j];
+        if (desc.level == h.level && desc.text == h.text) {
+          map[h] = tocs[j].widgetIndex;
+          consumed[j] = true;
+          break;
+        }
+      }
     }
     _headingToWidgetIndex = map;
+  }
+
+  /// Extracts `(level, text)` from a `markdown_widget` [Toc] entry
+  /// so it can be compared against our own [HeadingRef]s without
+  /// depending on positional alignment.
+  ///
+  /// The level is carried on `HeadingConfig.tag` as one of `h1`..`h6`.
+  /// The text comes from the node's span tree via `toPlainText()` —
+  /// TextSpan collects every descendant `TextSpan.text` in order,
+  /// which is exactly the whitespace-collapsed plain-text form our
+  /// parser stores in `HeadingRef.text`.
+  ({int level, String text}) _describeToc(Toc toc) {
+    final tag = toc.node.headingConfig.tag;
+    final level =
+        tag.length == 2 && tag[0] == 'h' ? int.tryParse(tag[1]) ?? 0 : 0;
+    final text = toc.node.childrenSpan.toPlainText().trim();
+    return (level: level, text: text);
   }
 
   /// Animates the scroll so the widget containing [heading] is
@@ -492,6 +562,10 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     final trimmed = query.trim();
     _searchScanGen += 1;
     final scanGen = _searchScanGen;
+    // Reset the debounce timer on every keystroke so the actual scan
+    // only fires once the user pauses typing. Empty queries clear
+    // synchronously (feels instant, no scan to schedule).
+    _searchDebounceTimer?.cancel();
     if (trimmed.isEmpty) {
       setState(() {
         _searchMatches = const <int>[];
@@ -500,18 +574,45 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       return;
     }
     final source = document.source;
+    _searchDebounceTimer = Timer(_searchDebounceDuration, () {
+      if (!mounted) return;
+      if (scanGen != _searchScanGen) return;
+      _runSearchScan(source, trimmed, scanGen, document);
+    });
+  }
+
+  void _runSearchScan(
+    String source,
+    String trimmed,
+    int scanGen,
+    Document document,
+  ) {
     if (source.length < _searchScanIsolateThreshold) {
       final matches = _scanSourceForMatches(source, trimmed);
       _applySearchResult(matches, scanGen, document);
       return;
     }
-    compute(_scanSourceForMatchesIsolate, (
-      source: source,
-      query: trimmed,
-    )).then((matches) {
-      if (!mounted) return;
-      _applySearchResult(matches, scanGen, document);
-    });
+    compute(_scanSourceForMatchesIsolate, (source: source, query: trimmed))
+        .then((matches) {
+          if (!mounted) return;
+          _applySearchResult(matches, scanGen, document);
+        })
+        .catchError((Object error, StackTrace stackTrace) {
+          // Isolate scan failed. Log through the shared logger so the
+          // error does not silently vanish, and leave the match list
+          // untouched so the user sees the previous generation's
+          // results rather than a surprise "0 matches" badge. `mounted`
+          // and the generation check still gate side effects.
+          if (!mounted) return;
+          if (scanGen != _searchScanGen) return;
+          ref
+              .read(appLoggerProvider)
+              .w(
+                'Search scan isolate failed',
+                error: error,
+                stackTrace: stackTrace,
+              );
+        });
   }
 
   void _applySearchResult(List<int> matches, int scanGen, Document document) {
@@ -564,11 +665,20 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
 
   /// Routes a link tap from [MarkdownView].
   ///
+  /// URI schemes a markdown link is allowed to launch. Anything
+  /// outside this set is silently dropped — a malicious markdown
+  /// file otherwise could trigger `intent://` / `android-app://` /
+  /// `tel:` / `market:` / `file:` handlers to launch third-party
+  /// apps, phish for call confirmations, or probe local files. This
+  /// allow-list is the documented mitigation for the H-1 finding in
+  /// `docs/analysis/securityreports/20260417T091912-security-review.md`.
+  static const _safeLinkSchemes = {'http', 'https', 'mailto'};
+
   /// Anchor links (`#slug`) look up the matching [HeadingRef] and
-  /// scroll to it via [_scrollToHeading]. All other hrefs are
-  /// handed to the platform via [launchUrl] — `externalApplication`
-  /// mode keeps the viewer open in the background on both iOS and
-  /// Android.
+  /// scroll to it via [_scrollToHeading]. Other hrefs are handed to
+  /// the platform via [launchUrl] — `externalApplication` mode keeps
+  /// the viewer open in the background on both iOS and Android — but
+  /// only when the URI's scheme is in [_safeLinkSchemes].
   void _onLinkTap(String href, Document document) {
     if (href.startsWith('#')) {
       final slug = href.substring(1);
@@ -578,9 +688,14 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       return;
     }
     final uri = Uri.tryParse(href);
-    if (uri != null) {
-      launchUrl(uri, mode: LaunchMode.externalApplication).ignore();
+    if (uri == null) return;
+    if (!_safeLinkSchemes.contains(uri.scheme.toLowerCase())) {
+      ref
+          .read(appLoggerProvider)
+          .w('Blocked link with unsafe scheme', error: 'scheme=${uri.scheme}');
+      return;
     }
+    launchUrl(uri, mode: LaunchMode.externalApplication).ignore();
   }
 
   /// Shows a bottom sheet that lets the user choose between sharing the
@@ -942,9 +1057,15 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                 // bottom search bar. Height collapses to zero when
                 // search is inactive so the document fills the full
                 // viewport; expands to the bar's natural height when
-                // the user opens search.
+                // the user opens search. Respect the platform
+                // reduce-motion flag so vestibular-sensitive users
+                // get an immediate expand/collapse instead of a
+                // height tween.
                 AnimatedSize(
-                  duration: const Duration(milliseconds: 220),
+                  duration:
+                      MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 220),
                   curve: Curves.easeOutCubic,
                   child:
                       _searchActive

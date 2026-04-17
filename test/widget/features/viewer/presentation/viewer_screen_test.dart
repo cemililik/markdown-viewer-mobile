@@ -9,7 +9,7 @@ import 'package:markdown_viewer/features/library/application/recent_documents_pr
 import 'package:markdown_viewer/features/library/domain/entities/recent_document.dart';
 import 'package:markdown_viewer/features/library/domain/repositories/recent_documents_store.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
-import 'package:markdown_viewer/features/settings/data/settings_store.dart';
+import 'package:markdown_viewer/features/settings/data/settings_store_impl.dart';
 import 'package:markdown_viewer/features/viewer/application/document_repository_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
@@ -74,7 +74,7 @@ void main() {
         readingPositionStoreProvider.overrideWithValue(
           readingPositionStore ?? _InMemoryReadingPositionStore(),
         ),
-        settingsStoreProvider.overrideWithValue(SettingsStore(prefs)),
+        settingsStoreProvider.overrideWithValue(SettingsStoreImpl(prefs)),
         recentDocumentsStoreProvider.overrideWithValue(
           recentsStore ?? _InMemoryRecentDocumentsStore(),
         ),

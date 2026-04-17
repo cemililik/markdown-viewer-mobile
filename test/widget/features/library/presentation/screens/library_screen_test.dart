@@ -12,7 +12,7 @@ import 'package:markdown_viewer/features/library/domain/repositories/recent_docu
 import 'package:markdown_viewer/features/library/domain/services/folder_enumerator.dart';
 import 'package:markdown_viewer/features/library/presentation/screens/library_screen.dart';
 import 'package:markdown_viewer/features/observability/application/observability_providers.dart';
-import 'package:markdown_viewer/features/observability/data/consent_store.dart';
+import 'package:markdown_viewer/features/observability/data/consent_store_impl.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -82,6 +82,11 @@ Widget _harness(
       ),
     ],
   );
+  // GoRouter owns a delegate, parser, and information provider that all
+  // hold listener subscriptions. Without this teardown leak_tracker
+  // reports them as `notDisposed` because the harness creates a fresh
+  // router per test and the widget tree alone never triggers dispose.
+  addTearDown(router.dispose);
   return ProviderScope(
     overrides: [
       recentDocumentsStoreProvider.overrideWithValue(store),
@@ -91,7 +96,7 @@ Widget _harness(
       folderEnumeratorProvider.overrideWithValue(
         enumerator ?? const _NoopEnumerator(),
       ),
-      consentStoreProvider.overrideWithValue(ConsentStore(_testPrefs)),
+      consentStoreProvider.overrideWithValue(ConsentStoreImpl(_testPrefs)),
     ],
     child: MaterialApp.router(
       routerConfig: router,

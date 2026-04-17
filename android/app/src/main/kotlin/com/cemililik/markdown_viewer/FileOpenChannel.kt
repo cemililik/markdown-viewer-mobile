@@ -51,6 +51,15 @@ class FileOpenChannel :
 
     companion object {
         const val CHANNEL_NAME = "com.cemililik.markdown_viewer/file_open"
+
+        /**
+         * Hard cap on the size of a share-intent / `ACTION_VIEW`
+         * payload copied into the app's cache directory. Matches
+         * the per-file cap in `docs/standards/security-standards.md`
+         * §File System Rules — keeps a malicious content provider
+         * from filling disk / RAM with an oversized payload.
+         */
+        private const val MAX_FILE_BYTES: Long = 10L * 1024L * 1024L
     }
 
     private var channel: EventChannel? = null
@@ -177,12 +186,17 @@ class FileOpenChannel :
             ) {
                 return null
             }
+            // Pre-check with the filesystem: file:// URIs always have
+            // a length, so a file over the cap can be rejected before
+            // any bytes are copied. Content URIs hit the cumulative
+            // streaming guard in `copyCappedOrDelete` below.
+            if (canonical.length() > MAX_FILE_BYTES) return null
             return try {
                 val safeName = sanitizeFileName(canonical.name)
                 val cacheDir = File(context.cacheDir, "file_open").also { it.mkdirs() }
                 val dest = File(cacheDir, safeName)
                 canonical.inputStream().use { input ->
-                    FileOutputStream(dest).use { output -> input.copyTo(output) }
+                    if (!copyCappedOrDelete(input, dest)) return null
                 }
                 dest.absolutePath
             } catch (_: Exception) {
@@ -200,12 +214,43 @@ class FileOpenChannel :
             val cacheDir = File(context.cacheDir, "file_open").also { it.mkdirs() }
             val dest = File(cacheDir, fileName)
             context.contentResolver.openInputStream(uri)?.use { input ->
-                FileOutputStream(dest).use { output -> input.copyTo(output) }
+                if (!copyCappedOrDelete(input, dest)) return null
             }
             dest.absolutePath
         } catch (_: Exception) {
             null
         }
+    }
+
+    /**
+     * Streams [input] into [dest] and aborts when the cumulative
+     * byte count exceeds [MAX_FILE_BYTES]. Deletes any partial file
+     * on abort so a cancelled copy does not leave a truncated
+     * payload that the viewer would then try to open.
+     *
+     * Returns `true` when the copy completed within the cap,
+     * `false` when it was aborted.
+     */
+    private fun copyCappedOrDelete(
+        input: java.io.InputStream,
+        dest: File,
+    ): Boolean {
+        val chunk = ByteArray(8 * 1024)
+        var total = 0L
+        FileOutputStream(dest).use { output ->
+            while (true) {
+                val n = input.read(chunk)
+                if (n < 0) break
+                total += n
+                if (total > MAX_FILE_BYTES) {
+                    output.flush()
+                    dest.delete()
+                    return false
+                }
+                output.write(chunk, 0, n)
+            }
+        }
+        return true
     }
 
     /**

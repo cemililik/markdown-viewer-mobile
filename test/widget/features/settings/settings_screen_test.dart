@@ -3,9 +3,9 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/features/observability/application/observability_providers.dart';
-import 'package:markdown_viewer/features/observability/data/consent_store.dart';
+import 'package:markdown_viewer/features/observability/data/consent_store_impl.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
-import 'package:markdown_viewer/features/settings/data/settings_store.dart';
+import 'package:markdown_viewer/features/settings/data/settings_store_impl.dart';
 import 'package:markdown_viewer/features/settings/domain/app_locale.dart';
 import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
 import 'package:markdown_viewer/features/settings/presentation/screens/settings_screen.dart';
@@ -16,11 +16,11 @@ void main() {
   Future<Widget> buildHarness({Locale locale = const Locale('en')}) async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     final prefs = await SharedPreferences.getInstance();
-    final store = SettingsStore(prefs);
+    final store = SettingsStoreImpl(prefs);
     return ProviderScope(
       overrides: [
         settingsStoreProvider.overrideWithValue(store),
-        consentStoreProvider.overrideWithValue(ConsentStore(prefs)),
+        consentStoreProvider.overrideWithValue(ConsentStoreImpl(prefs)),
       ],
       child: MaterialApp(
         locale: locale,
@@ -45,13 +45,15 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.text('Theme'), findsOneWidget);
-        expect(find.text('System'), findsOneWidget);
+        // "System" is the label for BOTH the theme "System" segment
+        // and the language "System" segment — they share the same
+        // copy after the l10n shortening. Expect two matches.
+        expect(find.text('System'), findsNWidgets(2));
         expect(find.text('Light'), findsOneWidget);
         expect(find.text('Dark'), findsOneWidget);
         expect(find.text('Sepia'), findsOneWidget);
 
         expect(find.text('Language'), findsOneWidget);
-        expect(find.text('System default'), findsOneWidget);
         expect(find.text('English'), findsOneWidget);
         expect(find.text('Turkish'), findsOneWidget);
       },

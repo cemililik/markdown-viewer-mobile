@@ -6,9 +6,10 @@ import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/core/logging/logger.dart';
+import 'package:markdown_viewer/features/library/application/folder_file_materializer_provider.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
-import 'package:markdown_viewer/features/library/data/services/folder_file_materializer.dart';
+import 'package:markdown_viewer/features/library/data/services/native_library_folders_channel.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/services/folder_enumerator.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart'
@@ -90,7 +91,17 @@ class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
 
   void _clearSearch() {
     _searchController.clear();
-    setState(() => _searchQuery = '');
+    // Reset the cached recursive walk alongside the query. Without
+    // this, a future that resolved to an error (stale bookmark,
+    // transient I/O failure) stays cached: the next non-empty query
+    // `??=` keeps the errored future and the user sees the same
+    // error message with no way to retry short of leaving and
+    // re-entering the folder source. Resetting here means a fresh
+    // "type → walk" cycle starts after every clear.
+    setState(() {
+      _searchQuery = '';
+      _recursiveFuture = null;
+    });
   }
 
   @override
@@ -502,6 +513,48 @@ Future<void> openFolderEntry({
       folder: folder,
       sourcePath: entry.path,
     );
+  } on NativeFolderBookmarkStaleException catch (stale) {
+    // iOS told us the bookmark is stale and (sometimes) handed back a
+    // fresh one. When we have a replacement, persist it and retry
+    // the materialization ONCE with the updated folder. If the retry
+    // still fails, fall through to the generic error path so the
+    // user sees a snackbar rather than an infinite loop.
+    final refreshed = stale.refreshedBookmark;
+    if (refreshed != null && refreshed.isNotEmpty) {
+      ref
+          .read(libraryFoldersControllerProvider.notifier)
+          .updateBookmark(path: folder.path, bookmark: refreshed);
+      try {
+        resolvedPath = await materializer.materialize(
+          folder: LibraryFolder(
+            path: folder.path,
+            addedAt: folder.addedAt,
+            bookmark: refreshed,
+          ),
+          sourcePath: entry.path,
+        );
+      } on Object catch (retryError, retryStack) {
+        logger.e(
+          'Retry after bookmark refresh still failed',
+          error: retryError,
+          stackTrace: retryStack,
+        );
+        if (!context.mounted) return;
+        messenger
+          ..hideCurrentSnackBar()
+          ..showSnackBar(
+            SnackBar(content: Text(l10n.libraryFolderSourceError)),
+          );
+        return;
+      }
+    } else {
+      logger.w('Bookmark stale with no refresh available', error: stale);
+      if (!context.mounted) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(SnackBar(content: Text(l10n.libraryFolderSourceError)));
+      return;
+    }
   } on Object catch (error, stackTrace) {
     logger.e(
       'Failed to materialize folder file for viewer push',

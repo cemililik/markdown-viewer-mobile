@@ -136,14 +136,27 @@ final RegExp _imageLink = RegExp(r'!\[([^\]]*)\]\([^)]*\)');
 final RegExp _link = RegExp(r'\[([^\]]+)\]\([^)]*\)');
 final RegExp _inlineCode = RegExp('`([^`]+)`');
 final RegExp _bold = RegExp('\\*\\*|__');
-// Italic delimiters: a single `*` or `_` that is NOT part of a double
-// marker (`**` or `__`, already consumed by [_bold]) AND not an
-// underscore embedded inside a word. The word-boundary guard
-// preserves identifiers like `snake_case` and `my_var_name` that
-// would otherwise be mangled into `snakecase` / `myvarname` —
-// Markdown itself treats intra-word `_` as literal for this reason.
+// Italic delimiters. Three alternatives:
+//
+// 1. `(?<!\*)\*(?!\*)` — a single `*` not part of `**`. Asterisks
+//    are never valid inside identifiers so a simple symmetric check
+//    is enough.
+//
+// 2. `(?<![A-Za-z0-9])_(?!_)` — an underscore opener: preceded by a
+//    non-alphanumeric (or start-of-string) and not followed by
+//    another `_`. This matches the `_` in ` _italic_` but rejects
+//    the `_` in `snake_case` (preceded by `e`, which is
+//    alphanumeric).
+//
+// 3. `(?<!_)_(?![A-Za-z0-9])` — an underscore closer: followed by
+//    a non-alphanumeric (or end-of-string) and not preceded by
+//    another `_`. This matches the trailing `_` of `_italic_` but
+//    rejects the `_` in `my_var_name` at each intra-word position.
+//
+// CommonMark treats intra-word `_` as literal for exactly this
+// reason; mirroring it here lets the preview stay readable.
 final RegExp _italic = RegExp(
-  r'(?<!\*)\*(?!\*)|(?<![\w_])_(?![\w_])|(?<=[\W])_(?=[\W])',
+  r'(?<!\*)\*(?!\*)|(?<![A-Za-z0-9])_(?!_)|(?<!_)_(?![A-Za-z0-9])',
 );
 final RegExp _strike = RegExp('~~');
 final RegExp _anyWhitespace = RegExp(r'\s+');

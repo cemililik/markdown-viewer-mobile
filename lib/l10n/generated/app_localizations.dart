@@ -536,13 +536,13 @@ abstract class AppLocalizations {
   /// **'Theme'**
   String get settingsThemeTitle;
 
-  /// No description provided for @settingsThemeLight.
+  /// Label of the 'light' option in the theme selector on the settings screen.
   ///
   /// In en, this message translates to:
   /// **'Light'**
   String get settingsThemeLight;
 
-  /// No description provided for @settingsThemeDark.
+  /// Label of the 'dark' option in the theme selector on the settings screen.
   ///
   /// In en, this message translates to:
   /// **'Dark'**
@@ -569,7 +569,7 @@ abstract class AppLocalizations {
   /// Option in the language selector that follows the OS language.
   ///
   /// In en, this message translates to:
-  /// **'System default'**
+  /// **'System'**
   String get settingsLanguageSystem;
 
   /// Label for the English option in the settings language selector.
@@ -833,7 +833,7 @@ abstract class AppLocalizations {
   /// Reading width preset that caps the column at roughly 680 dp for long-form prose.
   ///
   /// In en, this message translates to:
-  /// **'Comfortable'**
+  /// **'Comfort'**
   String get settingsReadingWidthComfortable;
 
   /// Reading width preset that caps the column at roughly 840 dp so code blocks breathe on tablets.
@@ -1231,6 +1231,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No network connection. Sync needs internet access.'**
   String get errorNetworkUnavailable;
+
+  /// User-facing message when the GitHub API responds with 401 (invalid or expired token) or a non-rate-limit 403 (private repository without sufficient access).
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication failed. Check your personal access token in Settings and try again.'**
+  String get errorAuthFailed;
+
+  /// Snackbar text shown when flipping the Settings > Send crash reports toggle throws — e.g. a full disk blocked SharedPreferences.setBool or Sentry.close() failed to tear down hooks cleanly.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not update crash-reporting preference. Please try again.'**
+  String get errorCrashReportingToggleFailed;
 
   /// User-facing message when the entered URL is not a recognised sync provider.
   ///
