@@ -58,9 +58,18 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 /// [WakelockPlus.disable] when it disposes, so the display never
 /// sleeps mid-read.
 class ViewerScreen extends ConsumerStatefulWidget {
-  const ViewerScreen({required this.documentId, super.key});
+  const ViewerScreen({required this.documentId, this.initialAnchor, super.key});
 
   final DocumentId documentId;
+
+  /// Anchor slug (without the leading `#`) that the viewer should
+  /// scroll to once the document has parsed. Threaded through
+  /// `ViewerRoute.location(path, anchor: …)` when a cross-file
+  /// markdown link of the form `[label](other.md#section)` is
+  /// tapped — the destination viewer handles the fragment after
+  /// its own `onTocList` callback fires. `null` for the common
+  /// "open from library / share-intent" case.
+  final String? initialAnchor;
 
   @override
   ConsumerState<ViewerScreen> createState() => _ViewerScreenState();
@@ -82,6 +91,13 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   bool _showBackToTop = false;
   bool _restoreAttempted = false;
 
+  /// One-shot flag for the cross-file anchor jump seeded by
+  /// `widget.initialAnchor`. Flipped to true the first time
+  /// `_captureHeadingIndex` produces a mapping that contains the
+  /// requested slug so the jump fires exactly once after the
+  /// target document has parsed — not on every subsequent rebuild.
+  bool _initialAnchorConsumed = false;
+
   /// Previous scroll offset used to detect scroll direction for the
   /// immersive FAB hide — when the user is actively scrolling down
   /// past the back-to-top threshold the FAB slides away alongside
@@ -96,8 +112,8 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// [MarkdownView.build] via `putIfAbsent`, so we do not need
   /// to know the final widget count ahead of time.
   ///
-  /// The TOC drawer + in-doc search both look up keys here
-  /// before driving `Scrollable.ensureVisible`.
+  /// The TOC drawer + in-doc search both look up keys here before
+  /// driving the scroll through `_animateToHeadingWidget`.
   final Map<int, GlobalKey> _blockKeys = {};
 
   /// Maps each [HeadingRef] in the current document to the
@@ -238,10 +254,14 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     );
   }
 
+  /// One-shot restore of the saved reading-position bookmark.
+  /// The caller (the `data:` branch of the document AsyncValue's
+  /// `when`) must gate this with `if (!_restoreAttempted)` — the
+  /// guard is at the call site so the method dispatch itself is
+  /// skipped on every rebuild after the first. We set
+  /// `_restoreAttempted = true` here so a second accidental call
+  /// (a future site we forget to gate) is still harmless.
   void _maybeRestoreReadingPosition() {
-    if (_restoreAttempted) {
-      return;
-    }
     _restoreAttempted = true;
     final saved = ref
         .read(readingPositionStoreProvider)
@@ -473,6 +493,23 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       }
     }
     _headingToWidgetIndex = map;
+
+    // Cross-file anchor jump — when this viewer was opened via
+    // `ViewerRoute.location(path, anchor: …)` (which happens for a
+    // tapped `[label](other.md#section)` link), scroll to the
+    // target heading as soon as the mapping is ready. Gated with
+    // `_initialAnchorConsumed` so the jump fires exactly once even
+    // though `onTocList` runs on every rebuild.
+    if (!_initialAnchorConsumed) {
+      final anchor = widget.initialAnchor;
+      if (anchor != null && anchor.isNotEmpty) {
+        final heading = resolveAnchor(href: '#$anchor', headings: headings);
+        if (heading != null && map.containsKey(heading)) {
+          _initialAnchorConsumed = true;
+          _scrollToHeading(heading);
+        }
+      }
+    }
   }
 
   /// Extracts `(level, text)` from a `markdown_widget` [Toc] entry
@@ -561,7 +598,13 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     // `alignment: 0.0` returns the offset that puts the target
     // flush with the leading edge of the viewport — exactly the
     // browser-anchor-navigation feel we want.
-    final viewport = RenderAbstractViewport.of(renderObject);
+    //
+    // `RenderAbstractViewport.maybeOf` returns nullable — a target
+    // that is somehow outside any viewport (unexpected in this
+    // viewer, but the API permits it) would crash a non-null
+    // access. Drop silently on null.
+    final viewport = RenderAbstractViewport.maybeOf(renderObject);
+    if (viewport == null) return;
     final reveal = viewport.getOffsetToReveal(renderObject, 0.0);
 
     // Clamp defensively: `getOffsetToReveal` can return a value
@@ -794,7 +837,19 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
         currentDocumentPath: widget.documentId.value,
       );
       if (relative != null && File(relative.path).existsSync()) {
-        context.push(ViewerRoute.location(relative.path));
+        // Forward any `#section` fragment carried by the href so
+        // the destination viewer's `_captureHeadingIndex` can
+        // consume it on first build — a tapped
+        // `[label](other.md#section)` lands on the right heading
+        // instead of the top of the file. Empty fragment means
+        // plain file link; `ViewerRoute.location` skips the extra
+        // query parameter in that case.
+        context.push(
+          ViewerRoute.location(
+            relative.path,
+            anchor: relative.fragment.isEmpty ? null : relative.fragment,
+          ),
+        );
         return;
       }
 

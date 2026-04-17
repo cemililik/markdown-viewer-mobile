@@ -27,10 +27,11 @@ class TocDrawer extends StatelessWidget {
 
   final Document document;
 
-  /// Invoked with the tapped [HeadingRef] AFTER the drawer has
-  /// been popped. The caller is expected to resolve the
-  /// matching widget key and drive
-  /// `Scrollable.ensureVisible` — see `ViewerScreen._scrollToHeading`.
+  /// Invoked with the tapped [HeadingRef] at the same moment the
+  /// drawer is popped. The caller (`ViewerScreen._scrollToHeading`)
+  /// resolves the matching block key and animates the cached inner
+  /// `ScrollController` to the target — the two operations run
+  /// concurrently so the drawer close and the scroll land together.
   final ValueChanged<HeadingRef> onHeadingSelected;
 
   @override

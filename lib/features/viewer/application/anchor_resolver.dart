@@ -39,10 +39,12 @@ HeadingRef? resolveAnchor({
     candidates.add(decoded.toLowerCase());
   }
 
-  for (final candidate in candidates) {
-    for (final h in headings) {
-      if (h.anchor == candidate) return h;
-    }
+  // Iterate headings once, return the first document-order match.
+  // This preserves "first-heading-with-this-slug wins" semantics (the
+  // way `#dup` resolves to the first heading named `dup`) while
+  // dropping the O(N×M) nested loop an earlier revision carried.
+  for (final h in headings) {
+    if (candidates.contains(h.anchor)) return h;
   }
   return null;
 }
@@ -55,7 +57,15 @@ String? _tryDecode(String raw) {
     // anchor links.
     final swapped = raw.replaceAll('+', '%20');
     return Uri.decodeComponent(swapped);
-  } on Object {
+  } on FormatException {
+    // `decodeComponent` documents `FormatException` for malformed
+    // UTF-8 sequences after a successful percent-decode.
+    return null;
+  } on ArgumentError {
+    // And `ArgumentError` for the raw "Invalid URL encoding" case
+    // (e.g. `%ZZ`). We want to fall back to the raw slug in both
+    // modes — anything broader (on Object) would swallow real
+    // runtime errors like OutOfMemoryError.
     return null;
   }
 }

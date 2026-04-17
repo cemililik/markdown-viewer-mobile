@@ -914,15 +914,15 @@
     "description": "Subtitle below the crash reporting toggle explaining what data is sent and what is not."
   },
 
-  "syncTryItTitle": "Try it with MarkdownViewer docs",
+  "syncTryItTitle": "Try it with MarkdownViewer examples",
   "@syncTryItTitle": {
     "description": "Title of the example card shown on the sync screen for first-time users."
   },
-  "syncTryItBody": "Sync this app's own documentation to explore the feature.",
+  "syncTryItBody": "One sample MD per feature — sync and read them offline.",
   "@syncTryItBody": {
     "description": "Body text of the try-it example card on the sync screen."
   },
-  "syncTryItFileCount": "~30 markdown files",
+  "syncTryItFileCount": "~25 markdown examples",
   "@syncTryItFileCount": {
     "description": "Approximate file count shown in the try-it card."
   },

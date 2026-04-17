@@ -11,14 +11,10 @@
 # Flutter engine's JNI glue loads these symbols by name. The
 # upstream Flutter tooling ships this as a best-practice default;
 # keeping it here future-proofs us against engine revisions that
-# touch new reflective call-sites.
--keep class io.flutter.app.** { *; }
--keep class io.flutter.plugin.** { *; }
--keep class io.flutter.util.** { *; }
--keep class io.flutter.view.** { *; }
+# touch new reflective call-sites. A single broad pattern covers
+# every narrower `io.flutter.*.**` surface — kept that way so a
+# future engine-internal package rename does not surprise us.
 -keep class io.flutter.** { *; }
--keep class io.flutter.plugins.** { *; }
--keep class io.flutter.plugin.editing.** { *; }
 
 # ── Play Core (Flutter deferred components + Play Feature Delivery) ──
 # Flutter's tree-shaking for assets and deferred loading leans on
@@ -67,9 +63,13 @@
 # android.util.Log.d/v are already conditionally gated by our own
 # logger (docs/standards/observability-standards.md), but this
 # directive removes the stubs as a defence-in-depth pass so nothing
-# PII-adjacent survives into the release binary.
+# PII-adjacent survives into the release binary. `isLoggable` is
+# deliberately *not* listed — third-party libraries guard branches
+# on it (`if (Log.isLoggable(TAG, INFO)) expensiveCall()`), and
+# collapsing the return value to the default would silently dead-
+# strip those branches. Keeping isLoggable live costs a handful of
+# call sites and avoids that footgun entirely.
 -assumenosideeffects class android.util.Log {
-    public static boolean isLoggable(java.lang.String, int);
     public static int v(...);
     public static int d(...);
 }

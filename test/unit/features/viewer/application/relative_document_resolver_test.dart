@@ -93,14 +93,23 @@ void main() {
       expect(r?.path, p.normalize('/home/user/docs/README.MD'));
     });
 
-    test('fragment-only-after-file (empty filename) returns null', () {
-      // `#foo` was caught earlier; `# foo` (with a space) parses as
-      // an empty file part followed by ` foo`. Reject.
+    test('percent-encoded filename resolves (with %20 space)', () {
+      // Matches the encoding fix in `resolveRelativeDocument`:
+      // the href may carry percent-escaped bytes that must be
+      // decoded before the extension check and filesystem join.
       final r = resolveRelativeDocument(
-        href: '#anchor-only',
+        href: 'api%20docs.md',
         currentDocumentPath: currentDoc,
       );
-      expect(r, isNull);
+      expect(r?.path, p.normalize('/home/user/docs/api docs.md'));
+    });
+
+    test('percent-encoded Unicode filename resolves', () {
+      final r = resolveRelativeDocument(
+        href: 'kullan%C4%B1c%C4%B1.md',
+        currentDocumentPath: currentDoc,
+      );
+      expect(r?.path, p.normalize('/home/user/docs/kullanıcı.md'));
     });
   });
 }

@@ -50,13 +50,22 @@ RelativeDocument? resolveRelativeDocument({
   // Split off a fragment so `guide.md#section` both resolves to
   // `guide.md` and preserves `section` for the destination viewer.
   final hashIndex = href.indexOf('#');
-  final filePart = hashIndex < 0 ? href : href.substring(0, hashIndex);
-  final fragment = hashIndex < 0 ? '' : href.substring(hashIndex + 1);
-  if (filePart.isEmpty) return null;
+  final rawFilePart = hashIndex < 0 ? href : href.substring(0, hashIndex);
+  final rawFragment = hashIndex < 0 ? '' : href.substring(hashIndex + 1);
+  if (rawFilePart.isEmpty) return null;
 
-  final uri = Uri.tryParse(filePart);
+  final uri = Uri.tryParse(rawFilePart);
   if (uri == null) return null;
   if (uri.scheme.isNotEmpty) return null;
+
+  // Percent-decode both halves before the extension check and the
+  // filesystem join — authors who encode spaces or Unicode in
+  // hrefs (`api%20docs.md`, `kullan%C4%B1c%C4%B1.md`) expect the
+  // filesystem to see the decoded form. Malformed escapes fall
+  // back to the raw string so the extension check still catches
+  // obvious non-markdown targets.
+  final filePart = _decodeOrRaw(rawFilePart);
+  final fragment = _decodeOrRaw(rawFragment);
 
   final lower = filePart.toLowerCase();
   if (!(lower.endsWith('.md') || lower.endsWith('.markdown'))) {
@@ -68,4 +77,17 @@ RelativeDocument? resolveRelativeDocument({
   final normalized = p.normalize(joined);
 
   return RelativeDocument(path: normalized, fragment: fragment);
+}
+
+String _decodeOrRaw(String value) {
+  if (value.isEmpty) return value;
+  try {
+    return Uri.decodeComponent(value);
+  } on FormatException {
+    // Malformed UTF-8 after decode.
+    return value;
+  } on ArgumentError {
+    // Malformed percent escape itself (e.g. `%ZZ`).
+    return value;
+  }
 }

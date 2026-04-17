@@ -1,7 +1,7 @@
 # Cross-file target
 
 This file is the landing page for the cross-file link tests in
-[03-cross-file-links.md](03-cross-file-links.md). If you arrived
+[cross-file-links.md](cross-file-links.md). If you arrived
 here by tapping a link in that file, the feature works end to end.
 
 ## Introduction
@@ -9,7 +9,7 @@ here by tapping a link in that file, the feature works end to end.
 The viewer treats this page like any other `.md` document — same
 rendering pipeline, same reading-comfort controls, same TOC drawer.
 
-Back to the [origin](03-cross-file-links.md) when you're done.
+Back to the [origin](cross-file-links.md) when you're done.
 
 ## A specific heading
 
@@ -40,4 +40,4 @@ anim id est laborum.
 
 - [Back to the introduction](#introduction)
 - [Back to the specific heading](#a-specific-heading)
-- [Back to the origin file](03-cross-file-links.md)
+- [Back to the origin file](cross-file-links.md)

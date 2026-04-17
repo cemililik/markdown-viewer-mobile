@@ -65,11 +65,18 @@ void main() {
       expect(result, isNull);
     });
 
-    test('schemeless slug prefixed with `#` by caller still resolves', () {
-      // `_onLinkTap` prepends `#` when `markdown_widget` forwards a
-      // slug without one. That recovered href must still match.
-      final result = resolveAnchor(href: '#My-Heading', headings: headings);
-      expect(result?.anchor, 'my-heading');
+    test('case mismatch at several mix points resolves to same slug', () {
+      // Covers the path where `_onLinkTap` (or a GitHub renderer that
+      // preserved the author's capitalisation in the href) hands us
+      // a mixed-case href that must still reach the lowercased slug.
+      expect(
+        resolveAnchor(href: '#My-Heading', headings: headings)?.anchor,
+        'my-heading',
+      );
+      expect(
+        resolveAnchor(href: '#MY-HEADING', headings: headings)?.anchor,
+        'my-heading',
+      );
     });
 
     test('empty anchor (`#` alone) returns null', () {

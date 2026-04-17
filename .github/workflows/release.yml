@@ -319,7 +319,12 @@ jobs:
           # maintainer reaching for the symbol file.
           name: android-symbols
           path: build/symbols
-          if-no-files-found: warn
+          # `error` (not `warn`) so a build that skipped `--obfuscate
+          # --split-debug-info` (typo, accidental flag removal) fails
+          # the workflow before producing a release that Sentry cannot
+          # symbolicate — a silent symbol-less release is exactly the
+          # failure mode this upload step exists to prevent.
+          if-no-files-found: error
           retention-days: 90
 
   # ── 4. iOS: signed IPA → TestFlight ──────────────────────────────────
@@ -458,7 +463,12 @@ jobs:
           # from the obfuscated release build.
           name: ios-symbols
           path: build/symbols
-          if-no-files-found: warn
+          # `error` (not `warn`) so a build that skipped `--obfuscate
+          # --split-debug-info` (typo, accidental flag removal) fails
+          # the workflow before producing a release that Sentry cannot
+          # symbolicate — a silent symbol-less release is exactly the
+          # failure mode this upload step exists to prevent.
+          if-no-files-found: error
           retention-days: 90
 
   # ── 5. GitHub Release with both artifacts attached ───────────────────

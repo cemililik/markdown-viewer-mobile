@@ -58,13 +58,18 @@ final MarkdownGenerator _markdownGenerator = MarkdownGenerator(
 /// reading speed and not worth the cost of a full-text strip.
 ///
 /// Returns at least 1 so even a one-line document shows "1 min read".
+/// Pre-compiled whitespace regex for [_estimateReadingMinutes]. Kept
+/// at file scope so a cache miss does not re-compile the pattern
+/// every time a new document is opened.
+final RegExp _wordSplitRegex = RegExp(r'\s+');
+
 int _estimateReadingMinutes(Document document) {
   final cached = _readingMinutesCache[document];
   if (cached != null) return cached;
   final wordCount =
       document.source
           .trim()
-          .split(RegExp(r'\s+'))
+          .split(_wordSplitRegex)
           .where((w) => w.isNotEmpty)
           .length;
   final minutes = (wordCount / 200).ceil();

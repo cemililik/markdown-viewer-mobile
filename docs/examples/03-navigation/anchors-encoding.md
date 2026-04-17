@@ -32,7 +32,7 @@ the normalisation layer tries both directions.)
 
 Turkish heading with characters outside ASCII. The slug is
 `türkçe-başlık`. A renderer that percent-encodes those bytes produces
-hrefs like `%C3%BCrk%C3%A7e-ba%C5%9Fl%C4%B1k`. Both forms resolve:
+hrefs like `t%C3%BCrk%C3%A7e-ba%C5%9Fl%C4%B1k`. Both forms resolve:
 
 - Plain: [jump](#türkçe-başlık)
 - Percent-encoded: [jump](#t%C3%BCrk%C3%A7e-ba%C5%9Fl%C4%B1k)

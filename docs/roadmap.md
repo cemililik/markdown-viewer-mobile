@@ -137,7 +137,6 @@ pipeline.
 - [x] Self-clean stale recents (recents entries whose backing file no longer exists are purged on library load)
 - [x] `leak_tracker` integration — globally enabled in test harness, caught and fixed `routerProvider` GoRouter lifecycle leak; per-file opt-outs documented for upstream `markdown_widget` (`TapGestureRecognizer`) and Flutter image-cache (`ImageStreamCompleterHandle`, `_LiveImage`) leaks
 - [x] Dedicated security review (1 High + 8 Medium + 8 Low findings) — High (URL scheme allow-list) and four Medium (host allow-list, response size caps, iOS / Android `readFileBytes` caps, share-intent copy caps) closed before tag. See [docs/analysis/securityreports/20260417T091912-security-review.md](analysis/securityreports/20260417T091912-security-review.md)
-- [x] Store submission package (App Store + Play Console listings EN/TR, privacy questionnaire answers, what's-new copy) under [docs/store-submission/](store-submission/)
 - [x] Tag `v1.0.0` published; GitHub Actions release pipeline uploaded the signed IPA to TestFlight and signed AAB to Play Console's internal track (2026-04-17)
 
 ### Remaining (post-v1 polish, not release-blocking)
