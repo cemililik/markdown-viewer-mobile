@@ -9,6 +9,15 @@ kept out of this file — they belong in commit history instead.
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-04-17
+
+First public release. The app has been through three private beta
+rounds (v0.2.0 – v0.2.2) on TestFlight and Play Console internal
+tracks, a 128-finding full-codebase code review, a leak-tracker
+integration pass, and a dedicated security review. All P0 / P1 items
+from those passes are closed; the remaining Medium and Low items are
+tracked in `docs/roadmap.md`.
+
 ### Added
 - "Try it" card on the sync screen that pre-fills the MarkdownViewer
   docs repo URL so a first-time user can explore the feature with a
@@ -158,7 +167,8 @@ kept out of this file — they belong in commit history instead.
   qualifier because that form evaluates inconsistently across archive
   phases.
 
-[Unreleased]: https://github.com/cemililik/markdown-viewer-mobile/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/cemililik/markdown-viewer-mobile/compare/v0.2.2...v1.0.0
 [0.2.2]: https://github.com/cemililik/markdown-viewer-mobile/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/cemililik/markdown-viewer-mobile/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/cemililik/markdown-viewer-mobile/releases/tag/v0.2.0
