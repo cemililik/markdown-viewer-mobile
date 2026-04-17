@@ -9,6 +9,94 @@ kept out of this file — they belong in commit history instead.
 
 ## [Unreleased]
 
+## [1.0.1] — 2026-04-17
+
+First patch release after v1.0.0. Bundles the navigation fixes,
+release-pipeline hardening, and performance pass into a single
+tag — v1.0.2 was planned and then rolled into v1.0.1 before
+either intermediate tag left the development branch.
+
+### Fixed
+- **TOC drawer first tap no longer snaps the document back to
+  offset 0.** The root cause was `Scrollable.ensureVisible`
+  walking up through the `NestedScrollView`'s outer Scrollable
+  and renegotiating the floating-SliverAppBar scroll position
+  on every call, resetting the inner body's scroll position
+  mid-animation. Replaced the call with a direct
+  `controller.animateTo` driven by
+  `RenderAbstractViewport.getOffsetToReveal(...)` so the inner
+  scroll position is the only thing the viewer touches. Scroll
+  and drawer dismissal now run concurrently and land together.
+- **Cross-file markdown links** (`[label](other.md)` and
+  `[label](../shared/types.md#section)`) now open the target
+  file in a new viewer route when the file exists in the same
+  source tree. Non-markdown targets and paths that would escape
+  the source directory are refused by construction. Cross-file
+  anchor fragments (`#section`) are forwarded through a new
+  `ViewerRoute.location(path, anchor: …)` overload and consumed
+  once the destination document has parsed.
+- **In-document anchor links** (`[label](#slug)`) now resolve
+  under four previously-failing href shapes:
+  - **Case mismatches** — `[x](#Foo)` lands on a heading with
+    anchor `foo`, matching GitHub's case-insensitive lookup
+    behaviour.
+  - **Percent-encoded characters** — `[x](#kullan%C4%B1c%C4%B1)`
+    resolves to a Turkish-titled heading; `[x](#my%20head)`
+    resolves to a heading with `my head` in its slug.
+  - **`+` as encoded space** — `[x](#my+heading)` also decodes.
+  - **Schemeless hrefs** — a renderer that strips the leading
+    `#` before calling the link handler now routes through the
+    anchor-resolver fallback instead of hitting the
+    unsafe-scheme block.
+
+  Every path goes through a single shared `resolveAnchor`
+  helper with eleven unit tests covering the normalisation
+  permutations; malformed percent escapes fall through to the
+  raw comparison rather than throwing. Unresolved schemeless
+  hrefs are dropped with a diagnostic log instead of
+  escalating to the unsafe-scheme warning.
+- **Reading-time estimate** is now computed once per document
+  and cached in an `Expando` — the full-source whitespace split
+  that produced the `viewerReadingTime` label used to re-run on
+  every scroll tick, theme flip, and search-highlight refresh.
+- **One-shot reading-position restore** no longer dispatches
+  its guarded no-op method on every rebuild of the viewer's
+  `data:` branch — the `_restoreAttempted` check is hoisted to
+  the call site so rebuilds long after the restore already
+  fired skip the method dispatch entirely.
+
+### Added
+- **Feature-tour example library** under `docs/examples/`, split
+  into category folders (`01-text/`, `02-blocks/`,
+  `03-navigation/`, `04-math.md`, `05-mermaid/`) so first-run
+  users see every CommonMark / GFM / Mermaid / math surface the
+  viewer renders and experience folder navigation in the library
+  drawer. The sync "Try it" card now pre-fills this path
+  (`.../docs/examples`) instead of the full `docs/` tree.
+
+### Changed
+- **Release pipeline** now builds the Android AAB and iOS IPA
+  with `--obfuscate --split-debug-info=build/symbols` and
+  Android's R8 / `shrinkResources` pass enabled. The resulting
+  AAB is ~15–20 % smaller — a shorter download for users on
+  slower networks and a smaller cold-start code-load cost on
+  older devices. `flutter symbolize` rehydrates Sentry stack
+  traces from the artifacts the workflow now attaches to each
+  GitHub Release (`android-symbols`, `ios-symbols`, 90-day
+  retention).
+
+### Internal
+- `SearchHighlightState` gained value equality so any
+  downstream `updateShouldNotify` / `Selector` that we plug in
+  later can short-circuit when the search state has not
+  actually changed.
+- `docs/standards/performance-standards.md` targets
+  cross-checked against hot paths; seven items confirmed
+  already-optimal (mermaid LRU cache, footnote /
+  mermaid-code Expandos, scroll listener change-detect,
+  search-scan isolate + debounce, `ref.watch` scoping,
+  stateless parser, router builders).
+
 ## [1.0.0] — 2026-04-17
 
 First public release. The app has been through three private beta
@@ -167,7 +255,8 @@ tracked in `docs/roadmap.md`.
   qualifier because that form evaluates inconsistently across archive
   phases.
 
-[Unreleased]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/cemililik/markdown-viewer-mobile/compare/v0.2.2...v1.0.0
 [0.2.2]: https://github.com/cemililik/markdown-viewer-mobile/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/cemililik/markdown-viewer-mobile/compare/v0.2.0...v0.2.1

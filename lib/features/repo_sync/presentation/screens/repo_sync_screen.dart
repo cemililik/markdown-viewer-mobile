@@ -671,7 +671,7 @@ class _TryItCard extends ConsumerWidget {
   const _TryItCard({required this.onTry});
 
   static const _exampleUrl =
-      'https://github.com/cemililik/markdown-viewer-mobile/tree/main/docs';
+      'https://github.com/cemililik/markdown-viewer-mobile/tree/main/docs/examples';
 
   final ValueChanged<String> onTry;
 

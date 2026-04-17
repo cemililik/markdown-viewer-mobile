@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:markdown/markdown.dart' as md;
+import 'package:markdown_viewer/core/slug/slugify.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 
 /// Parses raw markdown bytes into a [Document].
@@ -166,26 +167,17 @@ final class MarkdownParser {
 
   /// Produces a GitHub-style anchor slug from [text] and disambiguates
   /// duplicates within the same document by appending `-1`, `-2`, etc.
+  /// Slug generation itself lives in [slugify] so the anchor resolver
+  /// can apply the identical pipeline when normalising a user-supplied
+  /// href.
   String _uniqueAnchor(String text, Map<String, int> seen) {
-    final base = _slug(text);
+    final base = slugify(text);
     final count = seen[base] ?? 0;
     seen[base] = count + 1;
     if (count == 0) {
       return base;
     }
     return '$base-$count';
-  }
-
-  String _slug(String text) {
-    final lower = text.toLowerCase();
-    final stripped = lower.replaceAll(
-      RegExp(r'[^\p{L}\p{N}\s-]', unicode: true),
-      '',
-    );
-    final collapsed = stripped.replaceAll(RegExp(r'\s+'), '-');
-    final deduped = collapsed.replaceAll(RegExp('-+'), '-');
-    final trimmed = deduped.replaceAll(RegExp(r'^-+|-+$'), '');
-    return trimmed.isEmpty ? 'section' : trimmed;
   }
 }
 

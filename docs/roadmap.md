@@ -18,8 +18,8 @@ graph LR
     style P3 fill:#2e7d32,color:#fff
     style P4 fill:#2e7d32,color:#fff
     style P45 fill:#2e7d32,color:#fff
-    style P5 fill:#f9a825,color:#000
-    style V1 fill:#1565c0,color:#fff
+    style P5 fill:#2e7d32,color:#fff
+    style V1 fill:#2e7d32,color:#fff
 ```
 
 ## Phase 0 — Foundation ✅
@@ -103,9 +103,13 @@ See [ADR-0011](decisions/0011-network-access-policy.md) and
 - [x] Re-sync + remove from drawer, relative time display
 - [x] Background isolate for large-repo JSON decoding
 
-## Phase 5 — Hardening & Release 🟡
+## Phase 5 — Hardening & Release ✅
 
-Stabilize, harden, and ship v1.0.
+Stabilize, harden, and ship v1.0 — tag `v1.0.0` pushed 2026-04-17,
+TestFlight + Play Console internal-track upload triggered by the
+release pipeline. Production-track rollout is a manual action in
+the Play Console UI once the internal build is verified, per
+[docs/release-process.md](release-process.md).
 
 ### Completed
 
@@ -134,13 +138,10 @@ Stabilize, harden, and ship v1.0.
 - [x] `sentry_flutter` bumped to `^9.0.0` for Kotlin 2.2.20 compatibility
 - [x] Self-clean stale recents (recents entries whose backing file no longer exists are purged on library load)
 - [x] `leak_tracker` integration — globally enabled in test harness, caught and fixed `routerProvider` GoRouter lifecycle leak; per-file opt-outs documented for upstream `markdown_widget` (`TapGestureRecognizer`) and Flutter image-cache (`ImageStreamCompleterHandle`, `_LiveImage`) leaks
+- [x] Dedicated security review (1 High + 8 Medium + 8 Low findings) — High (URL scheme allow-list) and four Medium (host allow-list, response size caps, iOS / Android `readFileBytes` caps, share-intent copy caps) closed before tag. See [docs/analysis/securityreports/20260417T091912-security-review.md](analysis/securityreports/20260417T091912-security-review.md)
+- [x] Tag `v1.0.0` published; GitHub Actions release pipeline uploaded the signed IPA to TestFlight and signed AAB to Play Console's internal track (2026-04-17)
 
-### Remaining (blockers for v1.0)
-
-- [ ] Bug fixes from beta feedback (ongoing)
-- [ ] Public v1.0 release (tag + store submission)
-
-### Remaining (nice-to-have, can slip past v1.0)
+### Remaining (post-v1 polish, not release-blocking)
 
 - [ ] Full a11y audit (TalkBack + VoiceOver end-to-end)
 - [ ] Tests for `repo_sync`, `onboarding`, `observability` (P2-6..8)
@@ -150,6 +151,7 @@ Stabilize, harden, and ship v1.0.
 - [ ] Sentry performance tracing for key operations
 - [ ] Drift schema migration strategy (P2-12)
 - [ ] Remaining P2 / P3 nits — see code-review report
+- [ ] Remaining security-review findings (M-3 redirect token [covered by M-1 interceptor], M-4 5xx retry/backoff, M-6 iOS symlink resolution, L-1..L-8)
 
 ## Post-v1 Candidates
 

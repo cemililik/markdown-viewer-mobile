@@ -27,10 +27,11 @@ class TocDrawer extends StatelessWidget {
 
   final Document document;
 
-  /// Invoked with the tapped [HeadingRef] AFTER the drawer has
-  /// been popped. The caller is expected to resolve the
-  /// matching widget key and drive
-  /// `Scrollable.ensureVisible` — see `ViewerScreen._scrollToHeading`.
+  /// Invoked with the tapped [HeadingRef] at the same moment the
+  /// drawer is popped. The caller (`ViewerScreen._scrollToHeading`)
+  /// resolves the matching block key and animates the cached inner
+  /// `ScrollController` to the target — the two operations run
+  /// concurrently so the drawer close and the scroll land together.
   final ValueChanged<HeadingRef> onHeadingSelected;
 
   @override
@@ -90,6 +91,17 @@ class TocDrawer extends StatelessWidget {
                             heading: heading,
                             onTap: () {
                               HapticFeedback.selectionClick().ignore();
+                              // Fire the scroll and the drawer pop
+                              // simultaneously. The viewer's
+                              // `_scrollToHeading` talks to the inner
+                              // ScrollController directly (not via
+                              // `Scrollable.ensureVisible`), so the
+                              // drawer close animation running
+                              // concurrently no longer desyncs the
+                              // scroll target — both finish around
+                              // the same time and the user sees a
+                              // single smooth transition from "tapped
+                              // a heading" to "landed on it".
                               Navigator.of(context).maybePop();
                               onHeadingSelected(heading);
                             },

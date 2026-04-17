@@ -1349,19 +1349,19 @@ abstract class AppLocalizations {
   /// Title of the example card shown on the sync screen for first-time users.
   ///
   /// In en, this message translates to:
-  /// **'Try it with MarkdownViewer docs'**
+  /// **'Try it with MarkdownViewer examples'**
   String get syncTryItTitle;
 
   /// Body text of the try-it example card on the sync screen.
   ///
   /// In en, this message translates to:
-  /// **'Sync this app\'s own documentation to explore the feature.'**
+  /// **'One sample MD per feature — sync and read them offline.'**
   String get syncTryItBody;
 
   /// Approximate file count shown in the try-it card.
   ///
   /// In en, this message translates to:
-  /// **'~30 markdown files'**
+  /// **'~25 markdown examples'**
   String get syncTryItFileCount;
 
   /// Button label on the try-it card that starts syncing the example repo.

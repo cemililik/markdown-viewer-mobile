@@ -276,9 +276,9 @@
   "settingsCrashReportingTitle": "Hata raporları gönder",
   "settingsCrashReportingSubtitle": "Anonim hata verileri göndererek uygulamanın geliştirilmesine yardımcı olun. Dosya içerikleri veya kişisel bilgiler asla toplanmaz.",
 
-  "syncTryItTitle": "MarkdownViewer dokümanlarıyla deneyin",
-  "syncTryItBody": "Bu uygulamanın kendi dokümanlarını senkronize ederek özelliği keşfedin.",
-  "syncTryItFileCount": "~30 markdown dosyası",
+  "syncTryItTitle": "MarkdownViewer örnekleriyle deneyin",
+  "syncTryItBody": "Her özellik için bir örnek MD dosyası; senkronize edip çevrimdışı inceleyin.",
+  "syncTryItFileCount": "~25 markdown örneği",
   "syncTryItButton": "Deneyin",
   "syncRecentSyncsHeader": "Senkronize edilmiş depolar",
   "syncRecentFileCount": "{count, plural, =1{1 dosya} other{{count} dosya}}",

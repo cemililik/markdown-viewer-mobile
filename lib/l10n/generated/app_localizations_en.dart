@@ -753,14 +753,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'Help improve the app by sending anonymous crash data. No file contents or personal information are ever collected.';
 
   @override
-  String get syncTryItTitle => 'Try it with MarkdownViewer docs';
+  String get syncTryItTitle => 'Try it with MarkdownViewer examples';
 
   @override
   String get syncTryItBody =>
-      'Sync this app\'s own documentation to explore the feature.';
+      'One sample MD per feature — sync and read them offline.';
 
   @override
-  String get syncTryItFileCount => '~30 markdown files';
+  String get syncTryItFileCount => '~25 markdown examples';
 
   @override
   String get syncTryItButton => 'Try it';

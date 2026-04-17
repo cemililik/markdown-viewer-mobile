@@ -80,7 +80,12 @@ GoRouter router(Ref ref) {
               body: ErrorView(message: context.l10n.libraryFilePickFailed),
             );
           }
-          return ViewerScreen(documentId: DocumentId(rawPath));
+          final initialAnchor =
+              state.uri.queryParameters[ViewerRoute.anchorQuery];
+          return ViewerScreen(
+            documentId: DocumentId(rawPath),
+            initialAnchor: initialAnchor,
+          );
         },
       ),
       GoRoute(
@@ -182,9 +187,24 @@ abstract final class ViewerRoute {
   /// Query parameter name carrying the absolute file path to open.
   static const String pathQuery = 'path';
 
+  /// Query parameter name carrying an optional anchor slug (without
+  /// the leading `#`). A cross-file link of the form
+  /// `[label](other.md#section)` can arrive here through
+  /// [resolveRelativeDocument]; the viewer reads this parameter on
+  /// first build and scrolls to the matching heading once the target
+  /// document has parsed.
+  static const String anchorQuery = 'anchor';
+
   /// Builds the full `/viewer?path=<encoded>` location for navigation.
-  static String location(String filePath) {
-    final encoded = Uri.encodeQueryComponent(filePath);
-    return '$path?$pathQuery=$encoded';
+  /// Pass [anchor] when forwarding a cross-file anchor (`other.md#sec`)
+  /// so the destination viewer lands on the heading rather than the
+  /// top of the file.
+  static String location(String filePath, {String? anchor}) {
+    final encodedPath = Uri.encodeQueryComponent(filePath);
+    if (anchor == null || anchor.isEmpty) {
+      return '$path?$pathQuery=$encodedPath';
+    }
+    final encodedAnchor = Uri.encodeQueryComponent(anchor);
+    return '$path?$pathQuery=$encodedPath&$anchorQuery=$encodedAnchor';
   }
 }

@@ -749,14 +749,14 @@ class AppLocalizationsTr extends AppLocalizations {
       'Anonim hata verileri göndererek uygulamanın geliştirilmesine yardımcı olun. Dosya içerikleri veya kişisel bilgiler asla toplanmaz.';
 
   @override
-  String get syncTryItTitle => 'MarkdownViewer dokümanlarıyla deneyin';
+  String get syncTryItTitle => 'MarkdownViewer örnekleriyle deneyin';
 
   @override
   String get syncTryItBody =>
-      'Bu uygulamanın kendi dokümanlarını senkronize ederek özelliği keşfedin.';
+      'Her özellik için bir örnek MD dosyası; senkronize edip çevrimdışı inceleyin.';
 
   @override
-  String get syncTryItFileCount => '~30 markdown dosyası';
+  String get syncTryItFileCount => '~25 markdown örneği';
 
   @override
   String get syncTryItButton => 'Deneyin';

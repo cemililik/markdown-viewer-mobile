@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,8 +16,10 @@ import 'package:markdown_viewer/core/widgets/loading_view.dart';
 import 'package:markdown_viewer/features/library/application/preview_extractor.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
+import 'package:markdown_viewer/features/viewer/application/anchor_resolver.dart';
 import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
 import 'package:markdown_viewer/features/viewer/application/reading_position_store_provider.dart';
+import 'package:markdown_viewer/features/viewer/application/relative_document_resolver.dart';
 import 'package:markdown_viewer/features/viewer/application/services/pdf_exporter.dart';
 import 'package:markdown_viewer/features/viewer/application/viewer_document.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
@@ -54,9 +58,18 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 /// [WakelockPlus.disable] when it disposes, so the display never
 /// sleeps mid-read.
 class ViewerScreen extends ConsumerStatefulWidget {
-  const ViewerScreen({required this.documentId, super.key});
+  const ViewerScreen({required this.documentId, this.initialAnchor, super.key});
 
   final DocumentId documentId;
+
+  /// Anchor slug (without the leading `#`) that the viewer should
+  /// scroll to once the document has parsed. Threaded through
+  /// `ViewerRoute.location(path, anchor: …)` when a cross-file
+  /// markdown link of the form `[label](other.md#section)` is
+  /// tapped — the destination viewer handles the fragment after
+  /// its own `onTocList` callback fires. `null` for the common
+  /// "open from library / share-intent" case.
+  final String? initialAnchor;
 
   @override
   ConsumerState<ViewerScreen> createState() => _ViewerScreenState();
@@ -78,6 +91,13 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   bool _showBackToTop = false;
   bool _restoreAttempted = false;
 
+  /// One-shot flag for the cross-file anchor jump seeded by
+  /// `widget.initialAnchor`. Flipped to true the first time
+  /// `_captureHeadingIndex` produces a mapping that contains the
+  /// requested slug so the jump fires exactly once after the
+  /// target document has parsed — not on every subsequent rebuild.
+  bool _initialAnchorConsumed = false;
+
   /// Previous scroll offset used to detect scroll direction for the
   /// immersive FAB hide — when the user is actively scrolling down
   /// past the back-to-top threshold the FAB slides away alongside
@@ -92,8 +112,8 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// [MarkdownView.build] via `putIfAbsent`, so we do not need
   /// to know the final widget count ahead of time.
   ///
-  /// The TOC drawer + in-doc search both look up keys here
-  /// before driving `Scrollable.ensureVisible`.
+  /// The TOC drawer + in-doc search both look up keys here before
+  /// driving the scroll through `_animateToHeadingWidget`.
   final Map<int, GlobalKey> _blockKeys = {};
 
   /// Maps each [HeadingRef] in the current document to the
@@ -234,10 +254,14 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     );
   }
 
+  /// One-shot restore of the saved reading-position bookmark.
+  /// The caller (the `data:` branch of the document AsyncValue's
+  /// `when`) must gate this with `if (!_restoreAttempted)` — the
+  /// guard is at the call site so the method dispatch itself is
+  /// skipped on every rebuild after the first. We set
+  /// `_restoreAttempted = true` here so a second accidental call
+  /// (a future site we forget to gate) is still harmless.
   void _maybeRestoreReadingPosition() {
-    if (_restoreAttempted) {
-      return;
-    }
     _restoreAttempted = true;
     final saved = ref
         .read(readingPositionStoreProvider)
@@ -469,6 +493,30 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       }
     }
     _headingToWidgetIndex = map;
+
+    // Cross-file anchor jump — when this viewer was opened via
+    // `ViewerRoute.location(path, anchor: …)` (which happens for a
+    // tapped `[label](other.md#section)` link), scroll to the
+    // target heading as soon as the mapping is ready. Gated with
+    // `_initialAnchorConsumed` so the jump fires exactly once even
+    // though `onTocList` runs on every rebuild.
+    if (!_initialAnchorConsumed) {
+      // Consume the slot on the first attempt regardless of
+      // whether the lookup succeeded. `onTocList` fires on every
+      // rebuild, and an invalid / missing anchor would otherwise
+      // re-run `resolveAnchor` over the entire heading list on
+      // every scroll frame for the screen's lifetime. Missing one
+      // auto-scroll for a nonexistent anchor is strictly better
+      // than that cost.
+      _initialAnchorConsumed = true;
+      final anchor = widget.initialAnchor;
+      if (anchor != null && anchor.isNotEmpty) {
+        final heading = resolveAnchor(href: '#$anchor', headings: headings);
+        if (heading != null && map.containsKey(heading)) {
+          _scrollToHeading(heading);
+        }
+      }
+    }
   }
 
   /// Extracts `(level, text)` from a `markdown_widget` [Toc] entry
@@ -501,20 +549,85 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// would desync whenever the two parsers disagree on how to
   /// split the document — the bug that originally sent TOC taps
   /// to the wrong place (or to the top of the document).
+  /// Scrolls the viewer body so the widget that renders [heading] is
+  /// pinned at the top of the visible area.
+  ///
+  /// Implemented by computing the absolute scroll offset of the
+  /// target block via [RenderAbstractViewport.getOffsetToReveal] and
+  /// feeding it to the cached inner [ScrollController.animateTo].
+  ///
+  /// Earlier revisions used `Scrollable.ensureVisible(target,
+  /// alignment: 0)`. That API works well for a plain
+  /// `SingleChildScrollView`, but this viewer body lives inside a
+  /// `NestedScrollView` with `floatHeaderSlivers: true` — the outer
+  /// sliver and inner body each own a scroll position, and
+  /// `ensureVisible` walks up the render tree asking every enclosing
+  /// scroller to reveal the target. The two scrollers' coordination
+  /// with the floating SliverAppBar makes the **first** call after a
+  /// drawer-close snap the inner offset back to 0 (observed on
+  /// v1.0.0–v1.0.1 regression reports); subsequent calls then work
+  /// because the outer scroll state is already in the "collapsed"
+  /// regime. Bypassing `ensureVisible` and talking to the cached
+  /// inner controller directly avoids the outer coordination step
+  /// entirely — the first tap behaves the same as every tap that
+  /// follows.
   void _scrollToHeading(HeadingRef heading) {
     final widgetIndex = _headingToWidgetIndex[heading];
     if (widgetIndex == null) return;
+    // One post-frame hop so a caller that fires mid-build (the TOC
+    // drawer tap handler, an anchor link tap during a highlight
+    // rebuild) lets the current layout pass settle before we read
+    // the target's render geometry. Without the hop,
+    // `findRenderObject` can return a stale render box whose
+    // `localToGlobal` coords have not been updated yet.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _animateToHeadingWidget(widgetIndex);
+    });
+  }
+
+  void _animateToHeadingWidget(int widgetIndex) {
+    if (!mounted) return;
+    final controller = _scrollController;
+    if (controller == null || !controller.hasClients) return;
+
     final key = _blockKeys[widgetIndex];
     final target = key?.currentContext;
     if (target == null) return;
-    Scrollable.ensureVisible(
-      target,
+
+    final renderObject = target.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.attached) return;
+
+    // The inner body's viewport is what defines the scroll extent
+    // we need to land inside. `RenderAbstractViewport.of` walks up
+    // from the target's render object until it finds a viewport,
+    // which in a `SingleChildScrollView` is the matching
+    // `_RenderSingleChildViewport`. `getOffsetToReveal` with
+    // `alignment: 0.0` returns the offset that puts the target
+    // flush with the leading edge of the viewport — exactly the
+    // browser-anchor-navigation feel we want.
+    //
+    // `RenderAbstractViewport.maybeOf` returns nullable — a target
+    // that is somehow outside any viewport (unexpected in this
+    // viewer, but the API permits it) would crash a non-null
+    // access. Drop silently on null.
+    final viewport = RenderAbstractViewport.maybeOf(renderObject);
+    if (viewport == null) return;
+    final reveal = viewport.getOffsetToReveal(renderObject, 0.0);
+
+    // Clamp defensively: `getOffsetToReveal` can return a value
+    // above `maxScrollExtent` for a target that sits at the very
+    // bottom of a short document (shorter than the viewport), and
+    // `animateTo` would throw on that overshoot.
+    final position = controller.position;
+    final clamped = reveal.offset.clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+
+    controller.animateTo(
+      clamped,
       duration: const Duration(milliseconds: 450),
       curve: Curves.easeOutCubic,
-      // `alignment: 0` pins the heading at the top of the
-      // visible area, mirroring how browser anchor navigation
-      // feels.
-      alignment: 0,
     );
   }
 
@@ -674,25 +787,96 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// `docs/analysis/securityreports/20260417T091912-security-review.md`.
   static const _safeLinkSchemes = {'http', 'https', 'mailto'};
 
-  /// Anchor links (`#slug`) look up the matching [HeadingRef] and
-  /// scroll to it via [_scrollToHeading]. Other hrefs are handed to
-  /// the platform via [launchUrl] — `externalApplication` mode keeps
-  /// the viewer open in the background on both iOS and Android — but
-  /// only when the URI's scheme is in [_safeLinkSchemes].
+  /// Handles a tap on any markdown link. Dispatches in this order:
+  ///
+  /// 1. **Anchor link** — if `href` starts with `#`, resolve via
+  ///    [resolveAnchor] and scroll. Handles URL-encoded, `+`-as-space,
+  ///    and case-insensitive hrefs.
+  /// 2. **Schemeless href** — if [Uri.tryParse] returns a URI with an
+  ///    empty scheme, fall back to treating the href as an anchor
+  ///    slug (prepending the missing `#`). This is what catches the
+  ///    real-world `[label](my-heading)` shape that the markdown
+  ///    source may contain when authors forget the hash — and more
+  ///    importantly it catches the cases where `markdown_widget`
+  ///    forwards an already-stripped href to us.
+  /// 3. **External URL** — hand to [launchUrl] only when the scheme
+  ///    is in [_safeLinkSchemes]. Everything else (including
+  ///    `intent://`, `tel:`, `file:`, `javascript:`) is dropped with
+  ///    a log line.
   void _onLinkTap(String href, Document document) {
+    if (href.isEmpty) return;
+
     if (href.startsWith('#')) {
-      final slug = href.substring(1);
-      final heading =
-          document.headings.where((h) => h.anchor == slug).firstOrNull;
+      final heading = resolveAnchor(href: href, headings: document.headings);
       if (heading != null) _scrollToHeading(heading);
       return;
     }
+
     final uri = Uri.tryParse(href);
     if (uri == null) return;
+
+    // Schemeless href — three cases in priority order:
+    //
+    //   1. Anchor slug without the leading `#` — some renderer
+    //      variants strip it before calling `onTap`. Try anchor
+    //      resolution first.
+    //   2. Relative markdown file (`api.md`, `../shared/types.md`,
+    //      `guide.md#section`) — resolve against the current
+    //      document's directory and push a new ViewerRoute when the
+    //      target exists on disk. Only `.md` / `.markdown` targets
+    //      are accepted so a schemeless href cannot point at an
+    //      arbitrary file.
+    //   3. Neither — drop with a diagnostic log. Almost always a
+    //      typo or a relative link to a non-materialised file (a
+    //      folder source with SAF-backed content for example).
+    if (uri.scheme.isEmpty) {
+      final heading = resolveAnchor(
+        href: '#$href',
+        headings: document.headings,
+      );
+      if (heading != null) {
+        _scrollToHeading(heading);
+        return;
+      }
+
+      final relative = resolveRelativeDocument(
+        href: href,
+        currentDocumentPath: widget.documentId.value,
+      );
+      if (relative != null && File(relative.path).existsSync()) {
+        // Forward any `#section` fragment carried by the href so
+        // the destination viewer's `_captureHeadingIndex` can
+        // consume it on first build — a tapped
+        // `[label](other.md#section)` lands on the right heading
+        // instead of the top of the file. Empty fragment means
+        // plain file link; `ViewerRoute.location` skips the extra
+        // query parameter in that case.
+        context.push(
+          ViewerRoute.location(
+            relative.path,
+            anchor: relative.fragment.isEmpty ? null : relative.fragment,
+          ),
+        );
+        return;
+      }
+
+      ref
+          .read(appLoggerProvider)
+          .w(
+            'Dropped schemeless link (not a known anchor or '
+            'materialised relative file)',
+            error: 'href="$href"',
+          );
+      return;
+    }
+
     if (!_safeLinkSchemes.contains(uri.scheme.toLowerCase())) {
       ref
           .read(appLoggerProvider)
-          .w('Blocked link with unsafe scheme', error: 'scheme=${uri.scheme}');
+          .w(
+            'Blocked link with unsafe scheme',
+            error: 'scheme=${uri.scheme} href="$href"',
+          );
       return;
     }
     launchUrl(uri, mode: LaunchMode.externalApplication).ignore();
@@ -1020,7 +1204,13 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
             );
           },
           data: (document) {
-            _maybeRestoreReadingPosition();
+            // Gate the one-shot restore call before the method
+            // dispatch — the `data:` closure runs on every rebuild
+            // (scroll tick, theme flip, search-highlight refresh,
+            // reading-settings change) and the vast majority of
+            // those rebuilds happen long after the restore
+            // already fired.
+            if (!_restoreAttempted) _maybeRestoreReadingPosition();
             final queryLength = _searchController.text.trim().length;
             return Column(
               children: [
