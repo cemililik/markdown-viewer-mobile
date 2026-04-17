@@ -11,6 +11,23 @@ kept out of this file — they belong in commit history instead.
 
 ## [1.0.2] — 2026-04-17
 
+### Fixed
+- TOC drawer navigation: the first tap on a heading no longer
+  snaps the document back to offset 0 before the animation. Two
+  earlier fixes (a 300 ms drawer-close wait, a `Scrollable
+  .ensureVisible` post-frame hop) reduced the window but did not
+  eliminate the regression — the true root cause was `Scrollable
+  .ensureVisible` walking up through the `NestedScrollView`'s
+  outer Scrollable and renegotiating the floating-SliverAppBar
+  scroll position on every call. The inner body's scroll
+  therefore got reset mid-animation. Replaced the call with a
+  direct `controller.animateTo` driven by
+  `RenderAbstractViewport.getOffsetToReveal(...)`, so the inner
+  scroll position is the only thing the viewer touches. The
+  drawer-close delay was removed since the new path does not
+  race with the drawer animation — scroll and drawer dismissal
+  run concurrently and land together.
+
 ### Changed
 - Release pipeline now builds the Android AAB and iOS IPA with
   `--obfuscate --split-debug-info=build/symbols` and Android's

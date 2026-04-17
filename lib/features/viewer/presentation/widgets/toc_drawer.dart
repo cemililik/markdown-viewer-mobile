@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
@@ -90,28 +88,20 @@ class TocDrawer extends StatelessWidget {
                           final heading = headings[index];
                           return _TocEntry(
                             heading: heading,
-                            onTap: () async {
+                            onTap: () {
                               HapticFeedback.selectionClick().ignore();
-                              // Fire-and-forget the pop — the close
-                              // animation itself is what we want to
-                              // wait out, not the Navigator's
-                              // internal `Future<bool>` return value.
-                              unawaited(Navigator.of(context).maybePop());
-                              // Wait for Flutter's default drawer-close
-                              // transition (≈ 246 ms measured on iOS 18
-                              // and Android 14) to finish before firing
-                              // the scroll. Without this hop the
-                              // post-frame `Scrollable.ensureVisible`
-                              // fights with the NestedScrollView
-                              // viewport re-measurement that the drawer
-                              // dismissal triggers — the observed
-                              // symptom on v1.0 was the first tap
-                              // snapping the document back to offset 0
-                              // and the second tap (drawer already
-                              // closed) working correctly.
-                              await Future<void>.delayed(
-                                const Duration(milliseconds: 300),
-                              );
+                              // Fire the scroll and the drawer pop
+                              // simultaneously. The viewer's
+                              // `_scrollToHeading` talks to the inner
+                              // ScrollController directly (not via
+                              // `Scrollable.ensureVisible`), so the
+                              // drawer close animation running
+                              // concurrently no longer desyncs the
+                              // scroll target — both finish around
+                              // the same time and the user sees a
+                              // single smooth transition from "tapped
+                              // a heading" to "landed on it".
+                              Navigator.of(context).maybePop();
                               onHeadingSelected(heading);
                             },
                           );

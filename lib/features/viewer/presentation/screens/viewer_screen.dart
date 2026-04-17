@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -504,32 +505,80 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   /// would desync whenever the two parsers disagree on how to
   /// split the document — the bug that originally sent TOC taps
   /// to the wrong place (or to the top of the document).
+  /// Scrolls the viewer body so the widget that renders [heading] is
+  /// pinned at the top of the visible area.
+  ///
+  /// Implemented by computing the absolute scroll offset of the
+  /// target block via [RenderAbstractViewport.getOffsetToReveal] and
+  /// feeding it to the cached inner [ScrollController.animateTo].
+  ///
+  /// Earlier revisions used `Scrollable.ensureVisible(target,
+  /// alignment: 0)`. That API works well for a plain
+  /// `SingleChildScrollView`, but this viewer body lives inside a
+  /// `NestedScrollView` with `floatHeaderSlivers: true` — the outer
+  /// sliver and inner body each own a scroll position, and
+  /// `ensureVisible` walks up the render tree asking every enclosing
+  /// scroller to reveal the target. The two scrollers' coordination
+  /// with the floating SliverAppBar makes the **first** call after a
+  /// drawer-close snap the inner offset back to 0 (observed on
+  /// v1.0.0–v1.0.1 regression reports); subsequent calls then work
+  /// because the outer scroll state is already in the "collapsed"
+  /// regime. Bypassing `ensureVisible` and talking to the cached
+  /// inner controller directly avoids the outer coordination step
+  /// entirely — the first tap behaves the same as every tap that
+  /// follows.
   void _scrollToHeading(HeadingRef heading) {
     final widgetIndex = _headingToWidgetIndex[heading];
     if (widgetIndex == null) return;
-    // Defer the `ensureVisible` to the next frame so the TOC drawer
-    // close (Navigator.pop) — which runs in the same tap handler
-    // immediately before this call — finishes its teardown before
-    // we start the scroll. Without the hop, the first tap on a
-    // heading scrolled back to the top of the document because the
-    // drawer-close rebuild intercepted the in-flight scroll
-    // animation; the second tap worked because the drawer was
-    // already closed. See the regression report on v1.0.
+    // One post-frame hop so a caller that fires mid-build (the TOC
+    // drawer tap handler, an anchor link tap during a highlight
+    // rebuild) lets the current layout pass settle before we read
+    // the target's render geometry. Without the hop,
+    // `findRenderObject` can return a stale render box whose
+    // `localToGlobal` coords have not been updated yet.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final key = _blockKeys[widgetIndex];
-      final target = key?.currentContext;
-      if (target == null) return;
-      Scrollable.ensureVisible(
-        target,
-        duration: const Duration(milliseconds: 450),
-        curve: Curves.easeOutCubic,
-        // `alignment: 0` pins the heading at the top of the
-        // visible area, mirroring how browser anchor navigation
-        // feels.
-        alignment: 0,
-      );
+      _animateToHeadingWidget(widgetIndex);
     });
+  }
+
+  void _animateToHeadingWidget(int widgetIndex) {
+    if (!mounted) return;
+    final controller = _scrollController;
+    if (controller == null || !controller.hasClients) return;
+
+    final key = _blockKeys[widgetIndex];
+    final target = key?.currentContext;
+    if (target == null) return;
+
+    final renderObject = target.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.attached) return;
+
+    // The inner body's viewport is what defines the scroll extent
+    // we need to land inside. `RenderAbstractViewport.of` walks up
+    // from the target's render object until it finds a viewport,
+    // which in a `SingleChildScrollView` is the matching
+    // `_RenderSingleChildViewport`. `getOffsetToReveal` with
+    // `alignment: 0.0` returns the offset that puts the target
+    // flush with the leading edge of the viewport — exactly the
+    // browser-anchor-navigation feel we want.
+    final viewport = RenderAbstractViewport.of(renderObject);
+    final reveal = viewport.getOffsetToReveal(renderObject, 0.0);
+
+    // Clamp defensively: `getOffsetToReveal` can return a value
+    // above `maxScrollExtent` for a target that sits at the very
+    // bottom of a short document (shorter than the viewport), and
+    // `animateTo` would throw on that overshoot.
+    final position = controller.position;
+    final clamped = reveal.offset.clamp(
+      position.minScrollExtent,
+      position.maxScrollExtent,
+    );
+
+    controller.animateTo(
+      clamped,
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   /// Activates the bottom search bar and scrolls the SliverAppBar back
