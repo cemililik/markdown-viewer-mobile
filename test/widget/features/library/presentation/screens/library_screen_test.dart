@@ -82,6 +82,11 @@ Widget _harness(
       ),
     ],
   );
+  // GoRouter owns a delegate, parser, and information provider that all
+  // hold listener subscriptions. Without this teardown leak_tracker
+  // reports them as `notDisposed` because the harness creates a fresh
+  // router per test and the widget tree alone never triggers dispose.
+  addTearDown(router.dispose);
   return ProviderScope(
     overrides: [
       recentDocumentsStoreProvider.overrideWithValue(store),

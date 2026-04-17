@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 import 'package:markdown_viewer/features/viewer/application/markdown_extensions/admonition.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_view.dart';
@@ -22,6 +23,12 @@ void main() {
     VisibilityDetectorController.instance.updateInterval =
         originalUpdateInterval;
   });
+
+  // Ignore `markdown_widget`'s undisposed `TapGestureRecognizer`
+  // instances — see markdown_view_test.dart for the rationale.
+  LeakTesting.settings = LeakTesting.settings.withIgnored(
+    classes: const ['TapGestureRecognizer'],
+  );
 
   Document parseFixture(String name) => parseMarkdownFixture(name);
 

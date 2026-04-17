@@ -7,14 +7,20 @@ code, tables, footnotes, and admonitions.
 
 ## Status
 
-🟡 **Phase 5 — Hardening & Release in progress.** Phases 0–4.5 are
-complete. The app ships full markdown rendering (including Mermaid, LaTeX
-math, syntax-highlighted code, footnotes, admonitions), a reading-comfort
+🟡 **Phase 5 — Hardening & Release, final stretch.** Phases 0–4.5 are
+complete. Current beta is **v0.2.2** on TestFlight and Play Console.
+The app ships full markdown rendering (Mermaid, LaTeX math,
+syntax-highlighted code, footnotes, admonitions), reading-comfort
 toolbar, TOC drawer, in-document search with inline highlighting, text
 selection, PDF export with embedded Mermaid diagrams, GitHub repository
-sync, and native file-open integration on iOS and Android. See
-[docs/roadmap.md](docs/roadmap.md) for the detailed delivery history and
-remaining Phase 5 work.
+sync, Sentry crash reporting (opt-in), and native file-open integration
+on iOS and Android.
+
+The [2026-04-16 full-application code review](docs/analysis/codereviews/codereview-report-20260416.md)
+is closed on all P0 and P1 findings (34/34) and on the architecture
+layer refactor (P2-1..5). See [docs/roadmap.md](docs/roadmap.md) for the
+detailed delivery history and the remaining blockers for v1.0 (LICENSE,
+CHANGELOG, beta bug-fix pass).
 
 ## Highlights
 
@@ -74,4 +80,5 @@ that support Android apps can install the Android build.
 
 ## License
 
-To be added before public release.
+Licensed under the [Apache License, Version 2.0](LICENSE).
+Copyright © 2026 Cemil ILIK.

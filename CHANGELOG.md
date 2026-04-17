@@ -45,6 +45,11 @@ kept out of this file — they belong in commit history instead.
   "HTTP null" / "HTTP 401".
 
 ### Fixed
+- Router lifecycle: `routerProvider` now disposes the underlying
+  `GoRouter` (delegate, parser, information provider) when the
+  `ProviderScope` tears down. Caught by `leak_tracker`; visible in
+  production as a small leak each time the app's container would
+  rebuild.
 - Mermaid diagrams in a document no longer re-render on every scroll
   tick — the renderer cache is now wired end-to-end and hits for
   previously seen diagrams.

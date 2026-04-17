@@ -19,7 +19,7 @@ GoRouter router(Ref ref) {
   // the onboarding state changes at runtime — e.g. a debug reset from the
   // settings screen via OnboardingController.reset().
   ref.watch(shouldShowOnboardingProvider);
-  return GoRouter(
+  final router = GoRouter(
     initialLocation: LibraryRoute.path,
     // Sentry screen-name tracking — records route transitions as
     // breadcrumbs and performance spans when Sentry is active.
@@ -98,6 +98,14 @@ GoRouter router(Ref ref) {
       ),
     ],
   );
+  // Wire `GoRouter.dispose` into the provider lifecycle so the delegate
+  // and information provider release their listeners when the
+  // ProviderScope tears down (app shutdown, or a fresh container in
+  // tests). Without this hop the router internals would only be GC'd
+  // by reachability, leaving subscriptions behind that surface as
+  // leak_tracker `notDisposed` failures in widget tests.
+  ref.onDispose(router.dispose);
+  return router;
 }
 
 abstract final class LibraryRoute {
