@@ -14,5 +14,6 @@ class MainActivity : FlutterActivity() {
     // hooks the picker needs.
     flutterEngine.plugins.add(LibraryFoldersChannel())
     flutterEngine.plugins.add(FileOpenChannel())
+    flutterEngine.plugins.add(DefaultHandlerChannel())
   }
 }

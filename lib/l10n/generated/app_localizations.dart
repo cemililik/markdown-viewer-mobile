@@ -1262,7 +1262,7 @@ abstract class AppLocalizations {
   /// **'Skip'**
   String get onboardingSkip;
 
-  /// Screen-reader-only label for the page-indicator dot row on the onboarding screen. Announced as a single node so TalkBack / VoiceOver users hear the current position once rather than six separate dot widgets.
+  /// Screen-reader-only label for the page-indicator dot row on the onboarding screen. Announced as a single node so TalkBack / VoiceOver users hear the current position once rather than five separate dot widgets.
   ///
   /// In en, this message translates to:
   /// **'Page {current} of {total}'**
@@ -1316,17 +1316,47 @@ abstract class AppLocalizations {
   /// **'Adjust font size, line spacing, theme and language — or pin a bookmark and keep the screen awake while you read.'**
   String get onboardingPersonalizeBody;
 
-  /// Title of the fourth and final onboarding page, directing the user to add content.
+  /// Title of the fifth and final onboarding page, directing the user to add content.
   ///
   /// In en, this message translates to:
   /// **'Open a folder to begin'**
   String get onboardingGetStartedTitle;
 
-  /// Body copy of the fourth and final onboarding page, explaining how to add documents.
+  /// Body copy of the fifth and final onboarding page, explaining how to add documents.
   ///
   /// In en, this message translates to:
   /// **'Grant access to a folder of markdown files, or sync a public GitHub repository — your library is ready whenever you are.'**
   String get onboardingGetStartedBody;
+
+  /// Title of the onboarding step that prompts the user to make Markdown Viewer the default handler for .md files.
+  ///
+  /// In en, this message translates to:
+  /// **'Be your default .md reader'**
+  String get onboardingDefaultTitle;
+
+  /// Android body copy for the default-handler onboarding step. The CTA opens the per-app Open by default system screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Next time you tap a markdown file, pick Markdown Viewer and choose Always. Or open system settings now to review your current default apps.'**
+  String get onboardingDefaultBodyAndroid;
+
+  /// iOS body copy for the default-handler onboarding step. iOS does not expose a default-app chooser for markdown, so the text explains the share-sheet flow.
+  ///
+  /// In en, this message translates to:
+  /// **'Markdown Viewer is already registered for .md files. On iOS, tap a markdown file in Files or AirDrop and pick Markdown Viewer from the share sheet — it will stay at the top for future opens.'**
+  String get onboardingDefaultBodyIos;
+
+  /// CTA label on the default-handler onboarding step (Android only). Opens the per-app Open by default settings screen.
+  ///
+  /// In en, this message translates to:
+  /// **'Open system settings'**
+  String get onboardingDefaultOpenSettings;
+
+  /// Snackbar shown when the Open system settings CTA on the default-handler onboarding step fails to launch — e.g. an OEM that does not expose the default-apps intent.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the settings screen on this device.'**
+  String get onboardingDefaultSettingsUnavailable;
 
   /// Label for the debug-only button in Settings that clears the stored onboarding completion marker and relaunches the flow. Only visible in debug builds; stripped from release binaries via kDebugMode.
   ///

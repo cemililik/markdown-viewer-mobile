@@ -855,10 +855,10 @@
   },
   "onboardingPageIndicator": "Page {current} of {total}",
   "@onboardingPageIndicator": {
-    "description": "Screen-reader-only label for the page-indicator dot row on the onboarding screen. Announced as a single node so TalkBack / VoiceOver users hear the current position once rather than six separate dot widgets.",
+    "description": "Screen-reader-only label for the page-indicator dot row on the onboarding screen. Announced as a single node so TalkBack / VoiceOver users hear the current position once rather than five separate dot widgets.",
     "placeholders": {
       "current": { "type": "int", "example": "2" },
-      "total": { "type": "int", "example": "4" }
+      "total": { "type": "int", "example": "5" }
     }
   },
   "onboardingNext": "Next",
@@ -895,11 +895,31 @@
   },
   "onboardingGetStartedTitle": "Open a folder to begin",
   "@onboardingGetStartedTitle": {
-    "description": "Title of the fourth and final onboarding page, directing the user to add content."
+    "description": "Title of the fifth and final onboarding page, directing the user to add content."
   },
   "onboardingGetStartedBody": "Grant access to a folder of markdown files, or sync a public GitHub repository — your library is ready whenever you are.",
   "@onboardingGetStartedBody": {
-    "description": "Body copy of the fourth and final onboarding page, explaining how to add documents."
+    "description": "Body copy of the fifth and final onboarding page, explaining how to add documents."
+  },
+  "onboardingDefaultTitle": "Be your default .md reader",
+  "@onboardingDefaultTitle": {
+    "description": "Title of the onboarding step that prompts the user to make Markdown Viewer the default handler for .md files."
+  },
+  "onboardingDefaultBodyAndroid": "Next time you tap a markdown file, pick Markdown Viewer and choose Always. Or open system settings now to review your current default apps.",
+  "@onboardingDefaultBodyAndroid": {
+    "description": "Android body copy for the default-handler onboarding step. The CTA opens the per-app Open by default system screen."
+  },
+  "onboardingDefaultBodyIos": "Markdown Viewer is already registered for .md files. On iOS, tap a markdown file in Files or AirDrop and pick Markdown Viewer from the share sheet — it will stay at the top for future opens.",
+  "@onboardingDefaultBodyIos": {
+    "description": "iOS body copy for the default-handler onboarding step. iOS does not expose a default-app chooser for markdown, so the text explains the share-sheet flow."
+  },
+  "onboardingDefaultOpenSettings": "Open system settings",
+  "@onboardingDefaultOpenSettings": {
+    "description": "CTA label on the default-handler onboarding step (Android only). Opens the per-app Open by default settings screen."
+  },
+  "onboardingDefaultSettingsUnavailable": "Could not open the settings screen on this device.",
+  "@onboardingDefaultSettingsUnavailable": {
+    "description": "Snackbar shown when the Open system settings CTA on the default-handler onboarding step fails to launch — e.g. an OEM that does not expose the default-apps intent."
   },
   "settingsDebugResetOnboarding": "Show onboarding again (debug)",
   "@settingsDebugResetOnboarding": {

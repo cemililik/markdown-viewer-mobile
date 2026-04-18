@@ -1,11 +1,13 @@
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
+import 'package:markdown_viewer/features/default_handler/application/default_handler_providers.dart';
 import 'package:markdown_viewer/features/onboarding/application/onboarding_providers.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 
@@ -134,6 +136,28 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     HapticFeedback.selectionClick().ignore();
   }
 
+  /// Launches the platform "default handler" settings screen from the
+  /// default-reader onboarding step. Wired by the step whose
+  /// [_OnboardingStep.showDefaultHandlerCta] flag is set; other steps
+  /// pass `null` down the tree so the CTA never renders.
+  ///
+  /// The native channel answers `false` on iOS (no such screen exists)
+  /// and on Android OEMs that do not expose `ACTION_APPLICATION_DETAILS_SETTINGS`.
+  /// In both cases a snackbar tells the user why nothing happened.
+  Future<void> _openDefaultHandlerSettings() async {
+    HapticFeedback.selectionClick().ignore();
+    final launched =
+        await ref
+            .read(defaultHandlerChannelProvider)
+            .openDefaultHandlerSettings();
+    if (!mounted || launched) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(context.l10n.onboardingDefaultSettingsUnavailable),
+      ),
+    );
+  }
+
   /// Aligns the pulse + entrance controllers with the platform
   /// "Reduce Motion" preference. When [disabled] is true the pulse
   /// loop stops at rest and the entrance controller snaps to 1.0,
@@ -220,6 +244,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                       textTheme: theme.textTheme,
                       pulse: _pulseController,
                       entrance: _entranceController,
+                      onOpenDefaultHandlerSettings:
+                          step.showDefaultHandlerCta
+                              ? _openDefaultHandlerSettings
+                              : null,
                     );
                   },
                 ),
@@ -336,6 +364,7 @@ class _OnboardingStep {
     required this.accent,
     required this.title,
     required this.body,
+    this.showDefaultHandlerCta = false,
   });
 
   /// Icon shown in the large central disc.
@@ -356,8 +385,19 @@ class _OnboardingStep {
   /// once and pick up whichever locale is active at build time.
   final String Function(AppLocalizations l10n) title;
 
-  /// Body getter with the same rationale as [title].
+  /// Body getter with the same rationale as [title]. The
+  /// default-reader step picks between iOS and Android copy inside
+  /// its getter via [Theme.of] / [defaultTargetPlatform]; all other
+  /// steps return a single localized string.
   final String Function(AppLocalizations l10n) body;
+
+  /// Set on the single step that prompts the user to make this app
+  /// the default .md handler. Controls whether [_OnboardingPageView]
+  /// renders a "Open system settings" secondary button below the
+  /// body, and whether the host screen passes the wired callback
+  /// down the tree. iOS still gets the text copy but no button —
+  /// the platform has no equivalent system screen to launch.
+  final bool showDefaultHandlerCta;
 }
 
 /// Declarative manifest of every onboarding page.
@@ -402,13 +442,25 @@ const List<_OnboardingStep> _onboardingSteps = <_OnboardingStep>[
     body: _personalizeBody,
   ),
   _OnboardingStep(
+    heroIcon: Icons.ios_share_outlined,
+    floatingIcons: <IconData>[
+      Icons.description_outlined,
+      Icons.touch_app_outlined,
+      Icons.verified_outlined,
+    ],
+    accent: _AccentRole.primary,
+    title: _defaultHandlerTitle,
+    body: _defaultHandlerBody,
+    showDefaultHandlerCta: true,
+  ),
+  _OnboardingStep(
     heroIcon: Icons.folder_open_outlined,
     floatingIcons: <IconData>[
       Icons.cloud_download_outlined,
       Icons.description_outlined,
       Icons.hub_outlined,
     ],
-    accent: _AccentRole.primary,
+    accent: _AccentRole.secondary,
     title: _getStartedTitle,
     body: _getStartedBody,
   ),
@@ -422,6 +474,24 @@ String _personalizeTitle(AppLocalizations l10n) =>
     l10n.onboardingPersonalizeTitle;
 String _personalizeBody(AppLocalizations l10n) =>
     l10n.onboardingPersonalizeBody;
+String _defaultHandlerTitle(AppLocalizations l10n) =>
+    l10n.onboardingDefaultTitle;
+
+/// Platform-aware body for the default-handler step. iOS gets
+/// share-sheet copy because iOS has no "set as default" UI;
+/// everything else (Android today, web/desktop builds if we ever
+/// add them) gets the "Open by default" instructions that pair
+/// with the CTA below the body.
+String _defaultHandlerBody(
+  AppLocalizations l10n,
+) => switch (defaultTargetPlatform) {
+  TargetPlatform.iOS || TargetPlatform.macOS => l10n.onboardingDefaultBodyIos,
+  TargetPlatform.android ||
+  TargetPlatform.fuchsia ||
+  TargetPlatform.linux ||
+  TargetPlatform.windows => l10n.onboardingDefaultBodyAndroid,
+};
+
 String _getStartedTitle(AppLocalizations l10n) =>
     l10n.onboardingGetStartedTitle;
 String _getStartedBody(AppLocalizations l10n) => l10n.onboardingGetStartedBody;
@@ -488,6 +558,7 @@ class _OnboardingPageView extends StatelessWidget {
     required this.textTheme,
     required this.pulse,
     required this.entrance,
+    this.onOpenDefaultHandlerSettings,
   });
 
   final _OnboardingStep step;
@@ -496,6 +567,14 @@ class _OnboardingPageView extends StatelessWidget {
   final TextTheme textTheme;
   final AnimationController pulse;
   final AnimationController entrance;
+
+  /// Non-null only for the default-reader step, and only when the
+  /// step's [_OnboardingStep.showDefaultHandlerCta] flag is set. iOS
+  /// never receives the button because [DefaultHandlerChannel] has
+  /// no screen to open there — the platform check happens in
+  /// [build] below and collapses the button on iOS regardless of
+  /// this callback being wired.
+  final Future<void> Function()? onOpenDefaultHandlerSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -511,39 +590,81 @@ class _OnboardingPageView extends StatelessWidget {
       curve: const Interval(0.25, 1.0, curve: Curves.easeOutCubic),
     );
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          _HeroCluster(step: step, accent: accent, pulse: pulse),
-          const SizedBox(height: 48),
-          _EntranceSlide(
-            animation: titleFade,
-            child: Text(
-              step.title(l10n),
-              textAlign: TextAlign.center,
-              style: textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: Theme.of(context).colorScheme.onSurface,
-                height: 1.2,
+    // Only show the secondary CTA on Android — iOS has no equivalent
+    // default-apps settings screen so the button would be a dead
+    // affordance. The text copy on the same step already explains
+    // the iOS share-sheet workaround.
+    final platform = Theme.of(context).platform;
+    final showCta =
+        step.showDefaultHandlerCta &&
+        onOpenDefaultHandlerSettings != null &&
+        platform == TargetPlatform.android;
+
+    // Wrap the page contents in a scroll view sized to the available
+    // viewport so the hero-title-body-CTA stack stays vertically
+    // centred on a normal phone (the common case) but the CTA — which
+    // pushes the total column height past ~600 dp on the Android
+    // default-reader step — stays reachable on small screens (iPhone
+    // SE, compact foldables). Without this guard the column overflows
+    // and the "Open settings" button falls off the bottom of the
+    // page.
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SingleChildScrollView(
+          physics: const ClampingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            child: IntrinsicHeight(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _HeroCluster(step: step, accent: accent, pulse: pulse),
+                  const SizedBox(height: 48),
+                  _EntranceSlide(
+                    animation: titleFade,
+                    child: Text(
+                      step.title(l10n),
+                      textAlign: TextAlign.center,
+                      style: textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: Theme.of(context).colorScheme.onSurface,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _EntranceSlide(
+                    animation: bodyFade,
+                    child: Text(
+                      step.body(l10n),
+                      textAlign: TextAlign.center,
+                      style: textTheme.bodyLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        height: 1.55,
+                      ),
+                    ),
+                  ),
+                  if (showCta) ...[
+                    const SizedBox(height: 20),
+                    _EntranceSlide(
+                      animation: bodyFade,
+                      child: TextButton.icon(
+                        onPressed: () => onOpenDefaultHandlerSettings?.call(),
+                        style: TextButton.styleFrom(
+                          foregroundColor: accent.accent,
+                        ),
+                        icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                        label: Text(l10n.onboardingDefaultOpenSettings),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          _EntranceSlide(
-            animation: bodyFade,
-            child: Text(
-              step.body(l10n),
-              textAlign: TextAlign.center,
-              style: textTheme.bodyLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                height: 1.55,
-              ),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

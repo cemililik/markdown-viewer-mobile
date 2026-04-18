@@ -6,6 +6,8 @@ import 'package:logger/logger.dart';
 import 'package:markdown_viewer/app/app.dart';
 import 'package:markdown_viewer/core/logging/logger.dart';
 import 'package:markdown_viewer/core/path/sandbox_path.dart';
+import 'package:markdown_viewer/features/default_handler/application/default_handler_providers.dart';
+import 'package:markdown_viewer/features/default_handler/data/default_handler_channel_impl.dart';
 import 'package:markdown_viewer/features/library/application/folder_file_materializer_provider.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
@@ -134,6 +136,9 @@ Future<void> main() async {
         recentDocumentsStoreProvider.overrideWithValue(recentDocumentsStore),
         libraryFoldersStoreProvider.overrideWithValue(libraryFoldersStore),
         onboardingStoreProvider.overrideWithValue(onboardingStore),
+        defaultHandlerChannelProvider.overrideWithValue(
+          DefaultHandlerChannelImpl(),
+        ),
         consentStoreProvider.overrideWithValue(consentStore),
         folderEnumeratorProvider.overrideWithValue(
           const FolderEnumeratorImpl(),
