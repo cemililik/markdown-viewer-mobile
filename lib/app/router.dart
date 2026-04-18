@@ -126,8 +126,8 @@ GoRouter router(Ref ref) {
   // by reachability, leaving subscriptions behind that surface as
   // leak_tracker `notDisposed` failures in widget tests.
   ref.onDispose(() {
-    refresh.dispose();
     router.dispose();
+    refresh.dispose();
   });
   return router;
 }

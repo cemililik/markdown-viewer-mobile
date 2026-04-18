@@ -7,7 +7,7 @@ code, tables, footnotes, and admonitions.
 
 ## Status
 
-**v1.0.1 — released 2026-04-17.** Phases 0–5 complete. Available on
+**v1.0.2 — released 2026-04-18.** Phases 0–5 complete. Available on
 TestFlight and the Play Console production track.
 
 v1.0 shipped after a full-application code review (128 findings across 8
