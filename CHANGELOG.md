@@ -9,6 +9,54 @@ kept out of this file — they belong in commit history instead.
 
 ## [Unreleased]
 
+## [1.0.2] — 2026-04-18
+
+Second patch release after v1.0. Fixes the AirDrop / Open-In routing
+regression on iOS, adds a default-handler onboarding step for Android,
+and resolves an iPad crash when math appears inside a pipe table.
+
+### Fixed
+- **AirDrop and Open-In no longer land on "Page Not Found" on iOS.**
+  `SceneDelegate` was forwarding every incoming `URLContext` to `super`,
+  which let the Flutter engine push raw sandbox paths
+  (`file:///private/var/.../*.md`) onto the `go_router` stack as if
+  they were routes. File URLs are now consumed by `FileOpenChannel`
+  only and never propagate to the router; non-file URLs keep the
+  default path.
+- **Android ACTION_VIEW intents are no longer ambiguous.** The
+  manifest explicitly sets `flutter_deeplinking_enabled=false` so a
+  future Flutter SDK default cannot silently revive the same
+  regression on the `.md` intent handler.
+- **Pipe tables containing inline math no longer crash the viewer.**
+  `flutter_math_fork`'s internal `_RenderLayoutBuilderPreserveBaseline`
+  deliberately throws on intrinsic-width queries, which `RenderTable`'s
+  default `IntrinsicColumnWidth` triggers as soon as a cell contains
+  `$\alpha$`. Each `MathView.inline` / `MathView.display` is now
+  wrapped in an `_IntrinsicSafe` `RenderProxyBox` that short-circuits
+  intrinsic queries so the table can size its columns from the text
+  cells. `SelectionContainer.disabled` is also applied so
+  `SelectionArea` no longer walks into the math render tree for
+  bounding-box computation.
+- **Tapping "Get started" at the end of onboarding no longer crashes.**
+  The router provider used to `ref.watch(shouldShowOnboardingProvider)`,
+  which tore down and rebuilt `GoRouter` mid-navigation and triggered
+  the `dispose() called during notifyListeners()` assertion on
+  `GoRouteInformationProvider`. The router now subscribes via
+  `ref.listen` + a `refreshListenable` `ChangeNotifier`, keeping the
+  router alive for the app's lifetime and only nudging the redirect
+  guard to re-evaluate.
+- **Router teardown order.** `GoRouter` is now disposed before the
+  refresh `ChangeNotifier` so the router's listener detachment
+  happens while the notifier is still live.
+
+### Added
+- **Default-handler onboarding step.** A fourth onboarding page
+  explains how to make MarkdownViewer the default opener for `.md`
+  files, with a platform-aware CTA that deep-links into Android's
+  per-app "Open by default" settings. iOS has no equivalent screen,
+  so the CTA only renders on Android. `currentOnboardingVersion` is
+  bumped to 2 so returning users see the new page once.
+
 ## [1.0.1] — 2026-04-17
 
 First patch release after v1.0.0. Bundles the navigation fixes,
@@ -255,7 +303,8 @@ tracked in `docs/roadmap.md`.
   qualifier because that form evaluates inconsistently across archive
   phases.
 
-[Unreleased]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.1...HEAD
+[Unreleased]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.2...HEAD
+[1.0.2]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/cemililik/markdown-viewer-mobile/compare/v0.2.2...v1.0.0
 [0.2.2]: https://github.com/cemililik/markdown-viewer-mobile/compare/v0.2.1...v0.2.2

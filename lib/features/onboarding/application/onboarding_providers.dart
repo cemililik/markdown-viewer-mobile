@@ -13,7 +13,7 @@ import 'package:markdown_viewer/features/onboarding/data/onboarding_store.dart';
 /// through [shouldShowOnboardingProvider]; a fresh install starts at
 /// `0` and is shown the flow once, and every later bump shows the
 /// flow exactly once more per user.
-const int currentOnboardingVersion = 1;
+const int currentOnboardingVersion = 2;
 
 /// Holds the [OnboardingStore]. Overridden in `main.dart` with an
 /// instance backed by the preloaded `SharedPreferences` so the

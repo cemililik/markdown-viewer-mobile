@@ -15,12 +15,28 @@ part 'router.g.dart';
 
 @Riverpod(keepAlive: true)
 GoRouter router(Ref ref) {
-  // Watch so the router provider rebuilds (and re-evaluates redirects) when
-  // the onboarding state changes at runtime — e.g. a debug reset from the
-  // settings screen via OnboardingController.reset().
-  ref.watch(shouldShowOnboardingProvider);
+  // Bridge between Riverpod state changes and GoRouter's redirect
+  // re-evaluation. Using `ref.watch(shouldShowOnboardingProvider)` here
+  // would rebuild (and therefore dispose) the entire GoRouter every
+  // time the onboarding flow transitions — `OnboardingController.markSeen`
+  // flipping `seen` past [currentOnboardingVersion] triggers the
+  // provider invalidation, Riverpod fires the `ref.onDispose`
+  // callback below, and `GoRouter.dispose` then calls
+  // `GoRouteInformationProvider.dispose` while the very navigation
+  // that finished onboarding is still propagating through that
+  // ChangeNotifier's `notifyListeners`. Flutter asserts on
+  // `_notificationCallStackDepth == 0` during a dispose → crash on
+  // every "Get started" tap.
+  //
+  // A `refreshListenable` sidesteps the rebuild: the GoRouter
+  // instance stays alive for the whole app lifetime, and we only
+  // nudge it to re-run the redirect guard whenever the onboarding
+  // seen-version flips.
+  final refresh = _RouterRefresh();
+  ref.listen<bool>(shouldShowOnboardingProvider, (_, __) => refresh.refresh());
   final router = GoRouter(
     initialLocation: LibraryRoute.path,
+    refreshListenable: refresh,
     // Sentry screen-name tracking — records route transitions as
     // breadcrumbs and performance spans when Sentry is active.
     // No-op when Sentry is dormant (no DSN or no consent).
@@ -109,8 +125,22 @@ GoRouter router(Ref ref) {
   // tests). Without this hop the router internals would only be GC'd
   // by reachability, leaving subscriptions behind that surface as
   // leak_tracker `notDisposed` failures in widget tests.
-  ref.onDispose(router.dispose);
+  ref.onDispose(() {
+    router.dispose();
+    refresh.dispose();
+  });
   return router;
+}
+
+/// Tiny [ChangeNotifier] used as the router's `refreshListenable`.
+///
+/// Kept private to this library and exposed only via
+/// [GoRouter.refreshListenable]. Wiring a ChangeNotifier (instead of
+/// the cheaper `Listenable.merge`) here gives us a stable handle
+/// whose `dispose()` can be paired with `ref.onDispose` for leak
+/// hygiene in tests.
+class _RouterRefresh extends ChangeNotifier {
+  void refresh() => notifyListeners();
 }
 
 abstract final class LibraryRoute {

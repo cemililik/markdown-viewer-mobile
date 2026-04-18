@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:markdown_viewer/features/viewer/application/markdown_extensions/math_syntax.dart';
@@ -130,6 +131,23 @@ class _MathErrorFallback extends StatelessWidget {
 
 /// `SpanNode` that wraps an inline math [md.Element] into a
 /// `WidgetSpan` containing an inline `MathView`.
+///
+/// The math widget is wrapped in [_IntrinsicSafe] so `RenderTable`
+/// column sizing (and anything else that probes intrinsic widths)
+/// does not crash: `flutter_math_fork` uses a `LayoutBuilder`
+/// subclass that throws on intrinsic queries.
+///
+/// Earlier revisions also wrapped the child in
+/// `SelectionContainer.disabled` to keep `SelectionArea` from walking
+/// into the math subtree for boundingBox sorts. That caused the
+/// enclosing `_ScrollableSelectionContainerDelegate` to fire a
+/// `!_selectionStartsInScrollable` assertion on every rebuild — each
+/// new `SelectionContainer.disabled` re-registers with the
+/// `MultiSelectableSelectionContainerDelegate`, which then dispatches
+/// an init-selection event into a scrollable that was already holding
+/// a drag-selection flag. Dropping the wrapper is safe because the
+/// [_IntrinsicSafe] proxy above already prevents the `boundingBoxes`
+/// layout race at its root cause.
 class InlineMathSpanNode extends SpanNode {
   InlineMathSpanNode(this.expression);
 
@@ -138,7 +156,7 @@ class InlineMathSpanNode extends SpanNode {
   @override
   InlineSpan build() => WidgetSpan(
     alignment: PlaceholderAlignment.middle,
-    child: MathView.inline(expression: expression),
+    child: _IntrinsicSafe(child: MathView.inline(expression: expression)),
   );
 }
 
@@ -155,8 +173,44 @@ class BlockMathSpanNode extends SpanNode {
   @override
   InlineSpan build() => WidgetSpan(
     alignment: PlaceholderAlignment.middle,
-    child: MathView.display(expression: expression),
+    child: _IntrinsicSafe(child: MathView.display(expression: expression)),
   );
+}
+
+/// Proxy widget that short-circuits intrinsic dimension queries.
+///
+/// `flutter_math_fork` builds its render tree through a `LayoutBuilder`
+/// subclass (`_RenderLayoutBuilderPreserveBaseline`) that explicitly
+/// throws when asked for `computeMaxIntrinsicWidth` / `Height`. Flutter
+/// widgets that size children via intrinsics — most importantly
+/// `Table` with the default `IntrinsicColumnWidth` used by
+/// `markdown_widget` for pipe tables — surface this as a hard crash
+/// the moment a cell contains inline math (`| ... | $\alpha$ |`).
+///
+/// This wrapper reports a zero intrinsic width / height so the
+/// enclosing layout can compute column widths without descending into
+/// the math subtree. At real layout time the math widget is still
+/// given the cell's actual constraints and paints normally; the
+/// intrinsic answer only influences column-width allocation, and a
+/// table with text in other columns still gets a sensible width from
+/// those cells.
+class _IntrinsicSafe extends SingleChildRenderObjectWidget {
+  const _IntrinsicSafe({required Widget super.child});
+
+  @override
+  _RenderIntrinsicSafe createRenderObject(BuildContext context) =>
+      _RenderIntrinsicSafe();
+}
+
+class _RenderIntrinsicSafe extends RenderProxyBox {
+  @override
+  double computeMinIntrinsicWidth(double height) => 0;
+  @override
+  double computeMaxIntrinsicWidth(double height) => 0;
+  @override
+  double computeMinIntrinsicHeight(double width) => 0;
+  @override
+  double computeMaxIntrinsicHeight(double width) => 0;
 }
 
 /// Builds the two `SpanNodeGeneratorWithTag` entries that the

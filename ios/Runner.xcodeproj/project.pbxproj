@@ -19,6 +19,7 @@
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		A10F04DE2C3B4A0100000001 /* LibraryFoldersChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10F04DD2C3B4A0100000001 /* LibraryFoldersChannel.swift */; };
 		B2F391A02D1C00000000F01E /* FileOpenChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2F391A02D1C0000000071DE /* FileOpenChannel.swift */; };
+		DEF0000000000000000000F1 /* DefaultHandlerChannel.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEF0000000000000000000F2 /* DefaultHandlerChannel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -68,6 +69,7 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10F04DD2C3B4A0100000001 /* LibraryFoldersChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryFoldersChannel.swift; sourceTree = "<group>"; };
 		B2F391A02D1C0000000071DE /* FileOpenChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileOpenChannel.swift; sourceTree = "<group>"; };
+		DEF0000000000000000000F2 /* DefaultHandlerChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DefaultHandlerChannel.swift; sourceTree = "<group>"; };
 		CC7BDBD9234675339A91D90B /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D9372B50E764FDBF9EA499E2 /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		EA01E252B1A03FB38A0EAFC6 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
@@ -148,6 +150,7 @@
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				A10F04DD2C3B4A0100000001 /* LibraryFoldersChannel.swift */,
 				B2F391A02D1C0000000071DE /* FileOpenChannel.swift */,
+				DEF0000000000000000000F2 /* DefaultHandlerChannel.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
@@ -392,6 +395,7 @@
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 				A10F04DE2C3B4A0100000001 /* LibraryFoldersChannel.swift in Sources */,
 				B2F391A02D1C00000000F01E /* FileOpenChannel.swift in Sources */,
+				DEF0000000000000000000F1 /* DefaultHandlerChannel.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

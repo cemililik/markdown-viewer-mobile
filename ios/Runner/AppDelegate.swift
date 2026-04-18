@@ -28,5 +28,10 @@ import UIKit
     ) {
       FileOpenChannel.register(with: registrar.messenger())
     }
+    if let registrar = engineBridge.pluginRegistry.registrar(
+      forPlugin: "DefaultHandlerChannel"
+    ) {
+      DefaultHandlerChannel.register(with: registrar.messenger())
+    }
   }
 }

@@ -743,6 +743,24 @@ class AppLocalizationsEn extends AppLocalizations {
       'Grant access to a folder of markdown files, or sync a public GitHub repository — your library is ready whenever you are.';
 
   @override
+  String get onboardingDefaultTitle => 'Be your default .md reader';
+
+  @override
+  String get onboardingDefaultBodyAndroid =>
+      'Next time you tap a markdown file, pick Markdown Viewer and choose Always. Or open system settings now to review your current default apps.';
+
+  @override
+  String get onboardingDefaultBodyIos =>
+      'Markdown Viewer is already registered for .md files. On iOS, tap a markdown file in Files or AirDrop and pick Markdown Viewer from the share sheet — it will stay at the top for future opens.';
+
+  @override
+  String get onboardingDefaultOpenSettings => 'Open system settings';
+
+  @override
+  String get onboardingDefaultSettingsUnavailable =>
+      'Could not open the settings screen on this device.';
+
+  @override
   String get settingsDebugResetOnboarding => 'Show onboarding again (debug)';
 
   @override

@@ -28,6 +28,17 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- Explicitly disable Flutter's built-in "intent data as
+                 deep link" routing. ACTION_VIEW intents for .md files
+                 arrive with file:// or content:// URIs that go_router
+                 has no routes for; forwarding them would reproduce
+                 the iOS AirDrop "Page Not Found" regression on
+                 Android. FileOpenChannel below consumes the intent,
+                 copies the payload into the sandbox, and emits the
+                 sandbox path over an EventChannel. -->
+            <meta-data
+              android:name="flutter_deeplinking_enabled"
+              android:value="false"/>
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

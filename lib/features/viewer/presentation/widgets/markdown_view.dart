@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_highlight/themes/atom-one-dark.dart' as hl_dark;
 import 'package:flutter_highlight/themes/atom-one-light.dart' as hl_light;
+// `highlight` is a transitive dependency of `flutter_highlight`; see
+// the rationale next to the matching import in `lib/main.dart`.
+// ignore: depend_on_referenced_packages
+import 'package:highlight/highlight.dart' as hi;
 import 'package:markdown/markdown.dart' as md;
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
@@ -556,14 +560,25 @@ class MarkdownView extends StatelessWidget {
     final scheme = theme.colorScheme;
     final isDark = theme.brightness == Brightness.dark;
 
-    // Start from the active body text style so code blocks inherit
-    // the same fontSize baseline the rest of the reading column uses
-    // (respecting system font scaling), then override the parts that
-    // are specific to code: the monospace stack, a slightly taller
-    // line height, and the code colour.
+    // Build the code text style from scratch — pulling fontSize from
+    // the active body style so code respects the reading-comfort
+    // scale, but explicitly NOT carrying a `color` over.
+    //
+    // `markdown_widget`'s `convertHiNodes` resolves each token's
+    // final style via `theme[className].merge(textStyle)`; the merge
+    // semantics let any non-null property on the second argument
+    // override the matching property on the first. If `textStyle`
+    // sets a colour, every per-token colour from
+    // `atomOneLightTheme` / `atomOneDarkTheme` is silently flattened
+    // into that single shade — which is why fenced blocks rendered
+    // as monochrome before this constructor was switched away from
+    // `baseBodyStyle.copyWith(color: scheme.onSurface)`. The
+    // `styleNotMatched` value below provides the default colour for
+    // tokens the highlighter does not classify (and for unnamed
+    // fences) without ever reaching the per-token merge path.
     final baseBodyStyle =
         theme.textTheme.bodyMedium ?? const TextStyle(fontSize: 14);
-    final codeTextStyle = baseBodyStyle.copyWith(
+    final codeTextStyle = TextStyle(
       // Font resolution rules on every Flutter platform (Android,
       // iOS, desktop, web): the engine tries `fontFamily` first and
       // only walks `fontFamilyFallback` if nothing matches.
@@ -582,49 +597,72 @@ class MarkdownView extends StatelessWidget {
         'Roboto Mono',
         'monospace',
       ],
+      fontSize: baseBodyStyle.fontSize,
       height: 1.45,
-      color: scheme.onSurface,
     );
 
+    final blockDecoration = BoxDecoration(
+      color: isDark ? scheme.surfaceContainerHigh : scheme.surfaceContainerLow,
+      borderRadius: const BorderRadius.all(Radius.circular(8)),
+      border: Border.all(color: scheme.outlineVariant, width: 0.5),
+    );
+    final hlTheme =
+        isDark ? hl_dark.atomOneDarkTheme : hl_light.atomOneLightTheme;
+    final fallbackStyle = TextStyle(color: scheme.onSurface);
+
     return PreConfig(
-      decoration: BoxDecoration(
-        color:
-            isDark ? scheme.surfaceContainerHigh : scheme.surfaceContainerLow,
-        borderRadius: const BorderRadius.all(Radius.circular(8)),
-        border: Border.all(color: scheme.outlineVariant, width: 0.5),
-      ),
+      decoration: blockDecoration,
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.symmetric(vertical: 12),
       textStyle: codeTextStyle,
-      styleNotMatched: TextStyle(color: scheme.onSurface),
-      theme: isDark ? hl_dark.atomOneDarkTheme : hl_light.atomOneLightTheme,
-      // `wrapper` (not `builder`) is the right hook for a
-      // selective override: markdown_widget builds the default
-      // syntax-highlighted code container first, then passes it
-      // and the (code, language) tuple through the wrapper. Using
-      // `builder` would force us to re-implement the highlight
-      // rendering for every non-mermaid block. With `wrapper` we
-      // intercept only `mermaid` and let everything else fall
-      // through unchanged.
-      // `markdown_widget`'s internal `package:markdown` pipeline
-      // can silently corrupt certain Unicode characters in code
-      // block content — most notably em-dash (U+2014) gets
-      // replaced with colon (U+003A), which breaks mermaid gantt
-      // task names that use em-dash as a separator. Our own
-      // `extractMermaidCodes` (which goes through a different
-      // extraction path with explicit HTML entity decoding)
-      // preserves the original characters, so we use it as the
-      // authoritative source and match by document order.
-      wrapper: (child, code, language) {
+      styleNotMatched: fallbackStyle,
+      theme: hlTheme,
+      // Replace markdown_widget's default code-block renderer with a
+      // whole-content one.
+      //
+      // The package's own `CodeBlockNode.build` splits the fence body
+      // by newlines and calls `highlight.parse` on each line in
+      // isolation. That breaks languages whose tokenisation needs
+      // multi-line context — most visibly JSON, whose top-level mode
+      // marks any non-whitespace outside `{…}` / `[…]` as illegal, so a
+      // bare `"name": "value",` line produces a single unmatched node
+      // and renders as monochrome text. YAML, Dart, Bash and friends are
+      // line-oriented enough to survive the per-line path, which is why
+      // only JSON looked broken before this change. Running the parser
+      // once against the whole block applies the same logic but with
+      // the full context intact.
+      //
+      // The mermaid branch moves here from the old `wrapper` because
+      // `builder` takes over completely — `wrapper` is only consulted
+      // on the default render path that we are now replacing. The same
+      // `extractMermaidCodes` list (authoritative because it avoids
+      // markdown_widget's em-dash-to-colon corruption) keeps feeding
+      // `MermaidBlock` in document order.
+      builder: (content, language) {
         if (language.toLowerCase() == 'mermaid') {
           final cleanCode =
               mermaidIndex < cleanMermaidCodes.length
                   ? cleanMermaidCodes[mermaidIndex]
-                  : code;
+                  : content;
           mermaidIndex += 1;
           return MermaidBlock(code: cleanCode);
         }
-        return child;
+        final spans = _highlightFullBlock(
+          source: content.trimRight(),
+          language: language.isEmpty ? null : language,
+          theme: hlTheme,
+          fallback: fallbackStyle,
+        );
+        return Container(
+          decoration: blockDecoration,
+          margin: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.all(16),
+          width: double.infinity,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Text.rich(TextSpan(style: codeTextStyle, children: spans)),
+          ),
+        );
       },
     );
   }
@@ -650,4 +688,73 @@ class MarkdownView extends StatelessWidget {
           ),
     );
   }
+}
+
+/// Parses [source] with `package:highlight` and returns a flat list of
+/// [InlineSpan]s ready for a `Text.rich` body.
+///
+/// This is the whole-content replacement for `markdown_widget`'s own
+/// `highLightSpans`, which splits by lines and highlights each in
+/// isolation — see the long comment on `PreConfig.builder` above for
+/// the JSON regression that motivated the override. When [language] is
+/// null, the source is returned as a single unstyled span so unknown /
+/// hint-less fences still render as plain monospace code.
+///
+/// Token-to-style resolution keeps the semantics of
+/// `convertHiNodes` but drops its `style.merge` step: that merge
+/// overrode every per-token colour from the active `flutter_highlight`
+/// theme with whatever colour sat on the outer textStyle, which is
+/// exactly the flattening we removed from `codeTextStyle` above. The
+/// outer `Text.rich` passes `codeTextStyle` on the root `TextSpan`, so
+/// font family, fontSize and height still propagate — the per-token
+/// `TextSpan.style` only carries the colour (and italic for comments /
+/// emphasis) and inherits everything else.
+List<InlineSpan> _highlightFullBlock({
+  required String source,
+  required String? language,
+  required Map<String, TextStyle> theme,
+  required TextStyle fallback,
+}) {
+  if (language == null) {
+    return [TextSpan(text: source, style: fallback)];
+  }
+  final hi.Result result;
+  try {
+    result = hi.highlight.parse(source, language: language);
+  } catch (_) {
+    return [TextSpan(text: source, style: fallback)];
+  }
+  final nodes = result.nodes ?? const <hi.Node>[];
+  if (nodes.isEmpty) {
+    return [TextSpan(text: source, style: fallback)];
+  }
+
+  final spans = <InlineSpan>[];
+  var current = spans;
+  final stack = <List<InlineSpan>>[];
+
+  void traverse(hi.Node node, TextStyle? parentStyle) {
+    final resolvedStyle =
+        parentStyle ?? (node.className == null ? null : theme[node.className!]);
+    final spanStyle = resolvedStyle ?? fallback;
+    if (node.value != null) {
+      current.add(TextSpan(text: node.value, style: spanStyle));
+      return;
+    }
+    final children = node.children;
+    if (children == null) return;
+    final nested = <InlineSpan>[];
+    current.add(TextSpan(children: nested, style: spanStyle));
+    stack.add(current);
+    current = nested;
+    for (final child in children) {
+      traverse(child, resolvedStyle);
+    }
+    current = stack.isEmpty ? spans : stack.removeLast();
+  }
+
+  for (final node in nodes) {
+    traverse(node, null);
+  }
+  return spans;
 }

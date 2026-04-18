@@ -738,6 +738,24 @@ class AppLocalizationsTr extends AppLocalizations {
       'Markdown dosyalarının bulunduğu bir klasöre erişim verin veya açık bir GitHub deposunu senkronize edin — kütüphaneniz hazır olduğunda sizi bekliyor.';
 
   @override
+  String get onboardingDefaultTitle => 'Varsayılan .md okuyucunuz olalım';
+
+  @override
+  String get onboardingDefaultBodyAndroid =>
+      'Bir sonraki markdown dosyasına dokunduğunuzda Markdown Viewer\'ı seçin ve \'Her zaman\' deyin. Dilerseniz sistem ayarlarını şimdi açıp mevcut varsayılanlarınızı gözden geçirebilirsiniz.';
+
+  @override
+  String get onboardingDefaultBodyIos =>
+      'Markdown Viewer, .md dosyaları için zaten kayıtlı. iOS\'ta Dosyalar veya AirDrop üzerinden bir markdown dosyasına dokunup paylaş menüsünden Markdown Viewer\'ı seçin — bir sonraki açışta listenin üstünde hazır olacak.';
+
+  @override
+  String get onboardingDefaultOpenSettings => 'Sistem ayarlarını aç';
+
+  @override
+  String get onboardingDefaultSettingsUnavailable =>
+      'Bu cihazda ayarlar ekranı açılamadı.';
+
+  @override
   String get settingsDebugResetOnboarding =>
       'Onboarding\'i tekrar göster (debug)';
 
