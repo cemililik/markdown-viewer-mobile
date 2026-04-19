@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show MethodChannel, PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/app/router.dart';
@@ -64,6 +66,29 @@ class _RepoSyncScreenState extends ConsumerState<RepoSyncScreen> {
   /// retyped it in this session).
   bool _patIsPlaceholder = false;
 
+  /// Native method channel that toggles `FLAG_SECURE` on the
+  /// activity window while the PAT section is visible. Android
+  /// only — iOS has no OS-level equivalent. When `FLAG_SECURE` is
+  /// set, the OS blocks screenshots / screen recordings / AirPlay
+  /// mirror capture of the window, so a stray recording cannot
+  /// capture the PAT as the user types.
+  ///
+  /// Reference: security-review SR-20260419-022.
+  static const MethodChannel _screenCaptureGuard = MethodChannel(
+    'com.cemililik.markdown_viewer/screen_capture_guard',
+  );
+
+  Future<void> _setScreenCaptureGuard(bool enabled) async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _screenCaptureGuard.invokeMethod<void>('setSecure', enabled);
+    } on PlatformException {
+      // Channel missing / no-op platform — falling back to the
+      // default (unguarded) window state is acceptable; the user
+      // already has the option of closing the PAT section.
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -93,7 +118,18 @@ class _RepoSyncScreenState extends ConsumerState<RepoSyncScreen> {
     _resultTimer?.cancel();
     _urlController.dispose();
     _patController.dispose();
+    // Guarantee the window flag is cleared when the screen is
+    // torn down (user backed out, go_router navigated away mid-PAT-
+    // entry). Without this the activity would stay screen-capture-
+    // blocked for the rest of the session.
+    unawaited(_setScreenCaptureGuard(false));
     super.dispose();
+  }
+
+  void _togglePatSection() {
+    final next = !_showPat;
+    setState(() => _showPat = next);
+    unawaited(_setScreenCaptureGuard(next));
   }
 
   void _onUrlChanged(String value) {
@@ -251,7 +287,7 @@ class _RepoSyncScreenState extends ConsumerState<RepoSyncScreen> {
                   size: 18,
                 ),
                 label: Text(l10n.syncPatToggle),
-                onPressed: () => setState(() => _showPat = !_showPat),
+                onPressed: _togglePatSection,
               ),
             ),
 
@@ -314,7 +350,13 @@ class _RepoSyncScreenState extends ConsumerState<RepoSyncScreen> {
                 onTry: (String url) {
                   _urlController.text = url;
                   _onUrlChanged(url);
-                  _startSync();
+                  // `_startSync` returns a Future we do not observe
+                  // from a synchronous `ValueChanged<String>`; with
+                  // `unawaited_futures: error` analyzer treats the
+                  // unguarded invocation as an error. Wrap to
+                  // acknowledge the fire-and-forget intent.
+                  // Reference: code-review CR-20260419-023.
+                  unawaited(_startSync());
                 },
               ),
               const SizedBox(height: 24),
@@ -322,7 +364,7 @@ class _RepoSyncScreenState extends ConsumerState<RepoSyncScreen> {
                 onResync: (String url) {
                   _urlController.text = url;
                   _onUrlChanged(url);
-                  _startSync();
+                  unawaited(_startSync());
                 },
               ),
             ],

@@ -66,11 +66,15 @@ dependencies:
 
   # ── File I/O & share intents ────────────────────────────────────────
   file_picker: ^8.1.4
-  receive_sharing_intent: ^1.8.1
   # url_launcher is already in the tree via markdown_widget; declared
   # here so callers can import it directly without relying on a
   # transitive path.
   url_launcher: ^6.3.2
+  # NOTE: `receive_sharing_intent` was removed — zero Dart call sites,
+  # and its native pods auto-registered an AppDelegate extension /
+  # BroadcastReceiver that widened the share-intake surface beyond
+  # what the app's own `FileOpenChannel` already covers.
+  # Reference: security-review SR-20260419-010 / SR-20260419-045.
 
   # ── Theming ─────────────────────────────────────────────────────────
   # ADR-0008

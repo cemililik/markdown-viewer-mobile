@@ -28,7 +28,7 @@ String extractPdfTitle(String source, String fallback) {
 }
 
 /// Returns the trimmed source of every mermaid fenced code block in
-/// [source], in document order, without duplicates.
+/// [source], in document order.
 ///
 /// The returned strings are the exact look-up keys that [exportToPdf]
 /// uses in [mermaidImages], so callers can pre-render the diagrams via
@@ -36,12 +36,21 @@ String extractPdfTitle(String source, String fallback) {
 /// mismatch — both sides go through the same [_mermaidCodeFromPre]
 /// helper, which extracts, trims, and decodes HTML entities the
 /// markdown parser introduced inside the fenced code block text.
+///
+/// Duplicates are preserved: the rendering pipeline's LRU cache
+/// already dedupes identical diagram sources at render time (keyed
+/// on the `(code, theme)` pair), so a dedup here would make the
+/// returned list length disagree with the per-fence indexing used by
+/// `MarkdownView._buildPreConfig`. That disagreement used to corrupt
+/// the PDF pipeline: after the second occurrence of a repeated
+/// diagram, the index exceeded the codes list and the fallback em-
+/// dash path kicked in for the remaining fences.
+/// Reference: code-review CR-20260419-015.
 List<String> extractMermaidCodes(String source) {
   final ast = md.Document(
     extensionSet: md.ExtensionSet.gitHubFlavored,
   ).parseLines(_splitLines(source));
   final codes = <String>[];
-  final seen = <String>{};
   for (final node in ast) {
     if (node is! md.Element || node.tag != 'pre') continue;
     final codeEl = node.children?.whereType<md.Element>().firstOrNull;
@@ -49,7 +58,7 @@ List<String> extractMermaidCodes(String source) {
         codeEl?.attributes['class']?.replaceFirst('language-', '') ?? '';
     if (lang != 'mermaid') continue;
     final code = _mermaidCodeFromPre(node);
-    if (code.isNotEmpty && seen.add(code)) codes.add(code);
+    if (code.isNotEmpty) codes.add(code);
   }
   return codes;
 }

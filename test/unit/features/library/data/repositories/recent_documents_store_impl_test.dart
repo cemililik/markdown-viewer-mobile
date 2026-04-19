@@ -176,28 +176,37 @@ void main() {
       expect(round[1].documentId.value, pathD);
     });
 
-    test('self-cleans entries whose backing file no longer exists', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = RecentDocumentsStoreImpl(prefs);
+    test(
+      'read() returns stale entries intact; cold start never hits disk',
+      () async {
+        // Behaviour change: `read()` is purely in-memory. Earlier
+        // versions called `File(path).existsSync()` per entry, which
+        // blocked the UI isolate during cold start on slow SMB /
+        // iCloud Drive paths. The viewer now surfaces a localised
+        // "file no longer available" error on tap for a stale entry,
+        // which is the only code path where staleness matters.
+        // Reference: code-review CR-20260419-019.
+        final prefs = await SharedPreferences.getInstance();
+        final store = RecentDocumentsStoreImpl(prefs);
 
-      await store.write(<RecentDocument>[
-        RecentDocument(
-          documentId: DocumentId(pathA),
-          openedAt: DateTime.utc(2026, 4, 13),
-        ),
-        RecentDocument(
-          documentId: DocumentId(pathB),
-          openedAt: DateTime.utc(2026, 4, 13),
-        ),
-      ]);
-      // Delete pathB between the write and the next read — simulates
-      // the dev-rebuild / stale-container scenario on iOS. The read
-      // path should silently drop the entry whose file is gone.
-      File(pathB).deleteSync();
+        await store.write(<RecentDocument>[
+          RecentDocument(
+            documentId: DocumentId(pathA),
+            openedAt: DateTime.utc(2026, 4, 13),
+          ),
+          RecentDocument(
+            documentId: DocumentId(pathB),
+            openedAt: DateTime.utc(2026, 4, 13),
+          ),
+        ]);
+        File(pathB).deleteSync();
 
-      final round = store.read();
-      expect(round, hasLength(1));
-      expect(round.first.documentId.value, pathA);
-    });
+        final round = store.read();
+        // Both entries are returned — staleness is handled at tap time,
+        // not at read time.
+        expect(round, hasLength(2));
+        expect(round.map((e) => e.documentId.value).toSet(), {pathA, pathB});
+      },
+    );
   });
 }

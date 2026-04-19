@@ -1,4 +1,7 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:markdown_viewer/core/errors/log_and_drop.dart';
 import 'package:markdown_viewer/features/library/domain/entities/recent_document.dart';
 import 'package:markdown_viewer/features/library/domain/repositories/recent_documents_store.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
@@ -88,7 +91,11 @@ class RecentDocumentsController extends Notifier<List<RecentDocument>> {
       displayName: displayName ?? existing?.displayName,
     );
     state = _ordered(<RecentDocument>[fresh, ...without]);
-    ref.read(recentDocumentsStoreProvider).write(state).ignore();
+    dropWithLog(
+      ref,
+      ref.read(recentDocumentsStoreProvider).write(state),
+      'library.recents.touch',
+    );
   }
 
   /// Flips the pinned state of the entry for [documentId]. No-op
@@ -110,7 +117,11 @@ class RecentDocumentsController extends Notifier<List<RecentDocument>> {
       return;
     }
     state = _ordered(updated);
-    ref.read(recentDocumentsStoreProvider).write(state).ignore();
+    dropWithLog(
+      ref,
+      ref.read(recentDocumentsStoreProvider).write(state),
+      'library.recents.togglePin',
+    );
   }
 
   /// Removes a single entry from the list. No-op when the entry
@@ -124,7 +135,39 @@ class RecentDocumentsController extends Notifier<List<RecentDocument>> {
       return;
     }
     state = updated;
-    ref.read(recentDocumentsStoreProvider).write(updated).ignore();
+    dropWithLog(
+      ref,
+      ref.read(recentDocumentsStoreProvider).write(updated),
+      'library.recents.remove',
+    );
+  }
+
+  /// Removes every recent whose documentId path sits under
+  /// [rootPath]. Used when a synced repo is removed so its
+  /// `localRoot` mirror no longer produces 404-tiles in recents.
+  ///
+  /// Pinned entries under the root are removed too — keeping a
+  /// pin on a file whose backing directory was just wiped would
+  /// surface a "file no longer available" error on tap.
+  void removeUnder(String rootPath) {
+    if (rootPath.isEmpty) return;
+    final prefix =
+        rootPath.endsWith(Platform.pathSeparator)
+            ? rootPath
+            : '$rootPath${Platform.pathSeparator}';
+    final updated = <RecentDocument>[
+      for (final entry in state)
+        if (!entry.documentId.value.startsWith(prefix) &&
+            entry.documentId.value != rootPath)
+          entry,
+    ];
+    if (updated.length == state.length) return;
+    state = updated;
+    dropWithLog(
+      ref,
+      ref.read(recentDocumentsStoreProvider).write(updated),
+      'library.recents.removeUnder',
+    );
   }
 
   /// Wipes the entire list. Used by the "Clear all" affordance.
@@ -133,10 +176,11 @@ class RecentDocumentsController extends Notifier<List<RecentDocument>> {
       return;
     }
     state = const <RecentDocument>[];
-    ref
-        .read(recentDocumentsStoreProvider)
-        .write(const <RecentDocument>[])
-        .ignore();
+    dropWithLog(
+      ref,
+      ref.read(recentDocumentsStoreProvider).write(const <RecentDocument>[]),
+      'library.recents.clear',
+    );
   }
 
   /// Canonical ordering: pinned entries first (most-recent-first

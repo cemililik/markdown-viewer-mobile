@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:logger/logger.dart';
+import 'package:markdown_viewer/core/path/sandbox_path.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/repositories/library_folders_store.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -68,7 +69,14 @@ class LibraryFoldersStoreImpl implements LibraryFoldersStore {
         final bookmarkRaw = item['bookmark'];
         entries.add(
           LibraryFolder(
-            path: path,
+            // Portable form resolves back to the current absolute
+            // path even after an iOS container-UUID change. Legacy
+            // entries written as raw absolute paths still decode
+            // because `fromPortable` passes non-sandbox strings
+            // through unchanged; the next `write()` rewrites them in
+            // portable form, migrating the population over time.
+            // Reference: security-review SR-20260419-013.
+            path: SandboxPath.fromPortable(path),
             addedAt: addedAt,
             bookmark:
                 bookmarkRaw is String && bookmarkRaw.isNotEmpty
@@ -97,7 +105,13 @@ class LibraryFoldersStoreImpl implements LibraryFoldersStore {
     final encoded = jsonEncode(
       folders.map((folder) {
         final map = <String, Object>{
-          'path': folder.path,
+          // Persist the portable form so an iOS container-UUID change
+          // (dev reinstall, future Apple migration) does not strand
+          // entries that sit inside the app sandbox. SAF
+          // `content://` URIs and external paths sit outside the
+          // sandbox roots; `toPortable` returns them unchanged.
+          // Reference: security-review SR-20260419-013.
+          'path': SandboxPath.toPortable(folder.path),
           'addedAt': folder.addedAt.toUtc().toIso8601String(),
         };
         final bookmark = folder.bookmark;

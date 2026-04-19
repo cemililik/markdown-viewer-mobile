@@ -326,6 +326,12 @@ abstract class AppLocalizations {
   /// **'Could not refresh this source. Try again.'**
   String get libraryRefreshFailed;
 
+  /// Semantics label announced by screen readers (VoiceOver / TalkBack) while the pull-to-refresh spinner is active on any library surface (Recents, folder, synced repo).
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh library'**
+  String get libraryRefreshSemantic;
+
   /// Header above the section holding user-pinned recent documents.
   ///
   /// In en, this message translates to:

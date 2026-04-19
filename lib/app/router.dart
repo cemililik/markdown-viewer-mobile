@@ -91,8 +91,13 @@ GoRouter router(Ref ref) {
         builder: (context, state) {
           final rawPath = state.uri.queryParameters[ViewerRoute.pathQuery];
           if (rawPath == null || rawPath.isEmpty) {
+            // Malformed deep link lands here (no `path=` query) —
+            // render a titled error screen in place. Adding the title
+            // keeps the scaffold accessible to screen readers
+            // (VoiceOver / TalkBack otherwise announce an unnamed
+            // page). Reference: code-review CR-20260419-046.
             return Scaffold(
-              appBar: AppBar(),
+              appBar: AppBar(title: Text(context.l10n.errorUnknown)),
               body: ErrorView(message: context.l10n.libraryFilePickFailed),
             );
           }
@@ -125,10 +130,14 @@ GoRouter router(Ref ref) {
           if (args is! DiagramFullscreenArgs) {
             // Unknown / missing payload should never happen under the
             // current call sites (only `MermaidBlock` pushes this
-            // route) — but if a future deep-linker lands here without
-            // a payload, pop back to the library rather than crash.
+            // route) — but if a future deep-linker lands on
+            // `/diagram` without a valid `DiagramFullscreenArgs`
+            // payload in `state.extra`, render a localised error
+            // screen in place rather than pop/bounce (which would
+            // also fail on a deep link with no back stack) or crash.
+            // Reference: code-review NEW-002.
             return Scaffold(
-              appBar: AppBar(),
+              appBar: AppBar(title: Text(context.l10n.errorUnknown)),
               body: ErrorView(message: context.l10n.errorUnknown),
             );
           }

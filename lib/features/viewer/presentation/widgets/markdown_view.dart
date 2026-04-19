@@ -748,7 +748,18 @@ List<InlineSpan> _highlightFullBlock({
     stack.add(current);
     current = nested;
     for (final child in children) {
-      traverse(child, resolvedStyle);
+      // Pass `null` on the recursive call — NOT the resolved parent
+      // style. The wrapping TextSpan above already carries the
+      // cascade for un-classed descendants, so passing `parentStyle`
+      // here would shadow the child's own `theme[child.className]`
+      // branch whenever the parent had a resolved style, forcing the
+      // child to inherit the parent colour instead of its own
+      // highlight theme entry. Fix produces correct nested highlight
+      // colours (e.g. a `<span class="keyword">` inside a
+      // `<code class="string">`) without flattening to the outer tone.
+      // Reference: code-review CR-20260419-005 (+ perf side-effect
+      // PR-20260419-025).
+      traverse(child, null);
     }
     current = stack.isEmpty ? spans : stack.removeLast();
   }

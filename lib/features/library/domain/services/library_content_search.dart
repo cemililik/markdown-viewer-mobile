@@ -1,5 +1,34 @@
+import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
+import 'package:markdown_viewer/features/library/domain/entities/recent_document.dart';
+import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart'
     show DocumentId;
+
+/// Port for the library-wide content search feature.
+///
+/// The concrete implementation walks recents / folder trees / synced
+/// repo mirrors, decodes each file, and dispatches the scan to an
+/// isolate via `compute()`. That work is I/O-bound so it lives in
+/// `data/`; the application layer depends only on this port to keep
+/// the layer boundary clean.
+abstract class LibraryContentSearch {
+  /// Performs the content search over the given live library state.
+  ///
+  /// [query] is the raw user input; implementations trim + lowercase
+  /// it before scanning. [recentsSourceLabel],
+  /// [folderSourceLabelBuilder], and [syncedRepoSourceLabelBuilder]
+  /// carry the locale-resolved source badges so the domain layer
+  /// stays free of `AppLocalizations`.
+  Future<List<ContentSearchMatch>> search({
+    required String query,
+    required List<RecentDocument> recents,
+    required List<LibraryFolder> folders,
+    required List<SyncedRepo> syncedRepos,
+    required String recentsSourceLabel,
+    required String Function(LibraryFolder folder) folderSourceLabelBuilder,
+    required String Function(SyncedRepo repo) syncedRepoSourceLabelBuilder,
+  });
+}
 
 /// A single cross-library content-search hit.
 ///
@@ -68,9 +97,23 @@ class ContentSearchDocument {
     required this.content,
   });
 
+  /// Absolute filesystem path of the source file. Reused as the
+  /// [ContentSearchMatch.documentId] when the scan yields a hit.
   final DocumentId documentId;
+
+  /// Human-friendly filename rendered on the result tile. For
+  /// synced-repo files this is the original repo-relative filename
+  /// rather than the hashed cache-directory name.
   final String displayName;
+
+  /// Short source descriptor (e.g. `Recent`, `Folder: Notes`,
+  /// `Repo: owner/repo`) carried onto every emitted
+  /// [ContentSearchMatch] so the UI can badge results by origin.
   final String sourceLabel;
+
+  /// UTF-8 decoded file body. Already loaded into memory because
+  /// the isolate worker needs the full text — callers pre-read and
+  /// pass bytes in to keep `compute()` allocation-minimal.
   final String content;
 }
 
@@ -85,9 +128,21 @@ class ContentSearchRequest {
     this.maxResults = 50,
   });
 
+  /// Corpus of files to scan, in the order the UI expects ties to be
+  /// broken (see [searchInContents] sort).
   final List<ContentSearchDocument> documents;
+
+  /// User query, already trimmed and lowercased. Empty queries yield
+  /// an empty match list.
   final String normalisedQuery;
+
+  /// Number of characters of context kept on either side of a hit
+  /// when building the result snippet. Clamped inside
+  /// [searchInContents] to `[0, 200]` before use.
   final int maxSnippetRadius;
+
+  /// Maximum number of matches returned. Clamped inside
+  /// [searchInContents] to `[0, documents.length]` before use.
   final int maxResults;
 }
 
@@ -106,31 +161,46 @@ List<ContentSearchMatch> searchInContents(ContentSearchRequest request) {
   if (normalisedQuery.isEmpty) {
     return const <ContentSearchMatch>[];
   }
+  // Clamp public inputs so a negative / absurd value cannot reach
+  // the substring / sublist math downstream. Reference: PR-review
+  // NEW-005.
+  final radius =
+      request.maxSnippetRadius < 0
+          ? 0
+          : (request.maxSnippetRadius > 200 ? 200 : request.maxSnippetRadius);
+  final cap =
+      request.maxResults < 0
+          ? 0
+          : (request.maxResults > request.documents.length
+              ? request.documents.length
+              : request.maxResults);
+  if (cap == 0) return const <ContentSearchMatch>[];
+
   final matches = <ContentSearchMatch>[];
   for (final doc in request.documents) {
     final body = doc.content;
     if (body.isEmpty) continue;
-    final lower = body.toLowerCase();
-    final firstIndex = lower.indexOf(normalisedQuery);
-    if (firstIndex < 0) continue;
+    // Case-insensitive scan that PRESERVES original-body offsets.
+    //
+    // Previous revisions ran `body.toLowerCase().indexOf(query)` and
+    // fed the resulting index into [_buildSnippet] (which operates
+    // on the original body). That breaks on Unicode case-folds whose
+    // lowercased form differs in length from the source — `'İ'`
+    // (U+0130) lowercases to `'i̇'` (U+0069 + U+0307, two code units),
+    // which drifts every downstream offset and mis-highlights the
+    // snippet. The loop below walks the original body directly and
+    // compares per-position `toLowerCase()` output against the query,
+    // so the resulting indices always point into the original string.
+    // Reference: PR-review NEW-007.
+    final matchIndices = _findCaseInsensitive(body, normalisedQuery);
+    if (matchIndices.isEmpty) continue;
 
-    // Count remaining occurrences with a rolling indexOf — cheaper
-    // than compiling a regex for a substring query, and avoids
-    // regex-escape surprises on user-supplied patterns.
-    var count = 1;
-    var scan = firstIndex + normalisedQuery.length;
-    while (true) {
-      final next = lower.indexOf(normalisedQuery, scan);
-      if (next < 0) break;
-      count += 1;
-      scan = next + normalisedQuery.length;
-    }
-
+    final firstIndex = matchIndices.first;
     final snippet = _buildSnippet(
       body: body,
       matchIndex: firstIndex,
       matchLength: normalisedQuery.length,
-      radius: request.maxSnippetRadius,
+      radius: radius,
     );
     matches.add(
       ContentSearchMatch(
@@ -139,7 +209,7 @@ List<ContentSearchMatch> searchInContents(ContentSearchRequest request) {
         snippet: snippet.text,
         snippetMatchStart: snippet.matchStart,
         snippetMatchLength: snippet.matchLength,
-        matchCount: count,
+        matchCount: matchIndices.length,
         sourceLabel: doc.sourceLabel,
       ),
     );
@@ -150,10 +220,46 @@ List<ContentSearchMatch> searchInContents(ContentSearchRequest request) {
     if (byCount != 0) return byCount;
     return a.displayName.toLowerCase().compareTo(b.displayName.toLowerCase());
   });
-  if (matches.length > request.maxResults) {
-    return matches.sublist(0, request.maxResults);
+  if (matches.length > cap) {
+    return matches.sublist(0, cap);
   }
   return matches;
+}
+
+/// Returns every original-string offset of [query] inside [body]
+/// under a case-insensitive comparison that preserves body-side
+/// indices across Unicode case-folds with length change.
+///
+/// The query is already lowercased by the caller (see
+/// [ContentSearchController.submitQuery]); we only need to compare
+/// each `query.length` window of the body against it after
+/// per-character lower-casing.
+List<int> _findCaseInsensitive(String body, String query) {
+  if (query.isEmpty || body.length < query.length) {
+    return const <int>[];
+  }
+  final hits = <int>[];
+  final maxStart = body.length - query.length;
+  for (var start = 0; start <= maxStart; start++) {
+    var matches = true;
+    for (var qi = 0; qi < query.length; qi++) {
+      final bodyChar = body[start + qi].toLowerCase();
+      // `query` was already lowercased by the caller. If a future
+      // caller passes a mixed-case string this still works because
+      // both sides are folded per-character.
+      if (bodyChar != query[qi].toLowerCase()) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) {
+      hits.add(start);
+      // Skip past this hit so overlapping matches are not counted
+      // twice — mirrors the old rolling-indexOf behaviour.
+      start += query.length - 1;
+    }
+  }
+  return hits;
 }
 
 /// Context window centred on a hit, collapsed to a single line.

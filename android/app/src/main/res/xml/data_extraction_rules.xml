@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Opt out of both cloud backups (Google Drive via Android Auto Backup)
+    and device-to-device transfer for everything the app stores. Matches
+    the declared threat model: synced metadata, recents history, and the
+    crash-consent flag must never leave the device without explicit user
+    action. Pair with `android:allowBackup="false"` in AndroidManifest.xml
+    to cover API 30 and earlier where this rules file is ignored.
+
+    Reference: security-review SR-20260419-001.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="root" />
+        <exclude domain="file" />
+        <exclude domain="database" />
+        <exclude domain="sharedpref" />
+        <exclude domain="external" />
+    </device-transfer>
+</data-extraction-rules>

@@ -5,6 +5,7 @@ import 'package:markdown_viewer/core/errors/failure.dart';
 import 'package:markdown_viewer/features/viewer/data/parsers/markdown_parser.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/domain/repositories/document_repository.dart';
+import 'package:path/path.dart' as p;
 
 /// File-backed [DocumentRepository] implementation.
 ///
@@ -30,7 +31,20 @@ final class DocumentRepositoryImpl implements DocumentRepository {
 
   @override
   Future<Document> load(DocumentId path) async {
-    final file = File(path.value);
+    // Defense-in-depth path scrub. Native channels validate incoming
+    // paths at the platform boundary; this guard stops a malformed
+    // or deliberately crafted Dart-side value from reaching
+    // `File(...)` — specifically rejects null bytes (POSIX truncates
+    // reads at `\x00`, so `.../safe.md\x00/etc/passwd` would
+    // otherwise resolve against the filesystem) and normalises `..`
+    // sequences before the read opens.
+    // Reference: security-review SR-20260419-011.
+    final raw = path.value;
+    if (raw.contains('\x00')) {
+      throw const ParseFailure(message: 'Document path contains a NUL byte');
+    }
+    final normalized = p.normalize(raw);
+    final file = File(normalized);
     final List<int> bytes;
     try {
       bytes = await file.readAsBytes();

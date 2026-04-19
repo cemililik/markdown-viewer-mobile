@@ -10,6 +10,7 @@ import 'package:markdown_viewer/features/library/application/library_folders_pro
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_source.dart';
 import 'package:markdown_viewer/features/library/presentation/widgets/add_source_sheet.dart';
+import 'package:markdown_viewer/features/repo_sync/application/remove_synced_repo.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
 import 'package:markdown_viewer/features/repo_sync/presentation/sync_time_format.dart';
@@ -349,8 +350,7 @@ class _SyncedRepoTile extends ConsumerWidget {
       unawaited(Navigator.of(context).maybePop());
       unawaited(context.push(RepoSyncRoute.location(url: repo.githubTreeUrl)));
     } else if (action == 'remove') {
-      await ref.read(syncedReposStoreProvider).delete(repo.id);
-      ref.invalidate(syncedReposProvider);
+      await removeSyncedRepo(ref, repo.id);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()

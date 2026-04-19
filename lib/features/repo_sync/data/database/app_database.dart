@@ -169,8 +169,30 @@ class AppDatabase extends _$AppDatabase {
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dir.path, 'markdown_viewer.db'));
-    return NativeDatabase(file);
+    // ApplicationSupport keeps the DB out of iOS `Documents/`, so
+    // iCloud Drive and Finder/iTunes backups don't carry a plaintext
+    // SQLite catalogue of the user's synced repos off-device. The
+    // directory is private, persistent across launches, and not
+    // exposed via `UIFileSharingEnabled`. Pair with the manifest-
+    // level backup opt-outs on Android (allowBackup=false).
+    //
+    // Legacy DBs written by v1.1.x live at Documents/markdown_viewer.db;
+    // migrate them on first open post-upgrade so users do not lose
+    // their sync history when the app moves the DB location.
+    //
+    // Reference: security-review SR-20260419-012 (promoted from L-7).
+    final supportDir = await getApplicationSupportDirectory();
+    if (!await supportDir.exists()) {
+      await supportDir.create(recursive: true);
+    }
+    final target = File(p.join(supportDir.path, 'markdown_viewer.db'));
+    if (!await target.exists()) {
+      final docsDir = await getApplicationDocumentsDirectory();
+      final legacy = File(p.join(docsDir.path, 'markdown_viewer.db'));
+      if (await legacy.exists()) {
+        await legacy.rename(target.path);
+      }
+    }
+    return NativeDatabase(target);
   });
 }

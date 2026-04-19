@@ -17,6 +17,18 @@ part of 'incoming_file_provider.dart';
 /// `keepAlive: true` so the subscription persists for the lifetime of
 /// the app and cold-start events (buffered by the native channel) are
 /// not missed between widget rebuilds.
+///
+/// ### Filter contract
+///
+/// - Non-string payloads are silently dropped (`where((e) => e is String)`).
+/// - Empty / whitespace-only paths are dropped — a provider that fires
+///   a blank is always a bug on the native side; surfacing it as an
+///   error would bounce the viewer through the error screen for a
+///   degenerate payload. (Reference: security-review SR-20260419-035.)
+/// - Typed errors from the native side (e.g. `FILE_TOO_LARGE`) arrive
+///   as `PlatformException` and propagate as stream errors so
+///   [MarkdownViewerApp] can surface a localised snackbar. (Reference:
+///   code-review CR-20260419-034.)
 
 @ProviderFor(incomingFile)
 final incomingFileProvider = IncomingFileProvider._();
@@ -30,6 +42,18 @@ final incomingFileProvider = IncomingFileProvider._();
 /// `keepAlive: true` so the subscription persists for the lifetime of
 /// the app and cold-start events (buffered by the native channel) are
 /// not missed between widget rebuilds.
+///
+/// ### Filter contract
+///
+/// - Non-string payloads are silently dropped (`where((e) => e is String)`).
+/// - Empty / whitespace-only paths are dropped — a provider that fires
+///   a blank is always a bug on the native side; surfacing it as an
+///   error would bounce the viewer through the error screen for a
+///   degenerate payload. (Reference: security-review SR-20260419-035.)
+/// - Typed errors from the native side (e.g. `FILE_TOO_LARGE`) arrive
+///   as `PlatformException` and propagate as stream errors so
+///   [MarkdownViewerApp] can surface a localised snackbar. (Reference:
+///   code-review CR-20260419-034.)
 
 final class IncomingFileProvider
     extends $FunctionalProvider<AsyncValue<String>, String, Stream<String>>
@@ -43,6 +67,18 @@ final class IncomingFileProvider
   /// `keepAlive: true` so the subscription persists for the lifetime of
   /// the app and cold-start events (buffered by the native channel) are
   /// not missed between widget rebuilds.
+  ///
+  /// ### Filter contract
+  ///
+  /// - Non-string payloads are silently dropped (`where((e) => e is String)`).
+  /// - Empty / whitespace-only paths are dropped — a provider that fires
+  ///   a blank is always a bug on the native side; surfacing it as an
+  ///   error would bounce the viewer through the error screen for a
+  ///   degenerate payload. (Reference: security-review SR-20260419-035.)
+  /// - Typed errors from the native side (e.g. `FILE_TOO_LARGE`) arrive
+  ///   as `PlatformException` and propagate as stream errors so
+  ///   [MarkdownViewerApp] can surface a localised snackbar. (Reference:
+  ///   code-review CR-20260419-034.)
   IncomingFileProvider._()
     : super(
         from: null,
@@ -68,4 +104,4 @@ final class IncomingFileProvider
   }
 }
 
-String _$incomingFileHash() => r'afa942cfbc4a3e7d8cd4bdef594b264ddf0b0d32';
+String _$incomingFileHash() => r'daf13b0874546b76c368293b4146b10c5fe2223c';

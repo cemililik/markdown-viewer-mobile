@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
+import 'package:markdown_viewer/features/viewer/application/mermaid_utils.dart';
 import 'package:markdown_viewer/features/viewer/data/services/mermaid/headless_mermaid_js_channel.dart';
 import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_html_template.dart';
 import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_js_channel.dart';

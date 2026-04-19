@@ -177,6 +177,10 @@
   "@libraryRefreshFailed": {
     "description": "Snackbar shown when a pull-to-refresh against a folder or synced-repo source fails — e.g. the bookmark went stale, network dropped, or the GitHub API returned an error mid-sync."
   },
+  "libraryRefreshSemantic": "Refresh library",
+  "@libraryRefreshSemantic": {
+    "description": "Semantics label announced by screen readers (VoiceOver / TalkBack) while the pull-to-refresh spinner is active on any library surface (Recents, folder, synced repo)."
+  },
   "libraryRecentPinnedSection": "Pinned",
   "@libraryRecentPinnedSection": {
     "description": "Header above the section holding user-pinned recent documents."

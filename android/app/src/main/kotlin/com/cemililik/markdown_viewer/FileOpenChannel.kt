@@ -67,8 +67,19 @@ class FileOpenChannel :
     private var applicationContext: Context? = null
     private var activityBinding: ActivityPluginBinding? = null
 
-    /** Buffered path when the stream is not yet listening. */
-    private var pendingPath: String? = null
+    /**
+     * FIFO queue of paths buffered while the stream is not yet listening.
+     *
+     * A queue (rather than the previous single slot) preserves every URL
+     * when two intents arrive in rapid succession before the Flutter
+     * stream starts listening — e.g. two AirDrops during cold-start, or
+     * a share that fires before `onAttachedToEngine` + `onListen`
+     * complete. The previous single-slot implementation silently
+     * overwrote the earlier path.
+     *
+     * Reference: code-review CR-20260419-008.
+     */
+    private val pendingPaths: ArrayDeque<String> = ArrayDeque()
 
     // MARK: - FlutterPlugin
 
@@ -78,8 +89,11 @@ class FileOpenChannel :
         channel?.setStreamHandler(object : EventChannel.StreamHandler {
             override fun onListen(arguments: Any?, sink: EventChannel.EventSink) {
                 eventSink = sink
-                pendingPath?.let { sink.success(it) }
-                pendingPath = null
+                // Drain every buffered path in arrival order so a
+                // cold-start multi-share delivers each file exactly once.
+                while (pendingPaths.isNotEmpty()) {
+                    sink.success(pendingPaths.removeFirst())
+                }
             }
 
             override fun onCancel(arguments: Any?) {
@@ -93,7 +107,7 @@ class FileOpenChannel :
         channel = null
         applicationContext = null
         eventSink = null
-        pendingPath = null
+        pendingPaths.clear()
     }
 
     // MARK: - ActivityAware
@@ -190,13 +204,22 @@ class FileOpenChannel :
             // a length, so a file over the cap can be rejected before
             // any bytes are copied. Content URIs hit the cumulative
             // streaming guard in `copyCappedOrDelete` below.
-            if (canonical.length() > MAX_FILE_BYTES) return null
+            if (canonical.length() > MAX_FILE_BYTES) {
+                deliverError("FILE_TOO_LARGE", "File exceeds $MAX_FILE_BYTES byte cap")
+                return null
+            }
             return try {
                 val safeName = sanitizeFileName(canonical.name)
                 val cacheDir = File(context.cacheDir, "file_open").also { it.mkdirs() }
                 val dest = File(cacheDir, safeName)
                 canonical.inputStream().use { input ->
-                    if (!copyCappedOrDelete(input, dest)) return null
+                    if (!copyCappedOrDelete(input, dest)) {
+                    deliverError(
+                        "FILE_TOO_LARGE",
+                        "File exceeds $MAX_FILE_BYTES byte cap",
+                    )
+                    return null
+                }
                 }
                 dest.absolutePath
             } catch (_: Exception) {
@@ -214,7 +237,13 @@ class FileOpenChannel :
             val cacheDir = File(context.cacheDir, "file_open").also { it.mkdirs() }
             val dest = File(cacheDir, fileName)
             context.contentResolver.openInputStream(uri)?.use { input ->
-                if (!copyCappedOrDelete(input, dest)) return null
+                if (!copyCappedOrDelete(input, dest)) {
+                    deliverError(
+                        "FILE_TOO_LARGE",
+                        "File exceeds $MAX_FILE_BYTES byte cap",
+                    )
+                    return null
+                }
             }
             dest.absolutePath
         } catch (_: Exception) {
@@ -262,6 +291,13 @@ class FileOpenChannel :
             .replace("..", "")
             .replace('/', '_')
             .replace('\\', '_')
+            // Strip NUL and other C0 control characters. The OS-level
+            // `File` constructor already rejects NUL on POSIX, but the
+            // project's sanitize contract is "produce a name that never
+            // yields a cache filename with surprises" — so scrub every
+            // C0 byte regardless of current OS behaviour.
+            // Reference: security-review SR-20260419-033 (L-5 carry).
+            .replace(Regex("[\\x00-\\x1f]"), "_")
             .trim()
         if (stripped.isBlank()) return "opened_file.md"
         return stripped
@@ -272,7 +308,19 @@ class FileOpenChannel :
         if (sink != null) {
             sink.success(path)
         } else {
-            pendingPath = path
+            pendingPaths.addLast(path)
         }
+    }
+
+    /**
+     * Emits a typed error to the Dart stream so the UI can surface
+     * a localised message (e.g. "File too large"). Dropped when no
+     * listener is attached yet, matching the iOS side — `FlutterError`
+     * does not survive the `ArrayDeque` buffer used for paths.
+     *
+     * Reference: code-review CR-20260419-034.
+     */
+    private fun deliverError(code: String, message: String) {
+        eventSink?.error(code, message, null)
     }
 }

@@ -13,14 +13,29 @@ import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 /// initial composition — the fullscreen [InteractiveViewer]
 /// immediately lets the user pan and zoom beyond those bounds.
 class DiagramFullscreenArgs {
+  /// Constructs the payload. [pngBytes] is the already-rendered
+  /// diagram image; the caller must not mutate the underlying buffer
+  /// after passing it in.
   const DiagramFullscreenArgs({
     required this.pngBytes,
     required this.width,
     required this.height,
   });
 
+  /// Raw PNG bytes of the diagram image, produced upstream by
+  /// [MermaidRenderer.render] at device-pixel-ratio resolution.
+  /// Rendered via `Image.memory` on the fullscreen route.
   final Uint8List pngBytes;
+
+  /// Natural width in CSS pixels, read from the rendering WebView's
+  /// post-layout measurement. Used only to seed an aspect ratio on
+  /// the initial composition — the fullscreen `InteractiveViewer`
+  /// lets the reader zoom well beyond it.
   final double width;
+
+  /// Natural height in CSS pixels, captured alongside [width] from
+  /// the same WebView measurement pass. Same aspect-ratio role as
+  /// [width].
   final double height;
 }
 
@@ -51,8 +66,15 @@ class DiagramFullscreenArgs {
 ///   system-level back affordance as a fallback. A small persistent
 ///   translucent chrome is a cheaper cost than a trap.
 class DiagramFullscreenScreen extends StatefulWidget {
+  /// Builds the screen. [args] carries the pre-rendered PNG bytes and
+  /// the WebView's measured layout size; both are required so the
+  /// screen can render crisply without re-invoking the mermaid
+  /// pipeline.
   const DiagramFullscreenScreen({required this.args, super.key});
 
+  /// Pre-rendered diagram payload. The screen never recomputes or
+  /// replaces this; popping back to the inline viewer restores the
+  /// reader's original scroll + pan/zoom state.
   final DiagramFullscreenArgs args;
 
   @override
@@ -84,10 +106,12 @@ class _DiagramFullscreenScreenState extends State<DiagramFullscreenScreen>
 
   @override
   void dispose() {
-    // Restore the app-wide default chrome mode on exit. `edgeToEdge`
-    // matches what `main.dart` + the library / viewer screens rely
-    // on — a bare `manual` call here would clobber the app's
-    // configured system-UI overlays.
+    // Restore the app-wide baseline that `main.dart` explicitly
+    // configures at launch. Keeping the restore target here paired
+    // with the baseline at the single cold-start site means any
+    // future baseline change (e.g. switching to `manual` to render
+    // over a notch-less panel) is a one-file edit in `main.dart`.
+    // Reference: code-review CR-20260419-004.
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _resetAnimation?.removeListener(_applyResetFrame);
     _resetController.dispose();
@@ -148,9 +172,11 @@ class _DiagramFullscreenScreenState extends State<DiagramFullscreenScreen>
 
     return PopScope(
       canPop: true,
-      onPopInvokedWithResult: (_, __) {
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-      },
+      // `dispose` restores the baseline SystemUiMode — duplicating
+      // the call in `onPopInvokedWithResult` used to double-toggle
+      // the chrome on every back-gesture, producing a single-frame
+      // flash of the wrong mode on some Android OEM skins.
+      // Reference: code-review CR-20260419-004.
       child: Scaffold(
         // Tracks the active reading theme (light / dark / sepia).
         // An earlier version pinned `Colors.black` which crushed
@@ -272,7 +298,13 @@ class _ChromeIconButton extends StatelessWidget {
       elevation: 2,
       child: IconButton(
         tooltip: tooltip,
-        iconSize: 22,
+        // Match the inline `_DiagramIconButton` so the fullscreen
+        // chrome is visually paired with the inline control the doc
+        // comment already claims. Previous `iconSize: 22` produced a
+        // 2 px difference on every fullscreen transition.
+        // Reference: code-review CR-20260419-016.
+        iconSize: 20,
+        padding: const EdgeInsets.all(6),
         constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
         icon: Icon(icon, color: theme.colorScheme.onSurface),
         onPressed: onPressed,

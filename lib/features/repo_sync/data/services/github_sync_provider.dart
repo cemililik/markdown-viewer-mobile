@@ -6,6 +6,7 @@ import 'package:markdown_viewer/core/errors/failure.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/remote_file.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/repo_locator.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/services/repo_sync_provider.dart';
+import 'package:path/path.dart' as p;
 
 /// GitHub implementation of [RepoSyncProvider].
 ///
@@ -215,7 +216,14 @@ class GitHubSyncProvider implements RepoSyncProvider {
 
   @override
   Future<List<int>> downloadRaw(RemoteFile file) async {
-    final cap = _sizeCap(_maxFileBytes, 'file ${file.path}');
+    // Exception messages use only `p.basename(file.path)` because
+    // the full `file.path` carries the remote repo directory
+    // structure into any upstream log / Sentry event. The basename is
+    // enough to identify which file tripped the cap for debugging
+    // without propagating PII-adjacent path segments.
+    // Reference: security-review SR-20260419-019.
+    final displayName = p.basename(file.path);
+    final cap = _sizeCap(_maxFileBytes, 'file $displayName');
     try {
       final response = await dio.get<List<int>>(
         file.rawUrl,
@@ -233,7 +241,7 @@ class GitHubSyncProvider implements RepoSyncProvider {
       if (data.length > _maxFileBytes) {
         throw UnknownFailure(
           message:
-              'File ${file.path} exceeds the '
+              'File $displayName exceeds the '
               '$_maxFileBytes-byte per-file cap',
         );
       }
@@ -333,18 +341,33 @@ class GitHubSyncProvider implements RepoSyncProvider {
     // Treat every connection-family Dio error as "no network" so the
     // user gets the actionable "check your connection" message rather
     // than an opaque "HTTP null" — this includes connection refused
-    // (`connectionError`), DNS failure (`unknown`), and both timeout
-    // flavours (`connectionTimeout` / `receiveTimeout` / `sendTimeout`)
-    // where the response is never populated.
+    // (`connectionError`) and both timeout flavours
+    // (`connectionTimeout` / `receiveTimeout` / `sendTimeout`) where
+    // the response is never populated.
     if (e.type == DioExceptionType.connectionError ||
         e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.receiveTimeout ||
-        e.type == DioExceptionType.sendTimeout ||
-        e.type == DioExceptionType.unknown) {
+        e.type == DioExceptionType.sendTimeout) {
       return NetworkUnavailableFailure(
         message: 'No network connection',
         cause: e,
       );
+    }
+    if (e.type == DioExceptionType.unknown) {
+      // `unknown` fires on TLS handshake failures, JSON parse errors,
+      // SocketException (DNS failure), and anything else Dio cannot
+      // pigeon-hole. Previously all of those landed on the "no
+      // network" message, which was misleading for a certificate
+      // expiry or a malformed response body. Split into a dedicated
+      // UnknownFailure so the UI surfaces the inner error instead of
+      // wrongly blaming connectivity.
+      // Reference: code-review CR-20260419-044.
+      final inner = e.error;
+      final reason =
+          inner is Exception || inner is Error
+              ? inner.toString()
+              : (e.message ?? 'Unknown network error');
+      return UnknownFailure(message: reason, cause: e);
     }
     final status = e.response?.statusCode;
     if (status == 401) {

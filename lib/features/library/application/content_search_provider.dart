@@ -3,19 +3,25 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
-import 'package:markdown_viewer/features/library/data/services/library_content_search_impl.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/services/library_content_search.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
 import 'package:path/path.dart' as p;
 
-/// Service binding. Overridden in `main.dart` — see the
-/// composition-root note in `docs/standards/architecture-standards.md`.
-final libraryContentSearchServiceProvider =
-    Provider<LibraryContentSearchService>((ref) {
-      return const LibraryContentSearchService();
-    });
+/// Application-layer binding for the [LibraryContentSearch] port.
+///
+/// Overridden in `lib/main.dart` with the concrete
+/// `LibraryContentSearchImpl` so this file depends only on the
+/// domain abstraction — matches the pattern used by
+/// `libraryFoldersStoreProvider`, `settingsStoreProvider`, etc.
+final libraryContentSearchProvider = Provider<LibraryContentSearch>((ref) {
+  throw UnimplementedError(
+    'libraryContentSearchProvider must be overridden in the composition '
+    'root (lib/main.dart) with LibraryContentSearchImpl, or in tests '
+    'with a fake.',
+  );
+});
 
 /// Immutable UI payload for a pending / completed content search.
 ///
@@ -81,6 +87,13 @@ class ContentSearchController extends Notifier<ContentSearchState> {
   }) {
     final normalised = raw.trim().toLowerCase();
     _debounceTimer?.cancel();
+    // Bump the sequence the moment the user mutates the intent, not
+    // when the isolate dispatch finally lands. Any in-flight
+    // `_runSearch` started on an earlier seq will now fail the
+    // `seq != _dispatchSeq` guard at commit time and drop its
+    // result — so a fast "type → clear → type" sequence never has
+    // its interim result flash on-screen.
+    _dispatchSeq += 1;
     if (normalised.isEmpty) {
       state = const ContentSearchState.idle();
       return;
@@ -95,8 +108,10 @@ class ContentSearchController extends Notifier<ContentSearchState> {
       isLoading: true,
     );
 
+    final scheduledSeq = _dispatchSeq;
     _debounceTimer = Timer(_debounce, () {
       _runSearch(
+        seq: scheduledSeq,
         normalised: normalised,
         recentsSourceLabel: recentsSourceLabel,
         folderSourceLabelBuilder: folderSourceLabelBuilder,
@@ -108,20 +123,30 @@ class ContentSearchController extends Notifier<ContentSearchState> {
   /// Public reset for the library's "clear search" IconButton.
   void clear() {
     _debounceTimer?.cancel();
+    // Bump the sequence so any in-flight `_runSearch` dispatch drops
+    // its result at commit time instead of repainting over the
+    // cleared state.
+    _dispatchSeq += 1;
     state = const ContentSearchState.idle();
   }
 
   Future<void> _runSearch({
+    required int seq,
     required String normalised,
     required String recentsSourceLabel,
     required String Function(LibraryFolder folder) folderSourceLabelBuilder,
     required String Function(SyncedRepo repo) syncedRepoSourceLabelBuilder,
   }) async {
-    final seq = ++_dispatchSeq;
-    final service = ref.read(libraryContentSearchServiceProvider);
+    final service = ref.read(libraryContentSearchProvider);
     final recents = ref.read(recentDocumentsControllerProvider);
     final folders = ref.read(libraryFoldersControllerProvider);
     final syncedReposAsync = ref.read(syncedReposProvider);
+    // Degraded mode: when synced repos are still loading / errored,
+    // content search runs over recents + folders only. Users typing
+    // mid-initialisation see partial results rather than a blocking
+    // spinner — the folder corpus is almost always the meaningful
+    // one, and re-running the search after the providers settle is
+    // already wired through pull-to-refresh.
     final syncedRepos = syncedReposAsync.asData?.value ?? const <SyncedRepo>[];
 
     try {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/features/observability/domain/repositories/consent_store.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -90,6 +92,24 @@ class CrashReportingController extends Notifier<bool> {
   /// 2. `setEnabled(true)` when the user flips the toggle at runtime.
   static Future<void> _initSentry() async {
     if (!sentryAvailable) return;
+    // Defensive runtime assertion — a `--dart-define=SENTRY_DSN=…`
+    // pointed at anything other than the official ingest host would
+    // otherwise ship crash data to an attacker-controlled endpoint.
+    // Build-time DSN substitution is the intended vector but a
+    // misconfigured CI env var is still possible.
+    // Reference: security-review SR-20260419-028.
+    final dsnHost = Uri.tryParse(sentryDsn)?.host ?? '';
+    assert(
+      dsnHost.endsWith('.ingest.sentry.io') ||
+          dsnHost.endsWith('ingest.sentry.io'),
+      'SENTRY_DSN host must be *.ingest.sentry.io — refusing to init',
+    );
+    if (!dsnHost.endsWith('.ingest.sentry.io') &&
+        !dsnHost.endsWith('ingest.sentry.io')) {
+      // Release build bypasses `assert`; fail loudly in the log so an
+      // operator notices rather than silently shipping data off-policy.
+      return;
+    }
     await SentryFlutter.init((options) {
       options
         ..dsn = sentryDsn
@@ -100,10 +120,57 @@ class CrashReportingController extends Notifier<bool> {
         ..tracesSampleRate = 0.3
         ..attachScreenshot = false
         ..sendDefaultPii = false
+        // Cap the in-memory breadcrumb queue. The SDK default (100)
+        // has been reasonable in practice, but pinning it defuses a
+        // future SDK default flip and keeps the per-event payload
+        // deterministic. Reference: performance-review PR-20260419-029.
+        ..maxBreadcrumbs = 100
         // Only capture warnings and above — debug/info breadcrumbs
         // are added manually via the logger integration.
-        ..diagnosticLevel = SentryLevel.warning;
+        ..diagnosticLevel = SentryLevel.warning
+        // Strip URL paths from HTTP breadcrumbs — `sentry_dio` records
+        // every `api.github.com` / `raw.githubusercontent.com` request
+        // URL, which embeds owner/repo/path (PII per ADR-0014). Keep
+        // method + status_code so debugging a 4xx/5xx is still
+        // possible. Reference: security-review SR-20260419-017.
+        ..beforeBreadcrumb = _redactHttpBreadcrumb
+        // Strip URL paths from events before they leave the device —
+        // `sentry_dio.DioEventProcessor` enriches failed-request events
+        // with the full `uri`, which `sendDefaultPii: false` does NOT
+        // cover. Reference: security-review SR-20260419-018.
+        ..beforeSend = _redactHttpEvent;
     });
+  }
+
+  /// Drops the path component from `http.*` breadcrumbs so owner /
+  /// repo / file paths never surface in Sentry dashboards.
+  static Breadcrumb? _redactHttpBreadcrumb(Breadcrumb? crumb, Hint hint) {
+    if (crumb == null) return null;
+    if (crumb.category != 'http') return crumb;
+    final data = Map<String, Object?>.from(crumb.data ?? const {});
+    if (data.containsKey('url')) {
+      data['url'] = '[redacted]';
+    }
+    crumb.data = data;
+    return crumb;
+  }
+
+  /// Strips URL paths from event payloads before Sentry sends them.
+  /// Covers the `DioEventProcessor` enrichment path that
+  /// `sendDefaultPii = false` does not filter. Complements the
+  /// `captureFailedRequests: false` guard at the
+  /// `repo_sync_providers.dart` `dio.addSentry` call site.
+  static FutureOr<SentryEvent?> _redactHttpEvent(SentryEvent event, Hint hint) {
+    final request = event.request;
+    if (request != null && request.url != null) {
+      final parsed = Uri.tryParse(request.url!);
+      final scrubbed =
+          parsed == null ? '[redacted]' : '${parsed.scheme}://${parsed.host}';
+      request.url = scrubbed;
+      request.queryString = null;
+      request.fragment = null;
+    }
+    return event;
   }
 
   /// Called from `main.dart` on cold start BEFORE `runApp`.

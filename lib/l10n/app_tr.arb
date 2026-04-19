@@ -62,6 +62,7 @@
     }
   },
   "libraryRefreshFailed": "Kaynak yenilenemedi. Tekrar deneyin.",
+  "libraryRefreshSemantic": "Kitaplığı yenile",
   "libraryRecentPinnedSection": "Sabitlenenler",
   "libraryRecentGroupToday": "Bugün",
   "libraryRecentGroupYesterday": "Dün",

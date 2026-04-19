@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/app/theme.dart';
+import 'package:markdown_viewer/core/logging/logger.dart';
 import 'package:markdown_viewer/features/file_open/application/incoming_file_provider.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
@@ -56,8 +57,25 @@ class MarkdownViewerApp extends ConsumerWidget {
     // ref.listen fires synchronously on the first emission if the
     // provider already has a value (cold-start buffered path), and on
     // every subsequent emission for warm-start opens.
+    //
+    // The stream error branch is surfaced through the logger so a
+    // platform-side failure (oversized file, missing permission) is
+    // traceable — `.whenData` alone would drop the error on the
+    // floor.
     ref.listen<AsyncValue<String>>(incomingFileProvider, (_, next) {
-      next.whenData((path) => router.go(ViewerRoute.location(path)));
+      next.when(
+        data: (path) => router.go(ViewerRoute.location(path)),
+        loading: () {},
+        error: (error, stackTrace) {
+          ref
+              .read(appLoggerProvider)
+              .e(
+                'incomingFileProvider stream error',
+                error: error,
+                stackTrace: stackTrace,
+              );
+        },
+      );
     });
 
     // Watching the settings controllers directly (instead of using

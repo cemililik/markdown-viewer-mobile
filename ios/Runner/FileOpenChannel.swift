@@ -102,6 +102,17 @@ final class FileOpenChannel: NSObject, FlutterStreamHandler {
         let scoped = url.startAccessingSecurityScopedResource()
         defer { if scoped { url.stopAccessingSecurityScopedResource() } }
 
+        // Follow symlinks on the incoming URL before copying so a
+        // symlink that resolves outside the provider's sandbox is
+        // detected as "outside the expected tree" rather than
+        // silently copied. `copyItem(at:)` follows symlinks by
+        // default, but resolving up front gives us a single,
+        // canonical path to use for hashing and size checks so
+        // two different symlinks to the same underlying file share
+        // a cache entry instead of producing duplicates.
+        // Reference: security-review SR-20260419-007 (M-6 widened).
+        let resolvedUrl = url.standardized.resolvingSymlinksInPath()
+
         do {
             let cacheDir = try FileManager.default.url(
                 for: .cachesDirectory,
@@ -118,8 +129,8 @@ final class FileOpenChannel: NSObject, FlutterStreamHandler {
             // used rather than Swift's `hashValue` because `hashValue` is
             // randomised per-process (Swift 5+) and produces different values
             // across app launches, making cached files unreachable after restart.
-            let hash = String(format: "%08x", fnv1a32(url.path))
-            let uniqueName = "\(hash)_\(url.lastPathComponent)"
+            let hash = String(format: "%08x", fnv1a32(resolvedUrl.path))
+            let uniqueName = "\(hash)_\(resolvedUrl.lastPathComponent)"
             let dest = cacheDir.appendingPathComponent(uniqueName)
             if FileManager.default.fileExists(atPath: dest.path) {
                 try FileManager.default.removeItem(at: dest)
@@ -129,16 +140,22 @@ final class FileOpenChannel: NSObject, FlutterStreamHandler {
             // A share-intent provider that hands us a multi-gigabyte
             // file would otherwise fill the cache directory before
             // the viewer realises anything is wrong.
-            let resourceValues = try url.resourceValues(forKeys: [.fileSizeKey])
+            let resourceValues = try resolvedUrl.resourceValues(forKeys: [.fileSizeKey])
             if let size = resourceValues.fileSize,
                size > FileOpenChannel.maxFileBytes {
+                // Surface the cap violation to Dart so the UI can
+                // show a localised "File too large" snackbar instead
+                // of silently dropping the share — the user otherwise
+                // taps "Open in Markdown Viewer" and nothing happens.
+                // Reference: code-review CR-20260419-034.
                 NSLog(
                     "[FileOpenChannel] dropping oversized share-intent file (%d bytes > %d cap)",
                     size, FileOpenChannel.maxFileBytes
                 )
+                emitError(code: "FILE_TOO_LARGE", message: "File exceeds \(FileOpenChannel.maxFileBytes) byte cap")
                 return
             }
-            try FileManager.default.copyItem(at: url, to: dest)
+            try FileManager.default.copyItem(at: resolvedUrl, to: dest)
             // Belt-and-suspenders check — some providers omit the
             // size key. Remove the copy if the post-copy measurement
             // shows it exceeded the cap.
@@ -149,6 +166,7 @@ final class FileOpenChannel: NSObject, FlutterStreamHandler {
                     "[FileOpenChannel] deleted oversized copy (%d bytes > %d cap)",
                     copiedSize, FileOpenChannel.maxFileBytes
                 )
+                emitError(code: "FILE_TOO_LARGE", message: "File exceeds \(FileOpenChannel.maxFileBytes) byte cap")
                 return
             }
             emit(dest.path)
@@ -161,7 +179,11 @@ final class FileOpenChannel: NSObject, FlutterStreamHandler {
                 // and error events bypass stream filters, which would cause
                 // an unhandled-error crash in incoming_file_provider.dart.
 #if DEBUG
-                NSLog("[FileOpenChannel] security-scoped URL access failed for %@: %@ %ld", url.path, (error as NSError).domain, (error as NSError).code)
+                // Log only the basename — the full path contains the
+                // user's home/document tree structure and is PII in
+                // crash reports / console exports.
+                // Reference: security-review SR-20260419-032 (L-1 carry).
+                NSLog("[FileOpenChannel] security-scoped URL access failed for %@: %@ %ld", (url.path as NSString).lastPathComponent, (error as NSError).domain, (error as NSError).code)
 #else
                 NSLog("[FileOpenChannel] security-scoped URL access failed (domain=%@, code=%ld)", (error as NSError).domain, (error as NSError).code)
 #endif
@@ -199,6 +221,19 @@ final class FileOpenChannel: NSObject, FlutterStreamHandler {
             // dropped when the stream is not yet listening. This matches the
             // behaviour of the previous single-slot implementation where a
             // scoped-copy failure during cold-start was also silently lost.
+        }
+    }
+
+    /// Emits a typed error to the Dart stream so the UI can surface
+    /// a localised message. Matches the Android
+    /// `FlutterError(code: "FILE_TOO_LARGE")` contract declared in
+    /// code-review CR-20260419-034. When no listener is attached yet
+    /// the error is dropped (there is no FlutterError buffer) —
+    /// acceptable because the stream is always listening by the time
+    /// a share-intent completes copying.
+    private func emitError(code: String, message: String) {
+        if let sink = eventSink {
+            sink(FlutterError(code: code, message: message, details: nil))
         }
     }
 }
