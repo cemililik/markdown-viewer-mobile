@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
@@ -120,9 +122,29 @@ Future<void> main() async {
   // no Sentry code runs until the user consciously enables the
   // toggle in Settings AND the build was produced with
   // `--dart-define=SENTRY_DSN=...`.
-  await CrashReportingController.initIfConsented(consentStore);
+  //
+  // Fire-and-forget so SentryFlutter.init's native side cost does
+  // not sit on the cold-start critical path. ADR-0014 does not
+  // require pre-runApp init; global `FlutterError.onError` +
+  // `PlatformDispatcher.onError` already forward exceptions through
+  // a `Sentry.isEnabled` guard, which evaluates `false` until the
+  // background init completes — any crash in that tiny window falls
+  // back to the logger, which is exactly the behaviour used on the
+  // consent-off path.
+  // Reference: performance-review PR-20260419-009.
+  unawaited(CrashReportingController.initIfConsented(consentStore));
 
+  // Load the bundled mermaid JS string now (cheap; it is already an
+  // in-APK asset) and construct the renderer, but DO NOT prewarm
+  // the WebView yet. Prewarm creates a `HeadlessInAppWebView` and
+  // loads the data-URI template, which used to sit on the cold
+  // path — deferred to a post-frame callback below so the library
+  // screen renders first.
+  // Reference: performance-review PR-20260419-008.
   final mermaidRenderer = await _buildMermaidRenderer(logger);
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    unawaited(mermaidRenderer.prewarm());
+  });
 
   runApp(
     ProviderScope(
@@ -175,15 +197,14 @@ Future<void> main() async {
   );
 }
 
-/// Loads the bundled mermaid runtime, constructs a production
-/// [MermaidRendererImpl], and pre-warms its sandboxed WebView.
+/// Loads the bundled mermaid JS and constructs a production
+/// [MermaidRendererImpl]. The WebView prewarm is intentionally NOT
+/// awaited here — the caller schedules `prewarm()` via
+/// `WidgetsBinding.addPostFrameCallback` so the user sees the
+/// library screen before the headless WebView boots.
 ///
-/// `prewarm` itself is non-throwing per the contract in
-/// `mermaid_renderer.dart` — a failed initialisation just flips the
-/// renderer into permanent-failure mode and every subsequent render
-/// returns a typed [MermaidRenderFailure]. The try/catch here only
-/// covers the `rootBundle.loadString` call, which can throw when
-/// the asset is genuinely missing (e.g. a dev forgot to run
+/// The try/catch only covers `rootBundle.loadString`, which can
+/// throw when the asset is missing (e.g. a dev forgot to run
 /// `tool/fetch_mermaid.sh`). In that case we still return a usable
 /// renderer instance constructed with an empty JS payload so the
 /// rest of the document continues to load — a diagram-less reading
@@ -193,17 +214,8 @@ Future<MermaidRenderer> _buildMermaidRenderer(Logger logger) async {
     final mermaidJs = await rootBundle.loadString(
       'assets/mermaid/mermaid.min.js',
     );
-    final renderer = MermaidRendererImpl.production(mermaidJs: mermaidJs);
-    await renderer.prewarm();
-    return renderer;
+    return MermaidRendererImpl.production(mermaidJs: mermaidJs);
   } catch (error, stackTrace) {
-    // Surface the cause in debug / profile builds so a dev who
-    // forgot `tool/fetch_mermaid.sh` (or hit a transient WebView
-    // initialisation glitch) sees why diagrams aren't working
-    // instead of silently getting the empty-JS fallback. `debugPrint`
-    // + `kDebugMode` keeps release builds silent so the user never
-    // sees raw stack traces, matching the project's logging
-    // policy in `docs/standards/error-handling-standards.md`.
     logger.w(
       'Failed to load mermaid.min.js — falling back to empty renderer',
       error: error,

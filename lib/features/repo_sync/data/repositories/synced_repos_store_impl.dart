@@ -142,6 +142,19 @@ class SyncedReposStoreImpl implements SyncedReposStore {
   Future<void> deleteFilesForRepo(int repoId) => _db.deleteFilesForRepo(repoId);
 
   @override
+  Future<String?> readEtag(int repoId) async {
+    final row = await _db.getRepoById(repoId);
+    return row?.etag;
+  }
+
+  @override
+  Future<void> writeEtag(int repoId, String? etag) async {
+    await (_db.update(_db.syncedRepos)..where(
+      (t) => t.id.equals(repoId),
+    )).write(SyncedReposCompanion(etag: Value(etag)));
+  }
+
+  @override
   Future<void> deleteFilesNotIn(int repoId, Set<String> retainedPaths) {
     // Single batched SQL statement (`DELETE … WHERE … NOT IN`)
     // handled by the drift DAO. The previous per-row loop issued one

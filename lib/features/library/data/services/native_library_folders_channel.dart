@@ -32,9 +32,15 @@ class NativeLibraryFoldersChannelImpl implements NativeLibraryFoldersChannel {
     final path = raw['path'] as String?;
     final bookmark = raw['bookmark'] as String?;
     if (path == null || bookmark == null) {
+      // Interpolate only the top-level keys of the payload — not
+      // the payload itself. A future native-side regression could
+      // accidentally include a bookmark blob or full filesystem
+      // path in a miss-shaped reply, and that blob would then
+      // propagate into log / Sentry entries through the exception
+      // message. Reference: security-review SR-20260419-043.
       throw FormatException(
         'pickDirectory: native payload missing required keys '
-        '"path" or "bookmark": $raw',
+        '"path" or "bookmark"; keys present: ${raw.keys.toList()}',
       );
     }
     return NativeFolderPick(path: path, bookmark: bookmark);

@@ -93,6 +93,12 @@ class DisplayMathBlockSyntax extends md.BlockSyntax {
         return null;
       }
       parser.advance();
+      if (body.length > _maxExpressionBytes) {
+        // Oversized body — surface the raw text as a literal
+        // paragraph rather than handing `flutter_math_fork` a
+        // TeX bomb. Reference: security-review SR-20260419-015.
+        return md.Element.text('p', body);
+      }
       return md.Element.text(mathBlockTag, body);
     }
 
@@ -163,6 +169,12 @@ class DisplayMathBlockSyntax extends md.BlockSyntax {
       // dollar signs the user typed and must survive as text).
       return null;
     }
+    if (body.length > _maxExpressionBytes) {
+      // Oversized body — surface the raw text as a literal
+      // paragraph rather than handing `flutter_math_fork` a
+      // TeX bomb. Reference: security-review SR-20260419-015.
+      return md.Element.text('p', body);
+    }
     return md.Element.text(mathBlockTag, body);
   }
 }
@@ -187,6 +199,13 @@ class DisplayMathBlockSyntax extends md.BlockSyntax {
 ///   chance to see anything. Mid-paragraph `$$ … $$` will therefore
 ///   not match this syntax either — it stays as literal text, which
 ///   is the right behaviour because display math has no inline form.
+/// Hard cap on the size of a single math body (inline or display).
+/// Above this threshold the parser emits the raw text as a plain
+/// paragraph instead of handing it to `flutter_math_fork`, which
+/// freezes the UI isolate on pathological TeX.
+/// Reference: security-review SR-20260419-015.
+const int _maxExpressionBytes = 8 * 1024;
+
 class InlineMathSyntax extends md.InlineSyntax {
   InlineMathSyntax() : super(r'\$([^$\n]+?)\$(?!\d)');
 
@@ -195,6 +214,18 @@ class InlineMathSyntax extends md.InlineSyntax {
     final expression = match.group(1) ?? '';
     if (expression.trim().isEmpty) {
       return false;
+    }
+    if (expression.length > _maxExpressionBytes) {
+      // An 8 KB inline expression is almost certainly an attack
+      // against `flutter_math_fork`'s TeX parser — a
+      // `\sqrt{\sqrt{…}}` chain or a multi-KB macro expansion
+      // freezes the UI thread long enough to lock the viewer. Emit
+      // the raw text so the user can still read the source instead
+      // of crashing the frame.
+      // Reference: security-review SR-20260419-015.
+      final fallback = md.Element.text('p', expression);
+      parser.addNode(fallback);
+      return true;
     }
     final element = md.Element.text(mathInlineTag, expression);
     parser.addNode(element);

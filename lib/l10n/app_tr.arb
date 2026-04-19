@@ -294,7 +294,7 @@
   "onboardingWelcomeTitle": "Markdown Viewer'a hoş geldiniz",
   "onboardingWelcomeBody": "Mermaid, LaTeX, kod, tablolar — hepsi telefonda düzgün gösteriliyor. Varsayılan olarak çevrimdışı.",
   "onboardingSourcesTitle": "İçeriğinizi ekleyin",
-  "onboardingSourcesBody": "Bir dosya açın, klasör ekleyin veya herkese açık bir GitHub deposunu senkronize edin. Her şey cihazınızda kalır.",
+  "onboardingSourcesBody": "Bir dosya açın, klasör ekleyin veya herkese açık bir GitHub deposunu senkronize edin. Yerel dosyalar ve klasörler cihazınızda kalır; GitHub senkronizasyonu yalnızca siz başlattığınızda ağa bağlanır.",
   "onboardingDefaultTitle": "Varsayılan .md okuyucunuz olalım",
   "onboardingDefaultBodyAndroid": "Bir markdown dosyasına dokunup Markdown Viewer'ı seçin, 'Her zaman' deyin — ya da ayarları şimdi açıp atayın.",
   "onboardingDefaultBodyIos": "Dosyalar veya AirDrop'tan bir markdown dosyasına dokunup paylaş menüsünden Markdown Viewer'ı seçin — sonraki açışta listenin üstünde olacak.",

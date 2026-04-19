@@ -234,7 +234,8 @@ void main() {
     });
 
     test(
-      'should pass the source through untouched when initDirective is empty',
+      'should leave the user-authored directive alone and force antiscript '
+      'via a trailing override directive when initDirective is empty',
       () async {
         final channel = _FakeChannel();
         final renderer = MermaidRendererImpl(
@@ -254,12 +255,23 @@ void main() {
         await renderer.render(userSource);
 
         expect(channel.observedSources, hasLength(1));
+        final observed = channel.observedSources.single;
         expect(
-          channel.observedSources.single,
-          equals(userSource),
+          observed,
+          startsWith(userSource),
           reason:
-              'An empty initDirective means "do not override" — the '
-              'user-authored directive must reach mermaid.js untouched.',
+              'An empty initDirective means "do not override" the '
+              "user-authored directive — the original source must reach "
+              'mermaid.js intact at the top of the payload.',
+        );
+        expect(
+          observed,
+          contains("'securityLevel': 'antiscript'"),
+          reason:
+              'A trailing override directive unconditionally pins '
+              "`securityLevel: 'antiscript'` so mermaid's last-write-wins "
+              'merge cannot let a user-supplied loose value slip through. '
+              'Reference: security-review SR-20260419-014.',
         );
       },
     );

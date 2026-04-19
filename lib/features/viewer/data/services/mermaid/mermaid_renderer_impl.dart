@@ -394,16 +394,30 @@ class MermaidRendererImpl implements MermaidRenderer {
   /// line 1. Sources without frontmatter keep the original
   /// "prepend to the top" behaviour.
   static String _composeSourceWithInit(String source, String initDirective) {
+    final String composed;
     if (initDirective.isEmpty) {
-      return source;
+      composed = source;
+    } else {
+      final end = frontmatterEndIndex(source);
+      composed =
+          end == null
+              ? '$initDirective$source'
+              : '${source.substring(0, end)}$initDirective${source.substring(end)}';
     }
-    final end = frontmatterEndIndex(source);
-    if (end == null) {
-      return '$initDirective$source';
-    }
-    // Insert BETWEEN the frontmatter block and the diagram body.
-    return '${source.substring(0, end)}$initDirective${source.substring(end)}';
+    // Unconditionally pin `securityLevel: 'antiscript'` as a trailing
+    // directive so mermaid's last-write-wins merge rule overrides any
+    // user-supplied `%%{init: {"securityLevel":"loose"}}%%` in the
+    // source. Forcing `antiscript` keeps `<script>` tags inside
+    // mermaid-rendered HTML labels stripped even when the document
+    // author tries to opt out of the hardening — the CSP +
+    // `blockNetworkLoads: true` invariants from ADR-0005 depend on
+    // this mode.
+    // Reference: security-review SR-20260419-014.
+    return '$composed\n$_securityLevelOverride\n';
   }
+
+  static const String _securityLevelOverride =
+      "%%{init: {'securityLevel': 'antiscript'} }%%";
 }
 
 class _PendingRender {

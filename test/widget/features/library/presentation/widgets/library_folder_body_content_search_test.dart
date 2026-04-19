@@ -115,7 +115,7 @@ void main() {
       // "Dart" does not appear in `readme.md` or `notes.md`, so the
       // filename filter yields nothing. The content stub returns a
       // synthetic match that names `notes.md` — the body must still
-      // render it under the "In document contents" header instead
+      // render it under the "Inside documents" header instead
       // of the old "No matching files" empty state.
       const match = ContentSearchMatch(
         documentId: DocumentId('/stub/notes.md'),
@@ -145,7 +145,7 @@ void main() {
       // empty state because the filename filter misses. Now the
       // content section renders with the match.
       expect(find.text('No matching files in stub'), findsNothing);
-      expect(find.text('In document contents'), findsOneWidget);
+      expect(find.text('Inside documents'), findsOneWidget);
       expect(find.text('notes.md'), findsOneWidget);
     },
   );
@@ -183,7 +183,7 @@ void main() {
       expect(find.text('readme.md'), findsOneWidget);
       // Content header stays hidden until the query reaches the
       // min length.
-      expect(find.text('In document contents'), findsNothing);
+      expect(find.text('Inside documents'), findsNothing);
     },
   );
 
@@ -220,7 +220,7 @@ void main() {
       // falls back to the single centred "no matches" hint.
       expect(find.text('No matching files in stub'), findsOneWidget);
       // Content header must not stand alone without content.
-      expect(find.text('In document contents'), findsNothing);
+      expect(find.text('Inside documents'), findsNothing);
     },
   );
 }

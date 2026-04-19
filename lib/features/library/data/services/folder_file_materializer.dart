@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -103,7 +104,52 @@ class FolderFileMaterializerImpl implements FolderFileMaterializer {
     }
 
     await File(cachePath).writeAsBytes(bytes, flush: true);
+
+    // Opportunistic eviction so the cache directory does not grow
+    // unbounded across months of reading — every open of a
+    // bookmark-scoped file adds a fresh copy keyed on the source
+    // path's hash, and deleted-source files would otherwise linger.
+    // Runs as fire-and-forget so the viewer does not wait on the
+    // sweep; errors are swallowed because cache-dir hygiene must
+    // never block the tap.
+    // Reference: security-review SR-20260419-036.
+    unawaited(_pruneFolderCache(folderCacheDir));
+
     return cachePath;
+  }
+
+  /// Caps the `library_folder_files` cache directory at
+  /// [_maxCacheBytes]. Oldest-first eviction by `lastModified` stat,
+  /// which deterministically picks the files least recently read
+  /// and leaves active documents intact even under heavy rotation.
+  static const int _maxCacheBytes = 50 * 1024 * 1024;
+
+  Future<void> _pruneFolderCache(Directory folderCacheDir) async {
+    try {
+      final entries = <({File file, int size, DateTime mtime})>[];
+      var total = 0;
+      await for (final entity in folderCacheDir.list(followLinks: false)) {
+        if (entity is! File) continue;
+        final stat = await entity.stat();
+        entries.add((file: entity, size: stat.size, mtime: stat.modified));
+        total += stat.size;
+      }
+      if (total <= _maxCacheBytes) return;
+      entries.sort((a, b) => a.mtime.compareTo(b.mtime));
+      for (final entry in entries) {
+        if (total <= _maxCacheBytes) break;
+        try {
+          await entry.file.delete();
+          total -= entry.size;
+        } on FileSystemException {
+          // Skip files we cannot delete (another process has a handle,
+          // etc.). The next prune cycle will retry.
+        }
+      }
+    } on FileSystemException {
+      // Directory listing failed — nothing to do; cache stays as is
+      // until the next materialize call triggers another attempt.
+    }
   }
 
   String _extensionFor(String sourcePath) {

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTD/PropertyList-1.0.dtd">
+<!--
+    Minimum-surface entitlements for the app target.
+
+    The only declared entitlement is the default per-app Keychain
+    access group (`$(AppIdentifierPrefix)com.cemililik.markdownViewer`),
+    which mirrors Apple's default behaviour when no entitlements file
+    is present. Making that default explicit pins the PAT's storage
+    scope: a future share / notification-center extension added to
+    the project would otherwise silently expand its own Keychain
+    access-group set and gain visibility into the parent app's
+    credentials without anyone reviewing the change.
+
+    Cross-extension PAT sharing is intentionally out of scope — see
+    ADR-0012 §PAT storage. Any future extension that needs Keychain
+    access must either run outside the app's access group (a new
+    entitlement row here) or surface its own PAT-entry UX; it must
+    not inherit the viewer's PAT silently.
+
+    Reference: security-review SR-20260419-029.
+-->
+<plist version="1.0">
+<dict>
+    <key>keychain-access-groups</key>
+    <array>
+        <string>$(AppIdentifierPrefix)com.cemililik.markdownViewer</string>
+    </array>
+</dict>
+</plist>

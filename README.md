@@ -79,6 +79,31 @@ the full delivery history and post-v1 candidates.
 - **Production-grade pipeline** — tag-triggered CI/CD, signed builds,
   R8 obfuscation, symbolication, `leak_tracker` in tests
 
+### Revoking a stored PAT
+
+If you want to remove the GitHub Personal Access Token the app is
+holding — lost device, handing off the phone, or rotating the token
+on GitHub — either of these paths fully wipes it:
+
+1. **Inside the app** — open the sync screen, tap the clear affordance
+   next to the PAT field, then start a sync without entering a new
+   token. The next successful write deletes the stored value.
+2. **Remove every synced repo** — the `removeSyncedRepo` use-case
+   automatically wipes the stored PAT once the last synced repository
+   is removed from the library (per ADR-0012's wipe-on-sign-out
+   contract).
+3. **Revoke on GitHub** — open
+   [github.com/settings/tokens](https://github.com/settings/tokens)
+   (classic PATs) or
+   [github.com/settings/personal-access-tokens](https://github.com/settings/personal-access-tokens)
+   (fine-grained) and delete / revoke the token there. The app's
+   stored copy becomes inert; any future sync attempt surfaces an
+   "invalid token" error so you know to clear or replace it.
+
+PATs never leave the device except during a user-triggered sync, and
+they are filtered out of crash-report payloads. Reference:
+security-review SR-20260419-030.
+
 ## Documentation
 
 All product, engineering, and process documentation lives under
