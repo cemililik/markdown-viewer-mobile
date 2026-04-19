@@ -904,10 +904,10 @@
   },
   "onboardingPageIndicator": "Page {current} of {total}",
   "@onboardingPageIndicator": {
-    "description": "Screen-reader-only label for the page-indicator dot row on the onboarding screen. Announced as a single node so TalkBack / VoiceOver users hear the current position once rather than five separate dot widgets.",
+    "description": "Screen-reader-only label for the page-indicator dot row on the onboarding screen. Announced as a single node so TalkBack / VoiceOver users hear the current position once rather than three separate dot widgets.",
     "placeholders": {
       "current": { "type": "int", "example": "2" },
-      "total": { "type": "int", "example": "5" }
+      "total": { "type": "int", "example": "3" }
     }
   },
   "onboardingNext": "Next",
@@ -922,43 +922,27 @@
   "@onboardingWelcomeTitle": {
     "description": "Title of the first onboarding page, introducing the app."
   },
-  "onboardingWelcomeBody": "A focused mobile reader for your markdown notes, docs, and knowledge base — no editor, no distractions.",
+  "onboardingWelcomeBody": "A focused mobile reader for Mermaid, LaTeX math, code and tables — rendered cleanly, offline by default.",
   "@onboardingWelcomeBody": {
-    "description": "Body copy of the first onboarding page, introducing the app's purpose."
+    "description": "Body copy of the first onboarding page. Condensed to a single sentence that covers both the app's purpose (focused reader) and what it renders, so the rendering features no longer need a dedicated page."
   },
-  "onboardingRenderingTitle": "Rich content, beautifully rendered",
-  "@onboardingRenderingTitle": {
-    "description": "Title of the second onboarding page, highlighting rendering features."
+  "onboardingSourcesTitle": "Bring your content",
+  "@onboardingSourcesTitle": {
+    "description": "Title of the second onboarding page, directing the user to add content from one of the three supported sources (file, folder, synced repo)."
   },
-  "onboardingRenderingBody": "Tables, syntax-highlighted code, LaTeX math, Mermaid diagrams, admonitions and footnotes — all handled out of the box.",
-  "@onboardingRenderingBody": {
-    "description": "Body copy of the second onboarding page, listing what the renderer supports."
-  },
-  "onboardingPersonalizeTitle": "Read the way you like",
-  "@onboardingPersonalizeTitle": {
-    "description": "Title of the third onboarding page, covering personalization."
-  },
-  "onboardingPersonalizeBody": "Adjust font size, line spacing, theme and language — or pin a bookmark and keep the screen awake while you read.",
-  "@onboardingPersonalizeBody": {
-    "description": "Body copy of the third onboarding page, listing what users can personalise."
-  },
-  "onboardingGetStartedTitle": "Open a folder to begin",
-  "@onboardingGetStartedTitle": {
-    "description": "Title of the fifth and final onboarding page, directing the user to add content."
-  },
-  "onboardingGetStartedBody": "Grant access to a folder of markdown files, or sync a public GitHub repository — your library is ready whenever you are.",
-  "@onboardingGetStartedBody": {
-    "description": "Body copy of the fifth and final onboarding page, explaining how to add documents."
+  "onboardingSourcesBody": "Open a file, add a folder, or sync a public GitHub repo. Everything stays on-device.",
+  "@onboardingSourcesBody": {
+    "description": "Body copy of the second onboarding page. Mentions the three entry points into the library plus the offline-by-default guarantee."
   },
   "onboardingDefaultTitle": "Be your default .md reader",
   "@onboardingDefaultTitle": {
-    "description": "Title of the onboarding step that prompts the user to make Markdown Viewer the default handler for .md files."
+    "description": "Title of the third and final onboarding page that prompts the user to make Markdown Viewer the default handler for .md files."
   },
-  "onboardingDefaultBodyAndroid": "Next time you tap a markdown file, pick Markdown Viewer and choose Always. Or open system settings now to review your current default apps.",
+  "onboardingDefaultBodyAndroid": "Tap a markdown file, pick Markdown Viewer, choose Always — or open settings to set it now.",
   "@onboardingDefaultBodyAndroid": {
     "description": "Android body copy for the default-handler onboarding step. The CTA opens the per-app Open by default system screen."
   },
-  "onboardingDefaultBodyIos": "Markdown Viewer is already registered for .md files. On iOS, tap a markdown file in Files or AirDrop and pick Markdown Viewer from the share sheet — it will stay at the top for future opens.",
+  "onboardingDefaultBodyIos": "Tap a markdown file in Files or AirDrop and pick Markdown Viewer from the share sheet — it stays at the top for next time.",
   "@onboardingDefaultBodyIos": {
     "description": "iOS body copy for the default-handler onboarding step. iOS does not expose a default-app chooser for markdown, so the text explains the share-sheet flow."
   },

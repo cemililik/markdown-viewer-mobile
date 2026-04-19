@@ -762,39 +762,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get onboardingWelcomeBody =>
-      'A focused mobile reader for your markdown notes, docs, and knowledge base — no editor, no distractions.';
+      'A focused mobile reader for Mermaid, LaTeX math, code and tables — rendered cleanly, offline by default.';
 
   @override
-  String get onboardingRenderingTitle => 'Rich content, beautifully rendered';
+  String get onboardingSourcesTitle => 'Bring your content';
 
   @override
-  String get onboardingRenderingBody =>
-      'Tables, syntax-highlighted code, LaTeX math, Mermaid diagrams, admonitions and footnotes — all handled out of the box.';
-
-  @override
-  String get onboardingPersonalizeTitle => 'Read the way you like';
-
-  @override
-  String get onboardingPersonalizeBody =>
-      'Adjust font size, line spacing, theme and language — or pin a bookmark and keep the screen awake while you read.';
-
-  @override
-  String get onboardingGetStartedTitle => 'Open a folder to begin';
-
-  @override
-  String get onboardingGetStartedBody =>
-      'Grant access to a folder of markdown files, or sync a public GitHub repository — your library is ready whenever you are.';
+  String get onboardingSourcesBody =>
+      'Open a file, add a folder, or sync a public GitHub repo. Everything stays on-device.';
 
   @override
   String get onboardingDefaultTitle => 'Be your default .md reader';
 
   @override
   String get onboardingDefaultBodyAndroid =>
-      'Next time you tap a markdown file, pick Markdown Viewer and choose Always. Or open system settings now to review your current default apps.';
+      'Tap a markdown file, pick Markdown Viewer, choose Always — or open settings to set it now.';
 
   @override
   String get onboardingDefaultBodyIos =>
-      'Markdown Viewer is already registered for .md files. On iOS, tap a markdown file in Files or AirDrop and pick Markdown Viewer from the share sheet — it will stay at the top for future opens.';
+      'Tap a markdown file in Files or AirDrop and pick Markdown Viewer from the share sheet — it stays at the top for next time.';
 
   @override
   String get onboardingDefaultOpenSettings => 'Open system settings';

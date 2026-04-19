@@ -57,6 +57,20 @@ out of patch-release mode.
   restores the exact scroll offset in the host document — the
   detour does not break the reading flow.
 
+### Changed
+- **Onboarding condensed from five pages to three.** The original
+  flow interleaved a dedicated rendering-features page and a
+  personalization page between welcome and the "open a folder"
+  call to action, which pushed the user through four taps of
+  Next/Skip before the library surfaced. The rendering callout is
+  now folded into the welcome copy, the personalization page is
+  dropped entirely (those settings are already discoverable in
+  Settings), and the welcome / sources / default-handler trio
+  lands the user in the library after two taps of Next. Copy is
+  tightened to a single sentence per body. Returning users see
+  the new flow exactly once on their next cold start via the
+  standard onboarding-version bump.
+
 ## [1.0.2] — 2026-04-18
 
 Second patch release after v1.0. Fixes the AirDrop / Open-In routing
