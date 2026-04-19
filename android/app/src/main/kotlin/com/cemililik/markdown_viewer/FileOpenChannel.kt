@@ -235,12 +235,12 @@ class FileOpenChannel :
                 val dest = File(cacheDir, safeName)
                 canonical.inputStream().use { input ->
                     if (!copyCappedOrDelete(input, dest)) {
-                    deliverError(
-                        "FILE_TOO_LARGE",
-                        "File exceeds $MAX_FILE_BYTES byte cap",
-                    )
-                    return null
-                }
+                        deliverError(
+                            "FILE_TOO_LARGE",
+                            "File exceeds $MAX_FILE_BYTES byte cap",
+                        )
+                        return null
+                    }
                 }
                 dest.absolutePath
             } catch (_: Exception) {
@@ -309,7 +309,14 @@ class FileOpenChannel :
      */
     private fun sanitizeFileName(name: String): String {
         val stripped = name
-            .replace("..", "")
+            // Collapse any run of two or more dots so crafted names
+            // like `"...."` cannot survive as `".."` after a single
+            // `.replace("..", "")` pass. `Regex("\\.{2,}") → "_"` is
+            // idempotent: a later run against the same output is a
+            // no-op. Single-dot names (`"."` or `".foo"`) fall through
+            // to the terminal blank-check below so hidden-file names
+            // still sanitise to the fallback.
+            .replace(Regex("\\.{2,}"), "_")
             .replace('/', '_')
             .replace('\\', '_')
             // Strip NUL and other C0 control characters. The OS-level
@@ -333,7 +340,15 @@ class FileOpenChannel :
             // cache `File(…)` constructor as part of the basename.
             .replace(Regex("[\u2215\u29F8\uFF0F]"), "_")
             .trim()
-        if (stripped.isBlank()) return "opened_file.md"
+        // Reject bare `.` / `..` / blank in one gate. Each of those
+        // would otherwise yield a cache file at the parent of
+        // `file_open/` — `File(cacheDir, "..")` is the cacheDir
+        // itself, `File(cacheDir, ".")` resolves identically, and
+        // a blank name crashes the `File` constructor on older
+        // Android API levels.
+        if (stripped.isBlank() || stripped == "." || stripped == "..") {
+            return "opened_file.md"
+        }
         return stripped
     }
 
