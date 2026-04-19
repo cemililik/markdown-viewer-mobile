@@ -134,6 +134,42 @@ class AppLocalizationsTr extends AppLocalizations {
   String get librarySearchNoResults => 'Eşleşen belge yok';
 
   @override
+  String get libraryContentSearchHeader => 'Belge içeriklerinde';
+
+  @override
+  String get libraryContentSearchEmpty => 'Hiçbir belgede eşleşme yok';
+
+  @override
+  String get libraryContentSearchLoading => 'Belgeler taranıyor…';
+
+  @override
+  String libraryContentSearchMoreMatches(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count eşleşme',
+      one: '1 eşleşme',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get libraryContentSearchSourceRecent => 'Son açılan';
+
+  @override
+  String libraryContentSearchSourceFolder(String name) {
+    return 'Klasör: $name';
+  }
+
+  @override
+  String libraryContentSearchSourceRepo(String name) {
+    return 'Depo: $name';
+  }
+
+  @override
+  String get libraryRefreshFailed => 'Kaynak yenilenemedi. Tekrar deneyin.';
+
+  @override
   String get libraryRecentPinnedSection => 'Sabitlenenler';
 
   @override
@@ -330,6 +366,12 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get mermaidReset => 'Görünümü sıfırla';
+
+  @override
+  String get diagramFullscreenOpenTooltip => 'Tam ekran aç';
+
+  @override
+  String get diagramFullscreenCloseTooltip => 'Tam ekranı kapat';
 
   @override
   String get mermaidDiagramLabel =>

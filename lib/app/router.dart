@@ -117,6 +117,24 @@ GoRouter router(Ref ref) {
           return RepoSyncScreen(initialUrl: initialUrl);
         },
       ),
+      GoRoute(
+        path: DiagramRoute.path,
+        name: DiagramRoute.name,
+        builder: (context, state) {
+          final args = state.extra;
+          if (args is! DiagramFullscreenArgs) {
+            // Unknown / missing payload should never happen under the
+            // current call sites (only `MermaidBlock` pushes this
+            // route) — but if a future deep-linker lands here without
+            // a payload, pop back to the library rather than crash.
+            return Scaffold(
+              appBar: AppBar(),
+              body: ErrorView(message: context.l10n.errorUnknown),
+            );
+          }
+          return DiagramFullscreenScreen(args: args);
+        },
+      ),
     ],
   );
   // Wire `GoRouter.dispose` into the provider lifecycle so the delegate
@@ -237,4 +255,23 @@ abstract final class ViewerRoute {
     final encodedAnchor = Uri.encodeQueryComponent(anchor);
     return '$path?$pathQuery=$encodedPath&$anchorQuery=$encodedAnchor';
   }
+}
+
+/// Route for the Mermaid diagram fullscreen viewer.
+///
+/// Unlike every other route declared here this one is **never** deep-
+/// linkable: the payload is a raw [DiagramFullscreenArgs] containing
+/// raster bytes + dimensions handed over [GoRouter]'s `extra`
+/// channel. The inline `MermaidBlock` pushes it via
+/// `context.push(DiagramRoute.path, extra: args)` after the WebView
+/// has produced a PNG, so the fullscreen screen reuses the already-
+/// rendered bitmap rather than re-running the sandboxed render. A
+/// cold load via URL has no payload available and intentionally
+/// bounces to the library error view — the route only exists as a
+/// lane for in-app push/pop navigation.
+abstract final class DiagramRoute {
+  static const String path = '/diagram';
+  static const String name = 'diagram';
+
+  static String location() => path;
 }

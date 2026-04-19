@@ -278,6 +278,54 @@ abstract class AppLocalizations {
   /// **'No matching documents'**
   String get librarySearchNoResults;
 
+  /// Section header shown above the content-search hits below the name-match list. Distinguishes 'match inside a file' results from filename matches.
+  ///
+  /// In en, this message translates to:
+  /// **'In document contents'**
+  String get libraryContentSearchHeader;
+
+  /// Empty state shown under the library search field when the name search returned nothing AND the cross-library full-text scan also returned nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches in any document'**
+  String get libraryContentSearchEmpty;
+
+  /// Loading label shown while the debounced cross-library full-text search is running inside its compute() isolate.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning documents…'**
+  String get libraryContentSearchLoading;
+
+  /// Badge on a content-search result tile showing the total number of matches for the active query inside that single document.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 match} other{{count} matches}}'**
+  String libraryContentSearchMoreMatches(int count);
+
+  /// Badge label on a content-search result that came from the user's recent-documents list.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get libraryContentSearchSourceRecent;
+
+  /// Badge label on a content-search result that came from a library-registered folder source.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder: {name}'**
+  String libraryContentSearchSourceFolder(String name);
+
+  /// Badge label on a content-search result that came from a synced GitHub repository.
+  ///
+  /// In en, this message translates to:
+  /// **'Repo: {name}'**
+  String libraryContentSearchSourceRepo(String name);
+
+  /// Snackbar shown when a pull-to-refresh against a folder or synced-repo source fails — e.g. the bookmark went stale, network dropped, or the GitHub API returned an error mid-sync.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not refresh this source. Try again.'**
+  String get libraryRefreshFailed;
+
   /// Header above the section holding user-pinned recent documents.
   ///
   /// In en, this message translates to:
@@ -655,6 +703,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reset view'**
   String get mermaidReset;
+
+  /// Tooltip on the expand icon overlaid on each rendered Mermaid diagram. Tapping it pushes the dedicated fullscreen viewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Open fullscreen'**
+  String get diagramFullscreenOpenTooltip;
+
+  /// Tooltip / aria-label on the close (X) button in the Mermaid fullscreen viewer top bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Close fullscreen'**
+  String get diagramFullscreenCloseTooltip;
 
   /// Semantic label for a successfully rendered mermaid diagram image, announced by screen readers.
   ///

@@ -134,6 +134,43 @@ class AppLocalizationsEn extends AppLocalizations {
   String get librarySearchNoResults => 'No matching documents';
 
   @override
+  String get libraryContentSearchHeader => 'In document contents';
+
+  @override
+  String get libraryContentSearchEmpty => 'No matches in any document';
+
+  @override
+  String get libraryContentSearchLoading => 'Scanning documents…';
+
+  @override
+  String libraryContentSearchMoreMatches(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count matches',
+      one: '1 match',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get libraryContentSearchSourceRecent => 'Recent';
+
+  @override
+  String libraryContentSearchSourceFolder(String name) {
+    return 'Folder: $name';
+  }
+
+  @override
+  String libraryContentSearchSourceRepo(String name) {
+    return 'Repo: $name';
+  }
+
+  @override
+  String get libraryRefreshFailed =>
+      'Could not refresh this source. Try again.';
+
+  @override
   String get libraryRecentPinnedSection => 'Pinned';
 
   @override
@@ -332,6 +369,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mermaidReset => 'Reset view';
+
+  @override
+  String get diagramFullscreenOpenTooltip => 'Open fullscreen';
+
+  @override
+  String get diagramFullscreenCloseTooltip => 'Close fullscreen';
 
   @override
   String get mermaidDiagramLabel =>

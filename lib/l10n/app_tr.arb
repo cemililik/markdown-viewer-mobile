@@ -39,6 +39,29 @@
   "librarySearchHint": "Son belgelerde ara",
   "librarySearchClear": "Aramayı temizle",
   "librarySearchNoResults": "Eşleşen belge yok",
+  "libraryContentSearchHeader": "Belge içeriklerinde",
+  "libraryContentSearchEmpty": "Hiçbir belgede eşleşme yok",
+  "libraryContentSearchLoading": "Belgeler taranıyor…",
+  "libraryContentSearchMoreMatches": "{count, plural, =1{1 eşleşme} other{{count} eşleşme}}",
+  "@libraryContentSearchMoreMatches": {
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  },
+  "libraryContentSearchSourceRecent": "Son açılan",
+  "libraryContentSearchSourceFolder": "Klasör: {name}",
+  "@libraryContentSearchSourceFolder": {
+    "placeholders": {
+      "name": { "type": "String", "example": "Notlar" }
+    }
+  },
+  "libraryContentSearchSourceRepo": "Depo: {name}",
+  "@libraryContentSearchSourceRepo": {
+    "placeholders": {
+      "name": { "type": "String", "example": "owner/repo" }
+    }
+  },
+  "libraryRefreshFailed": "Kaynak yenilenemedi. Tekrar deneyin.",
   "libraryRecentPinnedSection": "Sabitlenenler",
   "libraryRecentGroupToday": "Bugün",
   "libraryRecentGroupYesterday": "Dün",
@@ -119,6 +142,8 @@
   "mermaidRenderErrorTitle": "Diyagram görüntülenemedi",
   "mermaidRenderErrorBody": "Diyagram söz dizimini kontrol edip tekrar deneyin.",
   "mermaidReset": "Görünümü sıfırla",
+  "diagramFullscreenOpenTooltip": "Tam ekran aç",
+  "diagramFullscreenCloseTooltip": "Tam ekranı kapat",
   "mermaidDiagramLabel": "Mermaid diyagramı. Yakınlaştırmak için sıkıştırın, kaydırmak için sürükleyin.",
   "viewerReadingTime": "{minutes} dk okuma",
   "viewerBackToTopTooltip": "Başa dön",

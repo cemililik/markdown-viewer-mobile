@@ -3,16 +3,20 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:markdown_viewer/features/library/application/content_search_provider.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
+import 'package:markdown_viewer/features/library/data/services/library_content_search_impl.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/entities/recent_document.dart';
 import 'package:markdown_viewer/features/library/domain/repositories/library_folders_store.dart';
 import 'package:markdown_viewer/features/library/domain/repositories/recent_documents_store.dart';
 import 'package:markdown_viewer/features/library/domain/services/folder_enumerator.dart';
+import 'package:markdown_viewer/features/library/domain/services/library_content_search.dart';
 import 'package:markdown_viewer/features/library/presentation/screens/library_screen.dart';
 import 'package:markdown_viewer/features/observability/application/observability_providers.dart';
 import 'package:markdown_viewer/features/observability/data/consent_store_impl.dart';
+import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -47,6 +51,26 @@ class _InMemoryFoldersStore implements LibraryFoldersStore {
   Future<void> write(List<LibraryFolder> folders) async {
     _state = List<LibraryFolder>.from(folders);
   }
+}
+
+/// Returns no matches synchronously. Keeps the content-search
+/// `Timer` debounce in play (the notifier still transitions
+/// through `isLoading: true` → `isLoading: false`) but skips the
+/// real file walk that would otherwise make `pumpAndSettle` time
+/// out on a filesystem stub with missing paths.
+class _NoopContentSearch implements LibraryContentSearchService {
+  const _NoopContentSearch();
+
+  @override
+  Future<List<ContentSearchMatch>> search({
+    required String query,
+    required List<RecentDocument> recents,
+    required List<LibraryFolder> folders,
+    required List<SyncedRepo> syncedRepos,
+    required String recentsSourceLabel,
+    required String Function(LibraryFolder folder) folderSourceLabelBuilder,
+    required String Function(SyncedRepo repo) syncedRepoSourceLabelBuilder,
+  }) async => const <ContentSearchMatch>[];
 }
 
 class _NoopEnumerator implements FolderEnumerator {
@@ -95,6 +119,14 @@ Widget _harness(
       ),
       folderEnumeratorProvider.overrideWithValue(
         enumerator ?? const _NoopEnumerator(),
+      ),
+      // Bypass the filesystem-walking content-search impl so the
+      // screen's debounced `_dispatchContentSearch` resolves
+      // instantly inside pumpAndSettle. The stubbed service
+      // preserves the loading→idle state transitions the search
+      // field relies on without touching any real file I/O.
+      libraryContentSearchServiceProvider.overrideWithValue(
+        const _NoopContentSearch(),
       ),
       consentStoreProvider.overrideWithValue(ConsentStoreImpl(_testPrefs)),
     ],

@@ -11,6 +11,8 @@ graph LR
     P4 --> P45[Phase 4.5<br/>Repo Sync]
     P45 --> P5[Phase 5<br/>Hardening & Release]
     P5 --> V1[v1.0]
+    V1 --> P6[Phase 6<br/>Library depth & diagrams]
+    P6 --> V11[v1.1]
 
     style P0 fill:#2e7d32,color:#fff
     style P1 fill:#2e7d32,color:#fff
@@ -20,6 +22,8 @@ graph LR
     style P45 fill:#2e7d32,color:#fff
     style P5 fill:#2e7d32,color:#fff
     style V1 fill:#2e7d32,color:#fff
+    style P6 fill:#2e7d32,color:#fff
+    style V11 fill:#2e7d32,color:#fff
 ```
 
 ## Phase 0 — Foundation ✅
@@ -153,8 +157,35 @@ the Play Console UI once the internal build is verified, per
 - [ ] Remaining P2 / P3 nits — see code-review report
 - [ ] Remaining security-review findings (M-3 redirect token [covered by M-1 interceptor], M-4 5xx retry/backoff, M-6 iOS symlink resolution, L-1..L-8)
 
+## Phase 6 — Library depth & diagram ergonomics (v1.1) ✅
+
+First minor release after v1.0. Theme: turn the library itself into
+the reference surface and make dense diagrams actually readable on a
+phone.
+
+- [x] **Library-wide full-text content search** — debounced, isolate-
+  backed scan over every recent document, folder source and synced
+  repository body. Matches render below the name-filter list under a
+  dedicated header with highlighted snippet, source-label badge and
+  multi-match counter. Per-file size cap (10 MB) and per-query file
+  cap (2000) keep a large monorepo from stalling the UI.
+- [x] **Pull-to-refresh across every library surface** — Recents
+  re-reads the persisted snapshot; folder sources re-enumerate the
+  directory; synced-repo sources run a full `RepoSyncNotifier.startSync`
+  against the stored GitHub URL, with the indicator visible for the
+  full round-trip.
+- [x] **Mermaid fullscreen viewer** — expand-icon affordance on every
+  rendered diagram opens a dedicated route with pinch-zoom up to 10×,
+  free pan, reset-to-identity control and tap-to-toggle translucent
+  chrome. Popping back restores the host document's exact scroll
+  offset.
+- [x] Tag `v1.1.0` published; release pipeline uploaded the signed IPA
+  to TestFlight and the signed AAB to the Play Console production
+  track (2026-04-19)
+
 ## Post-v1 Candidates
 
+- Full a11y audit (TalkBack + VoiceOver end-to-end) — carried forward
 - HarmonyOS support via OpenHarmony Flutter engine
 - Additional sync providers (GitLab, Bitbucket, Gitea)
 - Cloud provider integration (Google Drive, iCloud)
@@ -163,3 +194,5 @@ the Play Console UI once the internal build is verified, per
 - Plugin system for custom block renderers
 - Swipe between adjacent files
 - Share-intent import handling
+- AMOLED true-black dark variant
+- Tablet two-pane layout
