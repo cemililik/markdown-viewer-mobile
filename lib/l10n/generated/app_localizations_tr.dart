@@ -769,7 +769,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get onboardingSourcesBody =>
-      'Bir dosya açın, klasör ekleyin veya herkese açık bir GitHub deposunu senkronize edin. Her şey cihazınızda kalır.';
+      'Bir dosya açın, klasör ekleyin veya herkese açık bir GitHub deposunu senkronize edin. Yerel dosyalar ve klasörler cihazınızda kalır; GitHub senkronizasyonu yalnızca siz başlattığınızda ağa bağlanır.';
 
   @override
   String get onboardingDefaultTitle => 'Varsayılan .md okuyucunuz olalım';

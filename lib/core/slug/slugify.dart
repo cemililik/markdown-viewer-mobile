@@ -6,8 +6,12 @@
 ///
 /// 1. Lowercase the entire string.
 /// 2. Strip every character that is not a letter, digit, whitespace,
-///    or hyphen (Unicode-aware — Turkish, CJK, and emoji-free text
-///    all survive).
+///    underscore, or hyphen (Unicode-aware — Turkish, CJK, and
+///    emoji-free text all survive). Underscores are KEPT to match
+///    GitHub's GFM anchor algorithm — `## snake_case_heading` maps
+///    to `#snake_case_heading` on github.com, and stripping
+///    underscores here would break every intra-repo anchor link.
+///    Reference: code-review CR-20260419-028.
 /// 3. Collapse runs of whitespace into a single hyphen.
 /// 4. Collapse runs of hyphens into a single hyphen.
 /// 5. Trim leading / trailing hyphens.
@@ -21,7 +25,7 @@
 String slugify(String text) {
   final lower = text.toLowerCase();
   final stripped = lower.replaceAll(
-    RegExp(r'[^\p{L}\p{N}\s-]', unicode: true),
+    RegExp(r'[^\p{L}\p{N}\s_-]', unicode: true),
     '',
   );
   final collapsed = stripped.replaceAll(RegExp(r'\s+'), '-');

@@ -147,7 +147,6 @@ the Play Console UI once the internal build is verified, per
 
 ### Remaining (post-v1 polish, not release-blocking)
 
-- [ ] Full a11y audit (TalkBack + VoiceOver end-to-end)
 - [ ] Tests for `repo_sync`, `onboarding`, `observability` (P2-6..8)
 - [ ] CI coverage floor enforcement (P2-9)
 - [ ] Performance regression suite enforcement

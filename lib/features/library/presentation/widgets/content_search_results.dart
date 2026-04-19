@@ -72,36 +72,47 @@ class ContentSearchResultsSliver extends ConsumerWidget {
       );
     }
 
-    return SliverList.list(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-          child: Row(
-            children: [
-              Icon(
-                Icons.manage_search_outlined,
-                size: 18,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                l10n.libraryContentSearchHeader,
-                style: theme.textTheme.titleSmall?.copyWith(
+    // Results + header rendered through a single `SliverList.builder`
+    // so each `ContentMatchTile` materialises lazily as the user
+    // scrolls. The previous eager `SliverList.list(children: [...])`
+    // instantiated every tile on every state tick, which added a
+    // frame-time cost proportional to the (capped) 50-result list —
+    // measurable on mid-tier Android during search rebuilds.
+    // Reference: performance-review PR-20260419-011.
+    final matches = state.results;
+    return SliverList.builder(
+      itemCount: matches.length + 1, // +1 for the header row
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.manage_search_outlined,
+                  size: 18,
                   color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
                 ),
-              ),
-            ],
-          ),
-        ),
-        for (final match in state.results)
-          ContentMatchTile(
-            match: match,
-            onTap: () {
-              context.push(ViewerRoute.location(match.documentId.value));
-            },
-          ),
-      ],
+                const SizedBox(width: 8),
+                Text(
+                  l10n.libraryContentSearchHeader,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        final match = matches[index - 1];
+        return ContentMatchTile(
+          match: match,
+          onTap: () {
+            context.push(ViewerRoute.location(match.documentId.value));
+          },
+        );
+      },
     );
   }
 }

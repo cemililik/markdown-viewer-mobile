@@ -430,6 +430,19 @@ class _MermaidImageState extends State<_MermaidImage>
   }
 
   void _resetTransform() {
+    // Reduce-motion collapses the 300 ms ease — the fullscreen
+    // route's reset button already honours this gate; mirror it
+    // here so the inline diagram matches. With animations disabled
+    // we apply the identity transform directly and skip the tween.
+    // Reference: performance-review PR-20260419-002.
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
+    if (disableAnimations) {
+      _resetController.stop();
+      _resetAnimation?.removeListener(_applyResetFrame);
+      _resetAnimation = null;
+      _transform.value = Matrix4.identity();
+      return;
+    }
     final tween = Matrix4Tween(
       begin: _transform.value.clone(),
       end: Matrix4.identity(),

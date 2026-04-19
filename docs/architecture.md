@@ -54,10 +54,17 @@ Shared primitives live under `lib/core/`.
 Initial feature modules:
 
 - `viewer` — document loading and rendering
-- `library` — recent and favorite file management
+- `library` — recent and favorite file management, bookmark-scoped
+  folder sources, and cross-library content search through the
+  `LibraryContentSearch` domain port (shipped v1.1.0)
 - `settings` — theme, font, and reading preferences
 - `search` — in-document search
 - `share` — share-intent import and PDF export
+- `file_open` — OS-delivered file-open stream (AirDrop / share-sheet)
+- `onboarding` — first-run walkthrough (three pages)
+- `default_handler` — platform integration for "set as default
+  markdown viewer" affordance (Android-only at runtime)
+- `observability` — crash-reporting consent store + Sentry wiring
 - `repo_sync` — pull markdown documents from public git repositories
   (see [ADR-0012](decisions/0012-document-sync-architecture.md))
 

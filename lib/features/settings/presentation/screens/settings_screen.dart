@@ -70,6 +70,13 @@ class SettingsScreen extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
             child: SegmentedButton<AppLocale>(
+              // Drop the default selected-icon so the 320 dp phones
+              // do not see the checkmark crowd the segment label
+              // (`System` / `English` / `Türkçe` already fit tight
+              // at that width). The theme SegmentedButton at the
+              // top of this screen sets the same flag.
+              // Reference: code-review CR-20260419-026.
+              showSelectedIcon: false,
               segments: [
                 ButtonSegment(
                   value: AppLocale.system,
@@ -304,6 +311,13 @@ class _ReadingSettingsSection extends ConsumerWidget {
                         0.05)
                     .round(),
             label: '$percent%',
+            // Screen readers announce `semanticFormatterCallback`
+            // on each drag step; without it VoiceOver / TalkBack
+            // read the raw `1.0` double. Format to the same
+            // percentage the visual label shows so the blind-user
+            // experience matches the sighted one.
+            // Reference: code-review CR-20260419-025.
+            semanticFormatterCallback: (v) => '${(v * 100).round()}%',
             onChanged: controller.setFontScale,
           ),
         ),

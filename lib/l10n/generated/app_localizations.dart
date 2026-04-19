@@ -281,7 +281,7 @@ abstract class AppLocalizations {
   /// Section header shown above the content-search hits below the name-match list. Distinguishes 'match inside a file' results from filename matches.
   ///
   /// In en, this message translates to:
-  /// **'In document contents'**
+  /// **'Inside documents'**
   String get libraryContentSearchHeader;
 
   /// Empty state shown under the library search field when the name search returned nothing AND the cross-library full-text scan also returned nothing.

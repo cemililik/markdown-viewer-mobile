@@ -10,6 +10,12 @@ part 'app_database.g.dart';
 // ── Table definitions ──────────────────────────────────────────────────────
 
 @DataClassName('SyncedRepoRow')
+@TableIndex(
+  name: 'idx_synced_repos_natural_key',
+  columns: {#provider, #owner, #repo, #ref, #subPath},
+  unique: true,
+)
+@TableIndex(name: 'idx_synced_repos_last_synced', columns: {#lastSyncedAt})
 class SyncedRepos extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get provider => text()();
@@ -25,9 +31,17 @@ class SyncedRepos extends Table {
 
   /// One of `'ok'`, `'partial'`, `'failed'`.
   TextColumn get status => text().withDefault(const Constant('ok'))();
+
+  /// GitHub Trees API `ETag` of the most recent 200 response. Sent
+  /// back on the next re-sync as `If-None-Match` so a 304 short-
+  /// circuits the entire tree walk when the repo has not changed.
+  /// Nullable for backfilled rows that have not been re-synced
+  /// since the v1 → v2 migration.
+  TextColumn get etag => text().nullable()();
 }
 
 @DataClassName('SyncedFileRow')
+@TableIndex(name: 'idx_synced_files_repo', columns: {#repoId})
 class SyncedFiles extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get repoId =>
@@ -49,8 +63,45 @@ class SyncedFiles extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  /// v2: added `etag` column on `SyncedRepos` + secondary indices
+  /// (`idx_synced_files_repo`, `idx_synced_repos_natural_key` unique,
+  /// `idx_synced_repos_last_synced`). `knownShas` / `getAllRepos` /
+  /// `getRepoByNaturalKey` hit indexed SEARCH paths instead of SCAN.
+  /// Reference: performance-review PR-20260419-006/007 + If-None-Match
+  /// (PR-20260419-016).
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(syncedRepos, syncedRepos.etag);
+        await m.createIndex(
+          Index(
+            'idx_synced_repos_natural_key',
+            'CREATE UNIQUE INDEX IF NOT EXISTS idx_synced_repos_natural_key '
+                'ON synced_repos (provider, owner, repo, ref, sub_path);',
+          ),
+        );
+        await m.createIndex(
+          Index(
+            'idx_synced_repos_last_synced',
+            'CREATE INDEX IF NOT EXISTS idx_synced_repos_last_synced '
+                'ON synced_repos (last_synced_at);',
+          ),
+        );
+        await m.createIndex(
+          Index(
+            'idx_synced_files_repo',
+            'CREATE INDEX IF NOT EXISTS idx_synced_files_repo '
+                'ON synced_files (repo_id);',
+          ),
+        );
+      }
+    },
+  );
 
   // ── Repo queries ──────────────────────────────────────────────────────
 
