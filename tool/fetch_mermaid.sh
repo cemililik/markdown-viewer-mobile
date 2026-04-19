@@ -48,14 +48,19 @@ echo "Downloading mermaid v${MERMAID_VERSION} from ${MERMAID_URL}"
 tmp_file="$(mktemp)"
 trap 'rm -f "${tmp_file}"' EXIT
 
-if command -v curl >/dev/null 2>&1; then
-  curl -sSfL "${MERMAID_URL}" -o "${tmp_file}"
-elif command -v wget >/dev/null 2>&1; then
-  wget -q "${MERMAID_URL}" -O "${tmp_file}"
-else
-  echo "ERROR: neither curl nor wget is installed" >&2
+if ! command -v curl >/dev/null 2>&1; then
+  # `curl` is present on every supported CI runner (GitHub Actions
+  # macOS + ubuntu images) and on every developer shell we support.
+  # The earlier `wget` fallback omitted `--fail`, so a 4xx / 5xx
+  # response silently deposited an HTML error body into the temp
+  # file — the SHA check caught it, but the failure surfaced as a
+  # confusing hash mismatch instead of a clean HTTP error. Drop the
+  # fallback rather than keep a second code path we do not exercise.
+  # Reference: security-review SR-20260419-044.
+  echo "ERROR: curl is required but not installed" >&2
   exit 2
 fi
+curl -sSfL "${MERMAID_URL}" -o "${tmp_file}"
 
 actual_sha="$(compute_sha256 "${tmp_file}")"
 if [[ "${actual_sha}" != "${EXPECTED_SHA256}" ]]; then

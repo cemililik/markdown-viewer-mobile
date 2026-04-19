@@ -318,7 +318,7 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
   /// root as long as the root scope stays active, mirroring the
   /// pattern used by `listImmediate` + `subPath`.
   private func readFileBytes(bookmark base64: String, filePath: String, result: @escaping FlutterResult) {
-    guard let rootUrl = resolveBookmarkOrFail(
+    guard let rootUrl = resolveBookmarkOrReplyWithError(
       bookmark: base64,
       errorCode: "READ_FAILED",
       result: result
@@ -389,7 +389,7 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
     result: @escaping FlutterResult,
     work: (URL) throws -> [[String: Any]]
   ) {
-    guard let url = resolveBookmarkOrFail(
+    guard let url = resolveBookmarkOrReplyWithError(
       bookmark: base64,
       errorCode: "LIST_FAILED",
       result: result
@@ -425,7 +425,14 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
   /// (`BOOKMARK_STALE` for bad base64, `ACCESS_DENIED` for a failed
   /// scope claim, [genericErrorCode] for everything else) and returns
   /// `nil`.
-  private func resolveBookmarkOrFail(
+  ///
+  /// **Callers must not invoke `result(...)` on a `nil` return.** This
+  /// helper already sent the FlutterError reply on every `nil` path;
+  /// a double `result()` leaks a `FlutterError` into the engine.
+  /// The name encodes that contract: *"Or Reply With Error"* — on
+  /// `nil`, the reply has already been sent.
+  /// Reference: code-review CR-20260419-032.
+  private func resolveBookmarkOrReplyWithError(
     bookmark base64: String,
     errorCode genericErrorCode: String,
     result: @escaping FlutterResult

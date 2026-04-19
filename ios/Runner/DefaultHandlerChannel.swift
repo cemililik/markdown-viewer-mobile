@@ -28,6 +28,17 @@ final class DefaultHandlerChannel: NSObject {
             switch call.method {
             case "openDefaultHandlerSettings":
                 result(false)
+            case "isDefault":
+                // iOS has no public API to answer "am I the default
+                // handler for .md?", and the default resolution is
+                // opaque to the app (`LSHandlerRank` ordering). A
+                // future Dart-side query needs a deterministic answer
+                // so the UI can hide its "Set as default" affordance
+                // without platform-gating the call site. Always
+                // answer `false` — the onboarding copy already
+                // explains why the option is absent on iOS.
+                // Reference: code-review CR-20260419-035.
+                result(false)
             default:
                 result(FlutterMethodNotImplemented)
             }

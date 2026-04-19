@@ -8,21 +8,22 @@
 # dependency breaks at runtime.
 
 # ── Flutter framework ────────────────────────────────────────────
-# Flutter engine's JNI glue loads these symbols by name. The
-# upstream Flutter tooling ships this as a best-practice default;
-# keeping it here future-proofs us against engine revisions that
-# touch new reflective call-sites. A single broad pattern covers
-# every narrower `io.flutter.*.**` surface — kept that way so a
-# future engine-internal package rename does not surprise us.
--keep class io.flutter.** { *; }
+# Every Flutter plugin ships its own `consumer-rules.pro` that keeps
+# the engine entry points R8 cannot see statically, and the Flutter
+# tool concatenates those into the release build's ProGuard config
+# automatically. A blanket `-keep class io.flutter.** { *; }` here
+# was redundant and inflated the retained symbol footprint; if a
+# specific engine class ever breaks under R8 we can narrow a keep
+# rule to just that class with better attribution.
+# Reference: security-review SR-20260419-046.
 
 # ── Play Core (Flutter deferred components + Play Feature Delivery) ──
-# Flutter's tree-shaking for assets and deferred loading leans on
-# these entry points. Even if we don't ship feature modules, the
-# Flutter engine still imports the classes and R8 flags them as
-# missing without the explicit `dontwarn` directive.
+# We do not ship Play Feature Delivery / in-app updates, and the
+# Flutter engine's Play-Core shim is only imported transitively.
+# `-dontwarn` alone is sufficient to silence R8's missing-class
+# warnings; the companion `-keep` line was unused retained code.
+# Reference: security-review SR-20260419-047.
 -dontwarn com.google.android.play.core.**
--keep class com.google.android.play.core.** { *; }
 
 # ── Sentry ────────────────────────────────────────────────────────
 # sentry-android reflects on session-replay and breadcrumb handlers
