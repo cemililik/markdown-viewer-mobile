@@ -407,39 +407,41 @@ class _OnboardingStep {
 /// [currentOnboardingVersion] in
 /// `application/onboarding_providers.dart` so every returning user
 /// sees the updated flow exactly once on their next cold start.
+///
+/// Condensed to three pages after the initial five-page flow tested
+/// as too click-heavy — users routinely tapped "Skip" on the second
+/// page, so the purpose / rendering / personalize pages are merged
+/// into the welcome step and the "open a folder to begin"
+/// instruction is folded into the new Sources page. The
+/// default-handler prompt stays last because its CTA (Android only)
+/// is the only action a user can take that meaningfully changes
+/// OS-level behaviour.
 const List<_OnboardingStep> _onboardingSteps = <_OnboardingStep>[
   _OnboardingStep(
     heroIcon: Icons.menu_book_outlined,
+    // Floating chips echo the welcome body copy (Mermaid / LaTeX /
+    // code / tables) rather than generic reading ornaments — a
+    // first-time user immediately sees what sets this reader apart
+    // from a plain text viewer.
     floatingIcons: <IconData>[
-      Icons.star_outline_rounded,
-      Icons.bookmark_outline_rounded,
-      Icons.search_rounded,
+      Icons.table_chart_outlined,
+      Icons.code_rounded,
+      Icons.functions_rounded,
     ],
     accent: _AccentRole.primary,
     title: _welcomeTitle,
     body: _welcomeBody,
   ),
   _OnboardingStep(
-    heroIcon: Icons.auto_awesome_outlined,
+    heroIcon: Icons.folder_open_outlined,
     floatingIcons: <IconData>[
-      Icons.table_chart_outlined,
-      Icons.code_rounded,
-      Icons.functions_rounded,
+      Icons.description_outlined,
+      Icons.folder_outlined,
+      Icons.cloud_download_outlined,
     ],
     accent: _AccentRole.secondary,
-    title: _renderingTitle,
-    body: _renderingBody,
-  ),
-  _OnboardingStep(
-    heroIcon: Icons.tune_rounded,
-    floatingIcons: <IconData>[
-      Icons.text_fields_rounded,
-      Icons.dark_mode_outlined,
-      Icons.translate_rounded,
-    ],
-    accent: _AccentRole.tertiary,
-    title: _personalizeTitle,
-    body: _personalizeBody,
+    title: _sourcesTitle,
+    body: _sourcesBody,
   ),
   _OnboardingStep(
     heroIcon: Icons.ios_share_outlined,
@@ -448,32 +450,17 @@ const List<_OnboardingStep> _onboardingSteps = <_OnboardingStep>[
       Icons.touch_app_outlined,
       Icons.verified_outlined,
     ],
-    accent: _AccentRole.primary,
+    accent: _AccentRole.tertiary,
     title: _defaultHandlerTitle,
     body: _defaultHandlerBody,
     showDefaultHandlerCta: true,
-  ),
-  _OnboardingStep(
-    heroIcon: Icons.folder_open_outlined,
-    floatingIcons: <IconData>[
-      Icons.cloud_download_outlined,
-      Icons.description_outlined,
-      Icons.hub_outlined,
-    ],
-    accent: _AccentRole.secondary,
-    title: _getStartedTitle,
-    body: _getStartedBody,
   ),
 ];
 
 String _welcomeTitle(AppLocalizations l10n) => l10n.onboardingWelcomeTitle;
 String _welcomeBody(AppLocalizations l10n) => l10n.onboardingWelcomeBody;
-String _renderingTitle(AppLocalizations l10n) => l10n.onboardingRenderingTitle;
-String _renderingBody(AppLocalizations l10n) => l10n.onboardingRenderingBody;
-String _personalizeTitle(AppLocalizations l10n) =>
-    l10n.onboardingPersonalizeTitle;
-String _personalizeBody(AppLocalizations l10n) =>
-    l10n.onboardingPersonalizeBody;
+String _sourcesTitle(AppLocalizations l10n) => l10n.onboardingSourcesTitle;
+String _sourcesBody(AppLocalizations l10n) => l10n.onboardingSourcesBody;
 String _defaultHandlerTitle(AppLocalizations l10n) =>
     l10n.onboardingDefaultTitle;
 
@@ -491,10 +478,6 @@ String _defaultHandlerBody(
   TargetPlatform.linux ||
   TargetPlatform.windows => l10n.onboardingDefaultBodyAndroid,
 };
-
-String _getStartedTitle(AppLocalizations l10n) =>
-    l10n.onboardingGetStartedTitle;
-String _getStartedBody(AppLocalizations l10n) => l10n.onboardingGetStartedBody;
 
 // ── Private widgets ───────────────────────────────────────────────────
 

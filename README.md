@@ -7,8 +7,10 @@ code, tables, footnotes, and admonitions.
 
 ## Status
 
-**v1.0.2 — released 2026-04-18.** Phases 0–5 complete. Available on
-TestFlight and the Play Console production track.
+**v1.1.0 — released 2026-04-19.** Phases 0–5 complete plus three
+post-v1 focus areas (library content search, pull-to-refresh on every
+source, Mermaid fullscreen viewer). Available on TestFlight and the
+Play Console production track.
 
 v1.0 shipped after a full-application code review (128 findings across 8
 streams — all P0/P1 findings closed, architecture layer refactored), a
@@ -36,12 +38,16 @@ the full delivery history and post-v1 candidates.
 - In-document search with inline highlighting (browser find-in-page style)
 - Reading comfort toolbar — font scale, reading width, line height
 - Immersive scroll with auto-hide AppBar and FAB
-- Light, dark, and sepia themes; AMOLED true-black planned for v1.1
+- Light, dark, and sepia themes; AMOLED true-black planned for v1.2
 - Keep-screen-on toggle
 - Text selection, copy, and share
 - In-document anchor links
 - Reading time estimate
 - PDF export with Mermaid diagrams and math preserved
+- **Mermaid fullscreen viewer** — expand icon on every diagram opens an
+  edge-to-edge pinch-zoomable view with reset / recenter and
+  tap-to-toggle chrome, so dense flowcharts, ER diagrams and mindmaps
+  are actually readable on a phone
 
 ### Library and sync
 
@@ -50,6 +56,11 @@ the full delivery history and post-v1 candidates.
 - Optional Personal Access Token stored in the platform Keychain / Keystore
 - Incremental re-sync using SHA-based change detection
 - Recent documents, self-cleaning stale entries
+- **Cross-library full-text search** — typing three or more characters
+  into the library search field scans every recent, folder and synced
+  repository for content matches (runs inside a `compute()` isolate)
+- **Pull-to-refresh on every source** — Recents, folder, synced repo;
+  swiping down re-enumerates a folder or re-syncs a repo
 - First-run onboarding with a pre-loaded example library
 
 ### Platform integration

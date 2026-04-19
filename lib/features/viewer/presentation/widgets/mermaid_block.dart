@@ -1,13 +1,16 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/features/viewer/application/markdown_extensions/admonition.dart';
 import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
 import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_utils.dart';
 import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
+import 'package:markdown_viewer/features/viewer/presentation/screens/diagram_fullscreen_screen.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_view.dart';
 
 /// Renders a single mermaid fenced code block as a PNG bitmap.
@@ -448,6 +451,24 @@ class _MermaidImageState extends State<_MermaidImage>
     _transform.value = animation.value;
   }
 
+  /// Pushes the dedicated fullscreen route with the already-rendered
+  /// PNG bytes + dimensions. `context.push` (not `go`) is deliberate
+  /// — popping back lands on the viewer at the exact scroll offset
+  /// the reader left, so the diagram excursion does not break the
+  /// reading flow. The inline transform state is preserved because
+  /// the fullscreen screen owns its own `TransformationController`.
+  void _openFullscreen() {
+    HapticFeedback.selectionClick().ignore();
+    context.push(
+      DiagramRoute.location(),
+      extra: DiagramFullscreenArgs(
+        pngBytes: widget.pngBytes,
+        width: widget.width,
+        height: widget.height,
+      ),
+    );
+  }
+
   @override
   void dispose() {
     _resetAnimation?.removeListener(_applyResetFrame);
@@ -521,11 +542,29 @@ class _MermaidImageState extends State<_MermaidImage>
                         opacity: _isTransformed ? 1 : 0,
                         child: IgnorePointer(
                           ignoring: !_isTransformed,
-                          child: _CenterButton(
+                          child: _DiagramIconButton(
                             tooltip: l10n.mermaidReset,
+                            icon: Icons.center_focus_strong_outlined,
                             onPressed: _resetTransform,
                           ),
                         ),
+                      ),
+                    ),
+                    // Fullscreen affordance sits opposite the reset
+                    // button so muscle memory keeps the two recovery
+                    // gestures (recenter / expand) on the same
+                    // horizontal rail. Always visible — dense
+                    // flowchart / ER / mindmap diagrams are the
+                    // reason this whole screen exists, so the user
+                    // shouldn't have to transform the inline image
+                    // first to discover the button.
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: _DiagramIconButton(
+                        tooltip: l10n.diagramFullscreenOpenTooltip,
+                        icon: Icons.fullscreen,
+                        onPressed: _openFullscreen,
                       ),
                     ),
                   ],
@@ -539,10 +578,21 @@ class _MermaidImageState extends State<_MermaidImage>
   }
 }
 
-class _CenterButton extends StatelessWidget {
-  const _CenterButton({required this.tooltip, required this.onPressed});
+/// Tonal round icon button floated over the inline mermaid diagram.
+///
+/// Used for both the recenter affordance (visible only while the
+/// transform is dirty) and the fullscreen affordance (always
+/// visible). 44 × 44 hit target for touch-target compliance even
+/// though the painted icon is 20 dp.
+class _DiagramIconButton extends StatelessWidget {
+  const _DiagramIconButton({
+    required this.tooltip,
+    required this.icon,
+    required this.onPressed,
+  });
 
   final String tooltip;
+  final IconData icon;
   final VoidCallback onPressed;
 
   @override
@@ -557,10 +607,7 @@ class _CenterButton extends StatelessWidget {
         iconSize: 20,
         padding: const EdgeInsets.all(6),
         constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-        icon: Icon(
-          Icons.center_focus_strong_outlined,
-          color: theme.colorScheme.onSurface,
-        ),
+        icon: Icon(icon, color: theme.colorScheme.onSurface),
         onPressed: onPressed,
       ),
     );

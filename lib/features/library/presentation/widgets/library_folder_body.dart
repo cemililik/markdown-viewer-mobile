@@ -6,12 +6,15 @@ import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/core/logging/logger.dart';
+import 'package:markdown_viewer/features/library/application/content_search_provider.dart';
 import 'package:markdown_viewer/features/library/application/folder_file_materializer_provider.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
 import 'package:markdown_viewer/features/library/data/services/native_library_folders_channel.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/services/folder_enumerator.dart';
+import 'package:markdown_viewer/features/library/domain/services/library_content_search.dart';
+import 'package:markdown_viewer/features/library/presentation/widgets/content_match_tile.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart'
     show DocumentId;
 import 'package:path/path.dart' as p;
@@ -40,15 +43,45 @@ import 'package:path/path.dart' as p;
 /// concept and does not apply here; folder browsing uses the
 /// filesystem hierarchy itself as the structure.
 class LibraryFolderBody extends ConsumerStatefulWidget {
-  const LibraryFolderBody({required this.folder, super.key});
+  const LibraryFolderBody({
+    required this.folder,
+    required this.refreshTick,
+    required this.onRefresh,
+    super.key,
+  });
 
   final LibraryFolder folder;
+
+  /// Monotonic tick the library screen bumps on every pull-to-
+  /// refresh gesture. When it changes we drop the cached
+  /// enumeration futures (both the root tree and the recursive
+  /// search walk) so the next layout picks up any freshly synced /
+  /// newly created markdown file.
+  final int refreshTick;
+
+  /// Pull-to-refresh handler supplied by the library screen. Drives
+  /// the `RefreshIndicator` wrapped around the browse / search view.
+  /// For a folder source this re-enumerates the directory; for a
+  /// synced-repo source it triggers a GitHub re-sync before the
+  /// local mirror is re-enumerated.
+  final Future<void> Function() onRefresh;
 
   @override
   ConsumerState<LibraryFolderBody> createState() => _LibraryFolderBodyState();
 }
 
 class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
+  /// Minimum query length that triggers an isolate-backed content
+  /// scan. Below this threshold the body still renders filename
+  /// matches, but the content section stays dormant — single- and
+  /// double-character queries are too noisy to justify a walk.
+  static const int _minContentQueryLength = 3;
+
+  /// Debounce window between the last keystroke and the isolate
+  /// dispatch. Matches the cross-library search on the Recents tab
+  /// so the two surfaces feel identical.
+  static const Duration _contentSearchDebounce = Duration(milliseconds: 250);
+
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
@@ -57,6 +90,29 @@ class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
   /// browsing a folder without searching does not pay the walk
   /// cost at all.
   Future<List<FolderFileEntry>>? _recursiveFuture;
+
+  // ── Content-search (source-scoped) state ────────────────────────
+  //
+  // The body runs two searches in parallel against the active
+  // folder / synced-repo:
+  //
+  //   1. Filename filter — cheap, driven off `_recursiveFuture`
+  //      above, case-insensitive substring match on the file's
+  //      basename.
+  //   2. Content search — reads file bytes, scans for the query,
+  //      and surfaces a snippet. Runs on a [compute] isolate with
+  //      the 10 MB / 2 000 files hard caps baked into
+  //      [LibraryContentSearchService], so a surprise monorepo
+  //      cannot stall the UI.
+  //
+  // Both run off the same search field. The content scan only fires
+  // at >= [_minContentQueryLength] characters and is debounced to
+  // avoid a fresh walk on every keystroke.
+  Timer? _contentDebounceTimer;
+  int _contentDispatchSeq = 0;
+  List<ContentSearchMatch> _contentMatches = const <ContentSearchMatch>[];
+  bool _isContentSearching = false;
+  String _contentSearchQuery = '';
 
   @override
   void didUpdateWidget(covariant LibraryFolderBody oldWidget) {
@@ -68,11 +124,43 @@ class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
       _searchController.clear();
       _searchQuery = '';
       _recursiveFuture = null;
+      _cancelContentSearch();
+    } else if (oldWidget.refreshTick != widget.refreshTick) {
+      // Pull-to-refresh was triggered at the library screen level.
+      // Drop the recursive-walk cache so a re-enumeration runs on
+      // the next non-empty query. Browsing-mode refresh runs
+      // through the inner `_FolderBrowseView` via the same tick.
+      //
+      // If a search is already active when the refresh lands, kick
+      // off a fresh walk immediately — the build side below relies
+      // on the invariant "query non-empty ⇒ future non-null" and
+      // hits `_recursiveFuture!` otherwise. A synced-repo source
+      // that finishes a re-sync (or a folder source that receives
+      // a pull-to-refresh) while the user is mid-search would
+      // null the future out from under the active search view
+      // and crash the library body with a bare "Null check
+      // operator used on a null value" red-screen — the same red
+      // screen ErrorWidget shows when any widget throws during
+      // build.
+      _recursiveFuture =
+          _searchQuery.isNotEmpty
+              ? ref
+                  .read(folderEnumeratorProvider)
+                  .enumerateRecursive(widget.folder)
+              : null;
+      // Content matches reflect the pre-refresh corpus, so rerun
+      // the scan immediately (no debounce — the user already
+      // committed to this query) if the current query is long
+      // enough to trigger one.
+      if (_searchQuery.length >= _minContentQueryLength) {
+        _runContentSearch(_searchQuery);
+      }
     }
   }
 
   @override
   void dispose() {
+    _contentDebounceTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -87,6 +175,7 @@ class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
             .enumerateRecursive(widget.folder);
       }
     });
+    _dispatchContentSearch(normalized);
   }
 
   void _clearSearch() {
@@ -102,6 +191,85 @@ class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
       _searchQuery = '';
       _recursiveFuture = null;
     });
+    _cancelContentSearch();
+  }
+
+  /// Schedules a debounced content scan.
+  ///
+  /// Queries shorter than [_minContentQueryLength] cancel any
+  /// pending scan and clear the match list without spawning work.
+  /// Longer queries set the spinner immediately (so the UI feels
+  /// live while typing settles) and fire the scan after
+  /// [_contentSearchDebounce].
+  void _dispatchContentSearch(String normalised) {
+    _contentDebounceTimer?.cancel();
+    if (normalised.length < _minContentQueryLength) {
+      // Invalidate any in-flight dispatch so its result doesn't
+      // arrive late and paint stale matches over a short query.
+      _contentDispatchSeq += 1;
+      setState(() {
+        _contentMatches = const <ContentSearchMatch>[];
+        _isContentSearching = false;
+        _contentSearchQuery = normalised;
+      });
+      return;
+    }
+    setState(() {
+      _isContentSearching = true;
+      _contentSearchQuery = normalised;
+    });
+    _contentDebounceTimer = Timer(_contentSearchDebounce, () {
+      _runContentSearch(normalised);
+    });
+  }
+
+  /// Cancels a pending debounce and clears the match list. Used on
+  /// `clear search` and folder-source switches.
+  void _cancelContentSearch() {
+    _contentDebounceTimer?.cancel();
+    _contentDispatchSeq += 1;
+    _contentMatches = const <ContentSearchMatch>[];
+    _isContentSearching = false;
+    _contentSearchQuery = '';
+  }
+
+  Future<void> _runContentSearch(String normalised) async {
+    final seq = ++_contentDispatchSeq;
+    final service = ref.read(libraryContentSearchServiceProvider);
+    final l10n = context.l10n;
+    try {
+      final results = await service.search(
+        query: normalised,
+        // Source-scoped: pass the active folder as the only corpus
+        // contributor. Recents / other synced repos stay out of
+        // scope so a hit on this tab always comes from this source.
+        recents: const [],
+        folders: [widget.folder],
+        syncedRepos: const [],
+        // The folder-body never renders a "Recent" badge, but the
+        // label is required for the shared [ContentMatchTile] API.
+        recentsSourceLabel: l10n.libraryContentSearchSourceRecent,
+        folderSourceLabelBuilder: (folder) {
+          final basename = p.basename(folder.path);
+          final name = basename.isEmpty ? folder.path : basename;
+          return l10n.libraryContentSearchSourceFolder(name);
+        },
+        syncedRepoSourceLabelBuilder: (_) => '',
+      );
+      if (!mounted || seq != _contentDispatchSeq) return;
+      setState(() {
+        _contentMatches = results;
+        _isContentSearching = false;
+      });
+    } on Object {
+      // Content search is best-effort — a transient I/O failure in
+      // the isolate should not leave the spinner spinning forever.
+      if (!mounted || seq != _contentDispatchSeq) return;
+      setState(() {
+        _contentMatches = const <ContentSearchMatch>[];
+        _isContentSearching = false;
+      });
+    }
   }
 
   @override
@@ -159,18 +327,31 @@ class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
           ),
         ),
         Expanded(
-          child:
-              _searchQuery.isEmpty
-                  ? _FolderBrowseView(
-                    key: ValueKey('browse-${widget.folder.path}'),
-                    folder: widget.folder,
-                  )
-                  : _FolderSearchView(
-                    key: ValueKey('search-${widget.folder.path}'),
-                    folder: widget.folder,
-                    query: _searchQuery,
-                    recursiveFuture: _recursiveFuture!,
-                  ),
+          child: RefreshIndicator(
+            onRefresh: widget.onRefresh,
+            // The browse / search views are already scrollable (both
+            // are backed by `ListView`), so `RefreshIndicator` can
+            // attach to their inner `Scrollable` without needing a
+            // wrapping `SingleChildScrollView`.
+            child:
+                _searchQuery.isEmpty
+                    ? _FolderBrowseView(
+                      key: ValueKey(
+                        'browse-${widget.folder.path}-${widget.refreshTick}',
+                      ),
+                      folder: widget.folder,
+                    )
+                    : _FolderCombinedSearchView(
+                      key: ValueKey('search-${widget.folder.path}'),
+                      folder: widget.folder,
+                      query: _searchQuery,
+                      recursiveFuture: _recursiveFuture!,
+                      contentMatches: _contentMatches,
+                      isContentSearching: _isContentSearching,
+                      contentQuery: _contentSearchQuery,
+                      minContentQueryLength: _minContentQueryLength,
+                    ),
+          ),
         ),
       ],
     );
@@ -237,19 +418,51 @@ class _FolderBrowseViewState extends ConsumerState<_FolderBrowseView> {
   }
 }
 
-/// Search mode: flat list of markdown files that match [query],
-/// drawn from the once-walked recursive scan.
-class _FolderSearchView extends ConsumerWidget {
-  const _FolderSearchView({
+/// Search mode for folder / synced-repo sources. Combines two
+/// parallel result streams:
+///
+/// 1. **Filename matches** — case-insensitive substring match over
+///    the once-walked recursive tree ([recursiveFuture]). Cheap,
+///    fires on every keystroke.
+/// 2. **Content matches** — [ContentSearchMatch] list produced by
+///    [LibraryContentSearchService] against this source only. Only
+///    populated once the query reaches [minContentQueryLength] and
+///    the 250 ms debounce elapses.
+///
+/// Both sections share a single scrollable `ListView` so the user
+/// can flip between them with one scroll gesture. The "No matching
+/// files" hint only appears when both lists would otherwise render
+/// empty AND no content scan is in flight — otherwise the empty
+/// text would fight the spinner for screen real-estate.
+class _FolderCombinedSearchView extends ConsumerWidget {
+  const _FolderCombinedSearchView({
     required this.folder,
     required this.query,
     required this.recursiveFuture,
+    required this.contentMatches,
+    required this.isContentSearching,
+    required this.contentQuery,
+    required this.minContentQueryLength,
     super.key,
   });
 
   final LibraryFolder folder;
   final String query;
   final Future<List<FolderFileEntry>> recursiveFuture;
+  final List<ContentSearchMatch> contentMatches;
+  final bool isContentSearching;
+
+  /// The query the content-search notifier is currently running
+  /// against. Distinct from [query] so a short query (< min length)
+  /// does not render a stale content header while the filename
+  /// filter still has results to show.
+  final String contentQuery;
+
+  /// Minimum query length before the content scan kicks in. Echoed
+  /// from the parent so this widget knows whether "no content
+  /// matches yet" means "too few characters" or "scan finished
+  /// empty".
+  final int minContentQueryLength;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -261,7 +474,29 @@ class _FolderSearchView extends ConsumerWidget {
     return FutureBuilder<List<FolderFileEntry>>(
       future: recursiveFuture,
       builder: (context, snapshot) {
-        if (snapshot.connectionState != ConnectionState.done) {
+        final walking = snapshot.connectionState != ConnectionState.done;
+        final walkError = snapshot.hasError;
+
+        if (walkError) {
+          return _CenteredHint(text: l10n.libraryFolderSourceError);
+        }
+
+        final all = snapshot.data ?? const <FolderFileEntry>[];
+        final filenameMatches =
+            all
+                .where((entry) => entry.name.toLowerCase().contains(query))
+                .toList();
+
+        final contentHeaderVisible =
+            contentQuery.length >= minContentQueryLength;
+        final hasFilenameMatches = filenameMatches.isNotEmpty;
+        final hasContentMatches = contentMatches.isNotEmpty;
+
+        // Loading state: the filename walk is still resolving and
+        // no content matches have arrived yet. Mirrors the old
+        // pre-v1.1 "Scanning folder…" placeholder so the user sees
+        // that something is happening instead of an empty panel.
+        if (walking && !hasContentMatches && !isContentSearching) {
           return Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
@@ -277,25 +512,131 @@ class _FolderSearchView extends ConsumerWidget {
             ],
           );
         }
-        if (snapshot.hasError) {
-          return _CenteredHint(text: l10n.libraryFolderSourceError);
-        }
-        final all = snapshot.data ?? const <FolderFileEntry>[];
-        final matches =
-            all
-                .where((entry) => entry.name.toLowerCase().contains(query))
-                .toList();
-        if (matches.isEmpty) {
+
+        // True empty state — only fires when every source of
+        // results is exhausted and no content scan is pending. A
+        // query below [minContentQueryLength] that produces no
+        // filename matches still lands here (the scan would be a
+        // noise-trap).
+        final scanPending = isContentSearching;
+        final contentFinishedEmpty =
+            contentHeaderVisible && !scanPending && !hasContentMatches;
+        final contentSkipped = !contentHeaderVisible;
+        final nothingToShow =
+            !hasFilenameMatches &&
+            !scanPending &&
+            (contentSkipped || contentFinishedEmpty);
+
+        if (nothingToShow) {
           return _CenteredHint(
             text: l10n.libraryFolderSourceSearchNoResults(displayName),
           );
         }
-        return ListView.builder(
+
+        final children = <Widget>[];
+
+        // ── Filename matches ────────────────────────────────────
+        for (final entry in filenameMatches) {
+          children.add(_MatchTile(rootFolder: folder, entry: entry));
+        }
+
+        // ── Content matches ─────────────────────────────────────
+        // Header + (spinner | results | empty). The header is the
+        // same affordance the Recents tab uses so the surface feels
+        // identical across tabs.
+        if (contentHeaderVisible) {
+          children.add(
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.manage_search_outlined,
+                    size: 18,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    l10n.libraryContentSearchHeader,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+          if (scanPending && !hasContentMatches) {
+            children.add(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      l10n.libraryContentSearchLoading,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          } else if (!hasContentMatches) {
+            children.add(
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: Text(
+                  l10n.libraryContentSearchEmpty,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            );
+          } else {
+            for (final match in contentMatches) {
+              children.add(
+                ContentMatchTile(
+                  match: match,
+                  // All matches on this surface come from the same
+                  // source (the active folder / synced-repo), so
+                  // the source-label badge is redundant noise.
+                  showSourceLabel: false,
+                  onTap: () {
+                    unawaited(
+                      openFolderEntry(
+                        context: context,
+                        ref: ref,
+                        folder: folder,
+                        // Rebuild a FolderFileEntry from the match so
+                        // the shared open-path respects any platform
+                        // security-scoped bookmark on [folder]. On
+                        // synced repos the materializer is a no-op
+                        // passthrough.
+                        entry: FolderFileEntry(
+                          path: match.documentId.value,
+                          name: match.displayName,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              );
+            }
+          }
+        }
+
+        return ListView(
           padding: const EdgeInsets.fromLTRB(8, 0, 8, 96),
-          itemCount: matches.length,
-          itemBuilder:
-              (context, index) =>
-                  _MatchTile(rootFolder: folder, entry: matches[index]),
+          children: children,
         );
       },
     );

@@ -278,6 +278,54 @@ abstract class AppLocalizations {
   /// **'No matching documents'**
   String get librarySearchNoResults;
 
+  /// Section header shown above the content-search hits below the name-match list. Distinguishes 'match inside a file' results from filename matches.
+  ///
+  /// In en, this message translates to:
+  /// **'In document contents'**
+  String get libraryContentSearchHeader;
+
+  /// Empty state shown under the library search field when the name search returned nothing AND the cross-library full-text scan also returned nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches in any document'**
+  String get libraryContentSearchEmpty;
+
+  /// Loading label shown while the debounced cross-library full-text search is running inside its compute() isolate.
+  ///
+  /// In en, this message translates to:
+  /// **'Scanning documents…'**
+  String get libraryContentSearchLoading;
+
+  /// Badge on a content-search result tile showing the total number of matches for the active query inside that single document.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 match} other{{count} matches}}'**
+  String libraryContentSearchMoreMatches(int count);
+
+  /// Badge label on a content-search result that came from the user's recent-documents list.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get libraryContentSearchSourceRecent;
+
+  /// Badge label on a content-search result that came from a library-registered folder source.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder: {name}'**
+  String libraryContentSearchSourceFolder(String name);
+
+  /// Badge label on a content-search result that came from a synced GitHub repository.
+  ///
+  /// In en, this message translates to:
+  /// **'Repo: {name}'**
+  String libraryContentSearchSourceRepo(String name);
+
+  /// Snackbar shown when a pull-to-refresh against a folder or synced-repo source fails — e.g. the bookmark went stale, network dropped, or the GitHub API returned an error mid-sync.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not refresh this source. Try again.'**
+  String get libraryRefreshFailed;
+
   /// Header above the section holding user-pinned recent documents.
   ///
   /// In en, this message translates to:
@@ -655,6 +703,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Reset view'**
   String get mermaidReset;
+
+  /// Tooltip on the expand icon overlaid on each rendered Mermaid diagram. Tapping it pushes the dedicated fullscreen viewer.
+  ///
+  /// In en, this message translates to:
+  /// **'Open fullscreen'**
+  String get diagramFullscreenOpenTooltip;
+
+  /// Tooltip / aria-label on the close (X) button in the Mermaid fullscreen viewer top bar.
+  ///
+  /// In en, this message translates to:
+  /// **'Close fullscreen'**
+  String get diagramFullscreenCloseTooltip;
 
   /// Semantic label for a successfully rendered mermaid diagram image, announced by screen readers.
   ///
@@ -1262,7 +1322,7 @@ abstract class AppLocalizations {
   /// **'Skip'**
   String get onboardingSkip;
 
-  /// Screen-reader-only label for the page-indicator dot row on the onboarding screen. Announced as a single node so TalkBack / VoiceOver users hear the current position once rather than five separate dot widgets.
+  /// Screen-reader-only label for the page-indicator dot row on the onboarding screen. Announced as a single node so TalkBack / VoiceOver users hear the current position once rather than three separate dot widgets.
   ///
   /// In en, this message translates to:
   /// **'Page {current} of {total}'**
@@ -1286,49 +1346,25 @@ abstract class AppLocalizations {
   /// **'Welcome to Markdown Viewer'**
   String get onboardingWelcomeTitle;
 
-  /// Body copy of the first onboarding page, introducing the app's purpose.
+  /// Body copy of the first onboarding page. Condensed to a single sentence that covers both the app's purpose (focused reader) and what it renders, so the rendering features no longer need a dedicated page.
   ///
   /// In en, this message translates to:
-  /// **'A focused mobile reader for your markdown notes, docs, and knowledge base — no editor, no distractions.'**
+  /// **'A focused mobile reader for Mermaid, LaTeX math, code and tables — rendered cleanly, offline by default.'**
   String get onboardingWelcomeBody;
 
-  /// Title of the second onboarding page, highlighting rendering features.
+  /// Title of the second onboarding page, directing the user to add content from one of the three supported sources (file, folder, synced repo).
   ///
   /// In en, this message translates to:
-  /// **'Rich content, beautifully rendered'**
-  String get onboardingRenderingTitle;
+  /// **'Bring your content'**
+  String get onboardingSourcesTitle;
 
-  /// Body copy of the second onboarding page, listing what the renderer supports.
+  /// Body copy of the second onboarding page. Mentions the three entry points into the library plus the offline-by-default guarantee.
   ///
   /// In en, this message translates to:
-  /// **'Tables, syntax-highlighted code, LaTeX math, Mermaid diagrams, admonitions and footnotes — all handled out of the box.'**
-  String get onboardingRenderingBody;
+  /// **'Open a file, add a folder, or sync a public GitHub repo. Everything stays on-device.'**
+  String get onboardingSourcesBody;
 
-  /// Title of the third onboarding page, covering personalization.
-  ///
-  /// In en, this message translates to:
-  /// **'Read the way you like'**
-  String get onboardingPersonalizeTitle;
-
-  /// Body copy of the third onboarding page, listing what users can personalise.
-  ///
-  /// In en, this message translates to:
-  /// **'Adjust font size, line spacing, theme and language — or pin a bookmark and keep the screen awake while you read.'**
-  String get onboardingPersonalizeBody;
-
-  /// Title of the fifth and final onboarding page, directing the user to add content.
-  ///
-  /// In en, this message translates to:
-  /// **'Open a folder to begin'**
-  String get onboardingGetStartedTitle;
-
-  /// Body copy of the fifth and final onboarding page, explaining how to add documents.
-  ///
-  /// In en, this message translates to:
-  /// **'Grant access to a folder of markdown files, or sync a public GitHub repository — your library is ready whenever you are.'**
-  String get onboardingGetStartedBody;
-
-  /// Title of the onboarding step that prompts the user to make Markdown Viewer the default handler for .md files.
+  /// Title of the third and final onboarding page that prompts the user to make Markdown Viewer the default handler for .md files.
   ///
   /// In en, this message translates to:
   /// **'Be your default .md reader'**
@@ -1337,13 +1373,13 @@ abstract class AppLocalizations {
   /// Android body copy for the default-handler onboarding step. The CTA opens the per-app Open by default system screen.
   ///
   /// In en, this message translates to:
-  /// **'Next time you tap a markdown file, pick Markdown Viewer and choose Always. Or open system settings now to review your current default apps.'**
+  /// **'Tap a markdown file, pick Markdown Viewer, choose Always — or open settings to set it now.'**
   String get onboardingDefaultBodyAndroid;
 
   /// iOS body copy for the default-handler onboarding step. iOS does not expose a default-app chooser for markdown, so the text explains the share-sheet flow.
   ///
   /// In en, this message translates to:
-  /// **'Markdown Viewer is already registered for .md files. On iOS, tap a markdown file in Files or AirDrop and pick Markdown Viewer from the share sheet — it will stay at the top for future opens.'**
+  /// **'Tap a markdown file in Files or AirDrop and pick Markdown Viewer from the share sheet — it stays at the top for next time.'**
   String get onboardingDefaultBodyIos;
 
   /// CTA label on the default-handler onboarding step (Android only). Opens the per-app Open by default settings screen.

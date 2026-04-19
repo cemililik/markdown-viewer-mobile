@@ -10,14 +10,17 @@ import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/core/logging/logger.dart';
 import 'package:markdown_viewer/features/library/application/active_library_source_provider.dart';
+import 'package:markdown_viewer/features/library/application/content_search_provider.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_source.dart';
 import 'package:markdown_viewer/features/library/domain/entities/recent_document.dart';
 import 'package:markdown_viewer/features/library/presentation/widgets/add_source_sheet.dart';
+import 'package:markdown_viewer/features/library/presentation/widgets/content_search_results.dart';
 import 'package:markdown_viewer/features/library/presentation/widgets/library_folder_body.dart';
 import 'package:markdown_viewer/features/library/presentation/widgets/source_picker_drawer.dart';
+import 'package:markdown_viewer/features/repo_sync/application/repo_sync_notifier.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
@@ -70,6 +73,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
+  /// Monotonic counter bumped on every pull-to-refresh gesture
+  /// against a folder or synced-repo body. The bodies receive the
+  /// tick as a prop and, via `didUpdateWidget`, discard their
+  /// cached enumeration future + re-walk the tree. This gives the
+  /// user a reliable "swipe down = newest view of the source"
+  /// affordance even inside the lazy `ExpansionTile` tree where
+  /// nothing would otherwise invalidate the already-resolved
+  /// children.
+  int _refreshTick = 0;
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -78,11 +91,84 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
 
   void _onSearchChanged(String value) {
     setState(() => _searchQuery = value.trim().toLowerCase());
+    _dispatchContentSearch(value);
   }
 
   void _clearSearch() {
     _searchController.clear();
     setState(() => _searchQuery = '');
+    ref.read(contentSearchControllerProvider.notifier).clear();
+  }
+
+  /// Fires a debounced cross-library content search alongside the
+  /// existing name-filter. Runs against the raw input (not the
+  /// lowercased mirror) so the controller can do its own
+  /// normalisation. Labels are resolved here because the
+  /// application-layer notifier cannot reach [AppLocalizations].
+  void _dispatchContentSearch(String raw) {
+    final l10n = context.l10n;
+    ref
+        .read(contentSearchControllerProvider.notifier)
+        .submitQuery(
+          raw: raw,
+          recentsSourceLabel: l10n.libraryContentSearchSourceRecent,
+          folderSourceLabelBuilder: (folder) {
+            final basename = p.basename(folder.path);
+            final name = basename.isEmpty ? folder.path : basename;
+            return l10n.libraryContentSearchSourceFolder(name);
+          },
+          syncedRepoSourceLabelBuilder: (repo) {
+            return l10n.libraryContentSearchSourceRepo(repo.displayName);
+          },
+        );
+  }
+
+  /// Dispatches a pull-to-refresh against the active library source.
+  ///
+  /// - **RecentsSource** — re-reads the persisted recents + sources
+  ///   snapshot by invalidating the three authoritative providers
+  ///   (`recentDocumentsControllerProvider`,
+  ///   `libraryFoldersControllerProvider`, `syncedReposProvider`).
+  ///   Stale entries whose files were deleted off-app are pruned
+  ///   the next time the controller rebuilds against the store.
+  /// - **FolderSource** — bumps `_refreshTick`, which the folder
+  ///   body consumes to re-run the native enumeration. The user
+  ///   sees any newly-added markdown files that appeared on disk
+  ///   since the folder was last browsed.
+  /// - **SyncedRepoSource** — kicks off a fresh `RepoSyncNotifier`
+  ///   cycle for the stored GitHub tree URL. Await completes when
+  ///   the notifier transitions out of the Discovering / Downloading
+  ///   states, so the [RefreshIndicator] spinner stays visible for
+  ///   the entire round-trip. Known SHAs short-circuit unchanged
+  ///   files, so a re-sync on a settled repo is cheap.
+  ///
+  /// All three branches also nudge `_refreshTick`, which tells
+  /// `LibraryFolderBody` (used for both folder and synced-repo
+  /// views) to drop its enumeration cache and pick up the newly-
+  /// downloaded / newly-visible files.
+  Future<void> _refreshActiveSource(LibrarySource source) async {
+    HapticFeedback.selectionClick().ignore();
+    switch (source) {
+      case RecentsSource():
+        ref.invalidate(recentDocumentsControllerProvider);
+        ref.invalidate(libraryFoldersControllerProvider);
+        ref.invalidate(syncedReposProvider);
+        // Small pause so the RefreshIndicator finishes its exit
+        // animation after the invalidation fires — without it the
+        // spinner collapses the instant the gesture ends and the
+        // user cannot tell whether the refresh actually ran.
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+      case FolderSource():
+        if (!mounted) return;
+        setState(() => _refreshTick++);
+        await Future<void>.delayed(const Duration(milliseconds: 300));
+      case SyncedRepoSource(:final syncedRepo):
+        final notifier = ref.read(repoSyncNotifierProvider.notifier);
+        await notifier.startSync(syncedRepo.githubTreeUrl);
+        if (!mounted) return;
+        ref.invalidate(syncedReposProvider);
+        setState(() => _refreshTick++);
+    }
   }
 
   @override
@@ -178,6 +264,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           searchQuery: _searchQuery,
           onSearchChanged: _onSearchChanged,
           onClearSearch: _clearSearch,
+          onRefresh: () => _refreshActiveSource(activeSource),
         ),
         RecentsSource() when hasSources => _RecentsEmptyWithSources(
           folders: folders,
@@ -201,6 +288,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         FolderSource(:final folder) => LibraryFolderBody(
           key: ValueKey('folder-body-${folder.path}'),
           folder: folder,
+          refreshTick: _refreshTick,
+          onRefresh: () => _refreshActiveSource(activeSource),
         ),
         SyncedRepoSource(:final syncedRepo) => LibraryFolderBody(
           key: ValueKey('synced-repo-body-${syncedRepo.localRoot}'),
@@ -208,6 +297,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
             path: syncedRepo.localRoot,
             addedAt: syncedRepo.lastSyncedAt,
           ),
+          refreshTick: _refreshTick,
+          onRefresh: () => _refreshActiveSource(activeSource),
         ),
       },
       // Single Open file FAB. Hidden only on the first-run onboarding
@@ -577,6 +668,7 @@ class _LibraryPopulatedBody extends ConsumerStatefulWidget {
     required this.searchQuery,
     required this.onSearchChanged,
     required this.onClearSearch,
+    required this.onRefresh,
   });
 
   final List<RecentDocument> recents;
@@ -584,6 +676,12 @@ class _LibraryPopulatedBody extends ConsumerStatefulWidget {
   final String searchQuery;
   final ValueChanged<String> onSearchChanged;
   final VoidCallback onClearSearch;
+
+  /// Pull-to-refresh handler supplied by the library screen. Drives
+  /// a `RefreshIndicator` wrapped around the entire `CustomScrollView`
+  /// so the user can revalidate the recent-documents + sources
+  /// snapshot with a one-finger downward drag.
+  final Future<void> Function() onRefresh;
 
   @override
   ConsumerState<_LibraryPopulatedBody> createState() =>
@@ -615,64 +713,86 @@ class _LibraryPopulatedBodyState extends ConsumerState<_LibraryPopulatedBody> {
     final groups = _groupByTime(unpinned, DateTime.now());
     final hasAnyResults = filtered.isNotEmpty;
 
-    return CustomScrollView(
-      slivers: [
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          sliver: SliverToBoxAdapter(
-            child: _LibraryGreeting(recentCount: recents.length),
-          ),
-        ),
-        SliverPadding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-          sliver: SliverToBoxAdapter(
-            child: _LibrarySearchField(
-              controller: searchController,
-              query: searchQuery,
-              onChanged: onSearchChanged,
-              onClear: onClearSearch,
+    // Pull-to-refresh wraps the whole slivered surface so the user
+    // can revalidate the persisted recents + sources snapshot with
+    // a one-finger downward drag. `AlwaysScrollableScrollPhysics`
+    // is important here — even when the library is empty or every
+    // filter hides results, the `RefreshIndicator` needs a
+    // scrollable that will yield to the drag gesture. Without it
+    // the library-empty-with-no-sources state (a
+    // `SliverFillRemaining(hasScrollBody: false)`) would freeze
+    // the gesture and the spinner would never appear.
+    return RefreshIndicator(
+      onRefresh: widget.onRefresh,
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        slivers: [
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            sliver: SliverToBoxAdapter(
+              child: _LibraryGreeting(recentCount: recents.length),
             ),
           ),
-        ),
-        if (!hasAnyResults)
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
-              child: Center(
-                child: Text(
-                  l10n.librarySearchNoResults,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            sliver: SliverToBoxAdapter(
+              child: _LibrarySearchField(
+                controller: searchController,
+                query: searchQuery,
+                onChanged: onSearchChanged,
+                onClear: onClearSearch,
               ),
             ),
           ),
-        if (pinned.isNotEmpty) ...[
-          _sectionHeaderSliver(
-            context,
-            title: l10n.libraryRecentPinnedSection,
-            icon: Icons.push_pin_outlined,
-          ),
-          _tilesSliver(pinned),
+          // Cross-library full-text search results. Renders as a
+          // zero-height sliver until the user types ≥ 3 characters,
+          // then expands above the recents list so the filename-
+          // matched recents keep their top billing and the content
+          // matches surface right underneath.
+          const ContentSearchResultsSliver(),
+          if (!hasAnyResults)
+            SliverFillRemaining(
+              hasScrollBody: false,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 48,
+                ),
+                child: Center(
+                  child: Text(
+                    l10n.librarySearchNoResults,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              ),
+            ),
+          if (pinned.isNotEmpty) ...[
+            _sectionHeaderSliver(
+              context,
+              title: l10n.libraryRecentPinnedSection,
+              icon: Icons.push_pin_outlined,
+            ),
+            _tilesSliver(pinned),
+          ],
+          for (final group in groups) ...[
+            _sectionHeaderSliver(context, title: group.title(l10n)),
+            _tilesSliver(group.entries),
+          ],
+          if (pinned.isNotEmpty || groups.isNotEmpty)
+            _sectionTrailingSliver(
+              context,
+              onTapClearAll: () async {
+                await _confirmClear(context);
+              },
+            ),
+          // Extra bottom padding so the last tile is not hidden
+          // behind the floating Open file action button.
+          const SliverPadding(padding: EdgeInsets.only(bottom: 96)),
         ],
-        for (final group in groups) ...[
-          _sectionHeaderSliver(context, title: group.title(l10n)),
-          _tilesSliver(group.entries),
-        ],
-        if (pinned.isNotEmpty || groups.isNotEmpty)
-          _sectionTrailingSliver(
-            context,
-            onTapClearAll: () async {
-              await _confirmClear(context);
-            },
-          ),
-        // Extra bottom padding so the last tile is not hidden
-        // behind the floating Open file action button.
-        const SliverPadding(padding: EdgeInsets.only(bottom: 96)),
-      ],
+      ),
     );
   }
 

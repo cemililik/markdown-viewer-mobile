@@ -134,6 +134,42 @@ class AppLocalizationsTr extends AppLocalizations {
   String get librarySearchNoResults => 'Eşleşen belge yok';
 
   @override
+  String get libraryContentSearchHeader => 'Belge içeriklerinde';
+
+  @override
+  String get libraryContentSearchEmpty => 'Hiçbir belgede eşleşme yok';
+
+  @override
+  String get libraryContentSearchLoading => 'Belgeler taranıyor…';
+
+  @override
+  String libraryContentSearchMoreMatches(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count eşleşme',
+      one: '1 eşleşme',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get libraryContentSearchSourceRecent => 'Son açılan';
+
+  @override
+  String libraryContentSearchSourceFolder(String name) {
+    return 'Klasör: $name';
+  }
+
+  @override
+  String libraryContentSearchSourceRepo(String name) {
+    return 'Depo: $name';
+  }
+
+  @override
+  String get libraryRefreshFailed => 'Kaynak yenilenemedi. Tekrar deneyin.';
+
+  @override
   String get libraryRecentPinnedSection => 'Sabitlenenler';
 
   @override
@@ -330,6 +366,12 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get mermaidReset => 'Görünümü sıfırla';
+
+  @override
+  String get diagramFullscreenOpenTooltip => 'Tam ekran aç';
+
+  @override
+  String get diagramFullscreenCloseTooltip => 'Tam ekranı kapat';
 
   @override
   String get mermaidDiagramLabel =>
@@ -714,39 +756,25 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get onboardingWelcomeBody =>
-      'Not, döküman ve bilgi tabanınız için odaklanmış bir mobil okuyucu — editör yok, dikkat dağıtıcı unsur yok.';
+      'Mermaid, LaTeX, kod, tablolar — hepsi telefonda düzgün gösteriliyor. Varsayılan olarak çevrimdışı.';
 
   @override
-  String get onboardingRenderingTitle => 'Zengin içerik, kusursuz gösterim';
+  String get onboardingSourcesTitle => 'İçeriğinizi ekleyin';
 
   @override
-  String get onboardingRenderingBody =>
-      'Tablolar, sözdizimi vurgulamalı kod, LaTeX matematik, Mermaid diyagramları, bilgi kutuları ve dipnotlar — hepsi kutudan çıktığı gibi çalışır.';
-
-  @override
-  String get onboardingPersonalizeTitle => 'Kendi tarzınızda okuyun';
-
-  @override
-  String get onboardingPersonalizeBody =>
-      'Yazı boyutu, satır aralığı, tema ve dili ayarlayın — ya da yer imi bırakıp okurken ekranı açık tutun.';
-
-  @override
-  String get onboardingGetStartedTitle => 'Başlamak için bir klasör açın';
-
-  @override
-  String get onboardingGetStartedBody =>
-      'Markdown dosyalarının bulunduğu bir klasöre erişim verin veya açık bir GitHub deposunu senkronize edin — kütüphaneniz hazır olduğunda sizi bekliyor.';
+  String get onboardingSourcesBody =>
+      'Bir dosya açın, klasör ekleyin veya herkese açık bir GitHub deposunu senkronize edin. Her şey cihazınızda kalır.';
 
   @override
   String get onboardingDefaultTitle => 'Varsayılan .md okuyucunuz olalım';
 
   @override
   String get onboardingDefaultBodyAndroid =>
-      'Bir sonraki markdown dosyasına dokunduğunuzda Markdown Viewer\'ı seçin ve \'Her zaman\' deyin. Dilerseniz sistem ayarlarını şimdi açıp mevcut varsayılanlarınızı gözden geçirebilirsiniz.';
+      'Bir markdown dosyasına dokunup Markdown Viewer\'ı seçin, \'Her zaman\' deyin — ya da ayarları şimdi açıp atayın.';
 
   @override
   String get onboardingDefaultBodyIos =>
-      'Markdown Viewer, .md dosyaları için zaten kayıtlı. iOS\'ta Dosyalar veya AirDrop üzerinden bir markdown dosyasına dokunup paylaş menüsünden Markdown Viewer\'ı seçin — bir sonraki açışta listenin üstünde hazır olacak.';
+      'Dosyalar veya AirDrop\'tan bir markdown dosyasına dokunup paylaş menüsünden Markdown Viewer\'ı seçin — sonraki açışta listenin üstünde olacak.';
 
   @override
   String get onboardingDefaultOpenSettings => 'Sistem ayarlarını aç';

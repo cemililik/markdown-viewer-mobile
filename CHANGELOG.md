@@ -9,6 +9,68 @@ kept out of this file — they belong in commit history instead.
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-04-19
+
+First minor release after v1.0. Closes three long-standing roadmap
+items — library-wide content search, pull-to-refresh on every library
+source, and a dedicated Mermaid fullscreen viewer — and gets the app
+out of patch-release mode.
+
+### Added
+- **Full-text content search on every library tab.** The search
+  field no longer only filters filenames. Typing three or more
+  characters fires a debounced, isolate-backed scan whose scope
+  follows the active tab: the Recents tab scans across every
+  recent document, folder source and synced repository; a folder
+  tab scans only that folder; a synced-repo tab scans only that
+  repository's local mirror. Hits surface under a dedicated "In
+  document contents" header with the matched fragment highlighted
+  in the primary-container colour and a multi-match counter. Tapping
+  a result opens the viewer at the matching document — folder-source
+  hits route through the platform materializer so iOS
+  security-scoped bookmarks and Android SAF tree URIs still work.
+  The scan runs inside a Dart `compute()` isolate with 10 MB / file
+  and 2 000 files / query hard caps so a large repository cannot
+  stall the UI.
+- **Pull-to-refresh on every library surface.** Swiping down on the
+  Recents tab re-reads the persisted recents + sources snapshot.
+  Swiping down on a folder source re-enumerates the directory
+  (picking up newly-added markdown files without reopening the
+  drawer). Swiping down on a synced-repo tab triggers a fresh
+  `RepoSyncNotifier` cycle against the stored GitHub URL; the
+  indicator stays visible for the full round-trip and known SHAs
+  short-circuit unchanged files so a re-sync on a settled repo is
+  near-instant. An active search survives the refresh — the
+  recursive walk restarts automatically so the next paint reflects
+  freshly-synced files.
+- **Mermaid diagram fullscreen viewer.** A new expand-icon
+  affordance on every rendered diagram opens the dense diagram
+  (flowchart, ER, mindmap, Gantt, etc.) in an edge-to-edge viewer
+  with pinch-zoom up to 10× and free pan. The existing reset /
+  recenter button carries through, gated to the same
+  transform-dirty visibility as the inline view. The top chrome
+  bar (close + reset) is always visible so the close button can
+  never be hidden by a stray tap; the scaffold background and
+  chrome buttons track the active reading theme (light / dark /
+  sepia) so the diagram's own palette stays readable instead of
+  being crushed against a hardcoded black surface. Popping back
+  restores the exact scroll offset in the host document — the
+  detour does not break the reading flow.
+
+### Changed
+- **Onboarding condensed from five pages to three.** The original
+  flow interleaved a dedicated rendering-features page and a
+  personalization page between welcome and the "open a folder"
+  call to action, which pushed the user through four taps of
+  Next/Skip before the library surfaced. The rendering callout is
+  now folded into the welcome copy, the personalization page is
+  dropped entirely (those settings are already discoverable in
+  Settings), and the welcome / sources / default-handler trio
+  lands the user in the library after two taps of Next. Copy is
+  tightened to a single sentence per body. Returning users see
+  the new flow exactly once on their next cold start via the
+  standard onboarding-version bump.
+
 ## [1.0.2] — 2026-04-18
 
 Second patch release after v1.0. Fixes the AirDrop / Open-In routing

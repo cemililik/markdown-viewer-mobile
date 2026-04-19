@@ -16,4 +16,6 @@ export 'application/document_repository_provider.dart';
 export 'application/viewer_document.dart';
 export 'domain/entities/document.dart';
 export 'domain/repositories/document_repository.dart';
+export 'presentation/screens/diagram_fullscreen_screen.dart'
+    show DiagramFullscreenArgs, DiagramFullscreenScreen;
 export 'presentation/screens/viewer_screen.dart';
