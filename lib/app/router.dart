@@ -274,10 +274,17 @@ abstract final class ViewerRoute {
 /// channel. The inline `MermaidBlock` pushes it via
 /// `context.push(DiagramRoute.path, extra: args)` after the WebView
 /// has produced a PNG, so the fullscreen screen reuses the already-
-/// rendered bitmap rather than re-running the sandboxed render. A
-/// cold load via URL has no payload available and intentionally
-/// bounces to the library error view — the route only exists as a
-/// lane for in-app push/pop navigation.
+/// rendered bitmap rather than re-running the sandboxed render.
+///
+/// A cold load via URL (malformed deep link, user navigating to
+/// `/diagram` from their shell history) has no payload available —
+/// the route's builder renders a localised error Scaffold in place
+/// (AppBar titled `l10n.errorUnknown` + an `ErrorView`) rather than
+/// popping to the library. In-place rendering was the right choice
+/// because a pop requires a back stack, which a deep-link entry does
+/// not have, and the earlier pop variant produced the Android
+/// "navigator empty" crash on restore.
+/// Reference: PR-review NEW-002.
 abstract final class DiagramRoute {
   static const String path = '/diagram';
   static const String name = 'diagram';

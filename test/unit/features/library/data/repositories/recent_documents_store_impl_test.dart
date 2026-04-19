@@ -14,9 +14,14 @@ void main() {
 
     setUp(() {
       SharedPreferences.setMockInitialValues(<String, Object>{});
-      // The store now self-cleans entries whose backing file has
-      // disappeared. Real temp files let the tests round-trip through
-      // the existsSync() filter without losing assertions.
+      // Historical note: earlier revisions self-cleaned entries whose
+      // backing file had disappeared via an `existsSync()` filter at
+      // read time. That filter is gone — `read()` now returns stale
+      // entries intact and the viewer surfaces the "file no longer
+      // available" error on tap. Real temp files are still used so
+      // the "stale entry" test can delete one between write and read
+      // without the whole suite needing a filesystem abstraction.
+      // Reference: code-review CR-20260419-019.
       tempDir = Directory.systemTemp.createTempSync('recents_test_');
       pathA = '${tempDir.path}/a.md';
       pathB = '${tempDir.path}/b.md';
@@ -155,10 +160,13 @@ void main() {
       final pathC = '${tempDir.path}/c.md';
       final pathD = '${tempDir.path}/d.md';
       File(pathD).writeAsStringSync('');
-      // Intentionally do NOT touch pathC — its entry will also be
-      // dropped by the existsSync filter, which is the desired
-      // behaviour (a tile pointing at a missing file is worse than
-      // no tile).
+      // Intentionally do NOT touch pathC — its entry is still
+      // dropped, but via the "openedAt: not-a-date" malformed-entry
+      // branch rather than an existsSync check (that filter was
+      // removed as part of CR-20260419-019). The "pinned missing
+      // file" case is now handled by the viewer surfacing a localised
+      // error on tap instead of by the read path silently dropping
+      // the entry.
       SharedPreferences.setMockInitialValues(<String, Object>{
         'library.recentDocuments':
             '[{"path":"$pathA","openedAt":"2026-04-13T10:00:00.000Z"},'

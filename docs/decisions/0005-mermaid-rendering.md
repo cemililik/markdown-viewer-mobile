@@ -39,7 +39,7 @@ with feature parity. Options:
   the rendered pixel grid byte-identically across platforms.
 - Render returned PNGs inline via `Image.memory(bytes)` in
   `mermaid_block.dart`. The image size and the pixel ratio are also
-  returned so the widget can request a CSS-pixel sized box matching
+  returned so the widget can request a CSS-pixel-sized box matching
   what the WebView rendered.
 - The LRU cache stores the PNG bytes keyed on
   `sha256(source + themeDirective)`. Cache hits reuse the same

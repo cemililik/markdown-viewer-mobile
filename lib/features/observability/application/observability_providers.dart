@@ -97,15 +97,22 @@ class CrashReportingController extends Notifier<bool> {
     // otherwise ship crash data to an attacker-controlled endpoint.
     // Build-time DSN substitution is the intended vector but a
     // misconfigured CI env var is still possible.
-    // Reference: security-review SR-20260419-028.
+    //
+    // Accepts three shapes:
+    //   * `ingest.sentry.io` exactly
+    //   * `*.ingest.sentry.io` (legacy single-region DSN)
+    //   * `*.ingest.<region>.sentry.io` (regional DSNs, e.g.
+    //     `o123.ingest.us.sentry.io` / `o123.ingest.eu.sentry.io`)
+    // Anything else — bare `endsWith('ingest.sentry.io')` used to
+    // accept `attacker-ingest.sentry.io` — is rejected.
+    // Reference: security-review SR-20260419-028 + PR-review follow-up.
     final dsnHost = Uri.tryParse(sentryDsn)?.host ?? '';
+    final hostValid = _isIngestHost(dsnHost);
     assert(
-      dsnHost.endsWith('.ingest.sentry.io') ||
-          dsnHost.endsWith('ingest.sentry.io'),
-      'SENTRY_DSN host must be *.ingest.sentry.io — refusing to init',
+      hostValid,
+      'SENTRY_DSN host must be ingest.sentry.io or *.ingest[.<region>].sentry.io — refusing to init',
     );
-    if (!dsnHost.endsWith('.ingest.sentry.io') &&
-        !dsnHost.endsWith('ingest.sentry.io')) {
+    if (!hostValid) {
       // Release build bypasses `assert`; fail loudly in the log so an
       // operator notices rather than silently shipping data off-policy.
       return;
@@ -140,6 +147,22 @@ class CrashReportingController extends Notifier<bool> {
         // cover. Reference: security-review SR-20260419-018.
         ..beforeSend = _redactHttpEvent;
     });
+  }
+
+  /// Accepts Sentry's official ingest hosts and rejects everything
+  /// else. Factored out so the same predicate covers the `assert` in
+  /// debug builds and the explicit `return` in release builds.
+  static bool _isIngestHost(String host) {
+    if (host.isEmpty) return false;
+    if (host == 'ingest.sentry.io') return true;
+    // `*.ingest.sentry.io` — the legacy / single-region shape.
+    if (host.endsWith('.ingest.sentry.io')) return true;
+    // `*.ingest.<region>.sentry.io` — e.g. `o123.ingest.us.sentry.io`.
+    // Match via a regex anchored at `.ingest.` followed by a single
+    // lower-case region code (2–4 letters / digits) followed by the
+    // `.sentry.io` suffix. Rejects `attacker.ingest.sentry.io.evil`.
+    final regional = RegExp(r'\.ingest\.[a-z0-9]{2,4}\.sentry\.io$');
+    return regional.hasMatch(host);
   }
 
   /// Drops the path component from `http.*` breadcrumbs so owner /

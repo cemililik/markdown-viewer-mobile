@@ -1,5 +1,6 @@
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/app/theme.dart';
@@ -8,6 +9,15 @@ import 'package:markdown_viewer/features/file_open/application/incoming_file_pro
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
 import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
+
+/// Key for the root [ScaffoldMessenger] so a stream error delivered
+/// from outside a build context (the `ref.listen` in
+/// [MarkdownViewerApp.build]) can still surface a localised snackbar
+/// to the user.
+///
+/// Paired with `MaterialApp.router(scaffoldMessengerKey: …)` below.
+final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey =
+    GlobalKey<ScaffoldMessengerState>();
 
 /// Picks the locale to display when the user has left the language
 /// preference on "Follow system" (i.e. `MaterialApp.locale` is null).
@@ -74,6 +84,31 @@ class MarkdownViewerApp extends ConsumerWidget {
                 error: error,
                 stackTrace: stackTrace,
               );
+          // Map the typed PlatformException codes emitted by
+          // `FileOpenChannel` on either platform (e.g. FILE_TOO_LARGE)
+          // to a localised snackbar so the share-sheet tap actually
+          // tells the user why nothing opened. The messenger's own
+          // context sits *inside* the MaterialApp so
+          // `AppLocalizations.of(...)` resolves cleanly (pulling
+          // localisations from the outer build context would null-
+          // deref because MarkdownViewerApp is the PARENT of
+          // MaterialApp).
+          // Reference: code-review CR-20260419-034.
+          if (error is PlatformException) {
+            final messengerState = rootScaffoldMessengerKey.currentState;
+            final messengerContext = rootScaffoldMessengerKey.currentContext;
+            if (messengerState == null || messengerContext == null) return;
+            final l10n = AppLocalizations.of(messengerContext);
+            final message = switch (error.code) {
+              'FILE_TOO_LARGE' => l10n.fileOpenTooLarge,
+              _ => null,
+            };
+            if (message != null) {
+              messengerState
+                ..hideCurrentSnackBar()
+                ..showSnackBar(SnackBar(content: Text(message)));
+            }
+          }
         },
       );
     });
@@ -110,6 +145,7 @@ class MarkdownViewerApp extends ConsumerWidget {
         }
 
         return MaterialApp.router(
+          scaffoldMessengerKey: rootScaffoldMessengerKey,
           onGenerateTitle: (context) => AppLocalizations.of(context).appTitle,
           theme: lightTheme,
           darkTheme: AppTheme.dark(darkDynamic),

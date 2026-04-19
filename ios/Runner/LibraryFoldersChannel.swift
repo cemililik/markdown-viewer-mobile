@@ -228,10 +228,19 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
         let rootResolved = rootUrl.standardized.resolvingSymlinksInPath()
         let rootPath = rootResolved.path
         if resolved.path != rootPath && !resolved.path.hasPrefix(rootPath + "/") {
+          // Surface the escape attempt with the same `ACCESS_DENIED`
+          // code the `readFileBytes` site uses so the Dart layer can
+          // match a single `PlatformException.code` against both
+          // escape paths. Domain-coded NSErrors wrap cleanly into
+          // `FlutterError` — no mapping needed in the caller.
+          // Reference: PR-review follow-up.
           throw NSError(
             domain: "LibraryFoldersChannel",
             code: -1,
-            userInfo: [NSLocalizedDescriptionKey: "subPath escapes bookmark root"]
+            userInfo: [
+              NSLocalizedDescriptionKey: "subPath escapes bookmark root",
+              "FlutterErrorCode": "ACCESS_DENIED",
+            ]
           )
         }
         targetUrl = resolved

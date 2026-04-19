@@ -337,6 +337,30 @@ class GitHubSyncProvider implements RepoSyncProvider {
     return lower.endsWith('.md') || lower.endsWith('.markdown');
   }
 
+  /// Scrubs URL-shaped substrings (host + path) from a Dio inner
+  /// error message and bounds the result length. Keeps the class
+  /// name + error category so debugging is still possible, but the
+  /// PII-adjacent request target never propagates into Sentry via
+  /// `Failure.cause.toString()`.
+  static String _sanitizeUnknownReason(String raw) {
+    const maxLen = 200;
+    // Match `scheme://host[:port][/path][?query]` or a bare
+    // `host[:port]/path` form. The `.evil` trailing characters are
+    // caught by the greedy class so we do not leave a residual
+    // path after redaction.
+    final urlLike = RegExp(
+      r'(?:https?://)?[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
+      r'(?::\d+)?(?:/[^\s,)"]*)?',
+    );
+    var scrubbed = raw.replaceAll(urlLike, '[redacted]');
+    // Bounded length: an inner message the size of a full
+    // SocketException can otherwise run to a few KB.
+    if (scrubbed.length > maxLen) {
+      scrubbed = '${scrubbed.substring(0, maxLen)}…';
+    }
+    return scrubbed;
+  }
+
   static Failure _mapDioError(DioException e) {
     // Treat every connection-family Dio error as "no network" so the
     // user gets the actionable "check your connection" message rather
@@ -362,12 +386,19 @@ class GitHubSyncProvider implements RepoSyncProvider {
       // UnknownFailure so the UI surfaces the inner error instead of
       // wrongly blaming connectivity.
       // Reference: code-review CR-20260419-044.
+      // Inner `toString()` can embed the full request URL (Dio
+      // ships `requestOptions.uri` inside its exception text on
+      // some code paths, and a SocketException.toString() includes
+      // the address), which would then propagate into Sentry via
+      // the `Failure.cause` chain. Strip any URL-shaped substring
+      // and truncate before surfacing.
+      // Reference: PR-review (Cluster C follow-up) — mirrors SR-019.
       final inner = e.error;
-      final reason =
+      final raw =
           inner is Exception || inner is Error
               ? inner.toString()
               : (e.message ?? 'Unknown network error');
-      return UnknownFailure(message: reason, cause: e);
+      return UnknownFailure(message: _sanitizeUnknownReason(raw), cause: e);
     }
     final status = e.response?.statusCode;
     if (status == 401) {

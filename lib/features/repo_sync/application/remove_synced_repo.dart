@@ -37,24 +37,48 @@ import 'package:markdown_viewer/features/repo_sync/application/repo_sync_provide
 /// narrow avoids having to expose a dual-API overload.
 Future<void> removeSyncedRepo(WidgetRef ref, int repoId) async {
   final store = ref.read(syncedReposStoreProvider);
-  final existing = await ref.read(syncedReposProvider.future);
-  final match = existing.where((r) => r.id == repoId).toList();
-  if (match.isEmpty) return;
-  final localRoot = match.first.localRoot;
+
+  // Resolve the localRoot from the authoritative store, not from
+  // `syncedReposProvider.future`. The FutureProvider can be in an
+  // error state (transient DB hiccup / test seam) — a user who
+  // wants to remove a repo should still be able to even in that
+  // case.
+  String? localRoot;
+  try {
+    final all = await store.readAll();
+    final match = all.where((r) => r.id == repoId).toList();
+    if (match.isEmpty) return;
+    localRoot = match.first.localRoot;
+  } on Object {
+    // Fall through to best-effort delete — the DB may still accept
+    // the delete even when the read failed for a transient reason.
+  }
 
   await store.delete(repoId);
 
-  ref.read(recentDocumentsControllerProvider.notifier).removeUnder(localRoot);
+  try {
+    // Every follow-up is non-fatal. If recents pruning or PAT wipe
+    // fails (e.g. Keychain flakiness), we still want the invalidates
+    // in `finally` to run so the UI rebuilds against the
+    // post-delete store state.
+    if (localRoot != null) {
+      ref
+          .read(recentDocumentsControllerProvider.notifier)
+          .removeUnder(localRoot);
+    }
 
-  // Re-read the post-delete repo list from the store rather than
-  // recomputing from `existing` minus this id — the store is the
-  // authoritative truth and a concurrent sync could have mutated
-  // the list between the two calls.
-  final remaining = await store.readAll();
-  if (remaining.isEmpty) {
-    await ref.read(patStoreProvider).delete();
+    // Re-read the post-delete repo list from the store rather than
+    // recomputing from the pre-delete snapshot — a concurrent sync
+    // could have mutated the list between the two calls.
+    final remaining = await store.readAll();
+    if (remaining.isEmpty) {
+      await ref.read(patStoreProvider).delete();
+    }
+  } finally {
+    // Always fan the invalidations out, even when a follow-up step
+    // threw. Without this a Keychain error would leave every screen
+    // rendering the deleted repo until the next manual refresh.
+    ref.invalidate(syncedReposProvider);
+    ref.invalidate(libraryFoldersControllerProvider);
   }
-
-  ref.invalidate(syncedReposProvider);
-  ref.invalidate(libraryFoldersControllerProvider);
 }

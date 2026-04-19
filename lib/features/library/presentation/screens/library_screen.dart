@@ -151,9 +151,22 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     HapticFeedback.selectionClick().ignore();
     switch (source) {
       case RecentsSource():
-        // Resolve the recents source label BEFORE the async gap so
-        // we do not reach back into `context.l10n` after the await.
-        final recentsLabel = context.l10n.libraryContentSearchSourceRecent;
+        // Capture every localised closure BEFORE the async gap so
+        // the re-submit below uses the exact same label builders as
+        // `_dispatchContentSearch` — otherwise refresh would flip
+        // result badges from `"Folder: Notes"` to just `"Notes"`
+        // and `"Repo: owner/repo"` to `"owner/repo"` until the next
+        // keystroke. Reference: PR-review (Cluster F follow-up).
+        final l10n = context.l10n;
+        final recentsLabel = l10n.libraryContentSearchSourceRecent;
+        String folderLabel(LibraryFolder folder) {
+          final basename = p.basename(folder.path);
+          final name = basename.isEmpty ? folder.path : basename;
+          return l10n.libraryContentSearchSourceFolder(name);
+        }
+
+        String syncedRepoLabel(SyncedRepo repo) =>
+            l10n.libraryContentSearchSourceRepo(repo.displayName);
         ref.invalidate(recentDocumentsControllerProvider);
         ref.invalidate(libraryFoldersControllerProvider);
         ref.invalidate(syncedReposProvider);
@@ -181,9 +194,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               .submitQuery(
                 raw: search.query,
                 recentsSourceLabel: recentsLabel,
-                folderSourceLabelBuilder: defaultFolderSourceLabel,
-                syncedRepoSourceLabelBuilder:
-                    (repo) => '${repo.owner}/${repo.repo}',
+                folderSourceLabelBuilder: folderLabel,
+                syncedRepoSourceLabelBuilder: syncedRepoLabel,
               );
         }
       case FolderSource(:final folder):

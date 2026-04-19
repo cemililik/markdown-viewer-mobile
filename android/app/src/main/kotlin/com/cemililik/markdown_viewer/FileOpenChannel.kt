@@ -81,6 +81,18 @@ class FileOpenChannel :
      */
     private val pendingPaths: ArrayDeque<String> = ArrayDeque()
 
+    /**
+     * Latest buffered typed error fired before the Flutter stream
+     * attached. Only the most recent rejection is kept — the user only
+     * needs to see why the *current* share did not open, and coalescing
+     * matches the iOS "no FlutterError buffer" behaviour. Flushed in
+     * `onListen` after any queued paths.
+     *
+     * Reference: PR-review (Cluster B / G follow-up) — cold-start
+     * FILE_TOO_LARGE rejection used to drop silently.
+     */
+    private var pendingError: Pair<String, String>? = null
+
     // MARK: - FlutterPlugin
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
@@ -94,6 +106,14 @@ class FileOpenChannel :
                 while (pendingPaths.isNotEmpty()) {
                     sink.success(pendingPaths.removeFirst())
                 }
+                // Flush any buffered error AFTER the paths so a
+                // cold-start rejection reaches the UI — otherwise the
+                // error would race against the very first `onListen`
+                // and drop silently (the prior behaviour).
+                pendingError?.let { (code, message) ->
+                    sink.error(code, message, null)
+                }
+                pendingError = null
             }
 
             override fun onCancel(arguments: Any?) {
@@ -108,6 +128,7 @@ class FileOpenChannel :
         applicationContext = null
         eventSink = null
         pendingPaths.clear()
+        pendingError = null
     }
 
     // MARK: - ActivityAware
@@ -298,6 +319,19 @@ class FileOpenChannel :
             // C0 byte regardless of current OS behaviour.
             // Reference: security-review SR-20260419-033 (L-5 carry).
             .replace(Regex("[\\x00-\\x1f]"), "_")
+            // Strip Unicode bidi overrides and other invisible format
+            // characters (category `Cf`). U+202E RIGHT-TO-LEFT OVERRIDE
+            // is the classic "spoofed extension" attack — a filename
+            // `evil\u202Egnp.md` renders as `evilevil.md` with a
+            // trailing `.png` hidden by the bidi mark.
+            // Reference: PR-review (Cluster G nitpick follow-up).
+            .replace(Regex("\\p{Cf}"), "_")
+            // Map non-ASCII slash code points to the same `_` the
+            // ASCII slash branch above uses. U+FF0F FULLWIDTH SOLIDUS
+            // and U+2215 DIVISION SLASH look identical to `/` in
+            // certain fonts and would otherwise pass through to the
+            // cache `File(…)` constructor as part of the basename.
+            .replace(Regex("[\u2215\u29F8\uFF0F]"), "_")
             .trim()
         if (stripped.isBlank()) return "opened_file.md"
         return stripped
@@ -314,13 +348,20 @@ class FileOpenChannel :
 
     /**
      * Emits a typed error to the Dart stream so the UI can surface
-     * a localised message (e.g. "File too large"). Dropped when no
-     * listener is attached yet, matching the iOS side — `FlutterError`
-     * does not survive the `ArrayDeque` buffer used for paths.
+     * a localised message (e.g. "File too large"). Buffers in
+     * [pendingError] when no listener is attached yet so a cold-start
+     * rejection (share-intent with an oversized file delivered before
+     * `onListen` fires) is flushed to the UI on attach instead of
+     * being dropped silently.
      *
-     * Reference: code-review CR-20260419-034.
+     * Reference: code-review CR-20260419-034 + PR-review follow-up.
      */
     private fun deliverError(code: String, message: String) {
-        eventSink?.error(code, message, null)
+        val sink = eventSink
+        if (sink != null) {
+            sink.error(code, message, null)
+        } else {
+            pendingError = code to message
+        }
     }
 }

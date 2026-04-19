@@ -174,6 +174,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get libraryRefreshSemantic => 'Refresh library';
 
   @override
+  String get fileOpenTooLarge => 'File too large to open.';
+
+  @override
   String get libraryRecentPinnedSection => 'Pinned';
 
   @override

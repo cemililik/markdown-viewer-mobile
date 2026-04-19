@@ -2,7 +2,8 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show MethodChannel, PlatformException;
+import 'package:flutter/services.dart'
+    show MethodChannel, MissingPluginException, PlatformException;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/app/router.dart';
@@ -82,10 +83,17 @@ class _RepoSyncScreenState extends ConsumerState<RepoSyncScreen> {
     if (!Platform.isAndroid) return;
     try {
       await _screenCaptureGuard.invokeMethod<void>('setSecure', enabled);
+    } on MissingPluginException {
+      // Channel not registered — fired in unit-test harnesses and on
+      // any platform without the native side wired up. Silent no-op
+      // is the right fallback; catching this before `PlatformException`
+      // keeps the `unawaited(_setScreenCaptureGuard(…))` call sites
+      // in `dispose` / `_togglePatSection` from surfacing the miss
+      // as an unhandled async error.
     } on PlatformException {
-      // Channel missing / no-op platform — falling back to the
-      // default (unguarded) window state is acceptable; the user
-      // already has the option of closing the PAT section.
+      // Native side threw — falling back to the default (unguarded)
+      // window state is acceptable; the user already has the option
+      // of closing the PAT section.
     }
   }
 

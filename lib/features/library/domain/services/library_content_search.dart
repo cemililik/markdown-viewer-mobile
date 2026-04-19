@@ -228,12 +228,27 @@ List<ContentSearchMatch> searchInContents(ContentSearchRequest request) {
 
 /// Returns every original-string offset of [query] inside [body]
 /// under a case-insensitive comparison that preserves body-side
-/// indices across Unicode case-folds with length change.
+/// indices — scans the original body directly so the returned
+/// offsets are safe to feed into `body.substring(…)` and
+/// `_buildSnippet` without a lowercased-mirror offset drift.
 ///
 /// The query is already lowercased by the caller (see
 /// [ContentSearchController.submitQuery]); we only need to compare
 /// each `query.length` window of the body against it after
 /// per-character lower-casing.
+///
+/// **Limitation — ASCII / BMP-safe only.** The per-position
+/// comparison assumes `body[i].toLowerCase().length == 1`, which
+/// holds for ASCII and the Basic Multilingual Plane except for a
+/// handful of code points whose case-fold changes length. The most
+/// user-visible offender is Turkish `İ` (U+0130) → `i̇`
+/// (U+0069 + U+0307, two code units): a document whose body
+/// contains `İstanbul` will NOT match a query `istan` through this
+/// helper, and vice versa. Dart's `RegExp(caseSensitive: false)`
+/// has the same blind spot, so "just use a regex" is not a drop-in
+/// fix. A future pass that needs full Unicode case-folding should
+/// build an explicit `lower[i]` → `original[j]` offset map.
+/// Reference: PR-review follow-up to NEW-007.
 List<int> _findCaseInsensitive(String body, String query) {
   if (query.isEmpty || body.length < query.length) {
     return const <int>[];

@@ -52,8 +52,6 @@ PODS:
     - Flutter
   - printing (1.0.0):
     - Flutter
-  - receive_sharing_intent (1.8.1):
-    - Flutter
   - SDWebImage (5.21.7):
     - SDWebImage/Core (= 5.21.7)
   - SDWebImage/Core (5.21.7)
@@ -107,7 +105,6 @@ DEPENDENCIES:
   - integration_test (from `.symlinks/plugins/integration_test/ios`)
   - package_info_plus (from `.symlinks/plugins/package_info_plus/ios`)
   - printing (from `.symlinks/plugins/printing/ios`)
-  - receive_sharing_intent (from `.symlinks/plugins/receive_sharing_intent/ios`)
   - sentry_flutter (from `.symlinks/plugins/sentry_flutter/ios`)
   - share_plus (from `.symlinks/plugins/share_plus/ios`)
   - shared_preferences_foundation (from `.symlinks/plugins/shared_preferences_foundation/darwin`)
@@ -142,8 +139,6 @@ EXTERNAL SOURCES:
     :path: ".symlinks/plugins/package_info_plus/ios"
   printing:
     :path: ".symlinks/plugins/printing/ios"
-  receive_sharing_intent:
-    :path: ".symlinks/plugins/receive_sharing_intent/ios"
   sentry_flutter:
     :path: ".symlinks/plugins/sentry_flutter/ios"
   share_plus:
@@ -169,7 +164,6 @@ SPEC CHECKSUMS:
   OrderedSet: e539b66b644ff081c73a262d24ad552a69be3a94
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   printing: 54ff03f28fe9ba3aa93358afb80a8595a071dd07
-  receive_sharing_intent: 222384f00ffe7e952bbfabaa9e3967cb87e5fe00
   SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
   Sentry: 958d9619ceccf6abb8c4736003fa336dac1a80a7
   sentry_flutter: 8c688f0657eef5c6faf4985c57ca0f48ffb2b7b5

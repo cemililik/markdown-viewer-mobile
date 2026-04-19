@@ -31,6 +31,14 @@ final syncedReposStoreProvider = Provider<SyncedReposStore>((ref) {
   return SyncedReposStoreImpl(db);
 });
 
+/// Hard cap on the number of 3xx redirect hops the manual redirect
+/// interceptor is allowed to follow before rejecting the request.
+/// Three hops covers the common `api.github.com` → `raw.githubuser
+/// content.com` → CDN pattern with headroom; a chain longer than
+/// this is almost certainly a redirect loop and should be surfaced
+/// as an error instead of silently thrashing the interceptor.
+const int _maxRedirectHops = 3;
+
 /// Secure storage for the optional GitHub Personal Access Token.
 ///
 /// Android uses EncryptedSharedPreferences backed by Android Keystore
@@ -118,11 +126,16 @@ final syncDioProvider = Provider<Dio>((ref) {
         // Manual redirect follow: a 3xx response carries a Location
         // header that must be validated against the allow-list before
         // we replay the request. If the target host is off-list we
-        // strip `Authorization` so a compromised GitHub CDN redirect
-        // cannot smuggle the PAT to a third party; if on-list we
-        // replay through the full interceptor chain so host-check +
-        // PAT injection happen again cleanly.
-        // Reference: security-review SR-20260419-003.
+        // reject (PAT never leaves because the request is not
+        // replayed); if on-list we replay through the full interceptor
+        // chain so host-check + PAT injection happen again cleanly.
+        //
+        // Hop-count capped at `_maxRedirectHops` so a malicious or
+        // misbehaving server that issues a redirect chain longer than
+        // the cap cannot spin the interceptor indefinitely. Counter
+        // lives in `RequestOptions.extra` so it survives the
+        // `copyWith` hop between the original and the replay.
+        // Reference: security-review SR-20260419-003 + PR-review follow-up.
         final status = response.statusCode ?? 0;
         if (status < 300 || status >= 400) {
           return handler.next(response);
@@ -131,22 +144,35 @@ final syncDioProvider = Provider<Dio>((ref) {
         if (locationRaw == null || locationRaw.isEmpty) {
           return handler.next(response);
         }
-        final resolved = response.requestOptions.uri.resolve(locationRaw);
-        final nextHost = resolved.host.toLowerCase();
-        final replayOptions = response.requestOptions.copyWith(
-          path: resolved.toString(),
-        );
-        if (!allowedHosts.contains(nextHost)) {
-          replayOptions.headers.remove('Authorization');
+        final attempts =
+            (response.requestOptions.extra['_redirectAttempts'] as int?) ?? 0;
+        if (attempts >= _maxRedirectHops) {
           return handler.reject(
             DioException.connectionError(
-              requestOptions: replayOptions,
+              requestOptions: response.requestOptions,
+              reason: 'Redirect chain exceeded the $_maxRedirectHops-hop cap',
+            ),
+          );
+        }
+        final resolved = response.requestOptions.uri.resolve(locationRaw);
+        final nextHost = resolved.host.toLowerCase();
+        if (!allowedHosts.contains(nextHost)) {
+          return handler.reject(
+            DioException.connectionError(
+              requestOptions: response.requestOptions,
               reason:
                   'Redirect target "$nextHost" is not in the allow-list '
                   '(${allowedHosts.join(", ")})',
             ),
           );
         }
+        final replayOptions = response.requestOptions.copyWith(
+          path: resolved.toString(),
+          extra: {
+            ...response.requestOptions.extra,
+            '_redirectAttempts': attempts + 1,
+          },
+        );
         try {
           final replayed = await dio.fetch<dynamic>(replayOptions);
           return handler.resolve(replayed);
