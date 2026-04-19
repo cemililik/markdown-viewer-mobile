@@ -734,17 +734,10 @@ List<InlineSpan> _highlightFullBlock({
   final stack = <List<InlineSpan>>[];
 
   void traverse(hi.Node node, TextStyle? parentStyle) {
-    // Resolve the node's OWN theme entry first — a classed child
-    // overrides whatever the ancestor chain had, but an un-classed
-    // descendant inherits the nearest resolved ancestor style instead
-    // of dropping all the way to `fallback`. The earlier revision
-    // used `parentStyle ?? theme[className]`, which made the parent
-    // style shadow the child's own class lookup; the revision after
-    // that passed `null` on recursion, which correctly unshadowed
-    // classed children but stopped un-classed descendants from
-    // inheriting the wrapper's colour.
-    // References: code-review CR-20260419-005 + PR-review follow-up
-    // (PR-20260419-025 perf side-effect rides along).
+    // Classed children override the ancestor style; un-classed
+    // descendants inherit the nearest resolved ancestor style so
+    // nested spans pick up the wrapper's colour instead of dropping
+    // to `fallback`.
     final ownThemeStyle =
         node.className == null ? null : theme[node.className!];
     final resolvedStyle = ownThemeStyle ?? parentStyle;

@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.provider.OpenableColumns
 import androidx.documentfile.provider.DocumentFile
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -76,6 +78,18 @@ class LibraryFoldersChannel :
   companion object {
     private const val CHANNEL_NAME = "dev.markdownviewer/library_folders"
     private const val REQUEST_CODE_PICK_DIRECTORY = 0x4D4456 // "MDV"
+
+    /** Maximum directory nesting depth accepted by `walk`. A SAF
+     * tree deeper than this is almost certainly either a mount
+     * loop or an adversarial payload designed to stall the
+     * platform thread. Reference: code-review CR-20260419-033.
+     */
+    private const val MAX_WALK_DEPTH = 10
+
+    /** Maximum markdown entries accepted by `walk`. Matches the
+     * content-search file cap so downstream consumers never see a
+     * bigger list than they budget for. */
+    private const val MAX_WALK_ENTRIES = 2000
 
     /**
      * Hard cap on the size of a single file returned through
@@ -302,28 +316,68 @@ class LibraryFoldersChannel :
       result.error("NO_CONTEXT", "no application context attached", null)
       return
     }
-    try {
-      val rootUri = Uri.parse(bookmark)
-      val root = DocumentFile.fromTreeUri(context, rootUri)
-      if (root == null) {
-        result.error("BOOKMARK_STALE", "could not resolve tree uri", null)
-        return
+    // SAF `DocumentFile.listFiles()` is an IPC round-trip per call,
+    // and a pathologically nested tree would otherwise block the
+    // platform thread long enough to trip the ANR watchdog. Run on
+    // a background executor so the main thread stays live even for
+    // deep walks; the caller awaits via the MethodChannel future.
+    //
+    // Depth and entry caps match the content-search file budget so
+    // a malicious or accidentally-large folder cannot stall the
+    // UI — `LIST_FAILED` is returned on cap hit so the Dart layer
+    // can surface a "folder too large" message instead of silently
+    // truncating.
+    // Reference: code-review CR-20260419-033 + performance PR-20260419-028.
+    Thread {
+      try {
+        val rootUri = Uri.parse(bookmark)
+        val root = DocumentFile.fromTreeUri(context, rootUri)
+        if (root == null) {
+          runOnMain {
+            result.error("BOOKMARK_STALE", "could not resolve tree uri", null)
+          }
+          return@Thread
+        }
+        val out = mutableListOf<Map<String, Any>>()
+        val hitCap = walk(root, out, depth = 0)
+        if (hitCap) {
+          runOnMain {
+            result.error(
+                "LIST_FAILED",
+                "folder exceeds depth / entry cap",
+                null,
+            )
+          }
+          return@Thread
+        }
+        out.sortBy { (it["name"] as String).lowercase() }
+        runOnMain { result.success(out) }
+      } catch (error: Exception) {
+        runOnMain {
+          result.error("LIST_FAILED", error.localizedMessage, null)
+        }
       }
-      val out = mutableListOf<Map<String, Any>>()
-      walk(root, out)
-      out.sortBy { (it["name"] as String).lowercase() }
-      result.success(out)
-    } catch (error: Exception) {
-      result.error("LIST_FAILED", error.localizedMessage, null)
-    }
+    }.start()
   }
 
-  private fun walk(dir: DocumentFile, out: MutableList<Map<String, Any>>) {
+  /**
+   * Walks [dir] recursively, appending every markdown file to [out].
+   * Returns `true` when traversal was aborted because the depth or
+   * entry cap was reached; the caller surfaces `LIST_FAILED` in that
+   * case rather than silently truncating the list.
+   */
+  private fun walk(
+      dir: DocumentFile,
+      out: MutableList<Map<String, Any>>,
+      depth: Int,
+  ): Boolean {
+    if (depth > MAX_WALK_DEPTH) return true
     for (child in dir.listFiles() ?: emptyArray()) {
+      if (out.size >= MAX_WALK_ENTRIES) return true
       val name = child.name ?: continue
       if (name.startsWith(".")) continue
       if (child.isDirectory) {
-        walk(child, out)
+        if (walk(child, out, depth + 1)) return true
       } else {
         val lower = name.lowercase()
         if (lower.endsWith(".md") || lower.endsWith(".markdown")) {
@@ -334,6 +388,29 @@ class LibraryFoldersChannel :
           )
         }
       }
+    }
+    return false
+  }
+
+  /** Marshals [block] back onto the main thread so
+   * `MethodChannel.Result` returns land on the channel's expected
+   * dispatcher.
+   *
+   * Uses a `Handler` bound to the main `Looper` rather than the
+   * activity's `runOnUiThread` because the activity reference can
+   * be `null` by the time the background walker completes (plugin
+   * detached, app moved to background, configuration change in
+   * flight). Executing `block()` synchronously on the caller's
+   * thread in that case would call `MethodChannel.Result` from a
+   * worker `Thread` and crash with `CalledFromWrongThreadException`.
+   */
+  private val mainHandler = Handler(Looper.getMainLooper())
+
+  private fun runOnMain(block: () -> Unit) {
+    if (Looper.myLooper() == Looper.getMainLooper()) {
+      block()
+    } else {
+      mainHandler.post(block)
     }
   }
 

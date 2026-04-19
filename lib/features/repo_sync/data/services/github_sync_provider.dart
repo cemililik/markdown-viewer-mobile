@@ -337,22 +337,35 @@ class GitHubSyncProvider implements RepoSyncProvider {
     return lower.endsWith('.md') || lower.endsWith('.markdown');
   }
 
-  /// Scrubs URL-shaped substrings (host + path) from a Dio inner
-  /// error message and bounds the result length. Keeps the class
-  /// name + error category so debugging is still possible, but the
-  /// PII-adjacent request target never propagates into Sentry via
+  /// Scrubs URL- and IP-shaped substrings from a Dio inner error
+  /// message and bounds the result length. Keeps the class name +
+  /// error category so debugging is still possible, but the PII-
+  /// adjacent request target never propagates into Sentry via
   /// `Failure.cause.toString()`.
+  ///
+  /// Three patterns run in sequence:
+  ///   1. `scheme://host[:port][/path]` / bare dotted hostnames —
+  ///      `SocketException: Failed host lookup: 'raw.github…'`.
+  ///   2. IPv4 literals with an optional port — SocketException on
+  ///      a failed `connect()` typically reports the resolved IP
+  ///      (`203.0.113.4:443`) rather than the hostname.
+  ///   3. Bracketed IPv6 literals with an optional port —
+  ///      `[2001:db8::1]:443`.
   static String _sanitizeUnknownReason(String raw) {
     const maxLen = 200;
-    // Match `scheme://host[:port][/path][?query]` or a bare
-    // `host[:port]/path` form. The `.evil` trailing characters are
-    // caught by the greedy class so we do not leave a residual
-    // path after redaction.
     final urlLike = RegExp(
       r'(?:https?://)?[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
       r'(?::\d+)?(?:/[^\s,)"]*)?',
     );
-    var scrubbed = raw.replaceAll(urlLike, '[redacted]');
+    // `\b` anchors keep the IPv4 regex from matching the leading
+    // four digits of `12345` — the boundary requires a non-word
+    // character (or string start/end) on either side.
+    final ipv4 = RegExp(r'\b\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?\b');
+    final ipv6 = RegExp(r'\[[0-9a-fA-F:]+\](?::\d+)?');
+    var scrubbed = raw
+        .replaceAll(urlLike, '[redacted]')
+        .replaceAll(ipv6, '[redacted]')
+        .replaceAll(ipv4, '[redacted]');
     // Bounded length: an inner message the size of a full
     // SocketException can otherwise run to a few KB.
     if (scrubbed.length > maxLen) {

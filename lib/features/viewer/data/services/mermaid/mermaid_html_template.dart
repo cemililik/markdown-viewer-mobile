@@ -73,11 +73,28 @@
 ///
 /// ## Content Security Policy
 ///
-/// - `default-src 'none'` — nothing else can load by default.
-/// - `script-src 'unsafe-inline' 'self'` — mermaid's bundled JS
-///   plus the inline renderer hook.
+/// - `default-src 'none'` — nothing else can load by default. On
+///   CSP Level 3 clients this also cascades to `img-src` /
+///   `font-src` / `connect-src`; Android WebView on API 24–28 is
+///   CSP Level 2, so those directives are spelled out below too.
+/// - `script-src 'unsafe-inline'` — mermaid's bundled JS plus the
+///   inline renderer hook. `'self'` was removed: the document
+///   loads from a `data:` URI whose origin is `null`, so `'self'`
+///   matches nothing and created a misleading appearance of
+///   allow-listing (SR-20260419-038).
 /// - `style-src 'unsafe-inline'` — mermaid generates `<style>`
-///   blocks at render time; without this they are blocked.
+///   blocks at render time.
+/// - `img-src 'none'`, `font-src 'none'`, `connect-src 'none'`,
+///   `base-uri 'none'`, `form-action 'none'` — spelled out so
+///   SVG sub-resources, webfonts, and `fetch()` calls are rejected
+///   on every CSP level. Reference: SR-20260419-037.
+///
+/// The SVG-injection safety (SR-20260419-039) depends on this CSP
+/// PLUS `blockNetworkLoads: true` on the `InAppWebViewSettings`.
+/// If either invariant is relaxed, `innerHTML = svgString` with
+/// `securityLevel: 'antiscript'` is no longer sufficient to
+/// neutralise `<img onerror=…>` / `<a href="javascript:…">`
+/// attacks — see ADR-0005 §Rendering invariants.
 ///
 /// The renderer hook exposes exactly one entry point —
 /// `window.renderMermaid(id, code)` — and posts results back via
@@ -89,7 +106,7 @@ String buildMermaidHtml({required String mermaidJs}) {
 <html>
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline' 'self'; style-src 'unsafe-inline'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'none'; font-src 'none'; connect-src 'none'; base-uri 'none'; form-action 'none'">
 <title>mermaid-sandbox</title>
 <style>
   html, body {
