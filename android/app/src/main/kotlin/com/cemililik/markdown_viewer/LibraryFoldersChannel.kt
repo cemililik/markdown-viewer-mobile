@@ -4,6 +4,8 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import android.provider.OpenableColumns
 import androidx.documentfile.provider.DocumentFile
 import io.flutter.embedding.engine.plugins.FlutterPlugin
@@ -331,7 +333,7 @@ class LibraryFoldersChannel :
         val rootUri = Uri.parse(bookmark)
         val root = DocumentFile.fromTreeUri(context, rootUri)
         if (root == null) {
-          runOnMain(activityBinding?.activity) {
+          runOnMain {
             result.error("BOOKMARK_STALE", "could not resolve tree uri", null)
           }
           return@Thread
@@ -339,7 +341,7 @@ class LibraryFoldersChannel :
         val out = mutableListOf<Map<String, Any>>()
         val hitCap = walk(root, out, depth = 0)
         if (hitCap) {
-          runOnMain(activityBinding?.activity) {
+          runOnMain {
             result.error(
                 "LIST_FAILED",
                 "folder exceeds depth / entry cap",
@@ -349,9 +351,9 @@ class LibraryFoldersChannel :
           return@Thread
         }
         out.sortBy { (it["name"] as String).lowercase() }
-        runOnMain(activityBinding?.activity) { result.success(out) }
+        runOnMain { result.success(out) }
       } catch (error: Exception) {
-        runOnMain(activityBinding?.activity) {
+        runOnMain {
           result.error("LIST_FAILED", error.localizedMessage, null)
         }
       }
@@ -390,13 +392,25 @@ class LibraryFoldersChannel :
     return false
   }
 
-  /** Marshals [block] back onto the main thread so `MethodChannel.Result`
-   * returns land on the channel's expected dispatcher. */
-  private fun runOnMain(activity: android.app.Activity?, block: () -> Unit) {
-    if (activity != null) {
-      activity.runOnUiThread(block)
-    } else {
+  /** Marshals [block] back onto the main thread so
+   * `MethodChannel.Result` returns land on the channel's expected
+   * dispatcher.
+   *
+   * Uses a `Handler` bound to the main `Looper` rather than the
+   * activity's `runOnUiThread` because the activity reference can
+   * be `null` by the time the background walker completes (plugin
+   * detached, app moved to background, configuration change in
+   * flight). Executing `block()` synchronously on the caller's
+   * thread in that case would call `MethodChannel.Result` from a
+   * worker `Thread` and crash with `CalledFromWrongThreadException`.
+   */
+  private val mainHandler = Handler(Looper.getMainLooper())
+
+  private fun runOnMain(block: () -> Unit) {
+    if (Looper.myLooper() == Looper.getMainLooper()) {
       block()
+    } else {
+      mainHandler.post(block)
     }
   }
 
