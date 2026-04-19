@@ -8,6 +8,7 @@ import 'package:markdown_viewer/core/logging/logger.dart';
 import 'package:markdown_viewer/core/path/sandbox_path.dart';
 import 'package:markdown_viewer/features/default_handler/application/default_handler_providers.dart';
 import 'package:markdown_viewer/features/default_handler/data/default_handler_channel_impl.dart';
+import 'package:markdown_viewer/features/library/application/content_search_provider.dart';
 import 'package:markdown_viewer/features/library/application/folder_file_materializer_provider.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
@@ -15,11 +16,12 @@ import 'package:markdown_viewer/features/library/data/repositories/library_folde
 import 'package:markdown_viewer/features/library/data/repositories/recent_documents_store_impl.dart';
 import 'package:markdown_viewer/features/library/data/services/folder_enumerator_impl.dart';
 import 'package:markdown_viewer/features/library/data/services/folder_file_materializer.dart';
+import 'package:markdown_viewer/features/library/data/services/library_content_search_impl.dart';
 import 'package:markdown_viewer/features/library/data/services/native_library_folders_channel.dart';
 import 'package:markdown_viewer/features/observability/application/observability_providers.dart';
 import 'package:markdown_viewer/features/observability/data/consent_store_impl.dart';
 import 'package:markdown_viewer/features/onboarding/application/onboarding_providers.dart';
-import 'package:markdown_viewer/features/onboarding/data/onboarding_store.dart';
+import 'package:markdown_viewer/features/onboarding/data/onboarding_store_impl.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
 import 'package:markdown_viewer/features/repo_sync/data/database/app_database.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
@@ -39,6 +41,15 @@ Future<void> main() async {
   // Required so we can load asset bundles, hit SharedPreferences,
   // and run the mermaid pre-warm before the first frame.
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Baseline SystemUiMode — set explicitly so every screen that
+  // restores chrome on dispose (diagram fullscreen, in particular)
+  // has a deterministic target. Without this the restore path
+  // hardcoded `edgeToEdge` while the platform default could be
+  // something else, so the very first fullscreen excursion migrated
+  // the app into `edgeToEdge` permanently.
+  // Reference: code-review CR-20260419-004.
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
   // Create the logger before the error hooks so they use the shared
   // instance with ProductionFilter — the default Logger() constructor
@@ -99,7 +110,7 @@ Future<void> main() async {
   final readingPositionStore = ReadingPositionStoreImpl(prefs, logger: logger);
   final recentDocumentsStore = RecentDocumentsStoreImpl(prefs);
   final libraryFoldersStore = LibraryFoldersStoreImpl(prefs, logger: logger);
-  final onboardingStore = OnboardingStore(prefs);
+  final onboardingStore = OnboardingStoreImpl(prefs);
   final consentStore = ConsentStoreImpl(prefs);
   final appDatabase = AppDatabase();
 
@@ -142,6 +153,9 @@ Future<void> main() async {
         consentStoreProvider.overrideWithValue(consentStore),
         folderEnumeratorProvider.overrideWithValue(
           const FolderEnumeratorImpl(),
+        ),
+        libraryContentSearchProvider.overrideWithValue(
+          const LibraryContentSearchImpl(),
         ),
         nativeLibraryFoldersChannelProvider.overrideWithValue(
           NativeLibraryFoldersChannelImpl(),

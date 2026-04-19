@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:markdown_viewer/core/path/sandbox_path.dart';
 import 'package:markdown_viewer/features/library/domain/entities/recent_document.dart';
@@ -71,14 +70,18 @@ class RecentDocumentsStoreImpl implements RecentDocumentsStore {
         // — they will either still resolve (unchanged container) or
         // be self-cleaned by the repository on first open failure.
         final absolutePath = SandboxPath.fromPortable(path);
-        // Self-clean stale entries whose backing file no longer
-        // exists. This catches the iOS dev-rebuild scenario (old
-        // container UUID baked into pre-sandbox-path entries), plus
-        // any other case where the file moved, was deleted, or was
-        // offloaded by iCloud — a tile the user cannot actually open
-        // is worse than no tile. `existsSync` is cheap; the read
-        // path already runs on app launch, not on every scroll.
-        if (!File(absolutePath).existsSync()) continue;
+        // Previous versions called `File(absolutePath).existsSync()`
+        // here to self-clean stale entries (iOS dev-rebuild container
+        // UUID drift). That forced a blocking `stat` per entry on the
+        // UI isolate during cold start — 20 entries on SMB / iCloud
+        // Drive = 20 serial blocking hops before the first frame.
+        //
+        // The check has moved out: the viewer surfaces a localised
+        // "file no longer available" error when a tap resolves to a
+        // missing path, which is the only code path where staleness
+        // matters for the user. Keeping the cold-start read purely
+        // in-memory is the right-sized fix.
+        // Reference: code-review CR-20260419-019.
         entries.add(
           RecentDocument(
             documentId: DocumentId(absolutePath),

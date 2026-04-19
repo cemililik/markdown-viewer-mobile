@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import 'package:markdown_viewer/features/library/application/content_search_provider.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/application/recent_documents_provider.dart';
-import 'package:markdown_viewer/features/library/data/services/library_content_search_impl.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/entities/recent_document.dart';
 import 'package:markdown_viewer/features/library/domain/repositories/library_folders_store.dart';
@@ -58,7 +57,7 @@ class _InMemoryFoldersStore implements LibraryFoldersStore {
 /// through `isLoading: true` → `isLoading: false`) but skips the
 /// real file walk that would otherwise make `pumpAndSettle` time
 /// out on a filesystem stub with missing paths.
-class _NoopContentSearch implements LibraryContentSearchService {
+class _NoopContentSearch implements LibraryContentSearch {
   const _NoopContentSearch();
 
   @override
@@ -125,7 +124,7 @@ Widget _harness(
       // instantly inside pumpAndSettle. The stubbed service
       // preserves the loading→idle state transitions the search
       // field relies on without touching any real file I/O.
-      libraryContentSearchServiceProvider.overrideWithValue(
+      libraryContentSearchProvider.overrideWithValue(
         const _NoopContentSearch(),
       ),
       consentStoreProvider.overrideWithValue(ConsentStoreImpl(_testPrefs)),

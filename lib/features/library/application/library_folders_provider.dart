@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:markdown_viewer/core/errors/log_and_drop.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/repositories/library_folders_store.dart';
 import 'package:markdown_viewer/features/library/domain/services/folder_enumerator.dart';
@@ -81,7 +82,11 @@ class LibraryFoldersController extends Notifier<List<LibraryFolder>> {
     );
     final updated = _ordered(<LibraryFolder>[fresh, ...state]);
     state = updated;
-    ref.read(libraryFoldersStoreProvider).write(updated).ignore();
+    dropWithLog(
+      ref,
+      ref.read(libraryFoldersStoreProvider).write(updated),
+      'library.folders.add',
+    );
     return true;
   }
 
@@ -100,7 +105,11 @@ class LibraryFoldersController extends Notifier<List<LibraryFolder>> {
       bookmark: bookmark,
     );
     state = _ordered(updatedList);
-    ref.read(libraryFoldersStoreProvider).write(state).ignore();
+    dropWithLog(
+      ref,
+      ref.read(libraryFoldersStoreProvider).write(state),
+      'library.folders.updateBookmark',
+    );
   }
 
   /// Removes the entry with the matching [path]. No-op when the
@@ -111,7 +120,11 @@ class LibraryFoldersController extends Notifier<List<LibraryFolder>> {
       return;
     }
     state = updated;
-    ref.read(libraryFoldersStoreProvider).write(updated).ignore();
+    dropWithLog(
+      ref,
+      ref.read(libraryFoldersStoreProvider).write(updated),
+      'library.folders.remove',
+    );
   }
 
   /// Canonical ordering: most recently added first. Centralising

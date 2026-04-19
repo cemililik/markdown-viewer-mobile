@@ -345,7 +345,18 @@ class RepoSyncNotifier extends Notifier<RepoSyncState> {
     }
 
     final base = await getApplicationDocumentsDirectory();
-    final refSafe = Uri.encodeComponent(locator.ref);
+    // `Uri.encodeComponent('..') == '..'` — encoding alone does not
+    // defuse a ref like `../../etc`. Split on `/` first, validate each
+    // segment (same traversal rejection the static segments use above),
+    // then URL-encode to keep spaces / fragments safe. Without this a
+    // malicious or compromised `default_branch` value could escape the
+    // sandbox root.
+    // Reference: code-review CR-20260419-007.
+    final refParts = locator.ref.split('/');
+    for (final part in refParts) {
+      _validatePathSegment(part);
+    }
+    final refSafe = refParts.map(Uri.encodeComponent).join('/');
     final segments = [
       base.path,
       'synced_repos',

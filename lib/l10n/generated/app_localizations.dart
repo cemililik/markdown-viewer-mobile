@@ -326,6 +326,18 @@ abstract class AppLocalizations {
   /// **'Could not refresh this source. Try again.'**
   String get libraryRefreshFailed;
 
+  /// Semantics label announced by screen readers (VoiceOver / TalkBack) while the pull-to-refresh spinner is active on any library surface (Recents, folder, synced repo).
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh library'**
+  String get libraryRefreshSemantic;
+
+  /// Snackbar shown when the OS hands us a share-intent or Open-In file that exceeds the per-file 10 MB cap enforced by FileOpenChannel on both platforms. The native side returns a FILE_TOO_LARGE error code and the Dart listener in app.dart surfaces this localised message so the user knows why the share tap appeared to do nothing.
+  ///
+  /// In en, this message translates to:
+  /// **'File too large to open.'**
+  String get fileOpenTooLarge;
+
   /// Header above the section holding user-pinned recent documents.
   ///
   /// In en, this message translates to:

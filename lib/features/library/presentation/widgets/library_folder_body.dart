@@ -235,7 +235,7 @@ class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
 
   Future<void> _runContentSearch(String normalised) async {
     final seq = ++_contentDispatchSeq;
-    final service = ref.read(libraryContentSearchServiceProvider);
+    final service = ref.read(libraryContentSearchProvider);
     final l10n = context.l10n;
     try {
       final results = await service.search(
@@ -329,10 +329,16 @@ class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
         Expanded(
           child: RefreshIndicator(
             onRefresh: widget.onRefresh,
-            // The browse / search views are already scrollable (both
-            // are backed by `ListView`), so `RefreshIndicator` can
-            // attach to their inner `Scrollable` without needing a
-            // wrapping `SingleChildScrollView`.
+            // Screen-reader label — without this VoiceOver / TalkBack
+            // only announce the spinner. Reference: CR-20260419-012.
+            semanticsLabel: context.l10n.libraryRefreshSemantic,
+            // The browse / search views are backed by `ListView`s
+            // that have `AlwaysScrollableScrollPhysics`, so the
+            // RefreshIndicator can attach even in loading / empty /
+            // error states — otherwise a branch that returned a
+            // non-scrollable `Center` or `_CenteredHint` would freeze
+            // the pull gesture.
+            // Reference: PR-review NEW-010.
             child:
                 _searchQuery.isEmpty
                     ? _FolderBrowseView(
@@ -389,11 +395,19 @@ class _FolderBrowseViewState extends ConsumerState<_FolderBrowseView> {
       future: _rootFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.symmetric(vertical: 24),
-              child: CircularProgressIndicator(),
-            ),
+          // Wrap in a scrollable so `RefreshIndicator` can attach
+          // to the gesture while the first enumeration is still in
+          // flight. Otherwise pulling on a cold-start slow SMB mount
+          // would freeze with no spinner appearing.
+          // Reference: PR-review NEW-010.
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: const [
+              Padding(
+                padding: EdgeInsets.symmetric(vertical: 48),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            ],
           );
         }
         if (snapshot.hasError) {
@@ -404,6 +418,7 @@ class _FolderBrowseViewState extends ConsumerState<_FolderBrowseView> {
           return _CenteredHint(text: l10n.libraryFolderSourceEmpty);
         }
         return ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(8, 0, 8, 96),
           itemCount: entries.length,
           itemBuilder:
@@ -634,9 +649,17 @@ class _FolderCombinedSearchView extends ConsumerWidget {
           }
         }
 
-        return ListView(
+        // `ListView.builder` + `AlwaysScrollableScrollPhysics` so the
+        // result list lazily instantiates rows (large result sets used
+        // to eager-build every tile) and always yields to the
+        // pull-to-refresh gesture even when there is only one match.
+        // References: performance-review PR-20260419-010 (builder),
+        // PR-review NEW-010 (scroll physics).
+        return ListView.builder(
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.fromLTRB(8, 0, 8, 96),
-          children: children,
+          itemCount: children.length,
+          itemBuilder: (context, index) => children[index],
         );
       },
     );
@@ -932,17 +955,27 @@ class _CenteredHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
-      child: Center(
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurfaceVariant,
+    // Hosted inside a scrollable so `RefreshIndicator` can attach
+    // to the enclosing gesture even when the body is otherwise
+    // non-scrollable (loading / empty / error branches). Without
+    // this the pull-to-refresh spinner never fires in those states.
+    // Reference: PR-review NEW-010.
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
+          child: Center(
+            child: Text(
+              text,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 }

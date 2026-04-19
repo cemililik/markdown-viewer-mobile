@@ -218,14 +218,29 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
       // the channel to escape the bookmark.
       let targetUrl: URL
       if let sub = subPath, !sub.isEmpty, sub != rootUrl.path {
-        let resolved = URL(fileURLWithPath: sub).standardized
-        let rootStandard = rootUrl.standardized
-        let rootPath = rootStandard.path
+        // `standardized` collapses `.`/`..` but does NOT resolve
+        // symlinks, so a symlink inside the bookmarked tree that
+        // points outside it would pass the prefix check. Compare
+        // fully-resolved-to-fully-resolved so a symlink escape
+        // hatch is caught before `FileManager` opens the file.
+        // Reference: security-review SR-20260419-007 (M-6 widened).
+        let resolved = URL(fileURLWithPath: sub).standardized.resolvingSymlinksInPath()
+        let rootResolved = rootUrl.standardized.resolvingSymlinksInPath()
+        let rootPath = rootResolved.path
         if resolved.path != rootPath && !resolved.path.hasPrefix(rootPath + "/") {
+          // Surface the escape attempt with the same `ACCESS_DENIED`
+          // code the `readFileBytes` site uses so the Dart layer can
+          // match a single `PlatformException.code` against both
+          // escape paths. Domain-coded NSErrors wrap cleanly into
+          // `FlutterError` — no mapping needed in the caller.
+          // Reference: PR-review follow-up.
           throw NSError(
             domain: "LibraryFoldersChannel",
             code: -1,
-            userInfo: [NSLocalizedDescriptionKey: "subPath escapes bookmark root"]
+            userInfo: [
+              NSLocalizedDescriptionKey: "subPath escapes bookmark root",
+              "FlutterErrorCode": "ACCESS_DENIED",
+            ]
           )
         }
         targetUrl = resolved
@@ -311,9 +326,14 @@ final class LibraryFoldersChannel: NSObject, UIDocumentPickerDelegate {
     defer { rootUrl.stopAccessingSecurityScopedResource() }
 
     do {
-      let fileUrl = URL(fileURLWithPath: filePath).standardized
-      let rootStandard = rootUrl.standardized
-      let rootPath = rootStandard.path
+      // Fully-resolve both sides (standardize + follow symlinks) so
+      // a symlink inside the bookmarked tree that points outside it
+      // cannot smuggle reads past the sandbox boundary. See the
+      // `listImmediate` fix above.
+      // Reference: security-review SR-20260419-007.
+      let fileUrl = URL(fileURLWithPath: filePath).standardized.resolvingSymlinksInPath()
+      let rootResolved = rootUrl.standardized.resolvingSymlinksInPath()
+      let rootPath = rootResolved.path
       if fileUrl.path != rootPath && !fileUrl.path.hasPrefix(rootPath + "/") {
         result(FlutterError(
           code: "ACCESS_DENIED",

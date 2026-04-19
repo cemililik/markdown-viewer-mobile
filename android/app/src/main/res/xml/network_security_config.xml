@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Belt-and-suspenders network policy declared at the OS level so a
+    future transitive dependency attempting cleartext HTTP is caught
+    by the platform before the socket opens. The ADR-0011 Dio
+    interceptor already rejects off-list hosts in Dart, but that
+    guard only covers the app's own Dio instance.
+
+    Reference: security-review SR-20260419-023 (promoted from L-6).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="false">api.github.com</domain>
+        <domain includeSubdomains="false">raw.githubusercontent.com</domain>
+        <domain includeSubdomains="true">ingest.sentry.io</domain>
+    </domain-config>
+</network-security-config>

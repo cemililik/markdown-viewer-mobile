@@ -170,6 +170,12 @@ class AppLocalizationsTr extends AppLocalizations {
   String get libraryRefreshFailed => 'Kaynak yenilenemedi. Tekrar deneyin.';
 
   @override
+  String get libraryRefreshSemantic => 'Kitaplığı yenile';
+
+  @override
+  String get fileOpenTooLarge => 'Dosya açılamayacak kadar büyük.';
+
+  @override
   String get libraryRecentPinnedSection => 'Sabitlenenler';
 
   @override

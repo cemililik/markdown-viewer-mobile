@@ -120,6 +120,12 @@ final class SandboxPath {
     final relative = portable.substring(secondColon + 1);
     final root = _rootFor(kind);
     if (root == null) return portable;
+    // Round-trip of the root-equals case (`sandbox:docs:`) must
+    // resolve back to the root itself, not `<root>/` with a trailing
+    // separator — the trailing form confuses `Directory.exists` and
+    // downstream path joins on some platforms.
+    // Reference: code-review CR-20260419-029.
+    if (relative.isEmpty) return root;
     return '$root${Platform.pathSeparator}$relative';
   }
 

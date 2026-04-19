@@ -35,8 +35,8 @@ import 'package:path/path.dart' as p;
 ///    walked the same way. File size is capped at
 ///    [_maxFileBytes] so a surprise 10 MB `CHANGELOG.md` can't
 ///    freeze the search.
-class LibraryContentSearchService {
-  const LibraryContentSearchService();
+class LibraryContentSearchImpl implements LibraryContentSearch {
+  const LibraryContentSearchImpl();
 
   /// Hard cap on the size of any single file fed into the
   /// searcher. Markdown docs beyond this point are almost never
@@ -53,6 +53,14 @@ class LibraryContentSearchService {
   /// size.
   static const int _maxFiles = 2000;
 
+  /// Aggregate byte budget across every file read into the corpus
+  /// during a single search dispatch. Matches the network-discovery
+  /// cap in `docs/standards/security-standards.md` and keeps a
+  /// pathological corpus (2 000 × 10 MB = 20 GB theoretical) from
+  /// running the search I/O unbounded on a fast SSD.
+  /// Reference: security-review SR-20260419-009.
+  static const int _maxTotalBytes = 50 * 1024 * 1024;
+
   /// Performs the content search.
   ///
   /// `compute` moves the scan off the UI isolate. Parameters:
@@ -67,6 +75,7 @@ class LibraryContentSearchService {
   ///   strings. The domain service has no access to AppLocalizations
   ///   so the caller resolves these on the UI isolate and passes
   ///   them in already-localised form.
+  @override
   Future<List<ContentSearchMatch>> search({
     required String query,
     required List<RecentDocument> recents,
@@ -105,19 +114,31 @@ class LibraryContentSearchService {
   }) async {
     final seen = <String>{};
     final corpus = <ContentSearchDocument>[];
+    // Single running counter shared across every `tryAdd` call so
+    // the 50 MB budget is honoured globally (not per source). Wrap
+    // in a `[int]` box so the nested closure can mutate it.
+    final corpusBytes = <int>[0];
 
-    Future<void> tryAdd({
+    /// Returns true when traversal should continue, false when the
+    /// walker should stop early (hit cap, byte cap, etc.).
+    Future<bool> tryAdd({
       required String path,
       required String displayName,
       required String sourceLabel,
     }) async {
-      if (corpus.length >= _maxFiles) return;
-      if (!seen.add(path)) return;
+      if (corpus.length >= _maxFiles) return false;
+      if (!seen.add(path)) return true;
       final file = File(path);
-      if (!await file.exists()) return;
+      if (!await file.exists()) return true;
       try {
         final stat = await file.stat();
-        if (stat.size > _maxFileBytes) return;
+        if (stat.size > _maxFileBytes) return true;
+        if (corpusBytes[0] + stat.size > _maxTotalBytes) {
+          // Aggregate byte budget reached — stop the walker so we do
+          // not decode / copy further payloads into the isolate.
+          // Reference: security-review SR-20260419-009.
+          return false;
+        }
         final raw = await file.readAsBytes();
         String content;
         try {
@@ -133,68 +154,105 @@ class LibraryContentSearchService {
             content: content,
           ),
         );
+        corpusBytes[0] += raw.length;
+        return corpus.length < _maxFiles;
       } on FileSystemException {
         // Missing permission / broken symlink / mount unmount —
         // surface nothing for this file and keep scanning. The
         // user's in-progress search query is not the right moment
         // to bother them about transient I/O failures.
+        return true;
       }
     }
 
     for (final recent in recents) {
-      await tryAdd(
+      final keepGoing = await tryAdd(
         path: recent.documentId.value,
         displayName: recent.displayName ?? p.basename(recent.documentId.value),
         sourceLabel: recentsSourceLabel,
       );
+      if (!keepGoing) return corpus;
     }
 
     for (final folder in folders) {
+      // Skip bookmark-scoped folders: on Android SAF the `folder.path`
+      // is a `content://` opaque string that `dart:io` cannot open,
+      // and routing the corpus through the native channel +
+      // FolderFileMaterializer would cache the entire tree on every
+      // keystroke. Search on SAF folders is tracked as a degraded
+      // mode — the folder body's in-place search still works for
+      // filename matches, and cross-library content search covers
+      // file-system folders without the sandbox constraint.
+      // Reference: security-review SR-20260419-008 (partial mitigation).
+      if (folder.bookmark != null) continue;
       final label = folderSourceLabelBuilder(folder);
       await _walkTree(
         root: folder.path,
-        sourceLabel: label,
         onFile:
-            (path, displayName) async => tryAdd(
+            (path, displayName) => tryAdd(
               path: path,
               displayName: displayName,
               sourceLabel: label,
             ),
       );
+      if (corpus.length >= _maxFiles) break;
+      if (corpusBytes[0] >= _maxTotalBytes) break;
     }
 
     for (final repo in syncedRepos) {
       final label = syncedRepoSourceLabelBuilder(repo);
       await _walkTree(
         root: repo.localRoot,
-        sourceLabel: label,
         onFile:
-            (path, displayName) async => tryAdd(
+            (path, displayName) => tryAdd(
               path: path,
               displayName: displayName,
               sourceLabel: label,
             ),
       );
+      if (corpus.length >= _maxFiles) break;
+      if (corpusBytes[0] >= _maxTotalBytes) break;
     }
     return corpus;
   }
 
+  /// Walks [root] recursively yielding markdown files to [onFile].
+  ///
+  /// [onFile] returns `true` to continue, `false` to abort the walk
+  /// immediately — that lets the caller short-circuit as soon as the
+  /// aggregate file / byte caps trip without waiting for the stream
+  /// to drain. Reference: PR-review NEW-004.
+  ///
+  /// Entries under a `.`-prefixed directory are skipped (matches the
+  /// `FolderEnumerator._walk` contract) so a synced monorepo's
+  /// `.git/*.md` templates do not crowd the corpus.
+  /// Reference: code-review CR-20260419-017.
   Future<void> _walkTree({
     required String root,
-    required String sourceLabel,
-    required Future<void> Function(String path, String displayName) onFile,
+    required Future<bool> Function(String path, String displayName) onFile,
   }) async {
     final dir = Directory(root);
     if (!await dir.exists()) return;
+    final rootPath = dir.path;
     try {
       await for (final entity in dir.list(
         recursive: true,
         followLinks: false,
       )) {
         if (entity is! File) continue;
+        // Skip hidden entries. The check walks the path segments
+        // between `rootPath` and the file so that a hidden *parent*
+        // directory hides its whole subtree, not just the basename.
+        final relative = p.relative(entity.path, from: rootPath);
+        final segments = p.split(relative);
+        final anyHidden = segments.any(
+          (seg) => seg.startsWith('.') && seg != '.' && seg != '..',
+        );
+        if (anyHidden) continue;
         final name = p.basename(entity.path).toLowerCase();
         if (!name.endsWith('.md') && !name.endsWith('.markdown')) continue;
-        await onFile(entity.path, p.basename(entity.path));
+        final keepGoing = await onFile(entity.path, p.basename(entity.path));
+        if (!keepGoing) break;
       }
     } on FileSystemException {
       // Bookmark went stale, volume unmounted, ACL flipped — the

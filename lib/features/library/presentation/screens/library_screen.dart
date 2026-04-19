@@ -20,6 +20,7 @@ import 'package:markdown_viewer/features/library/presentation/widgets/add_source
 import 'package:markdown_viewer/features/library/presentation/widgets/content_search_results.dart';
 import 'package:markdown_viewer/features/library/presentation/widgets/library_folder_body.dart';
 import 'package:markdown_viewer/features/library/presentation/widgets/source_picker_drawer.dart';
+import 'package:markdown_viewer/features/repo_sync/application/remove_synced_repo.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_notifier.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
@@ -150,18 +151,66 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     HapticFeedback.selectionClick().ignore();
     switch (source) {
       case RecentsSource():
+        // Capture every localised closure BEFORE the async gap so
+        // the re-submit below uses the exact same label builders as
+        // `_dispatchContentSearch` — otherwise refresh would flip
+        // result badges from `"Folder: Notes"` to just `"Notes"`
+        // and `"Repo: owner/repo"` to `"owner/repo"` until the next
+        // keystroke. Reference: PR-review (Cluster F follow-up).
+        final l10n = context.l10n;
+        final recentsLabel = l10n.libraryContentSearchSourceRecent;
+        String folderLabel(LibraryFolder folder) {
+          final basename = p.basename(folder.path);
+          final name = basename.isEmpty ? folder.path : basename;
+          return l10n.libraryContentSearchSourceFolder(name);
+        }
+
+        String syncedRepoLabel(SyncedRepo repo) =>
+            l10n.libraryContentSearchSourceRepo(repo.displayName);
         ref.invalidate(recentDocumentsControllerProvider);
         ref.invalidate(libraryFoldersControllerProvider);
         ref.invalidate(syncedReposProvider);
-        // Small pause so the RefreshIndicator finishes its exit
-        // animation after the invalidation fires — without it the
-        // spinner collapses the instant the gesture ends and the
-        // user cannot tell whether the refresh actually ran.
-        await Future<void>.delayed(const Duration(milliseconds: 300));
-      case FolderSource():
+        // Wait for the repos provider to settle so the spinner stays
+        // up through the whole refresh, not just through a fake
+        // 300 ms pause. `.future` resolves with the newly-read list;
+        // swallow errors because the UI already surfaces them
+        // elsewhere — we just need the timing signal here.
+        // Reference: code-review CR-20260419-018.
+        try {
+          await ref.read(syncedReposProvider.future);
+        } on Object {
+          // Error state is bound in `build()` and shown inline — no
+          // need to re-surface it from the refresh gesture.
+        }
+        if (!mounted) return;
+        // Re-run any active content search against the refreshed
+        // corpus so a library refresh propagates into search results
+        // instead of leaving a stale match list on-screen.
+        // Reference: PR-review NEW-008.
+        final search = ref.read(contentSearchControllerProvider);
+        if (search.query.isNotEmpty) {
+          ref
+              .read(contentSearchControllerProvider.notifier)
+              .submitQuery(
+                raw: search.query,
+                recentsSourceLabel: recentsLabel,
+                folderSourceLabelBuilder: folderLabel,
+                syncedRepoSourceLabelBuilder: syncedRepoLabel,
+              );
+        }
+      case FolderSource(:final folder):
+        if (!mounted) return;
+        // Await the real re-enumeration instead of a fixed delay so a
+        // slow SMB / NFS mount keeps the spinner up until the tree
+        // actually settles. Failures fall through to the next tick —
+        // an enumerator error is surfaced by the body's own state.
+        try {
+          await ref.read(folderEnumeratorProvider).enumerate(folder);
+        } on Object {
+          // Body renders the enumerator error itself.
+        }
         if (!mounted) return;
         setState(() => _refreshTick++);
-        await Future<void>.delayed(const Duration(milliseconds: 300));
       case SyncedRepoSource(:final syncedRepo):
         final notifier = ref.read(repoSyncNotifierProvider.notifier);
         await notifier.startSync(syncedRepo.githubTreeUrl);
@@ -462,8 +511,7 @@ class _RecentsEmptyWithSources extends ConsumerWidget {
     if (action == 'update') {
       unawaited(context.push(RepoSyncRoute.location(url: repo.githubTreeUrl)));
     } else if (action == 'remove') {
-      await ref.read(syncedReposStoreProvider).delete(repo.id);
-      ref.invalidate(syncedReposProvider);
+      await removeSyncedRepo(ref, repo.id);
       if (!context.mounted) return;
       ScaffoldMessenger.of(context)
         ..hideCurrentSnackBar()
@@ -724,6 +772,11 @@ class _LibraryPopulatedBodyState extends ConsumerState<_LibraryPopulatedBody> {
     // the gesture and the spinner would never appear.
     return RefreshIndicator(
       onRefresh: widget.onRefresh,
+      // Screen readers announce a spinner without context unless we
+      // pair it with a label — "Refresh library" is short enough for
+      // both VoiceOver and TalkBack latency budgets.
+      // Reference: code-review CR-20260419-012.
+      semanticsLabel: l10n.libraryRefreshSemantic,
       child: CustomScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         slivers: [

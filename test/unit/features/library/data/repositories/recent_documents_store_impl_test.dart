@@ -14,9 +14,14 @@ void main() {
 
     setUp(() {
       SharedPreferences.setMockInitialValues(<String, Object>{});
-      // The store now self-cleans entries whose backing file has
-      // disappeared. Real temp files let the tests round-trip through
-      // the existsSync() filter without losing assertions.
+      // Historical note: earlier revisions self-cleaned entries whose
+      // backing file had disappeared via an `existsSync()` filter at
+      // read time. That filter is gone — `read()` now returns stale
+      // entries intact and the viewer surfaces the "file no longer
+      // available" error on tap. Real temp files are still used so
+      // the "stale entry" test can delete one between write and read
+      // without the whole suite needing a filesystem abstraction.
+      // Reference: code-review CR-20260419-019.
       tempDir = Directory.systemTemp.createTempSync('recents_test_');
       pathA = '${tempDir.path}/a.md';
       pathB = '${tempDir.path}/b.md';
@@ -155,10 +160,13 @@ void main() {
       final pathC = '${tempDir.path}/c.md';
       final pathD = '${tempDir.path}/d.md';
       File(pathD).writeAsStringSync('');
-      // Intentionally do NOT touch pathC — its entry will also be
-      // dropped by the existsSync filter, which is the desired
-      // behaviour (a tile pointing at a missing file is worse than
-      // no tile).
+      // Intentionally do NOT touch pathC — its entry is still
+      // dropped, but via the "openedAt: not-a-date" malformed-entry
+      // branch rather than an existsSync check (that filter was
+      // removed as part of CR-20260419-019). The "pinned missing
+      // file" case is now handled by the viewer surfacing a localised
+      // error on tap instead of by the read path silently dropping
+      // the entry.
       SharedPreferences.setMockInitialValues(<String, Object>{
         'library.recentDocuments':
             '[{"path":"$pathA","openedAt":"2026-04-13T10:00:00.000Z"},'
@@ -176,28 +184,37 @@ void main() {
       expect(round[1].documentId.value, pathD);
     });
 
-    test('self-cleans entries whose backing file no longer exists', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = RecentDocumentsStoreImpl(prefs);
+    test(
+      'read() returns stale entries intact; cold start never hits disk',
+      () async {
+        // Behaviour change: `read()` is purely in-memory. Earlier
+        // versions called `File(path).existsSync()` per entry, which
+        // blocked the UI isolate during cold start on slow SMB /
+        // iCloud Drive paths. The viewer now surfaces a localised
+        // "file no longer available" error on tap for a stale entry,
+        // which is the only code path where staleness matters.
+        // Reference: code-review CR-20260419-019.
+        final prefs = await SharedPreferences.getInstance();
+        final store = RecentDocumentsStoreImpl(prefs);
 
-      await store.write(<RecentDocument>[
-        RecentDocument(
-          documentId: DocumentId(pathA),
-          openedAt: DateTime.utc(2026, 4, 13),
-        ),
-        RecentDocument(
-          documentId: DocumentId(pathB),
-          openedAt: DateTime.utc(2026, 4, 13),
-        ),
-      ]);
-      // Delete pathB between the write and the next read — simulates
-      // the dev-rebuild / stale-container scenario on iOS. The read
-      // path should silently drop the entry whose file is gone.
-      File(pathB).deleteSync();
+        await store.write(<RecentDocument>[
+          RecentDocument(
+            documentId: DocumentId(pathA),
+            openedAt: DateTime.utc(2026, 4, 13),
+          ),
+          RecentDocument(
+            documentId: DocumentId(pathB),
+            openedAt: DateTime.utc(2026, 4, 13),
+          ),
+        ]);
+        File(pathB).deleteSync();
 
-      final round = store.read();
-      expect(round, hasLength(1));
-      expect(round.first.documentId.value, pathA);
-    });
+        final round = store.read();
+        // Both entries are returned — staleness is handled at tap time,
+        // not at read time.
+        expect(round, hasLength(2));
+        expect(round.map((e) => e.documentId.value).toSet(), {pathA, pathB});
+      },
+    );
   });
 }

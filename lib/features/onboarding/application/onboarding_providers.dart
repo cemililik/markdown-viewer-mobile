@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:markdown_viewer/features/onboarding/data/onboarding_store.dart';
+import 'package:markdown_viewer/core/errors/log_and_drop.dart';
+import 'package:markdown_viewer/features/onboarding/domain/repositories/onboarding_store.dart';
 
 /// Authoritative version number of the onboarding content.
 ///
@@ -50,7 +51,11 @@ class OnboardingController extends Notifier<int> {
   void markSeen() {
     if (state >= currentOnboardingVersion) return;
     state = currentOnboardingVersion;
-    ref.read(onboardingStoreProvider).writeSeenVersion(state).ignore();
+    dropWithLog(
+      ref,
+      ref.read(onboardingStoreProvider).writeSeenVersion(state),
+      'onboarding.markSeen=$state',
+    );
   }
 
   /// Clears the stored completion marker so the router's redirect
@@ -61,7 +66,11 @@ class OnboardingController extends Notifier<int> {
   /// device only needs a tap instead of wiping the whole app.
   void reset() {
     state = 0;
-    ref.read(onboardingStoreProvider).writeSeenVersion(0).ignore();
+    dropWithLog(
+      ref,
+      ref.read(onboardingStoreProvider).writeSeenVersion(0),
+      'onboarding.reset',
+    );
   }
 }
 

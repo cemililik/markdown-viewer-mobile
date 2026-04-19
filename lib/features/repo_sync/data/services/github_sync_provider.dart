@@ -6,6 +6,7 @@ import 'package:markdown_viewer/core/errors/failure.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/remote_file.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/repo_locator.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/services/repo_sync_provider.dart';
+import 'package:path/path.dart' as p;
 
 /// GitHub implementation of [RepoSyncProvider].
 ///
@@ -215,7 +216,14 @@ class GitHubSyncProvider implements RepoSyncProvider {
 
   @override
   Future<List<int>> downloadRaw(RemoteFile file) async {
-    final cap = _sizeCap(_maxFileBytes, 'file ${file.path}');
+    // Exception messages use only `p.basename(file.path)` because
+    // the full `file.path` carries the remote repo directory
+    // structure into any upstream log / Sentry event. The basename is
+    // enough to identify which file tripped the cap for debugging
+    // without propagating PII-adjacent path segments.
+    // Reference: security-review SR-20260419-019.
+    final displayName = p.basename(file.path);
+    final cap = _sizeCap(_maxFileBytes, 'file $displayName');
     try {
       final response = await dio.get<List<int>>(
         file.rawUrl,
@@ -233,7 +241,7 @@ class GitHubSyncProvider implements RepoSyncProvider {
       if (data.length > _maxFileBytes) {
         throw UnknownFailure(
           message:
-              'File ${file.path} exceeds the '
+              'File $displayName exceeds the '
               '$_maxFileBytes-byte per-file cap',
         );
       }
@@ -329,22 +337,68 @@ class GitHubSyncProvider implements RepoSyncProvider {
     return lower.endsWith('.md') || lower.endsWith('.markdown');
   }
 
+  /// Scrubs URL-shaped substrings (host + path) from a Dio inner
+  /// error message and bounds the result length. Keeps the class
+  /// name + error category so debugging is still possible, but the
+  /// PII-adjacent request target never propagates into Sentry via
+  /// `Failure.cause.toString()`.
+  static String _sanitizeUnknownReason(String raw) {
+    const maxLen = 200;
+    // Match `scheme://host[:port][/path][?query]` or a bare
+    // `host[:port]/path` form. The `.evil` trailing characters are
+    // caught by the greedy class so we do not leave a residual
+    // path after redaction.
+    final urlLike = RegExp(
+      r'(?:https?://)?[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
+      r'(?::\d+)?(?:/[^\s,)"]*)?',
+    );
+    var scrubbed = raw.replaceAll(urlLike, '[redacted]');
+    // Bounded length: an inner message the size of a full
+    // SocketException can otherwise run to a few KB.
+    if (scrubbed.length > maxLen) {
+      scrubbed = '${scrubbed.substring(0, maxLen)}…';
+    }
+    return scrubbed;
+  }
+
   static Failure _mapDioError(DioException e) {
     // Treat every connection-family Dio error as "no network" so the
     // user gets the actionable "check your connection" message rather
     // than an opaque "HTTP null" — this includes connection refused
-    // (`connectionError`), DNS failure (`unknown`), and both timeout
-    // flavours (`connectionTimeout` / `receiveTimeout` / `sendTimeout`)
-    // where the response is never populated.
+    // (`connectionError`) and both timeout flavours
+    // (`connectionTimeout` / `receiveTimeout` / `sendTimeout`) where
+    // the response is never populated.
     if (e.type == DioExceptionType.connectionError ||
         e.type == DioExceptionType.connectionTimeout ||
         e.type == DioExceptionType.receiveTimeout ||
-        e.type == DioExceptionType.sendTimeout ||
-        e.type == DioExceptionType.unknown) {
+        e.type == DioExceptionType.sendTimeout) {
       return NetworkUnavailableFailure(
         message: 'No network connection',
         cause: e,
       );
+    }
+    if (e.type == DioExceptionType.unknown) {
+      // `unknown` fires on TLS handshake failures, JSON parse errors,
+      // SocketException (DNS failure), and anything else Dio cannot
+      // pigeon-hole. Previously all of those landed on the "no
+      // network" message, which was misleading for a certificate
+      // expiry or a malformed response body. Split into a dedicated
+      // UnknownFailure so the UI surfaces the inner error instead of
+      // wrongly blaming connectivity.
+      // Reference: code-review CR-20260419-044.
+      // Inner `toString()` can embed the full request URL (Dio
+      // ships `requestOptions.uri` inside its exception text on
+      // some code paths, and a SocketException.toString() includes
+      // the address), which would then propagate into Sentry via
+      // the `Failure.cause` chain. Strip any URL-shaped substring
+      // and truncate before surfacing.
+      // Reference: PR-review (Cluster C follow-up) — mirrors SR-019.
+      final inner = e.error;
+      final raw =
+          inner is Exception || inner is Error
+              ? inner.toString()
+              : (e.message ?? 'Unknown network error');
+      return UnknownFailure(message: _sanitizeUnknownReason(raw), cause: e);
     }
     final status = e.response?.statusCode;
     if (status == 401) {

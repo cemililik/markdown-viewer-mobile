@@ -171,6 +171,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'Could not refresh this source. Try again.';
 
   @override
+  String get libraryRefreshSemantic => 'Refresh library';
+
+  @override
+  String get fileOpenTooLarge => 'File too large to open.';
+
+  @override
   String get libraryRecentPinnedSection => 'Pinned';
 
   @override

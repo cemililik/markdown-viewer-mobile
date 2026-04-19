@@ -8,7 +8,7 @@ import 'package:markdown_viewer/app/router.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/features/viewer/application/markdown_extensions/admonition.dart';
 import 'package:markdown_viewer/features/viewer/application/mermaid_renderer_provider.dart';
-import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_utils.dart';
+import 'package:markdown_viewer/features/viewer/application/mermaid_utils.dart';
 import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
 import 'package:markdown_viewer/features/viewer/presentation/screens/diagram_fullscreen_screen.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_view.dart';

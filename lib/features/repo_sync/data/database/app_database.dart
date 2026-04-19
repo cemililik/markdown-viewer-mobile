@@ -169,8 +169,56 @@ class AppDatabase extends _$AppDatabase {
 
 LazyDatabase _openConnection() {
   return LazyDatabase(() async {
-    final dir = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dir.path, 'markdown_viewer.db'));
-    return NativeDatabase(file);
+    // ApplicationSupport keeps the DB out of iOS `Documents/`, so
+    // iCloud Drive and Finder/iTunes backups don't carry a plaintext
+    // SQLite catalogue of the user's synced repos off-device. The
+    // directory is private, persistent across launches, and not
+    // exposed via `UIFileSharingEnabled`. Pair with the manifest-
+    // level backup opt-outs on Android (allowBackup=false).
+    //
+    // Legacy DBs written by v1.1.x live at Documents/markdown_viewer.db;
+    // migrate them on first open post-upgrade so users do not lose
+    // their sync history when the app moves the DB location. The
+    // migration covers WAL/SHM/journal sidecars too — a drift DB in
+    // WAL mode that loses its sidecar files becomes non-recoverable.
+    //
+    // Reference: security-review SR-20260419-012 (promoted from L-7)
+    // + PR-review follow-up for sidecar handling.
+    final supportDir = await getApplicationSupportDirectory();
+    if (!await supportDir.exists()) {
+      await supportDir.create(recursive: true);
+    }
+    final target = File(p.join(supportDir.path, 'markdown_viewer.db'));
+    if (!await target.exists()) {
+      final docsDir = await getApplicationDocumentsDirectory();
+      const baseName = 'markdown_viewer.db';
+      // SQLite WAL / rollback-journal sidecars. Missing files are
+      // fine; the main file is the required one.
+      const sidecars = <String>['', '-wal', '-shm', '-journal'];
+      for (final suffix in sidecars) {
+        final legacyFile = File(p.join(docsDir.path, '$baseName$suffix'));
+        final targetFile = File(p.join(supportDir.path, '$baseName$suffix'));
+        if (!await legacyFile.exists()) continue;
+        try {
+          await legacyFile.rename(targetFile.path);
+        } on FileSystemException {
+          // Cross-device rename can fail (`errno 18` on Linux,
+          // EXDEV on POSIX) — fall back to copy-then-delete so the
+          // migration still completes when the Documents and
+          // ApplicationSupport directories live on different
+          // volumes.
+          try {
+            await legacyFile.copy(targetFile.path);
+            await legacyFile.delete();
+          } on FileSystemException {
+            // Non-fatal: a half-migrated sidecar will be rebuilt by
+            // SQLite on the next checkpoint. Log-and-drop rather
+            // than abort startup — losing the sync catalogue would
+            // be worse than losing the sidecar.
+          }
+        }
+      }
+    }
+    return NativeDatabase(target);
   });
 }

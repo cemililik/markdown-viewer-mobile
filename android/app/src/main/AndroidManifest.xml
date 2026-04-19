@@ -10,7 +10,11 @@
     <application
         android:label="@string/app_name"
         android:name="${applicationName}"
-        android:icon="@mipmap/launcher_icon">
+        android:icon="@mipmap/launcher_icon"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -57,21 +61,18 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:mimeType="text/x-markdown"/>
             </intent-filter>
-            <!-- Catch-all for .md files served with text/plain MIME.
-                 Scoped to the specific extensions so we do not claim
-                 every plain-text file on the device. -->
-            <intent-filter android:label="@string/app_name">
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <data android:mimeType="text/plain"
-                      android:pathPattern=".*\\.md"/>
-            </intent-filter>
-            <intent-filter android:label="@string/app_name">
-                <action android:name="android.intent.action.VIEW"/>
-                <category android:name="android.intent.category.DEFAULT"/>
-                <data android:mimeType="text/plain"
-                      android:pathPattern=".*\\.markdown"/>
-            </intent-filter>
+            <!-- NOTE: the two `text/plain` + `android:pathPattern` VIEW
+                 filters that used to live here were removed (see
+                 security-review SR-20260419-034 / code-review
+                 CR-20260419-009). `pathPattern` matches the URI path,
+                 which for `content://` URIs is typically an opaque
+                 provider ID, not a filename — so those filters were
+                 effectively dead against the dominant share-sheet
+                 path (Gmail / Outlook / Drive). The
+                 `text/markdown` + `text/x-markdown` filters above and
+                 the explicit `ACTION_SEND text/plain` filter below
+                 cover the live paths without claiming every plain-text
+                 file on the device. -->
             <!-- Share-to: another app sends us a single markdown file. -->
             <intent-filter android:label="@string/app_name">
                 <action android:name="android.intent.action.SEND"/>
@@ -82,6 +83,17 @@
                 <action android:name="android.intent.action.SEND"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:mimeType="text/x-markdown"/>
+            </intent-filter>
+            <!-- ACTION_SEND text/plain covers the "share .md from
+                 Gmail / Outlook / Drive" path on modern Android,
+                 where the provider's MIME lookup does not know the
+                 file is markdown. FileOpenChannel on the native side
+                 examines the extension before accepting the payload
+                 so we still reject non-markdown shares. -->
+            <intent-filter android:label="@string/app_name">
+                <action android:name="android.intent.action.SEND"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="text/plain"/>
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

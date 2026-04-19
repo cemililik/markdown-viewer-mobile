@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/features/library/application/content_search_provider.dart';
 import 'package:markdown_viewer/features/library/application/folder_file_materializer_provider.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
-import 'package:markdown_viewer/features/library/data/services/library_content_search_impl.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/entities/recent_document.dart';
 import 'package:markdown_viewer/features/library/domain/services/folder_enumerator.dart';
@@ -60,7 +59,7 @@ class _StubMaterializer implements FolderFileMaterializer {
 /// preset query, otherwise an empty list. Avoids real filesystem
 /// I/O and the `compute()` isolate hop, keeping the widget test
 /// deterministic and fast.
-class _StubContentSearch implements LibraryContentSearchService {
+class _StubContentSearch implements LibraryContentSearch {
   const _StubContentSearch({required this.expectedQuery, required this.match});
 
   final String expectedQuery;
@@ -86,14 +85,14 @@ class _StubContentSearch implements LibraryContentSearchService {
 void main() {
   final folder = LibraryFolder(path: '/stub', addedAt: DateTime(2026, 1, 1));
 
-  Widget harness({required LibraryContentSearchService searchService}) {
+  Widget harness({required LibraryContentSearch searchService}) {
     return ProviderScope(
       overrides: [
         folderEnumeratorProvider.overrideWithValue(const _StubEnumerator()),
         folderFileMaterializerProvider.overrideWithValue(
           const _StubMaterializer(),
         ),
-        libraryContentSearchServiceProvider.overrideWithValue(searchService),
+        libraryContentSearchProvider.overrideWithValue(searchService),
       ],
       child: MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,

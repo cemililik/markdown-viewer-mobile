@@ -91,8 +91,13 @@ GoRouter router(Ref ref) {
         builder: (context, state) {
           final rawPath = state.uri.queryParameters[ViewerRoute.pathQuery];
           if (rawPath == null || rawPath.isEmpty) {
+            // Malformed deep link lands here (no `path=` query) —
+            // render a titled error screen in place. Adding the title
+            // keeps the scaffold accessible to screen readers
+            // (VoiceOver / TalkBack otherwise announce an unnamed
+            // page). Reference: code-review CR-20260419-046.
             return Scaffold(
-              appBar: AppBar(),
+              appBar: AppBar(title: Text(context.l10n.errorUnknown)),
               body: ErrorView(message: context.l10n.libraryFilePickFailed),
             );
           }
@@ -125,10 +130,14 @@ GoRouter router(Ref ref) {
           if (args is! DiagramFullscreenArgs) {
             // Unknown / missing payload should never happen under the
             // current call sites (only `MermaidBlock` pushes this
-            // route) — but if a future deep-linker lands here without
-            // a payload, pop back to the library rather than crash.
+            // route) — but if a future deep-linker lands on
+            // `/diagram` without a valid `DiagramFullscreenArgs`
+            // payload in `state.extra`, render a localised error
+            // screen in place rather than pop/bounce (which would
+            // also fail on a deep link with no back stack) or crash.
+            // Reference: code-review NEW-002.
             return Scaffold(
-              appBar: AppBar(),
+              appBar: AppBar(title: Text(context.l10n.errorUnknown)),
               body: ErrorView(message: context.l10n.errorUnknown),
             );
           }
@@ -265,10 +274,17 @@ abstract final class ViewerRoute {
 /// channel. The inline `MermaidBlock` pushes it via
 /// `context.push(DiagramRoute.path, extra: args)` after the WebView
 /// has produced a PNG, so the fullscreen screen reuses the already-
-/// rendered bitmap rather than re-running the sandboxed render. A
-/// cold load via URL has no payload available and intentionally
-/// bounces to the library error view — the route only exists as a
-/// lane for in-app push/pop navigation.
+/// rendered bitmap rather than re-running the sandboxed render.
+///
+/// A cold load via URL (malformed deep link, user navigating to
+/// `/diagram` from their shell history) has no payload available —
+/// the route's builder renders a localised error Scaffold in place
+/// (AppBar titled `l10n.errorUnknown` + an `ErrorView`) rather than
+/// popping to the library. In-place rendering was the right choice
+/// because a pop requires a back stack, which a deep-link entry does
+/// not have, and the earlier pop variant produced the Android
+/// "navigator empty" crash on restore.
+/// Reference: PR-review NEW-002.
 abstract final class DiagramRoute {
   static const String path = '/diagram';
   static const String name = 'diagram';
