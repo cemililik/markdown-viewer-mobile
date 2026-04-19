@@ -260,8 +260,8 @@ void main() {
           observed,
           startsWith(userSource),
           reason:
-              'An empty initDirective means "do not override" the '
-              "user-authored directive — the original source must reach "
+              'An empty initDirective means do not override the '
+              'user-authored directive — the original source must reach '
               'mermaid.js intact at the top of the payload.',
         );
         expect(

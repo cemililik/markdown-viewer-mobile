@@ -331,12 +331,54 @@ String buildMermaidInitDirective(ColorScheme scheme) {
   // 'classic' suppresses the per-diagram-type decorative icons added in
   // Mermaid v11 (the mindmap icon in particular looks like a bomb/starburst
   // and is confusing in both the viewer and PDF output).
+  //
+  // `themeCSS` appends to mermaid's generated stylesheet so the
+  // per-diagram-type CSS selectors that the `themeVariables` path
+  // does NOT cover can still be overridden. In particular the ER
+  // renderer (v10+) hard-codes `fill="white"` on attribute rects
+  // and falls back to the SVG default (black text) for attribute
+  // text regardless of `attributeBackgroundColorOdd/Even` /
+  // `textColor` when the host is a `data:` URI — the result on dark
+  // themes is white rows with mid-grey labels that wash out entirely.
+  // Forcing the fills and text colours via CSS selectors is the
+  // reliable fix, and the SVG sandbox's CSP already allows
+  // `style-src 'unsafe-inline'` so this is purely additive.
+  final themeCss = _buildMermaidThemeCss(
+    surfaceContainer: surfaceContainer,
+    surfaceContainerHigh: surfaceContainerHigh,
+    onSurface: onSurface,
+    outline: outline,
+  );
   final payload = jsonEncode({
     'theme': 'base',
     'look': 'classic',
     'themeVariables': variables,
+    'themeCSS': themeCss,
   });
   return '%%{init: $payload}%%\n';
+}
+
+/// Mermaid CSS overrides for diagram types whose `themeVariables`
+/// path leaks through to default browser colours on `data:` URI
+/// renders — e.g. the ER attribute rows painted by mermaid v10/v11
+/// default to white rect fills and black attribute text. Forcing
+/// the fills and text colours via SVG selectors is the reliable
+/// fix that survives the mermaid version churn.
+String _buildMermaidThemeCss({
+  required String surfaceContainer,
+  required String surfaceContainerHigh,
+  required String onSurface,
+  required String outline,
+}) {
+  return '.er.attributeBoxOdd { fill: $surfaceContainer !important; } '
+      '.er.attributeBoxEven { fill: $surfaceContainerHigh !important; } '
+      '.er .er.attributeBoxOdd text, '
+      '.er .er.attributeBoxEven text, '
+      '.er .er.attributeBoxOdd foreignObject *, '
+      '.er .er.attributeBoxEven foreignObject *, '
+      '.er .er.entityBox + text { fill: $onSurface !important; '
+      'color: $onSurface !important; } '
+      '.er.relationshipLine { stroke: $outline !important; }';
 }
 
 /// Pan+zoom container for a rasterised mermaid diagram.
