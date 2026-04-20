@@ -161,6 +161,7 @@ class MermaidRendererImpl implements MermaidRenderer {
   Future<MermaidRenderResult> render(
     String source, {
     String initDirective = '',
+    String themeCss = '',
   }) async {
     if (_disposed) {
       return const MermaidRenderFailure('Renderer has been disposed');
@@ -179,7 +180,15 @@ class MermaidRendererImpl implements MermaidRenderer {
     // hashed input, so light and dark variants of the same diagram
     // automatically occupy distinct cache slots.
     final themedSource = _composeSourceWithInit(source, initDirective);
-    final key = sha256.convert(utf8.encode(themedSource)).toString();
+    // The theme stylesheet is injected into the sandbox head via a
+    // second `window.__setMermaidTheme(css)` call right before the
+    // render fires (see `_pump`). Baking it into the cache key
+    // keeps light / dark variants of the same source in separate
+    // slots — otherwise the first render under one theme would
+    // freeze that theme's bitmap into the LRU and a subsequent
+    // theme flip would reuse it verbatim.
+    final key =
+        sha256.convert(utf8.encode('$themedSource\u0000$themeCss')).toString();
 
     final cached = _cache.get(key);
     if (cached != null) {
@@ -198,7 +207,12 @@ class MermaidRendererImpl implements MermaidRenderer {
     final completer = Completer<MermaidRenderResult>();
     _inFlight[key] = completer;
     _queue.add(
-      _PendingRender(key: key, source: themedSource, completer: completer),
+      _PendingRender(
+        key: key,
+        source: themedSource,
+        themeCss: themeCss,
+        completer: completer,
+      ),
     );
     unawaited(_pump());
     return completer.future;
@@ -279,7 +293,11 @@ class MermaidRendererImpl implements MermaidRenderer {
           cacheKey: pending.key,
         );
         try {
-          await _channel.render(id: requestId, source: pending.source);
+          await _channel.render(
+            id: requestId,
+            source: pending.source,
+            themeCss: pending.themeCss,
+          );
           // The result will arrive asynchronously via
           // _handleChannelResult; wait for it before drawing the
           // next item from the queue so the channel sees one
@@ -424,11 +442,13 @@ class _PendingRender {
   _PendingRender({
     required this.key,
     required this.source,
+    required this.themeCss,
     required this.completer,
   });
 
   final String key;
   final String source;
+  final String themeCss;
   final Completer<MermaidRenderResult> completer;
 }
 

@@ -113,6 +113,20 @@ String buildMermaidHtml({required String mermaidJs}) {
     margin: 0;
     padding: 0;
     background: transparent;
+    /* `color-scheme: only light` pins the HTML rendering to a
+       deterministic "light" canvas so WKWebView on iOS does NOT
+       auto-invert `foreignObject` content when the user's OS is
+       in dark mode. Mermaid draws its `.label` HTML spans inside
+       `<foreignObject>`, which browsers can otherwise re-tint
+       with system-default colours — the ER attribute rows were
+       rendering as black-on-white on a dark-theme reader because
+       the HTML content ignored our theme override.
+       Our palette is injected via `themeVariables` +
+       `themeCSS`, so we control the effective colours ourselves.
+       Reference: PR-review (mermaid ER dark-mode follow-up). */
+    color-scheme: only light;
+  }
+  html, body, #sink {
     /* iOS / macOS native UI font for closest visual match to the
        Flutter reading column typography. */
     font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue",
@@ -130,6 +144,22 @@ String buildMermaidHtml({required String mermaidJs}) {
   }
   #sink svg {
     display: block;
+  }
+  /* Neutralise default foreignObject backgrounds. Mermaid ER
+     attribute rows render as `<foreignObject>` → `<div>` →
+     `<span class="attribute-name">…` etc., and WKWebView paints
+     a solid white backplate on every nested `<div>` unless we
+     explicitly force transparency here. The underlying SVG
+     `<rect>` (entityBox / mainBkg) is already themed via
+     `themeVariables`; making the HTML overlay transparent lets
+     that background show through. */
+  #sink foreignObject,
+  #sink foreignObject > *,
+  #sink foreignObject div,
+  #sink foreignObject span,
+  #sink foreignObject p {
+    background: transparent !important;
+    background-color: transparent !important;
   }
 </style>
 </head>
@@ -190,11 +220,45 @@ $mermaidJs
     });
   }
 
-  window.renderMermaid = function (id, code) {
+  // Per-render theme stylesheet. The Dart side passes a CSS blob
+  // derived from the active ColorScheme; the mermaid init pragma
+  // carries `themeVariables` (which mermaid honours) but not
+  // `themeCSS` (which the init pragma silently ignores in v11).
+  // We keep a stable `<style id="__mermaid_theme__">` node in the
+  // document head and rewrite its `textContent` before each render.
+  // The selectors in this sheet target the classes mermaid emits
+  // regardless of diagram type — `.attribute-*` for ER rows,
+  // `.label` for every label-bearing group, `.entityBox` /
+  // `.relationshipLine` / `.relationshipLabelBox` for ER chrome.
+  // Without this override the ER attribute rows rendered as
+  // white-on-mid-grey under dark themes because mermaid's
+  // `attributeBackgroundColorOdd/Even` variables are dead code in
+  // v11 and the `<foreignObject>` HTML spans inherited the HTML
+  // default text colour (black) on a dark SVG background.
+  // Reference: PR-review (mermaid dark-mode follow-up).
+  window.__setMermaidTheme = function (css) {
+    var themeStyle = document.getElementById('__mermaid_theme__');
+    if (!themeStyle) {
+      themeStyle = document.createElement('style');
+      themeStyle.id = '__mermaid_theme__';
+      document.head.appendChild(themeStyle);
+    }
+    themeStyle.textContent = css || '';
+  };
+
+  window.renderMermaid = function (id, code, themeCss) {
     var sink = document.getElementById('sink');
     if (!sink) {
       postError(id, 'sink element missing');
       return;
+    }
+    // Install the per-render theme stylesheet BEFORE we rebuild
+    // the SVG, so the first paint already has the right colours.
+    // Passing `null` / `undefined` keeps whatever was in place
+    // from the previous render (tests that speak the old 2-arg
+    // shape).
+    if (typeof themeCss === 'string') {
+      window.__setMermaidTheme(themeCss);
     }
     // Blank the sink so a previous render does not bleed into
     // the next screenshot while mermaid is parsing the new

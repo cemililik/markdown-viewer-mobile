@@ -427,7 +427,11 @@ class _FakeChannel implements MermaidJsChannel {
   }
 
   @override
-  Future<void> render({required String id, required String source}) async {
+  Future<void> render({
+    required String id,
+    required String source,
+    String themeCss = '',
+  }) async {
     renderCallCount += 1;
     observedSources.add(source);
     final reply = _replies.firstWhere(
@@ -491,7 +495,11 @@ final class _FailingChannel implements MermaidJsChannel {
   }
 
   @override
-  Future<void> render({required String id, required String source}) async {
+  Future<void> render({
+    required String id,
+    required String source,
+    String themeCss = '',
+  }) async {
     renderCallCount += 1;
   }
 
@@ -544,7 +552,11 @@ final class _DelayedInitializingChannel implements MermaidJsChannel {
   }
 
   @override
-  Future<void> render({required String id, required String source}) async {
+  Future<void> render({
+    required String id,
+    required String source,
+    String themeCss = '',
+  }) async {
     renderCallCount += 1;
     final reply = _replies.firstWhere(
       (r) => source.contains(r.match),

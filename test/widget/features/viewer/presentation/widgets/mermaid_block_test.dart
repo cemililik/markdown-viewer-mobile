@@ -331,6 +331,7 @@ class _CannedMermaidRenderer implements MermaidRenderer {
   Future<MermaidRenderResult> render(
     String source, {
     String initDirective = '',
+    String themeCss = '',
   }) async {
     observedDirectives.add(initDirective);
     observedSources.add(source);
@@ -360,6 +361,7 @@ class _PendingMermaidRenderer implements MermaidRenderer {
   Future<MermaidRenderResult> render(
     String source, {
     String initDirective = '',
+    String themeCss = '',
   }) {
     final completer = Completer<MermaidRenderResult>();
     _pending.add(completer);
@@ -387,6 +389,7 @@ class _CodeAwareMermaidRenderer implements MermaidRenderer {
   Future<MermaidRenderResult> render(
     String source, {
     String initDirective = '',
+    String themeCss = '',
   }) async {
     observedSources.add(source);
     final scripted = _scripted[source];

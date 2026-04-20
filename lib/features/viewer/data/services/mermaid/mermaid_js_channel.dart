@@ -18,11 +18,22 @@ abstract interface class MermaidJsChannel {
     required void Function(Map<String, Object?> message) onResult,
   });
 
-  /// Invokes `window.renderMermaid(id, source)` inside the loaded
-  /// page. The result will arrive asynchronously via the
+  /// Invokes `window.renderMermaid(id, source, themeCss)` inside the
+  /// loaded page. The result will arrive asynchronously via the
   /// `onResult` callback registered in [initialize], tagged with
   /// the same [id] that was passed in.
-  Future<void> render({required String id, required String source});
+  ///
+  /// [themeCss] is a stylesheet string the channel forwards to the
+  /// sandbox's per-render theme `<style>` node before mermaid
+  /// renders. Used to override selectors that mermaid's
+  /// `themeVariables` path misses (most notably ER `.attribute-*`
+  /// row text and `foreignObject` backplates on dark themes).
+  /// Empty / null leaves the current stylesheet unchanged.
+  Future<void> render({
+    required String id,
+    required String source,
+    String themeCss = '',
+  });
 
   /// Releases the underlying WebView. Safe to call multiple times.
   Future<void> dispose();

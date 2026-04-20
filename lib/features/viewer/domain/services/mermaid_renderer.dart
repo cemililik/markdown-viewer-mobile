@@ -55,9 +55,20 @@ abstract interface class MermaidRenderer {
   /// An empty [initDirective] means "do not prepend anything" —
   /// used when the user's source already carries its own init
   /// directive that must be respected.
+  ///
+  /// [themeCss] is an extra stylesheet the renderer installs in
+  /// the sandbox document head before each paint so CSS selectors
+  /// mermaid's `themeVariables` path does not cover (ER
+  /// `.attribute-*` row text / `foreignObject` backplates /
+  /// gitgraph branch lines on dark themes) are hit reliably.
+  /// The string is part of the cache key so light and dark
+  /// theme variants of the same source produce distinct cache
+  /// slots and do not stomp on each other. An empty value leaves
+  /// any previously-installed stylesheet in place.
   Future<MermaidRenderResult> render(
     String source, {
     String initDirective = '',
+    String themeCss = '',
   });
 
   /// Releases any resources held by the renderer. Called by the
