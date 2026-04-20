@@ -32,11 +32,17 @@ class SyncedRepos extends Table {
   /// One of `'ok'`, `'partial'`, `'failed'`.
   TextColumn get status => text().withDefault(const Constant('ok'))();
 
-  /// GitHub Trees API `ETag` of the most recent 200 response. Sent
-  /// back on the next re-sync as `If-None-Match` so a 304 short-
-  /// circuits the entire tree walk when the repo has not changed.
-  /// Nullable for backfilled rows that have not been re-synced
-  /// since the v1 → v2 migration.
+  /// Storage slot for the GitHub Trees API `ETag` of the most recent
+  /// 200 response. Populated by `SyncedReposStore.writeEtag` and
+  /// readable via `readEtag`; the values will feed a future
+  /// `If-None-Match` conditional-request short-circuit on the
+  /// Trees call so an unchanged repo can skip the entire tree walk.
+  ///
+  /// The conditional-request activation on the GitHub-sync client is
+  /// NOT wired yet — the column and plumbing exist so the v1 → v2
+  /// migration lands once, and the activation flips over in a later
+  /// release without a second schema bump. Nullable because
+  /// backfilled rows have no ETag until the next successful sync.
   TextColumn get etag => text().nullable()();
 }
 
@@ -138,6 +144,12 @@ class AppDatabase extends _$AppDatabase {
       (update(syncedRepos)
         ..where((t) => t.id.equals(entry.id.value))).write(entry);
 
+  /// Writes the `etag` column on the `synced_repos` row identified
+  /// by [id], leaving every other column untouched. Passing `null`
+  /// for [etag] clears the stored value (the column is nullable,
+  /// and a cleared ETag is the correct state after a forced re-sync
+  /// that should not short-circuit via `If-None-Match`). A missing
+  /// [id] is a silent no-op — the `WHERE` clause matches zero rows.
   Future<void> updateEtag(int id, String? etag) => (update(syncedRepos)..where(
     (t) => t.id.equals(id),
   )).write(SyncedReposCompanion(etag: Value(etag)));

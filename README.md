@@ -7,10 +7,13 @@ code, tables, footnotes, and admonitions.
 
 ## Status
 
-**v1.1.0 — released 2026-04-19.** Phases 0–5 complete plus three
-post-v1 focus areas (library content search, pull-to-refresh on every
-source, Mermaid fullscreen viewer). Available on TestFlight and the
-Play Console production track.
+**v1.2.0 — prepared 2026-04-20.** Phases 0–7 complete. Planned as the
+final active-development iteration for the app: v1.2 consolidates the
+findings from three parallel 2026-04-19 reviews (code / security /
+performance — 134 findings total), closes every P1 / High and most
+P2 / Medium items, and ships the mermaid dark-mode rendering fixes
+surfaced during on-device verification. Available on TestFlight and
+the Play Console production track.
 
 v1.0 shipped after a full-application code review (128 findings across 8
 streams — all P0/P1 findings closed, architecture layer refactored), a
@@ -38,7 +41,7 @@ the full delivery history and post-v1 candidates.
 - In-document search with inline highlighting (browser find-in-page style)
 - Reading comfort toolbar — font scale, reading width, line height
 - Immersive scroll with auto-hide AppBar and FAB
-- Light, dark, and sepia themes; AMOLED true-black planned for v1.2
+- Light, dark, and sepia themes
 - Keep-screen-on toggle
 - Text selection, copy, and share
 - In-document anchor links
@@ -75,7 +78,10 @@ the full delivery history and post-v1 candidates.
 - **Offline-first** — no network required after the initial sync; the network
   is only touched on explicit user action against an allow-listed host
 - **Privacy-respecting** — no accounts, no telemetry, no background traffic;
-  PATs are encrypted in the OS keychain
+  PATs are encrypted in the OS keychain, scoped to
+  `first_unlock_this_device` on iOS, and protected against screen
+  capture / mirroring while the PAT field is on screen (Android
+  `FLAG_SECURE`, iOS `UIScreen.isCaptured` collapse)
 - **Production-grade pipeline** — tag-triggered CI/CD, signed builds,
   R8 obfuscation, symbolication, `leak_tracker` in tests
 
