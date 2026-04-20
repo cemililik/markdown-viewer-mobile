@@ -1,8 +1,9 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
+  # CI fires ONLY on pull requests targeting `main`. Direct pushes to
+  # `main` are blocked by branch protection, and a post-merge run on
+  # `main` would just duplicate the checks the PR gate already ran.
   pull_request:
     branches: [main]
 

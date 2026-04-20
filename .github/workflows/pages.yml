@@ -19,6 +19,17 @@ permissions:
 
 jobs:
   deploy:
+    # Manual `workflow_dispatch` runs are owner-only. The `push:
+    # branches: [main]` trigger is left unrestricted — it is already
+    # gated by branch protection (direct pushes to `main` are
+    # blocked; merges require owner approval), and narrowing the
+    # actor further here would block legitimate deploys from a
+    # bot / GitHub App the owner might wire up later to auto-merge
+    # documentation PRs. The actor check only fires on the manual
+    # dispatch path, which is the surface where a future write-
+    # access collaborator could otherwise trigger an out-of-band
+    # deploy.
+    if: github.event_name != 'workflow_dispatch' || github.actor == github.repository_owner
     runs-on: ubuntu-latest
     environment:
       name: github-pages
