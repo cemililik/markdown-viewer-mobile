@@ -317,11 +317,17 @@ class SyncedRepoRow extends DataClass implements Insertable<SyncedRepoRow> {
   /// One of `'ok'`, `'partial'`, `'failed'`.
   final String status;
 
-  /// GitHub Trees API `ETag` of the most recent 200 response. Sent
-  /// back on the next re-sync as `If-None-Match` so a 304 short-
-  /// circuits the entire tree walk when the repo has not changed.
-  /// Nullable for backfilled rows that have not been re-synced
-  /// since the v1 → v2 migration.
+  /// Storage slot for the GitHub Trees API `ETag` of the most recent
+  /// 200 response. Populated by `SyncedReposStore.writeEtag` and
+  /// readable via `readEtag`; the values will feed a future
+  /// `If-None-Match` conditional-request short-circuit on the
+  /// Trees call so an unchanged repo can skip the entire tree walk.
+  ///
+  /// The conditional-request activation on the GitHub-sync client is
+  /// NOT wired yet — the column and plumbing exist so the v1 → v2
+  /// migration lands once, and the activation flips over in a later
+  /// release without a second schema bump. Nullable because
+  /// backfilled rows have no ETag until the next successful sync.
   final String? etag;
   const SyncedRepoRow({
     required this.id,
