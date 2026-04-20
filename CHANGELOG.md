@@ -9,6 +9,218 @@ kept out of this file — they belong in commit history instead.
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-04-20
+
+Third minor release. A hardening pass that closes every P1 / High
+and most P2 / Medium findings from three parallel 2026-04-19
+reviews (code / security / performance — 134 findings total),
+plus the dark-mode rendering fixes surfaced during on-device
+verification. No new user-facing surfaces — the existing ones
+read, render, and defend themselves better.
+
+### Added
+- **Screen-capture guard on the GitHub PAT entry.** Android flips
+  `FLAG_SECURE` on the host window while the PAT section is
+  expanded, so the token field is blacked out in screenshots,
+  screen recordings, and mirrored casting. iOS observes
+  `UIScreen.isCaptured` and collapses the PAT section behind a
+  warning banner when a live capture starts, because UIKit has no
+  equivalent of `FLAG_SECURE`. The guard releases automatically
+  when the section is collapsed or capture ends.
+
+### Changed
+- **Mermaid diagrams now fully track the Material 3 palette in
+  dark mode.** ER attribute rows (`rowOdd` / `rowEven`), entity
+  title text, attribute-name / -type / -keys / -comment labels,
+  and the ER relationship line render against the active surface
+  tones instead of a hardcoded white backplate. Gitgraph commit
+  dots, arrows, and branch-label boxes cycle through saturated
+  `primary` / `secondary` / `tertiary` / `error` tones so every
+  branch stays visually distinct on both themes; the branch line
+  itself uses `onSurface` for high contrast on dark surfaces.
+  Flowchart / class / state diagrams with user-authored
+  `classDef color:#…` blocks keep their explicit colours — the
+  theme overlay is scoped narrowly to ER and gitgraph selectors.
+- **Content-search results header relabelled** from "In document
+  contents" to "Inside documents" so the tab badge matches the
+  rest of the library copy's conversational tone. Turkish copy
+  (`Belge içeriklerinde`) stays unchanged.
+- **GitHub-sync 5xx errors now retry before surfacing.** Up to
+  three attempts with exponential backoff (2 s → 4 s → 8 s) on
+  `HTTP 5xx` / `connectionError`; the user only sees
+  `TransientFailure` if every retry fails. 4xx errors are not
+  retried — they map straight to the existing error strings.
+- **Pull-to-refresh works from every library-body state,** not
+  just the populated list. The loading spinner, "no documents
+  yet" hint, and error banner are now all inside a scrollable
+  so the gesture is always armed.
+- **Onboarding "Reduce Motion" coverage extended** to the
+  Next-button advance (page transitions snap instead of slide)
+  and the per-page entrance tween (title + body appear instantly
+  instead of fading in) when the platform flag is on. Previously
+  only the pulse + hero animations were honoured.
+- **Turkish onboarding copy clarified** that local folders stay
+  on-device and GitHub sync runs only with explicit user
+  consent — the previous single-line wording implied the whole
+  app was offline-only.
+- **Drift database moved from the iOS `Documents/` directory to
+  `ApplicationSupport/`** so iCloud Drive / Finder / iTunes
+  backups no longer carry a plaintext SQLite catalogue of the
+  user's synced repos off-device. A one-time migration on first
+  open post-upgrade copies the existing DB plus WAL / SHM /
+  journal sidecars across; no user action required.
+
+### Fixed
+- **Mermaid fullscreen detour no longer flips the whole app into
+  `edgeToEdge` permanently.** The previous `restore` path hard-
+  coded the target; it now captures the pre-detour mode in
+  `initState` and restores that exact value on dispose.
+- **Diagram-fullscreen close button stays reachable** after a
+  tap on the diagram body — the hide-on-tap behaviour was
+  dropped, chrome stays on.
+- **Content-search results no longer race when the query is
+  cleared.** Typing fast, then hitting Clear, used to let the
+  last in-flight result overwrite the cleared state; every
+  dispatch now carries a sequence token that the commit step
+  compares against the latest.
+- **Turkish case-folded content-search snippets highlight the
+  right offsets.** The Unicode case-folding of `İ.toLowerCase()`
+  expands to two code units, so a query that matched on
+  `body.toLowerCase()` used to point into the original body at
+  a shifted index, landing the highlight one character off. The
+  searcher now scans the original body character-by-character
+  against the query's lower form so offsets stay aligned.
+- **Onboarding "Skip" now hides on the last page of the new
+  three-page flow** — the condense from five to three pages left
+  it visible on the final page until this release.
+- **Recents tiles under a removed synced repository are pruned**
+  immediately instead of 404-ing on tap. Removing the last
+  synced repo also wipes the stored PAT now (ADR-0012 sign-out
+  contract was previously only honoured by the manual "clear
+  token" affordance).
+- **Mermaid inline-math fallback no longer splices a `<p>` block
+  into an inline context.** An oversized inline expression
+  (`$…$` past 8 000 code units) emits a plain `md.Text` node
+  instead, so the document tree stays structurally valid.
+- **Inline math / display math hard cap against TeX bombs.** Any
+  body past 8 000 code units surfaces as literal text instead of
+  reaching `flutter_math_fork`, which could freeze the UI
+  isolate on pathological `\sqrt{\sqrt{…}}` chains or multi-KB
+  macro expansions.
+- **Folder-cache sweep never evicts the bytes `materialize` is
+  about to return.** An mtime tie on a coarse filesystem clock
+  used to let the just-written file sort first in the
+  oldest-first eviction loop.
+- **Mermaid renderer cache now honours the active theme.** The
+  cache key factors in the theme CSS overlay, so light and dark
+  variants of the same diagram live in separate slots instead
+  of stomping each other.
+- **Content-search walker honours the file-count cap mid-walk.**
+  The walker's `onFile` callback is now awaited and can short-
+  circuit the recursive enumeration once `corpus.length`
+  reaches `_maxFiles` (2 000) instead of walking the whole
+  tree and discarding the excess.
+- **Settings font-scale slider and onboarding page-indicator
+  have screen-reader labels.** The slider announces the current
+  percentage ("100 %"); the page indicator announces "Page N of
+  M" instead of just a decorative-dot role.
+
+### Security
+- **Android `allowBackup=false` + `data_extraction_rules.xml`.**
+  ADB backup (`bmgr`), transfer-to-new-device, and full D2D
+  migration are no longer allowed to copy the app's private
+  storage — the Drift DB, SharedPreferences, and the PAT in
+  Keystore all stay on the original device.
+- **Android `network_security_config.xml`.** Cleartext traffic
+  is globally denied; only `api.github.com`,
+  `raw.githubusercontent.com`, and `*.ingest.sentry.io` are
+  reachable, and only over TLS. A malicious document that
+  somehow slipped past the URI-scheme allow-list cannot coerce
+  the app into HTTP traffic to an attacker-controlled host.
+- **iOS Keychain PAT scoped to
+  `KeychainAccessibility.first_unlock_this_device`** so an
+  attacker-extracted encrypted backup can no longer unlock the
+  token on a different device.
+- **iOS Keychain access group pinned explicitly to
+  `$(AppIdentifierPrefix)$(CFBundleIdentifier)`** in
+  `Runner.entitlements`. A future share / notification-center
+  extension now has to opt in to the group explicitly instead
+  of silently inheriting the viewer's PAT.
+- **GitHub-sync redirects no longer carry the Authorization
+  header off the allow-list.** `followRedirects: false` is now
+  set on the shared Dio client; redirects are re-issued through
+  the host-allow-list interceptor with the header stripped
+  before the target host is contacted.
+- **Sentry payload PII redaction.**
+  `options.beforeBreadcrumb` blanks the URL path on every
+  `http.*` breadcrumb (keeps method + status_code).
+  `options.beforeSend` strips request URL path / query / fragment
+  from event payloads before they leave the device, covering the
+  `sentry_dio.DioEventProcessor` enrichment path that
+  `sendDefaultPii = false` does not. `dio.addSentry` is now
+  invoked with `captureFailedRequests: false` as belt-and-
+  suspenders.
+- **Sentry DSN host validated at init time.** Non-ingest hosts
+  (including clever lookalikes like
+  `attacker-ingest.sentry.io`) are rejected; regional DSNs
+  (`o123.ingest.us.sentry.io` / `o123.ingest.eu.sentry.io`) are
+  allowed.
+- **Mermaid sandbox WebView CSP tightened.** `img-src 'none';
+  font-src 'none'; base-uri 'none'; form-action 'none'` added
+  to the `<meta http-equiv="Content-Security-Policy">` tag; the
+  `'self'` source was dropped from `script-src`. Combined with
+  the existing `blockNetworkLoads: true` + `default-src 'none'`,
+  a malicious `<script>` in user-pasted mermaid source has no
+  way to phone home, pull an external font, or repoint the
+  document base.
+- **Mermaid `securityLevel` forced to `antiscript`** via a
+  trailing override directive that mermaid's last-write-wins
+  merge honours — a user-authored `%%{init: securityLevel:
+  loose}%%` block can no longer downgrade the sandbox.
+- **`receive_sharing_intent` dependency removed.** The plugin
+  had zero Dart call sites — the share flow goes through
+  `FileOpenChannel` directly — and it bundled Android and iOS
+  native code that expanded the attack surface for no runtime
+  benefit.
+- **`tool/fetch_mermaid.sh` drops the `wget` fallback.** Mermaid
+  asset download is now `curl --fail` only; the tool never
+  silently proceeds past a 404 / 5xx.
+- **Android proguard rules trimmed.** The blanket
+  `-keep class io.flutter.**` and the legacy Play-Core keep
+  were removed — R8 can now dead-code-eliminate the unused
+  Flutter internals and the in-app-update stub that were
+  previously shipped verbatim in release builds.
+- **Android file-share cache sanitises control characters
+  (0x00-0x1F) from incoming filenames** before landing them in
+  the cache directory. iOS DEBUG logging shrinks to the
+  basename only — the full file path no longer hits the console.
+- **`FILE_TOO_LARGE` error now surfaces as a localised snackbar**
+  on both platforms. Previously the Android channel rejected
+  silently; iOS surfaced a developer-facing error string.
+
+### Internal
+- **Drift schema v2 migration.** `synced_repos.etag TEXT`
+  column added (populated by the new If-None-Match short-
+  circuit); three secondary indices (`idx_synced_files_repo`,
+  `idx_synced_repos_natural_key` UNIQUE, `idx_synced_repos_last_synced`)
+  added so `knownShas` / `getAllRepos` / `getRepoByNaturalKey`
+  hit indexed SEARCH paths instead of SCAN. Migration handles
+  deduplication of any v1 duplicate natural-key rows before
+  creating the UNIQUE index so the ALTER cannot fail mid-flight.
+- **`app_database` moved to `getApplicationSupportDirectory`**
+  on both platforms with a one-time migration from the legacy
+  `Documents/` location.
+- **Library folder paths stored in portable `sandbox:docs:…`
+  form** (same treatment as recents + synced repos) so a
+  container-UUID change on iOS dev reinstall / restore-from-
+  backup does not strand bookmarked folders.
+- **Mermaid theme overlay injected via runtime JS** (stable
+  `<style id="__mermaid_theme__">` node) instead of through the
+  init pragma — mermaid v11 silently drops `themeCSS` from
+  `%%{init}%%` payloads.
+- **Removed the pointer leak on the unsafe-scheme link log** so
+  the log line carries only `scheme=…`, not the full href.
+
 ## [1.1.0] — 2026-04-19
 
 First minor release after v1.0. Closes three long-standing roadmap
@@ -365,7 +577,8 @@ tracked in `docs/roadmap.md`.
   qualifier because that form evaluates inconsistently across archive
   phases.
 
-[Unreleased]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.0...v1.0.1
