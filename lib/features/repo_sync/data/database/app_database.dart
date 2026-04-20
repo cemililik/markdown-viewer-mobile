@@ -78,27 +78,29 @@ class AppDatabase extends _$AppDatabase {
     onUpgrade: (m, from, to) async {
       if (from < 2) {
         await m.addColumn(syncedRepos, syncedRepos.etag);
-        await m.createIndex(
-          Index(
-            'idx_synced_repos_natural_key',
-            'CREATE UNIQUE INDEX IF NOT EXISTS idx_synced_repos_natural_key '
-                'ON synced_repos (provider, owner, repo, ref, sub_path);',
-          ),
+        // A v1 DB enforced the natural key in application code
+        // (`SyncedReposStoreImpl.upsert` checks via
+        // `getRepoByNaturalKey` before insert), not at the SQL layer,
+        // so any bug or race in that path could have admitted
+        // duplicate (provider, owner, repo, ref, sub_path) rows that
+        // would now trip the UNIQUE constraint on index creation.
+        // Collapse duplicates first — keep the lowest-id row per
+        // natural key so the surviving row is the one that the
+        // earliest upsert seeded (its local mirror is the one still
+        // on disk).
+        await customStatement(
+          'DELETE FROM synced_repos WHERE id NOT IN ('
+          'SELECT MIN(id) FROM synced_repos '
+          'GROUP BY provider, owner, repo, ref, sub_path)',
         );
-        await m.createIndex(
-          Index(
-            'idx_synced_repos_last_synced',
-            'CREATE INDEX IF NOT EXISTS idx_synced_repos_last_synced '
-                'ON synced_repos (last_synced_at);',
-          ),
-        );
-        await m.createIndex(
-          Index(
-            'idx_synced_files_repo',
-            'CREATE INDEX IF NOT EXISTS idx_synced_files_repo '
-                'ON synced_files (repo_id);',
-          ),
-        );
+        // Use the generated `Index` properties rather than hand-rolled
+        // CREATE statements so the migration stays in lock-step with
+        // the `@TableIndex` annotations on the table definition — a
+        // future column rename flows through `build_runner` into the
+        // migration without a separate edit.
+        await m.createIndex(idxSyncedReposNaturalKey);
+        await m.createIndex(idxSyncedReposLastSynced);
+        await m.createIndex(idxSyncedFilesRepo);
       }
     },
   );
@@ -135,6 +137,10 @@ class AppDatabase extends _$AppDatabase {
   Future<void> updateRepo(SyncedReposCompanion entry) =>
       (update(syncedRepos)
         ..where((t) => t.id.equals(entry.id.value))).write(entry);
+
+  Future<void> updateEtag(int id, String? etag) => (update(syncedRepos)..where(
+    (t) => t.id.equals(id),
+  )).write(SyncedReposCompanion(etag: Value(etag)));
 
   Future<void> deleteRepo(int id) =>
       (delete(syncedRepos)..where((t) => t.id.equals(id))).go();

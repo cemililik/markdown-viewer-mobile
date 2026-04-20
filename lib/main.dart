@@ -40,8 +40,11 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 Future<void> main() async {
-  // Required so we can load asset bundles, hit SharedPreferences,
-  // and run the mermaid pre-warm before the first frame.
+  // Required so we can load asset bundles, hit SharedPreferences, and
+  // talk to the platform channels used by the sandbox-path helpers.
+  // The mermaid WebView prewarm is NOT run here — it is scheduled in
+  // a `WidgetsBinding.addPostFrameCallback` below so the library
+  // screen paints before the headless WebView boots.
   WidgetsFlutterBinding.ensureInitialized();
 
   // Baseline SystemUiMode — set explicitly so every screen that

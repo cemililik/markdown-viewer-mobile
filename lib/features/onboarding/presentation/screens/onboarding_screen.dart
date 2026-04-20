@@ -119,19 +119,33 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
       _finish();
       return;
     }
-    _pageController.nextPage(
-      duration: const Duration(milliseconds: 360),
-      curve: Curves.easeOutCubic,
-    );
+    // Honour the platform "Reduce Motion" / "Remove Animations"
+    // preference — `PageController.nextPage` always animates with
+    // the given duration, so an explicit `jumpToPage` is the only
+    // way to collapse the slide transition to zero time.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _pageController.jumpToPage(_currentIndex + 1);
+    } else {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 360),
+        curve: Curves.easeOutCubic,
+      );
+    }
   }
 
   void _onPageChanged(int index) {
     setState(() => _currentIndex = index);
     // Replay the entrance animation so the new page's copy fades /
-    // slides in rather than snapping to place.
-    _entranceController
-      ..reset()
-      ..forward();
+    // slides in rather than snapping to place — but snap straight
+    // to the end under Reduce Motion so the entrance tween does not
+    // fire.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _entranceController.value = 1;
+    } else {
+      _entranceController
+        ..reset()
+        ..forward();
+    }
     HapticFeedback.selectionClick().ignore();
   }
 

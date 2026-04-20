@@ -93,7 +93,7 @@ class DisplayMathBlockSyntax extends md.BlockSyntax {
         return null;
       }
       parser.advance();
-      if (body.length > _maxExpressionBytes) {
+      if (body.length > _maxExpressionChars) {
         // Oversized body — surface the raw text as a literal
         // paragraph rather than handing `flutter_math_fork` a
         // TeX bomb. Reference: security-review SR-20260419-015.
@@ -169,7 +169,7 @@ class DisplayMathBlockSyntax extends md.BlockSyntax {
       // dollar signs the user typed and must survive as text).
       return null;
     }
-    if (body.length > _maxExpressionBytes) {
+    if (body.length > _maxExpressionChars) {
       // Oversized body — surface the raw text as a literal
       // paragraph rather than handing `flutter_math_fork` a
       // TeX bomb. Reference: security-review SR-20260419-015.
@@ -199,12 +199,20 @@ class DisplayMathBlockSyntax extends md.BlockSyntax {
 ///   chance to see anything. Mid-paragraph `$$ … $$` will therefore
 ///   not match this syntax either — it stays as literal text, which
 ///   is the right behaviour because display math has no inline form.
-/// Hard cap on the size of a single math body (inline or display).
-/// Above this threshold the parser emits the raw text as a plain
-/// paragraph instead of handing it to `flutter_math_fork`, which
-/// freezes the UI isolate on pathological TeX.
+/// Hard cap on the size of a single math body, measured in Dart
+/// String code units (UTF-16 half-words — what [String.length] and
+/// every indexing call we do against the body return). Above this
+/// threshold the parser emits the raw text as literal content
+/// instead of handing it to `flutter_math_fork`, which freezes the
+/// UI isolate on pathological TeX.
+///
+/// Named after "chars" rather than "bytes" because a UTF-8 byte
+/// count would disagree on any non-ASCII code point (Greek letters,
+/// subscript digits, maths operators) — the cap is a parser-cost
+/// ceiling, not a network or disk budget, so the code-unit count is
+/// the right unit for future tuning.
 /// Reference: security-review SR-20260419-015.
-const int _maxExpressionBytes = 8 * 1024;
+const int _maxExpressionChars = 8 * 1024;
 
 class InlineMathSyntax extends md.InlineSyntax {
   InlineMathSyntax() : super(r'\$([^$\n]+?)\$(?!\d)');
@@ -215,16 +223,16 @@ class InlineMathSyntax extends md.InlineSyntax {
     if (expression.trim().isEmpty) {
       return false;
     }
-    if (expression.length > _maxExpressionBytes) {
-      // An 8 KB inline expression is almost certainly an attack
+    if (expression.length > _maxExpressionChars) {
+      // An 8 K-char inline expression is almost certainly an attack
       // against `flutter_math_fork`'s TeX parser — a
       // `\sqrt{\sqrt{…}}` chain or a multi-KB macro expansion
       // freezes the UI thread long enough to lock the viewer. Emit
-      // the raw text so the user can still read the source instead
-      // of crashing the frame.
+      // the raw text as a plain inline `md.Text` node — `Element.
+      // text('p', …)` would splice a block-level `<p>` into an
+      // inline context and break the surrounding document tree.
       // Reference: security-review SR-20260419-015.
-      final fallback = md.Element.text('p', expression);
-      parser.addNode(fallback);
+      parser.addNode(md.Text(expression));
       return true;
     }
     final element = md.Element.text(mathInlineTag, expression);

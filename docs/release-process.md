@@ -158,10 +158,14 @@ users on both stores.
 
 The workflow assumes that a collection of signing material and store
 credentials has already been provisioned out-of-band and is available
-as GitHub repository secrets. Populating these is a one-off chore
-the project maintainer does before the first release; day-to-day
-release operation (tagging, pushing, watching the pipeline go green)
-does not require touching them again.
+as **Environment secrets** on the protected `release` GitHub
+Environment (see [Protected `release` Environment](#protected-release-environment)
+below). Populating these is a one-off chore the project maintainer
+does before the first release; day-to-day release operation
+(tagging, pushing, watching the pipeline go green) does not require
+touching them again. Scoping these signing/upload secrets to the
+protected Environment keeps them invisible to any workflow running
+outside the `release` Environment gate.
 
 ### Secret reference
 
@@ -190,9 +194,11 @@ value, and where the workflow injects it.
 
 All ten are required; the workflow fails fast on the first missing
 secret. Rotating any of them is a matter of updating the secret value
-in `Settings → Secrets and variables → Actions` and re-running the
-workflow — no config file in the repo references credential material
-directly.
+inside the `release` Environment's **Environment secrets** tab
+(`Settings → Environments → release → Environment secrets`) and
+re-running the workflow — no config file in the repo references
+credential material directly, and scoping them to the Environment
+keeps them invisible to workflows running outside the protected gate.
 
 ### First-time provisioning
 
@@ -459,7 +465,7 @@ Expected cadences:
 - **Immediately on contributor departure** — every secret the
   departing maintainer ever had access to. Revoke the upstream
   credential (GCP IAM, App Store Connect key list, Sentry member
-  list) before re-minting the paste.
+  list) before re-minting the secret.
 - **Immediately on disclosure** — treat a leak in a commit / log /
   screenshot as "secret burned"; rotate that row and audit
   downstream access.

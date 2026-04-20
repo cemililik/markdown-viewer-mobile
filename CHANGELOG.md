@@ -23,8 +23,8 @@ out of patch-release mode.
   follows the active tab: the Recents tab scans across every
   recent document, folder source and synced repository; a folder
   tab scans only that folder; a synced-repo tab scans only that
-  repository's local mirror. Hits surface under a dedicated "In
-  document contents" header with the matched fragment highlighted
+  repository's local mirror. Hits surface under a dedicated "Inside
+  documents" header with the matched fragment highlighted
   in the primary-container colour and a multi-match counter. Tapping
   a result opens the viewer at the matching document — folder-source
   hits route through the platform materializer so iOS

@@ -113,7 +113,7 @@ class FolderFileMaterializerImpl implements FolderFileMaterializer {
     // sweep; errors are swallowed because cache-dir hygiene must
     // never block the tap.
     // Reference: security-review SR-20260419-036.
-    unawaited(_pruneFolderCache(folderCacheDir));
+    unawaited(_pruneFolderCache(folderCacheDir, protectedPath: cachePath));
 
     return cachePath;
   }
@@ -124,13 +124,25 @@ class FolderFileMaterializerImpl implements FolderFileMaterializer {
   /// and leaves active documents intact even under heavy rotation.
   static const int _maxCacheBytes = 50 * 1024 * 1024;
 
-  Future<void> _pruneFolderCache(Directory folderCacheDir) async {
+  Future<void> _pruneFolderCache(
+    Directory folderCacheDir, {
+    String? protectedPath,
+  }) async {
     try {
       final entries = <({File file, int size, DateTime mtime})>[];
       var total = 0;
       await for (final entity in folderCacheDir.list(followLinks: false)) {
         if (entity is! File) continue;
-        final stat = await entity.stat();
+        // A single flaky stat (permissions changed mid-walk, antivirus
+        // scanner holding the file open on Android, SAF cache hiccup)
+        // must not abort the sweep — the remaining entries still need
+        // eviction considered against the budget.
+        final FileStat stat;
+        try {
+          stat = await entity.stat();
+        } on FileSystemException {
+          continue;
+        }
         entries.add((file: entity, size: stat.size, mtime: stat.modified));
         total += stat.size;
       }
@@ -138,6 +150,13 @@ class FolderFileMaterializerImpl implements FolderFileMaterializer {
       entries.sort((a, b) => a.mtime.compareTo(b.mtime));
       for (final entry in entries) {
         if (total <= _maxCacheBytes) break;
+        // Never evict the file the concurrent `materialize` call is
+        // about to hand back to the viewer — mtime-tie on a coarse
+        // filesystem clock could otherwise land it first in the sort
+        // and delete bytes that have not been read yet.
+        if (protectedPath != null && entry.file.path == protectedPath) {
+          continue;
+        }
         try {
           await entry.file.delete();
           total -= entry.size;

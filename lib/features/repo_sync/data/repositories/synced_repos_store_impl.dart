@@ -148,11 +148,8 @@ class SyncedReposStoreImpl implements SyncedReposStore {
   }
 
   @override
-  Future<void> writeEtag(int repoId, String? etag) async {
-    await (_db.update(_db.syncedRepos)..where(
-      (t) => t.id.equals(repoId),
-    )).write(SyncedReposCompanion(etag: Value(etag)));
-  }
+  Future<void> writeEtag(int repoId, String? etag) =>
+      _db.updateEtag(repoId, etag);
 
   @override
   Future<void> deleteFilesNotIn(int repoId, Set<String> retainedPaths) {

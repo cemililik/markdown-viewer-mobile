@@ -880,12 +880,14 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
       // author's side, not the user's). The logger entry is enough
       // for field debugging without surfacing developer detail to
       // the reader. Reference: security-review SR-20260419-041.
+      // Log only the scheme — `href` may carry a phone number, email
+      // address, or routable token from a malicious document, and
+      // even the "warning" log level can land in Sentry breadcrumbs
+      // or DEBUG console output. The scheme alone is enough to
+      // confirm the allow-list rejected the link.
       ref
           .read(appLoggerProvider)
-          .w(
-            'Blocked link with unsafe scheme',
-            error: 'scheme=${uri.scheme} href="$href"',
-          );
+          .w('Blocked link with unsafe scheme', error: 'scheme=${uri.scheme}');
       return;
     }
     launchUrl(uri, mode: LaunchMode.externalApplication).ignore();
