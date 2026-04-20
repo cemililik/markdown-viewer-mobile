@@ -234,7 +234,8 @@ void main() {
     });
 
     test(
-      'should pass the source through untouched when initDirective is empty',
+      'should leave the user-authored directive alone and force antiscript '
+      'via a trailing override directive when initDirective is empty',
       () async {
         final channel = _FakeChannel();
         final renderer = MermaidRendererImpl(
@@ -244,7 +245,8 @@ void main() {
         await renderer.prewarm();
 
         const userSource =
-            '%%{init: {"theme":"forest"}}%%\nflowchart LR; A-->B';
+            '%%{init: {"theme":"forest","securityLevel":"loose"}}%%\n'
+            'flowchart LR; A-->B';
         channel.scriptResult(
           'flowchart LR; A-->B',
           png: _tinyPngBase64,
@@ -254,12 +256,37 @@ void main() {
         await renderer.render(userSource);
 
         expect(channel.observedSources, hasLength(1));
+        final observed = channel.observedSources.single;
         expect(
-          channel.observedSources.single,
-          equals(userSource),
+          observed,
+          startsWith(userSource),
           reason:
-              'An empty initDirective means "do not override" — the '
-              'user-authored directive must reach mermaid.js untouched.',
+              'An empty initDirective means do not override the '
+              'user-authored directive — the original source must reach '
+              'mermaid.js intact at the top of the payload.',
+        );
+        // The user directive sets `securityLevel: loose`; the trailing
+        // override must re-pin it to `antiscript` so the last value
+        // mermaid sees wins. The user's own form is double-quoted
+        // JSON (copied verbatim into the payload); the renderer's
+        // override uses single-quoted JS-object syntax.
+        final looseIndex = observed.indexOf('"securityLevel":"loose"');
+        final antiscriptIndex = observed.indexOf(
+          "'securityLevel': 'antiscript'",
+        );
+        expect(
+          looseIndex,
+          greaterThanOrEqualTo(0),
+          reason: 'User-authored loose directive must reach mermaid intact.',
+        );
+        expect(
+          antiscriptIndex,
+          greaterThan(looseIndex),
+          reason:
+              'The `antiscript` override must appear AFTER the user-supplied '
+              "'loose' value so mermaid's last-write-wins merge cannot let "
+              'the loose value reach the renderer. '
+              'Reference: security-review SR-20260419-014.',
         );
       },
     );
@@ -415,7 +442,11 @@ class _FakeChannel implements MermaidJsChannel {
   }
 
   @override
-  Future<void> render({required String id, required String source}) async {
+  Future<void> render({
+    required String id,
+    required String source,
+    String themeCss = '',
+  }) async {
     renderCallCount += 1;
     observedSources.add(source);
     final reply = _replies.firstWhere(
@@ -479,7 +510,11 @@ final class _FailingChannel implements MermaidJsChannel {
   }
 
   @override
-  Future<void> render({required String id, required String source}) async {
+  Future<void> render({
+    required String id,
+    required String source,
+    String themeCss = '',
+  }) async {
     renderCallCount += 1;
   }
 
@@ -532,7 +567,11 @@ final class _DelayedInitializingChannel implements MermaidJsChannel {
   }
 
   @override
-  Future<void> render({required String id, required String source}) async {
+  Future<void> render({
+    required String id,
+    required String source,
+    String themeCss = '',
+  }) async {
     renderCallCount += 1;
     final reply = _replies.firstWhere(
       (r) => source.contains(r.match),

@@ -65,4 +65,17 @@ abstract interface class SyncedReposStore {
   /// [knownShas] map stays valid so a subsequent re-sync can still
   /// detect unchanged files on disk and skip them.
   Future<void> deleteFilesNotIn(int repoId, Set<String> retainedPaths);
+
+  /// Returns the most recent Git Trees API `ETag` captured for
+  /// [repoId], or `null` when the repo has never been synced under
+  /// the etag-aware code path. The sync notifier sends this value
+  /// back as `If-None-Match` so an unchanged tree short-circuits
+  /// on a 304 response instead of re-downloading the full listing.
+  /// Reference: performance-review PR-20260419-016.
+  Future<String?> readEtag(int repoId);
+
+  /// Persists the Git Trees API `ETag` for [repoId]. Passing `null`
+  /// clears a stale value (e.g. after a ref change that invalidated
+  /// the cached tree). No-op when [repoId] does not exist.
+  Future<void> writeEtag(int repoId, String? etag);
 }

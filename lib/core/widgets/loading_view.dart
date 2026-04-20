@@ -13,8 +13,15 @@ class LoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // `liveRegion: true` without a label fires a screen-reader
+    // "region updated" announcement with nothing to read — VoiceOver
+    // announces empty, TalkBack grunts. Only tag the region live
+    // when a label is actually present so callers that want a silent
+    // spinner (a button busy state, etc.) get a silent spinner.
+    // Reference: code-review CR-20260419-031.
+    final hasLabel = label != null;
     return Semantics(
-      liveRegion: true,
+      liveRegion: hasLabel,
       label: label,
       child: Center(
         child: Column(

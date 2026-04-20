@@ -136,7 +136,7 @@
   "@librarySearchNoResults": {
     "description": "Empty state shown below the search field when the current query matches zero recents."
   },
-  "libraryContentSearchHeader": "In document contents",
+  "libraryContentSearchHeader": "Inside documents",
   "@libraryContentSearchHeader": {
     "description": "Section header shown above the content-search hits below the name-match list. Distinguishes 'match inside a file' results from filename matches."
   },

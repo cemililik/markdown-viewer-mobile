@@ -301,6 +301,26 @@ class GitHubSyncProvider implements RepoSyncProvider {
               'Tree response exceeds the $_maxDiscoveryBytes-byte discovery cap',
         );
       }
+      // Isolate.run pays a per-call scheduling overhead that only
+      // wins back its cost on payloads past roughly 200 000 code
+      // units. Small repo Trees responses (the common case: a
+      // docs-only repo with <30 markdown files) were paying the
+      // isolate dispatch for every re-sync. Gate on response length
+      // so tiny payloads decode inline and large ones get the
+      // isolate.
+      //
+      // Comparison is against `body.length` (UTF-16 code units) not
+      // `utf8.encode(body).length` (bytes) — re-encoding just to
+      // measure would defeat the whole "decode inline when small"
+      // optimisation. For GitHub Trees responses the two differ
+      // by < 1 % in practice (field names + SHA hex are ASCII;
+      // only the `path` entries for non-ASCII filenames disagree),
+      // well inside the ± tolerance of this heuristic.
+      // Reference: performance-review PR-20260419-015.
+      const isolateThreshold = 200 * 1024;
+      if (body.length < isolateThreshold) {
+        return json.decode(body) as Map<String, dynamic>;
+      }
       return await Isolate.run(() => json.decode(body) as Map<String, dynamic>);
     } on DioException catch (e) {
       throw _mapDioError(e);

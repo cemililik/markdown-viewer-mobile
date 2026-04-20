@@ -13,6 +13,8 @@ graph LR
     P5 --> V1[v1.0]
     V1 --> P6[Phase 6<br/>Library depth & diagrams]
     P6 --> V11[v1.1]
+    V11 --> P7[Phase 7<br/>Hardening closeout]
+    P7 --> V12[v1.2]
 
     style P0 fill:#2e7d32,color:#fff
     style P1 fill:#2e7d32,color:#fff
@@ -24,6 +26,8 @@ graph LR
     style V1 fill:#2e7d32,color:#fff
     style P6 fill:#2e7d32,color:#fff
     style V11 fill:#2e7d32,color:#fff
+    style P7 fill:#2e7d32,color:#fff
+    style V12 fill:#2e7d32,color:#fff
 ```
 
 ## Phase 0 — Foundation ✅
@@ -147,7 +151,6 @@ the Play Console UI once the internal build is verified, per
 
 ### Remaining (post-v1 polish, not release-blocking)
 
-- [ ] Full a11y audit (TalkBack + VoiceOver end-to-end)
 - [ ] Tests for `repo_sync`, `onboarding`, `observability` (P2-6..8)
 - [ ] CI coverage floor enforcement (P2-9)
 - [ ] Performance regression suite enforcement
@@ -182,6 +185,83 @@ phone.
 - [x] Tag `v1.1.0` published; release pipeline uploaded the signed IPA
   to TestFlight and the signed AAB to the Play Console production
   track (2026-04-19)
+
+## Phase 7 — Hardening closeout (v1.2) ✅
+
+Third minor release, planned as the final active development
+iteration for the app. Three parallel 2026-04-19 reviews (code /
+security / performance — 134 findings total) landed every P1 / High
+and the majority of P2 / Medium items into a single hardening
+batch, plus the mermaid dark-mode rendering fixes surfaced during
+on-device verification.
+
+### Completed
+
+- [x] **Security hardening** — Android `allowBackup=false` +
+  data-extraction rules; Android network-security-config
+  (cleartext denied, domain allow-list pinned); iOS Keychain
+  scoped to `first_unlock_this_device`; iOS entitlements file
+  pinned to `$(CFBundleIdentifier)`; GitHub-sync redirects no
+  longer carry the `Authorization` header off the host allow-
+  list; Sentry payload PII redaction
+  (`beforeBreadcrumb` / `beforeSend`); Sentry DSN host validated
+  against the ingest host allow-list; mermaid sandbox CSP
+  tightened; `receive_sharing_intent` dependency removed (zero
+  call sites, native attack surface).
+- [x] **Screen-capture guard on the GitHub PAT entry**
+  (Android `FLAG_SECURE`, iOS `UIScreen.isCaptured`).
+- [x] **Drift schema v2 migration** — `synced_repos.etag` column,
+  three secondary indices (natural-key UNIQUE, `last_synced_at`,
+  `synced_files.repo_id`); pre-create-index deduplication so
+  any v1 duplicate rows do not fail the ALTER mid-flight.
+- [x] **Database moved to `ApplicationSupport/`** on both
+  platforms with a one-time migration from the legacy
+  `Documents/` location (SR-012).
+- [x] **GitHub-sync 5xx retry with exponential backoff**
+  (M-4 closed).
+- [x] **Mermaid diagrams track Material 3 in dark mode** — ER
+  attribute rows + entity titles, gitgraph commit dots / arrows
+  / branch labels all render against the active surface tones
+  instead of defaulting to hardcoded white / lightgrey. Theme
+  overlay scoped narrowly to ER + gitgraph so user-authored
+  `classDef` blocks in flowcharts / class / state diagrams are
+  preserved.
+- [x] **Pull-to-refresh works from every library-body state**
+  (loading / empty / error / populated).
+- [x] **Onboarding Reduce-Motion coverage extended** to the
+  Next-button advance and the per-page entrance tween.
+- [x] **Content-search races eliminated** (dispatch-sequence
+  token; Turkish case-folded offset bug fixed; walker honours
+  file-count cap mid-walk).
+- [x] **Math body DoS guard** — 8 000 code-unit hard cap on
+  inline + display math bodies; oversized input surfaces as
+  literal text. Inline fallback emits an `md.Text` node so the
+  document tree stays structurally valid.
+- [x] **Folder cache-prune respects the newly-materialised
+  file** and guards each `entity.stat()` with its own try/
+  catch so a single flaky stat does not abort the sweep.
+- [x] **Sentry init failures no longer propagate** into
+  `PlatformDispatcher.onError` during cold start — the
+  `unawaited` init now swallows `SentryFlutter.init` exceptions.
+- [x] **Diagram fullscreen no longer permanently flips the app
+  into `edgeToEdge`** (CR-004 closed).
+- [x] **ARB metadata parity between `app_en` and `app_tr`** —
+  every `@key` block mirrored so `locale_completeness_test`
+  enforces metadata presence, not just key presence.
+- [x] Tag `v1.2.0` published; release pipeline uploaded the signed
+  IPA to TestFlight and the signed AAB to the Play Console
+  production track (2026-04-20).
+
+### Explicitly out of scope (tracked as post-v1 items)
+
+- [ ] `Authorization: Bearer` vs `token` migration (L-4, low-risk,
+  waits on upstream GitHub deprecation).
+- [ ] Numeric performance pass on real devices (Phase 0 budgets
+  confirmed by static review; field measurement is a separate
+  operational exercise).
+- [ ] Macro dirty golden (`test/golden/features/viewer/presentation/goldens/macos/code_blocks.png`)
+  — diff is theme-neutral and flagged as a stale baseline rather
+  than a regression.
 
 ## Post-v1 Candidates
 

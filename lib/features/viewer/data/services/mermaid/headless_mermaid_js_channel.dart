@@ -233,7 +233,11 @@ class HeadlessMermaidJsChannel implements MermaidJsChannel {
   }
 
   @override
-  Future<void> render({required String id, required String source}) async {
+  Future<void> render({
+    required String id,
+    required String source,
+    String themeCss = '',
+  }) async {
     final view = _view;
     if (view == null) {
       throw const MermaidJsChannelException(
@@ -246,12 +250,14 @@ class HeadlessMermaidJsChannel implements MermaidJsChannel {
         'WebView controller is not yet available',
       );
     }
-    // Encode the source as a JSON string literal so embedded quotes,
-    // backslashes, and newlines survive the JS eval boundary safely.
+    // Encode each JS argument as a JSON string literal so embedded
+    // quotes, backslashes, and newlines survive the eval boundary.
     final encodedSource = jsonEncode(source);
     final encodedId = jsonEncode(id);
+    final encodedTheme = jsonEncode(themeCss);
     await controller.evaluateJavascript(
-      source: 'window.renderMermaid($encodedId, $encodedSource);',
+      source:
+          'window.renderMermaid($encodedId, $encodedSource, $encodedTheme);',
     );
   }
 

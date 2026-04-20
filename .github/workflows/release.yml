@@ -316,6 +316,23 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Clean up decoded keystore
+        # The keystore was materialised to `$ANDROID_KEYSTORE_PATH`
+        # (inside `$RUNNER_TEMP`) before the build. The runner is
+        # ephemeral — GitHub recycles it at the end of the job —
+        # but explicitly deleting the file on the happy path means
+        # a future step that reads `$ANDROID_KEYSTORE_PATH` (e.g.
+        # an accidental `cat` inside a diagnostic echo) cannot leak
+        # the decoded keystore bytes through workflow logs.
+        # Runs with `if: always()` so the cleanup also fires when
+        # an earlier step failed. Reference: security-review
+        # SR-20260419-048.
+        if: always()
+        run: |
+          if [ -n "${ANDROID_KEYSTORE_PATH:-}" ] && [ -f "$ANDROID_KEYSTORE_PATH" ]; then
+            rm -f "$ANDROID_KEYSTORE_PATH"
+          fi
+
       - name: Upload obfuscation symbols (Android)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:

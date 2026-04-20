@@ -35,9 +35,8 @@ import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 ///   scale loop (1.0 ↔ 1.04) powered by a `repeat(reverse: true)`
 ///   [AnimationController].
 /// - **Floating decorative icons** orbit the hero at three fixed
-///   anchor points, each reinforcing a concept from the page's copy
-///   (tables / code / math on the rendering page, font / theme /
-///   language on the personalize page, etc).
+///   anchor points, each reinforcing a concept from the current
+///   page's copy (accent palette, sync, etc).
 /// - **Entrance animation** (fade + slide-up) on the title and body
 ///   every time the PageView settles on a new index, so the copy
 ///   "arrives" rather than snapping in.
@@ -120,19 +119,33 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
       _finish();
       return;
     }
-    _pageController.nextPage(
-      duration: const Duration(milliseconds: 360),
-      curve: Curves.easeOutCubic,
-    );
+    // Honour the platform "Reduce Motion" / "Remove Animations"
+    // preference — `PageController.nextPage` always animates with
+    // the given duration, so an explicit `jumpToPage` is the only
+    // way to collapse the slide transition to zero time.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _pageController.jumpToPage(_currentIndex + 1);
+    } else {
+      _pageController.nextPage(
+        duration: const Duration(milliseconds: 360),
+        curve: Curves.easeOutCubic,
+      );
+    }
   }
 
   void _onPageChanged(int index) {
     setState(() => _currentIndex = index);
     // Replay the entrance animation so the new page's copy fades /
-    // slides in rather than snapping to place.
-    _entranceController
-      ..reset()
-      ..forward();
+    // slides in rather than snapping to place — but snap straight
+    // to the end under Reduce Motion so the entrance tween does not
+    // fire.
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _entranceController.value = 1;
+    } else {
+      _entranceController
+        ..reset()
+        ..forward();
+    }
     HapticFeedback.selectionClick().ignore();
   }
 
@@ -472,7 +485,16 @@ String _defaultHandlerTitle(AppLocalizations l10n) =>
 String _defaultHandlerBody(
   AppLocalizations l10n,
 ) => switch (defaultTargetPlatform) {
+  // iOS + macOS share the "default handler is managed by the OS
+  // share-sheet ranking, not by an app API" copy.
   TargetPlatform.iOS || TargetPlatform.macOS => l10n.onboardingDefaultBodyIos,
+  // Android is the only shipping target where the user can
+  // actually flip the default-handler role. The other desktop /
+  // fuchsia cases fall through to the Android copy because the
+  // onboarding screen is never shown on those platforms in
+  // production — this keeps the switch exhaustive and the
+  // copy coherent for anyone running the app in a development
+  // harness. Reference: code-review CR-20260419-045.
   TargetPlatform.android ||
   TargetPlatform.fuchsia ||
   TargetPlatform.linux ||
@@ -500,11 +522,20 @@ class _SkipBar extends StatelessWidget {
     // the Skip button fades out on the last page — otherwise the
     // layout would jump by the button's height just as the user
     // reaches the "Get started" moment.
+    // Reduce-motion collapses the 200 ms fade — matches the rest of
+    // the onboarding screen where every animation already reads
+    // `MediaQuery.disableAnimationsOf`. The Skip button itself still
+    // appears / disappears, just without the crossfade.
+    // Reference: performance-review PR-20260419-001.
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
     return SizedBox(
       height: 56,
       child: AnimatedOpacity(
         opacity: visible ? 1.0 : 0.0,
-        duration: const Duration(milliseconds: 200),
+        duration:
+            disableAnimations
+                ? Duration.zero
+                : const Duration(milliseconds: 200),
         child: IgnorePointer(
           ignoring: !visible,
           child: Align(

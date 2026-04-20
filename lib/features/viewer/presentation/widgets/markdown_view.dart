@@ -45,6 +45,17 @@ import 'package:markdown_widget/markdown_widget.dart';
 ///    map; ours are additive on top of the package's defaults
 ///    (links, emphasis, lists, …) — see the `WidgetVisitor`
 ///    constructor in `markdown_widget`.
+/// Raw HTML in markdown source (e.g. `<script>alert(1)</script>`) is
+/// defused by the renderer stack, not by an explicit sanitiser: the
+/// `markdown_widget` visitor has no HTML node builder, so any HTML
+/// node that `package:markdown` emits with `encodeHtml: false` falls
+/// through as literal text in the resulting `TextSpan`. The
+/// `code_blocks_golden_test` pair + `script_injection_test` widget
+/// pin this invariant. If a future `markdown_widget` upgrade adds an
+/// HTML renderer, the generators list above must be updated to clamp
+/// it — otherwise untrusted markdown regains a script-injection
+/// surface.
+/// Reference: security-review SR-20260419-016.
 final MarkdownGenerator _markdownGenerator = MarkdownGenerator(
   blockSyntaxList: const [DisplayMathBlockSyntax(), md.AlertBlockSyntax()],
   inlineSyntaxList: buildMathInlineSyntaxes(),

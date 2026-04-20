@@ -10,6 +10,12 @@ part 'app_database.g.dart';
 // ── Table definitions ──────────────────────────────────────────────────────
 
 @DataClassName('SyncedRepoRow')
+@TableIndex(
+  name: 'idx_synced_repos_natural_key',
+  columns: {#provider, #owner, #repo, #ref, #subPath},
+  unique: true,
+)
+@TableIndex(name: 'idx_synced_repos_last_synced', columns: {#lastSyncedAt})
 class SyncedRepos extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get provider => text()();
@@ -25,9 +31,23 @@ class SyncedRepos extends Table {
 
   /// One of `'ok'`, `'partial'`, `'failed'`.
   TextColumn get status => text().withDefault(const Constant('ok'))();
+
+  /// Storage slot for the GitHub Trees API `ETag` of the most recent
+  /// 200 response. Populated by `SyncedReposStore.writeEtag` and
+  /// readable via `readEtag`; the values will feed a future
+  /// `If-None-Match` conditional-request short-circuit on the
+  /// Trees call so an unchanged repo can skip the entire tree walk.
+  ///
+  /// The conditional-request activation on the GitHub-sync client is
+  /// NOT wired yet — the column and plumbing exist so the v1 → v2
+  /// migration lands once, and the activation flips over in a later
+  /// release without a second schema bump. Nullable because
+  /// backfilled rows have no ETag until the next successful sync.
+  TextColumn get etag => text().nullable()();
 }
 
 @DataClassName('SyncedFileRow')
+@TableIndex(name: 'idx_synced_files_repo', columns: {#repoId})
 class SyncedFiles extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get repoId =>
@@ -49,8 +69,47 @@ class SyncedFiles extends Table {
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
+  /// v2: added `etag` column on `SyncedRepos` + secondary indices
+  /// (`idx_synced_files_repo`, `idx_synced_repos_natural_key` unique,
+  /// `idx_synced_repos_last_synced`). `knownShas` / `getAllRepos` /
+  /// `getRepoByNaturalKey` hit indexed SEARCH paths instead of SCAN.
+  /// Reference: performance-review PR-20260419-006/007 + If-None-Match
+  /// (PR-20260419-016).
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (m) => m.createAll(),
+    onUpgrade: (m, from, to) async {
+      if (from < 2) {
+        await m.addColumn(syncedRepos, syncedRepos.etag);
+        // A v1 DB enforced the natural key in application code
+        // (`SyncedReposStoreImpl.upsert` checks via
+        // `getRepoByNaturalKey` before insert), not at the SQL layer,
+        // so any bug or race in that path could have admitted
+        // duplicate (provider, owner, repo, ref, sub_path) rows that
+        // would now trip the UNIQUE constraint on index creation.
+        // Collapse duplicates first — keep the lowest-id row per
+        // natural key so the surviving row is the one that the
+        // earliest upsert seeded (its local mirror is the one still
+        // on disk).
+        await customStatement(
+          'DELETE FROM synced_repos WHERE id NOT IN ('
+          'SELECT MIN(id) FROM synced_repos '
+          'GROUP BY provider, owner, repo, ref, sub_path)',
+        );
+        // Use the generated `Index` properties rather than hand-rolled
+        // CREATE statements so the migration stays in lock-step with
+        // the `@TableIndex` annotations on the table definition — a
+        // future column rename flows through `build_runner` into the
+        // migration without a separate edit.
+        await m.createIndex(idxSyncedReposNaturalKey);
+        await m.createIndex(idxSyncedReposLastSynced);
+        await m.createIndex(idxSyncedFilesRepo);
+      }
+    },
+  );
 
   // ── Repo queries ──────────────────────────────────────────────────────
 
@@ -84,6 +143,16 @@ class AppDatabase extends _$AppDatabase {
   Future<void> updateRepo(SyncedReposCompanion entry) =>
       (update(syncedRepos)
         ..where((t) => t.id.equals(entry.id.value))).write(entry);
+
+  /// Writes the `etag` column on the `synced_repos` row identified
+  /// by [id], leaving every other column untouched. Passing `null`
+  /// for [etag] clears the stored value (the column is nullable,
+  /// and a cleared ETag is the correct state after a forced re-sync
+  /// that should not short-circuit via `If-None-Match`). A missing
+  /// [id] is a silent no-op — the `WHERE` clause matches zero rows.
+  Future<void> updateEtag(int id, String? etag) => (update(syncedRepos)..where(
+    (t) => t.id.equals(id),
+  )).write(SyncedReposCompanion(etag: Value(etag)));
 
   Future<void> deleteRepo(int id) =>
       (delete(syncedRepos)..where((t) => t.id.equals(id))).go();

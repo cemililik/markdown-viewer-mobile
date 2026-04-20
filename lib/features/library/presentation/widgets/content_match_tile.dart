@@ -20,7 +20,15 @@ class ContentMatchTile extends StatelessWidget {
     super.key,
   });
 
+  /// The content-search hit rendered by this tile. Pre-computed
+  /// offsets inside [ContentSearchMatch.snippet] drive the in-place
+  /// highlight.
   final ContentSearchMatch match;
+
+  /// Fired when the user taps the tile. The caller owns navigation
+  /// (the folder body materialises through its bookmark; the library
+  /// screen pushes the viewer directly), so this tile stays ignorant
+  /// of which code path activates.
   final VoidCallback onTap;
 
   /// Whether to paint the "Recent / Folder: … / Repo: …" badge under
@@ -135,10 +143,15 @@ class _HighlightedSnippet extends StatelessWidget {
     final highlight = snippet.substring(start, start + length);
     final after = snippet.substring(start + length);
 
-    return RichText(
-      maxLines: 2,
-      overflow: TextOverflow.ellipsis,
-      text: TextSpan(
+    // `Text.rich` respects the ambient `MediaQuery.textScaler`
+    // (user font-size preference, Dynamic Type on iOS, system
+    // font-scale on Android), which the raw `RichText` primitive
+    // does not. A user who bumps the OS text size to 150% would
+    // otherwise see every other label grow while the search
+    // snippet stayed at its design pixel size.
+    // Reference: PR-review NEW-009.
+    return Text.rich(
+      TextSpan(
         style: baseStyle,
         children: [
           TextSpan(text: before),
@@ -153,6 +166,8 @@ class _HighlightedSnippet extends StatelessWidget {
           TextSpan(text: after),
         ],
       ),
+      maxLines: 2,
+      overflow: TextOverflow.ellipsis,
     );
   }
 }

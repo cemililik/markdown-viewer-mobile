@@ -158,10 +158,14 @@ users on both stores.
 
 The workflow assumes that a collection of signing material and store
 credentials has already been provisioned out-of-band and is available
-as GitHub repository secrets. Populating these is a one-off chore
-the project maintainer does before the first release; day-to-day
-release operation (tagging, pushing, watching the pipeline go green)
-does not require touching them again.
+as **Environment secrets** on the protected `release` GitHub
+Environment (see [Protected `release` Environment](#protected-release-environment)
+below). Populating these is a one-off chore the project maintainer
+does before the first release; day-to-day release operation
+(tagging, pushing, watching the pipeline go green) does not require
+touching them again. Scoping these signing/upload secrets to the
+protected Environment keeps them invisible to any workflow running
+outside the `release` Environment gate.
 
 ### Secret reference
 
@@ -190,9 +194,11 @@ value, and where the workflow injects it.
 
 All ten are required; the workflow fails fast on the first missing
 secret. Rotating any of them is a matter of updating the secret value
-in `Settings → Secrets and variables → Actions` and re-running the
-workflow — no config file in the repo references credential material
-directly.
+inside the `release` Environment's **Environment secrets** tab
+(`Settings → Environments → release → Environment secrets`) and
+re-running the workflow — no config file in the repo references
+credential material directly, and scoping them to the Environment
+keeps them invisible to workflows running outside the protected gate.
 
 ### First-time provisioning
 
@@ -401,3 +407,83 @@ re-tag.
 - **No automatic version bumping.** You write the tag by hand, the
   workflow just reads it. If a PR changes user-visible behaviour,
   bumping the semver is part of that PR's responsibility.
+
+---
+
+## Protected `release` Environment
+
+The two signing jobs (`android-release`, `ios-release`) declare
+`environment: release` so the decrypted secrets only materialise
+after an explicit approval. The Environment itself must exist in the
+GitHub repository settings — a new clone / fork has to create it
+once before any signed release can succeed.
+
+Steps (one-time, repository admin):
+
+1. GitHub → **Settings → Environments → New environment** →
+   name `release`.
+2. Enable **Required reviewers** and add the release maintainer(s).
+3. Move every secret consumed by the signing / upload steps (see the
+   inventory below) out of **Repository secrets** and into this
+   Environment's **Environment secrets** tab. Secrets scoped to the
+   Environment are invisible to workflows running outside it.
+
+Without these three steps the workflow still runs but the signing
+jobs sit on a "waiting for review" gate that no one can resolve.
+Reference: security-review SR-20260419-002.
+
+---
+
+## Secret inventory
+
+Every secret the release workflow consumes. Each row pairs the
+consuming step with the rotation cadence so a departing maintainer
+or a disclosure leaves a clear punch list.
+
+| Secret | Consumed by | Rotate when |
+|---|---|---|
+| `ANDROID_KEYSTORE_BASE64` | `android-release` → Decode and stage release keystore | Keystore identity is fixed by Play Store signing policy — rotate only via Play App Signing's upload-key reset flow. |
+| `ANDROID_KEYSTORE_PASSWORD` | `android-release` → Verify keystore integrity / Build signed app bundle | Annually, or immediately on disclosure. |
+| `ANDROID_KEY_ALIAS` | same | Only on keystore reset. |
+| `ANDROID_KEY_PASSWORD` | `android-release` → Build signed app bundle | Annually. |
+| `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` | `android-release` → Upload to Play Console | Annually, and immediately on contributor departure (revoke in GCP IAM before re-minting). |
+| `IOS_DISTRIBUTION_CERT_BASE64` | `ios-release` → Import distribution certificate | Annually — Apple's own cert has a ~1-year lifetime. |
+| `IOS_DISTRIBUTION_CERT_PASSWORD` | same | Paired with the cert above. |
+| `APPSTORE_ISSUER_ID` | `ios-release` → Download provisioning profiles / Upload to TestFlight | Stable; rotate only if the App Store Connect account is reprovisioned. |
+| `APPSTORE_KEY_ID` | same | Paired with `APPSTORE_PRIVATE_KEY`. |
+| `APPSTORE_PRIVATE_KEY` | same | Annually, and immediately on contributor departure. |
+| `SENTRY_DSN` (optional) | `--dart-define` on both signing jobs | Only on project recreation. |
+
+---
+
+## Credential rotation
+
+Expected cadences:
+
+- **Annually** — iOS distribution cert, App Store Connect `.p8`, Play
+  Service Account JSON, Android keystore passwords.
+- **Immediately on contributor departure** — every secret the
+  departing maintainer ever had access to. Revoke the upstream
+  credential (GCP IAM, App Store Connect key list, Sentry member
+  list) before re-minting the secret.
+- **Immediately on disclosure** — treat a leak in a commit / log /
+  screenshot as "secret burned"; rotate that row and audit
+  downstream access.
+
+Per-rotation procedure:
+
+1. Revoke the old credential at the source. Revoking removes
+   attacker access; updating GitHub first without revoking leaves
+   the compromised token live.
+2. Mint the replacement.
+3. Paste into the `release` Environment's secret of the same name.
+4. Kick off a release tag against a no-op commit to verify the
+   workflow still reaches the "Upload to …" step.
+5. Record the rotation date below.
+
+Reference: security-review SR-20260419-024 / SR-20260419-049.
+
+### Rotation log
+
+_No rotations recorded yet. Start the log when the first rotation
+lands._

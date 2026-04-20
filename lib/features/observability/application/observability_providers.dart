@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/features/observability/domain/repositories/consent_store.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -199,10 +200,33 @@ class CrashReportingController extends Notifier<bool> {
   /// Called from `main.dart` on cold start BEFORE `runApp`.
   /// Initialises Sentry only if both the DSN is present and the
   /// user has previously opted in.
+  ///
+  /// Always resolves — a failure inside `SentryFlutter.init` (native
+  /// channel error, DSN parse failure, hostname mismatch in release
+  /// builds) is caught, logged, and swallowed. The call site in
+  /// `main.dart` is fire-and-forget so we cannot afford a thrown
+  /// future hitting `PlatformDispatcher.onError` during cold start —
+  /// the rest of the app must keep booting regardless of whether
+  /// crash reporting is live.
   static Future<void> initIfConsented(ConsentStore store) async {
     if (!sentryAvailable) return;
     if (!store.readCrashReportingEnabled()) return;
-    await _initSentry();
+    try {
+      await _initSentry();
+    } on Object catch (error, stackTrace) {
+      // Intentional dynamic catch: `SentryFlutter.init` can throw
+      // plain `Error`s (type assertions inside the SDK) as well as
+      // platform `Exception`s, so the broader `Object` clause covers
+      // both. `debugPrint` is the only safe sink at this layer —
+      // Sentry itself is the thing that just failed to initialise,
+      // and the app-wide logger lives above this module. The
+      // call-site in `main.dart` is `unawaited`, so without this
+      // catch the failure would bubble to `PlatformDispatcher.onError`
+      // during cold start.
+      debugPrint(
+        'Sentry initialisation failed — crash reports disabled for this session: $error\n$stackTrace',
+      );
+    }
   }
 }
 

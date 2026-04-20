@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:markdown/markdown.dart' as md;
+import 'package:markdown_viewer/core/encoding/utf8_bom.dart';
 import 'package:markdown_viewer/core/slug/slugify.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 
@@ -36,20 +37,7 @@ final class MarkdownParser {
     );
   }
 
-  String _decode(List<int> bytes) {
-    // Strip a leading UTF-8 BOM if present so it does not leak into
-    // the first heading or paragraph. `Utf8Decoder.convert` accepts a
-    // start offset, which lets us skip the 3 BOM bytes without
-    // allocating a copy of the backing byte array — important for
-    // large files where `bytes.sublist(3)` would double peak memory.
-    if (bytes.length >= 3 &&
-        bytes[0] == 0xEF &&
-        bytes[1] == 0xBB &&
-        bytes[2] == 0xBF) {
-      return const Utf8Decoder().convert(bytes, 3);
-    }
-    return utf8.decode(bytes);
-  }
+  String _decode(List<int> bytes) => decodeUtf8StripBom(bytes);
 
   int _countLines(String source) {
     if (source.isEmpty) {

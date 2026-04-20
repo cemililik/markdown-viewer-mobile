@@ -134,7 +134,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get librarySearchNoResults => 'No matching documents';
 
   @override
-  String get libraryContentSearchHeader => 'In document contents';
+  String get libraryContentSearchHeader => 'Inside documents';
 
   @override
   String get libraryContentSearchEmpty => 'No matches in any document';

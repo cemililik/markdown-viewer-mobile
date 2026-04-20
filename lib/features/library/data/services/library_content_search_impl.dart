@@ -1,7 +1,7 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:markdown_viewer/core/encoding/utf8_bom.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/entities/recent_document.dart';
 import 'package:markdown_viewer/features/library/domain/services/library_content_search.dart';
@@ -140,11 +140,17 @@ class LibraryContentSearchImpl implements LibraryContentSearch {
           return false;
         }
         final raw = await file.readAsBytes();
-        String content;
+        final String content;
         try {
-          content = utf8.decode(raw);
+          content = decodeUtf8StripBom(raw);
         } on FormatException {
-          content = utf8.decode(raw, allowMalformed: true);
+          // Malformed UTF-8 — skip the file. Previously this branch
+          // decoded with `allowMalformed: true`, which let the search
+          // corpus contain files the viewer would refuse to render
+          // (the viewer parser is strict). Dropping the file here
+          // keeps the two paths aligned.
+          // Reference: performance-review PR-20260419-019.
+          return true;
         }
         corpus.add(
           ContentSearchDocument(

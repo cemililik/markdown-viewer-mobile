@@ -144,9 +144,20 @@ repositories. See [ADR-0011](decisions/0011-network-access-policy.md) and
 
 ### Shipped
 
-- **First-run onboarding** — four-page animated walkthrough shown on
-  fresh install and after each `currentOnboardingVersion` bump;
-  version-gated via router redirect guard
+- **First-run onboarding** — three-page animated walkthrough
+  (welcome, sources, accent palette → "Get started") shown on fresh
+  install and after each `currentOnboardingVersion` bump;
+  version-gated via router redirect guard. Condensed from the
+  original five-page flow; see ADR-0013.
+- **Cross-library content search** — debounced (250 ms) full-text
+  search across recents, bookmarked folders, and synced-repo
+  mirrors. Corpus capped at 2 000 files / 50 MB aggregate per
+  dispatch; isolate-dispatched via `compute()`.
+- **Pull-to-refresh** — every library surface (Recents, folder,
+  synced repo) awaits the real re-read and re-runs any active
+  search against the refreshed corpus.
+- **Mermaid fullscreen** — inline diagrams expand to a dedicated
+  route with pinch-zoom, pan, and a reset affordance.
 - **Localization** — English and Turkish with system locale detection;
   explicit `localeListResolutionCallback` for correct resolution
 - **Themes** — System, Light, Dark, and Sepia reading themes with
