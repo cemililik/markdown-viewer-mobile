@@ -1,0 +1,85 @@
+name: ✨ Feature Request
+description: Suggest a new feature or an enhancement to an existing surface.
+title: "[Feature] "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, please skim [docs/roadmap.md](https://github.com/cemililik/markdown-viewer-mobile/blob/main/docs/roadmap.md)
+        — the post-v1 candidate list already captures several ideas, so
+        your feature may already be queued. For open-ended brainstorming,
+        use [Discussions](https://github.com/cemililik/markdown-viewer-mobile/discussions)
+        instead of an issue.
+
+  - type: dropdown
+    id: feature-area
+    attributes:
+      label: Feature area
+      options:
+        - Rendering (Markdown / code blocks / tables / footnotes)
+        - Mermaid diagrams
+        - LaTeX math
+        - Admonitions (NOTE / WARNING / TIP …)
+        - Library (Recents / folder sources / search / pull-to-refresh)
+        - GitHub repo sync
+        - Onboarding
+        - Viewer UX (TOC, search, settings, PDF export)
+        - File open / share intent / default handler
+        - Themes / accessibility / localization
+        - New integration (cloud provider / sync target / export format)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: What are you trying to do that the app cannot do today? Focus on the use case, not the implementation.
+      placeholder: |
+        When I read docs from <…>, I want to <…> so that <…>.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How would you imagine this working in the app? Include rough sketches or flows if helpful.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Workarounds you already tried, or other ways to solve the same problem.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: platforms
+    attributes:
+      label: Target platforms
+      multiple: true
+      options:
+        - iOS
+        - iPadOS
+        - Android (phone)
+        - Android (tablet)
+        - All
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checks
+      options:
+        - label: I searched existing issues and Discussions for a similar request.
+          required: true
+        - label: I checked [docs/roadmap.md](https://github.com/cemililik/markdown-viewer-mobile/blob/main/docs/roadmap.md) — this is not already on the roadmap.
+          required: true
+        - label: I understand that feature acceptance is at the maintainer's discretion and is not guaranteed.
+          required: true

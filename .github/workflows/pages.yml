@@ -19,6 +19,14 @@ permissions:
 
 jobs:
   deploy:
+    # Belt-and-suspenders owner gate. The `push: branches: [main]`
+    # trigger is already owner-gated by branch protection (direct
+    # pushes to main are blocked, merges require owner approval),
+    # but the explicit actor check here documents the intent and
+    # hard-stops a manual `workflow_dispatch` run fired by any
+    # future collaborator who gains write access but is not the
+    # repository owner.
+    if: github.actor == github.repository_owner
     runs-on: ubuntu-latest
     environment:
       name: github-pages
