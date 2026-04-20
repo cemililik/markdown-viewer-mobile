@@ -4,5 +4,5 @@ contact_links:
     url: https://github.com/cemililik/markdown-viewer-mobile/discussions
     about: Usage questions, feature brainstorming, and general discussion happen in Discussions — please post there instead of opening an issue.
   - name: 🔒 Security vulnerability
-    url: https://github.com/cemililik/markdown-viewer-mobile/security/advisories/new
-    about: Report a potential security vulnerability privately via GitHub's security advisory flow. Please do NOT open a public issue for security reports.
+    url: https://github.com/cemililik/markdown-viewer-mobile/security/advisories
+    about: Report a potential security vulnerability privately via the "Report a vulnerability" button on the Security Advisories page. Please do NOT open a public issue for security reports.

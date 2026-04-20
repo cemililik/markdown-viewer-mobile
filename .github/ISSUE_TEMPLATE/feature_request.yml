@@ -62,13 +62,13 @@ body:
     id: platforms
     attributes:
       label: Target platforms
+      description: Pick every platform the request applies to. Selecting all four is equivalent to "all platforms".
       multiple: true
       options:
         - iOS
         - iPadOS
         - Android (phone)
         - Android (tablet)
-        - All
     validations:
       required: true
 

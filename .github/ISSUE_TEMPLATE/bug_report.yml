@@ -29,8 +29,8 @@ body:
     attributes:
       label: Platform
       options:
-        - iOS (iPhone)
-        - iOS (iPad)
+        - iOS
+        - iPadOS
         - Android (phone)
         - Android (tablet)
         - Other / not sure
@@ -122,5 +122,5 @@ body:
           required: true
         - label: I searched existing issues and Discussions for a duplicate.
           required: true
-        - label: This is not a security vulnerability (those go through [Security Advisories](https://github.com/cemililik/markdown-viewer-mobile/security/advisories/new)).
+        - label: This is not a security vulnerability (those go through [Security Advisories](https://github.com/cemililik/markdown-viewer-mobile/security/advisories)).
           required: true
