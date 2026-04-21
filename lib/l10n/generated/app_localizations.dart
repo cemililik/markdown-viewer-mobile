@@ -818,6 +818,12 @@ abstract class AppLocalizations {
   /// **'Generating PDF…'**
   String get viewerPdfGenerating;
 
+  /// Snackbar message shown when Markdown file sharing fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not share the document. Please try again.'**
+  String get viewerShareError;
+
   /// Snackbar message shown when PDF generation fails.
   ///
   /// In en, this message translates to:

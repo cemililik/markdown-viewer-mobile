@@ -54,6 +54,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 ///      that the truncation may have exposed.
 @visibleForTesting
 String buildShareFilename(String title, {int maxLength = 64}) {
+  if (maxLength <= 0) return 'document';
   var name =
       title
           .trim()
@@ -62,11 +63,13 @@ String buildShareFilename(String title, {int maxLength = 64}) {
           // Collapse runs of dashes (e.g. "a///b" → "a-b") and strip any
           // leading/trailing dashes so we don't produce "-title-" or
           // "------" for titles composed entirely of unsafe characters.
-          .replaceAll(RegExp(r'-{2,}'), '-')
+          .replaceAll(RegExp('-{2,}'), '-')
           .replaceAll(RegExp(r'^-+|-+$'), '')
           .trim();
   if (name.isEmpty) name = 'document';
-  if (name.length > maxLength) name = name.substring(0, maxLength).trimRight();
+  if (name.runes.length > maxLength) {
+    name = String.fromCharCodes(name.runes.take(maxLength)).trimRight();
+  }
   return name;
 }
 
@@ -952,7 +955,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                   title: Text(l10n.viewerShareMenuText),
                   onTap: () {
                     Navigator.of(sheetContext).pop();
-                    _shareAsMarkdown(document);
+                    unawaited(_shareAsMarkdown(document));
                   },
                 ),
                 ListTile(
@@ -972,21 +975,27 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
   }
 
   Future<void> _shareAsMarkdown(Document document) async {
-    final fallbackTitle = _titleFor(widget.documentId, '');
-    final title = extractPdfTitle(document.source, fallbackTitle);
-    final safeName = buildShareFilename(title);
-    final dir = await getTemporaryDirectory();
-    final file = File(p.join(dir.path, '$safeName.md'));
-    await file.writeAsString(document.source);
-    if (!mounted) return;
-    await SharePlus.instance.share(
-      ShareParams(
-        files: [
-          XFile(file.path, mimeType: 'text/markdown', name: '$safeName.md'),
-        ],
-        subject: title,
-      ),
-    );
+    final l10n = context.l10n;
+    try {
+      final fallbackTitle = _titleFor(widget.documentId, '');
+      final title = extractPdfTitle(document.source, fallbackTitle);
+      final safeName = buildShareFilename(title);
+      final dir = await getTemporaryDirectory();
+      final file = File(p.join(dir.path, '$safeName.md'));
+      await file.writeAsString(document.source);
+      if (!mounted) return;
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [
+            XFile(file.path, mimeType: 'text/markdown', name: '$safeName.md'),
+          ],
+          subject: title,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      _showLocalizedSnackBar((_) => l10n.viewerShareError);
+    }
   }
 
   Future<void> _shareAsPdf(Document document) async {

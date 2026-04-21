@@ -14,6 +14,8 @@ void main() {
         RepoNotFoundFailure(message: 'not there'),
         PartialSyncFailure(message: 'partial', syncedCount: 1, failedCount: 2),
         UnsupportedProviderFailure(message: 'unknown host'),
+        AuthFailure(message: 'auth'),
+        RepoTooLargeFailure(message: 'too large'),
         UnknownFailure(message: 'what'),
       ];
 
@@ -29,6 +31,8 @@ void main() {
         'RepoNotFoundFailure',
         'PartialSyncFailure',
         'UnsupportedProviderFailure',
+        'AuthFailure',
+        'RepoTooLargeFailure',
         'UnknownFailure',
       ]);
     });

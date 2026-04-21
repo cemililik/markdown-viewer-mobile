@@ -162,6 +162,7 @@
   "viewerShareMenuText": "Markdown olarak paylaş",
   "viewerShareMenuPdf": "PDF olarak dışa aktar",
   "viewerPdfGenerating": "PDF oluşturuluyor…",
+  "viewerShareError": "Belge paylaşılamadı. Lütfen tekrar deneyin.",
   "viewerPdfError": "PDF oluşturulamadı. Lütfen tekrar deneyin.",
   "viewerTocOpenTooltip": "İçindekiler",
   "viewerTocEmpty": "Bu belgede başlık yok",

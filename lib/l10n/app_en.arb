@@ -524,6 +524,10 @@
   "@viewerPdfGenerating": {
     "description": "Snackbar message shown while the PDF is being generated."
   },
+  "viewerShareError": "Could not share the document. Please try again.",
+  "@viewerShareError": {
+    "description": "Snackbar message shown when Markdown file sharing fails."
+  },
   "viewerPdfError": "Could not generate PDF. Please try again.",
   "@viewerPdfError": {
     "description": "Snackbar message shown when PDF generation fails."
