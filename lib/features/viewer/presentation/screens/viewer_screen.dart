@@ -33,6 +33,7 @@ import 'package:markdown_viewer/features/viewer/presentation/widgets/viewer_sear
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:markdown_widget/markdown_widget.dart' show Toc;
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -920,7 +921,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                   title: Text(l10n.viewerShareMenuText),
                   onTap: () {
                     Navigator.of(sheetContext).pop();
-                    _shareAsText(document);
+                    _shareAsMarkdown(document);
                   },
                 ),
                 ListTile(
@@ -939,13 +940,25 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     );
   }
 
-  void _shareAsText(Document document) {
+  Future<void> _shareAsMarkdown(Document document) async {
     final fallbackTitle = _titleFor(widget.documentId, '');
-    // Prefer the document's first H1 so hash-based filenames
-    // (files opened via share-intent) get a meaningful subject.
     final title = extractPdfTitle(document.source, fallbackTitle);
-    SharePlus.instance.share(
-      ShareParams(text: document.source, subject: title),
+    final safeName =
+        title
+            .replaceAll(RegExp(r'\.(md|markdown)$', caseSensitive: false), '')
+            .replaceAll(RegExp(r'[<>:"/\\|?*]'), '-')
+            .trim();
+    final dir = await getTemporaryDirectory();
+    final file = File(p.join(dir.path, '$safeName.md'));
+    await file.writeAsString(document.source);
+    if (!mounted) return;
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [
+          XFile(file.path, mimeType: 'text/markdown', name: '$safeName.md'),
+        ],
+        subject: title,
+      ),
     );
   }
 

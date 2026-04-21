@@ -716,7 +716,10 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
             Icons.description_outlined,
             color: theme.colorScheme.onSurfaceVariant,
           ),
-          title: Text(entry.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+          title: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Text(entry.name),
+          ),
           onTap:
               () => unawaited(
                 openFolderEntry(
@@ -735,12 +738,13 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
       child: ExpansionTile(
         key: PageStorageKey<String>('browse-${entry.path}'),
         leading: Icon(Icons.folder_outlined, color: theme.colorScheme.primary),
-        title: Text(
-          entry.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodyLarge?.copyWith(
-            fontWeight: FontWeight.w600,
+        title: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Text(
+            entry.name,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         onExpansionChanged: (expanded) {

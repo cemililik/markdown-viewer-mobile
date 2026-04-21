@@ -672,6 +672,7 @@ class _ErrorCard extends ConsumerWidget {
       AuthFailure() => l10n.errorAuthFailed,
       RepoNotFoundFailure() => l10n.errorRepoNotFound,
       UnsupportedProviderFailure() => l10n.errorUnsupportedProvider,
+      RepoTooLargeFailure() => l10n.errorRepoTooLarge,
       PartialSyncFailure(:final syncedCount, :final failedCount) => l10n
           .errorPartialSync(syncedCount, failedCount),
       _ => l10n.errorUnknown,
