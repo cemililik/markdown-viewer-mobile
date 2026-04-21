@@ -694,21 +694,6 @@ class _FolderEntryTile extends ConsumerStatefulWidget {
 class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
   Future<List<FolderEntry>>? _childrenFuture;
 
-  // keepScrollOffset: false prevents PageStorage interaction — the
-  // horizontal title scroller has no value in persisting its position,
-  // and without this flag it collides with the ExpansionTile's bool
-  // bucket, causing a 'bool is not a subtype of double?' cast error on
-  // scroll restoration.
-  final ScrollController _titleScrollController = ScrollController(
-    keepScrollOffset: false,
-  );
-
-  @override
-  void dispose() {
-    _titleScrollController.dispose();
-    super.dispose();
-  }
-
   void _loadChildrenIfNeeded() {
     _childrenFuture ??= ref
         .read(folderEnumeratorProvider)
@@ -720,22 +705,27 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
     final theme = Theme.of(context);
     final l10n = context.l10n;
     final entry = widget.entry;
-    final leftPadding = 8.0 + widget.indent * 12.0;
+
+    // Each tile contributes only a fixed DELTA to the cumulative left
+    // offset. Tiles are nested in the widget tree (child renders inside
+    // parent's ExpansionTile.children), so the padding accumulates
+    // automatically — using an absolute formula like `8 + indent * 12`
+    // would double-count every ancestor level and push deep items off
+    // screen (depth-5 file → 228 px just from padding on a 390 px screen).
+    final leftPadding = widget.indent == 0 ? 8.0 : 16.0;
 
     if (entry is FolderFileEntry) {
       return Padding(
         padding: EdgeInsets.only(left: leftPadding),
         child: ListTile(
           dense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
           leading: Icon(
             Icons.description_outlined,
+            size: 20,
             color: theme.colorScheme.onSurfaceVariant,
           ),
-          title: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            controller: _titleScrollController,
-            child: Text(entry.name),
-          ),
+          title: Text(entry.name, maxLines: 1, overflow: TextOverflow.ellipsis),
           onTap:
               () => unawaited(
                 openFolderEntry(
@@ -753,15 +743,17 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
       padding: EdgeInsets.only(left: leftPadding),
       child: ExpansionTile(
         key: PageStorageKey<String>('browse-${entry.path}'),
-        leading: Icon(Icons.folder_outlined, color: theme.colorScheme.primary),
-        title: SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          controller: _titleScrollController,
-          child: Text(
-            entry.name,
-            style: theme.textTheme.bodyLarge?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+        leading: Icon(
+          Icons.folder_outlined,
+          size: 20,
+          color: theme.colorScheme.primary,
+        ),
+        title: Text(
+          entry.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodyLarge?.copyWith(
+            fontWeight: FontWeight.w600,
           ),
         ),
         onExpansionChanged: (expanded) {
@@ -799,15 +791,29 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
                 if (children.isEmpty) {
                   return _CenteredHint(text: l10n.libraryFoldersEmptyFolder);
                 }
-                return Column(
-                  children: [
-                    for (final child in children)
-                      _FolderEntryTile(
-                        rootFolder: widget.rootFolder,
-                        entry: child,
-                        indent: widget.indent + 1,
+                // Tree guide line: a 1 px left border aligned under the
+                // folder icon (icon is 20 px wide; half = 10 px; plus the
+                // 8 px contentPadding of the tile = 18 px margin).
+                return Container(
+                  margin: const EdgeInsets.only(left: 18),
+                  decoration: BoxDecoration(
+                    border: Border(
+                      left: BorderSide(
+                        color: theme.colorScheme.outlineVariant,
+                        width: 1,
                       ),
-                  ],
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      for (final child in children)
+                        _FolderEntryTile(
+                          rootFolder: widget.rootFolder,
+                          entry: child,
+                          indent: widget.indent + 1,
+                        ),
+                    ],
+                  ),
                 );
               },
             ),
