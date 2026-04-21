@@ -432,6 +432,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewerPdfGenerating => 'Generating PDF…';
 
   @override
+  String get viewerShareError =>
+      'Could not share the document. Please try again.';
+
+  @override
   String get viewerPdfError => 'Could not generate PDF. Please try again.';
 
   @override

@@ -4,17 +4,21 @@
     Minimum-surface entitlements for the app target.
 
     The only declared entitlement is the default per-app Keychain
-    access group (`$(AppIdentifierPrefix)$(CFBundleIdentifier)`),
-    which mirrors Apple's default behaviour when no entitlements file
-    is present. Making that default explicit pins the PAT's storage
-    scope: a future share / notification-center extension added to
-    the project would otherwise silently expand its own Keychain
-    access-group set and gain visibility into the parent app's
-    credentials without anyone reviewing the change.
+    access group (`$(DEVELOPMENT_TEAM).$(CFBundleIdentifier)`).
+    Using `$(DEVELOPMENT_TEAM).` instead of `$(AppIdentifierPrefix)`
+    avoids a build-time provisioning-profile lookup: Xcode can expand
+    `$(DEVELOPMENT_TEAM)` from the build settings directly, so
+    `CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION` is not needed.
 
-    `$(CFBundleIdentifier)` is resolved by Xcode at build time so a
-    future bundle-id rename flows through here automatically without
-    a separate edit to this file.
+    Making the default explicit pins the PAT's storage scope: a future
+    share / notification-center extension added to the project would
+    otherwise silently expand its own Keychain access-group set and
+    gain visibility into the parent app's credentials without anyone
+    reviewing the change.
+
+    Both `$(DEVELOPMENT_TEAM)` and `$(CFBundleIdentifier)` are
+    resolved by Xcode at build time so a future bundle-id or team-id
+    change flows through automatically without a separate edit here.
 
     Cross-extension PAT sharing is intentionally out of scope — see
     ADR-0012 §PAT storage. Any future extension that needs Keychain
@@ -28,7 +32,7 @@
 <dict>
     <key>keychain-access-groups</key>
     <array>
-        <string>$(AppIdentifierPrefix)$(CFBundleIdentifier)</string>
+        <string>$(DEVELOPMENT_TEAM).$(CFBundleIdentifier)</string>
     </array>
 </dict>
 </plist>

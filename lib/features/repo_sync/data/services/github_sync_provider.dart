@@ -298,7 +298,7 @@ class GitHubSyncProvider implements RepoSyncProvider {
       if (body.length > _maxDiscoveryBytes) {
         throw const RepoTooLargeFailure(
           message:
-              'Tree response exceeded the $_maxDiscoveryBytes-byte discovery cap',
+              'Tree response exceeded the $_maxDiscoveryBytes code-unit discovery cap',
         );
       }
       // Isolate.run pays a per-call scheduling overhead that only

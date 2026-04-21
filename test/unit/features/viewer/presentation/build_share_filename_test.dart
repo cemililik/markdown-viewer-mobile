@@ -53,6 +53,10 @@ void main() {
       expect(buildShareFilename('a///b'), 'a-b');
     });
 
+    test('collapses multiple separate runs of unsafe chars independently', () {
+      expect(buildShareFilename('a///b***c'), 'a-b-c');
+    });
+
     test('strips leading and trailing dashes', () {
       expect(buildShareFilename(':title:'), 'title');
     });

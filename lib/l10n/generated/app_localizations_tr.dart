@@ -428,6 +428,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get viewerPdfGenerating => 'PDF oluşturuluyor…';
 
   @override
+  String get viewerShareError => 'Belge paylaşılamadı. Lütfen tekrar deneyin.';
+
+  @override
   String get viewerPdfError => 'PDF oluşturulamadı. Lütfen tekrar deneyin.';
 
   @override
