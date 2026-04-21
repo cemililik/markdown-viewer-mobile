@@ -9,6 +9,29 @@ kept out of this file — they belong in commit history instead.
 
 ## [Unreleased]
 
+## [1.2.1] — 2026-04-21
+
+Patch release fixing three user-visible bugs and hardening several
+edge cases surfaced during on-device use after v1.2.0.
+
+### Fixed
+- **Large repository sync now shows a helpful error.** Syncing a
+  repository whose Git tree exceeds GitHub's 100 000-entry limit (e.g.
+  `torvalds/linux`) previously showed a generic "Something went wrong"
+  message. It now explains that the repository is too large to sync in
+  full and suggests pasting a subdirectory URL instead.
+- **Document sharing exports a named `.md` file.** The share sheet
+  previously attached a UUID-named `.txt` file. It now writes a
+  temporary `.md` file named after the document title (stripping the
+  extension, collapsing unsafe characters, and truncating to 64
+  codepoints) and shares it with the correct MIME type. Share errors
+  surface a localised snackbar instead of being silently swallowed.
+- **Deeply nested folder trees display correctly.** Each indent level
+  now adds a fixed delta offset regardless of nesting depth, so
+  filenames at depth 5+ are no longer pushed off-screen. Vertical tree
+  guide lines help orient within the hierarchy, and the layout is
+  direction-aware (RTL-safe).
+
 ## [1.2.0] — 2026-04-20
 
 Third minor release. A hardening pass that closes every P1 / High
@@ -577,7 +600,8 @@ tracked in `docs/roadmap.md`.
   qualifier because that form evaluates inconsistently across archive
   phases.
 
-[Unreleased]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.2...v1.1.0
 [1.0.2]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.1...v1.0.2
