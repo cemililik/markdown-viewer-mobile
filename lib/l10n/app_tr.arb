@@ -159,7 +159,7 @@
 
   "viewerShareTooltip": "Belgeyi paylaş",
   "viewerShareMenuTitle": "Farklı paylaş…",
-  "viewerShareMenuText": "Metin olarak paylaş",
+  "viewerShareMenuText": "Markdown olarak paylaş",
   "viewerShareMenuPdf": "PDF olarak dışa aktar",
   "viewerPdfGenerating": "PDF oluşturuluyor…",
   "viewerPdfError": "PDF oluşturulamadı. Lütfen tekrar deneyin.",
@@ -285,6 +285,7 @@
   "errorAuthFailed": "Kimlik doğrulama başarısız. Ayarlar'daki kişisel erişim anahtarınızı kontrol edip tekrar deneyin.",
   "errorCrashReportingToggleFailed": "Çökme raporlama tercihi güncellenemedi. Lütfen tekrar deneyin.",
   "errorUnsupportedProvider": "Bu URL desteklenmiyor. Şu an yalnızca GitHub depo URL'leri kabul edilmektedir.",
+  "errorRepoTooLarge": "Depo tam olarak senkronize edilemeyecek kadar büyük. Bunun yerine bir alt dizin URL'si girin; örneğin github.com/owner/repo/tree/main/docs.",
   "errorPartialSync": "Senkronizasyon kısmen tamamlandı: {syncedCount} dosya kaydedildi, {failedCount} başarısız oldu.",
 
   "onboardingSkip": "Atla",

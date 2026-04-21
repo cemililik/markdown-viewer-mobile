@@ -512,7 +512,7 @@
   "@viewerShareMenuTitle": {
     "description": "Title of the bottom sheet that lets the user choose how to share the document."
   },
-  "viewerShareMenuText": "Share as text",
+  "viewerShareMenuText": "Share as Markdown",
   "@viewerShareMenuText": {
     "description": "Option in the share menu that shares the raw markdown source."
   },
@@ -896,6 +896,10 @@
   "errorUnsupportedProvider": "This URL is not supported. Only GitHub repository URLs are currently accepted.",
   "@errorUnsupportedProvider": {
     "description": "User-facing message when the entered URL is not a recognised sync provider."
+  },
+  "errorRepoTooLarge": "Repository is too large to sync in full. Paste a subdirectory URL instead — for example, github.com/owner/repo/tree/main/docs.",
+  "@errorRepoTooLarge": {
+    "description": "User-facing message when the GitHub Trees API truncates the response (repo >100 000 files) or the response exceeds the client byte cap. Retrying will not help — the user must narrow the URL to a subdirectory."
   },
   "errorPartialSync": "Sync partially completed: {syncedCount} file(s) saved, {failedCount} failed.",
   "@errorPartialSync": {

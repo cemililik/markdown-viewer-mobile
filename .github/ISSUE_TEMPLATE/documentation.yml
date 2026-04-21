@@ -1,0 +1,52 @@
+name: 📚 Documentation Issue
+description: A gap, error, or unclear section in the project documentation (README, docs/, ADRs, in-app help).
+title: "[Docs] "
+labels: ["documentation", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this template for issues in the project's written docs
+        (README, `docs/`, ADRs, CHANGELOG, in-app onboarding copy).
+        For app behaviour that's not working as documented, file a
+        **Bug Report** instead.
+
+  - type: input
+    id: doc-path
+    attributes:
+      label: Document path or URL
+      description: Which file or section is affected?
+      placeholder: "e.g. docs/architecture.md or README.md#quick-start"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: issue-kind
+    attributes:
+      label: Kind of issue
+      options:
+        - Incorrect / out of date
+        - Missing information
+        - Confusing wording
+        - Broken link / anchor
+        - Typo / formatting
+        - Translation issue (EN ↔ TR)
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: What's wrong and what would help?
+      description: Quote the current wording (if short) and describe what it should say.
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checks
+      options:
+        - label: I searched existing issues for the same documentation problem.
+          required: true

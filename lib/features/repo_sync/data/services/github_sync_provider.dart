@@ -178,10 +178,10 @@ class GitHubSyncProvider implements RepoSyncProvider {
     // The Trees API silently omits entries when a repo exceeds 100 000 items.
     // Abort so the user is not silently handed an incomplete file list.
     if (treeJson['truncated'] == true) {
-      throw const UnknownFailure(
+      throw const RepoTooLargeFailure(
         message:
-            'Repository tree is too large for a single API call and was '
-            'truncated. The sync has been aborted — no files will be synced.',
+            'Repository tree exceeded the 100 000-entry GitHub API limit and '
+            'was truncated. Sync a subdirectory URL instead.',
       );
     }
 
@@ -296,9 +296,9 @@ class GitHubSyncProvider implements RepoSyncProvider {
       // cap via `onReceiveProgress`. This guard catches the same
       // single-chunk edge case as `downloadRaw`.
       if (body.length > _maxDiscoveryBytes) {
-        throw const UnknownFailure(
+        throw const RepoTooLargeFailure(
           message:
-              'Tree response exceeds the $_maxDiscoveryBytes-byte discovery cap',
+              'Tree response exceeded the $_maxDiscoveryBytes-byte discovery cap',
         );
       }
       // Isolate.run pays a per-call scheduling overhead that only

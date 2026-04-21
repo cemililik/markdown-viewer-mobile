@@ -79,6 +79,7 @@ void main() {
         PartialSyncFailure() => 'partial-sync',
         UnsupportedProviderFailure() => 'unsupported-provider',
         AuthFailure() => 'auth',
+        RepoTooLargeFailure() => 'repo-too-large',
         UnknownFailure() => 'unknown',
       };
 

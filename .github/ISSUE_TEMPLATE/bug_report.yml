@@ -1,0 +1,126 @@
+name: 🐛 Bug Report
+description: A rendering regression, crash, or unexpected behaviour in the app.
+title: "[Bug] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report. Before opening
+        an issue, please make sure you're on the latest release — the
+        [Releases page](https://github.com/cemililik/markdown-viewer-mobile/releases)
+        lists the current version.
+
+        If you're unsure whether the behaviour is a bug or intended,
+        open a [Discussion](https://github.com/cemililik/markdown-viewer-mobile/discussions)
+        first.
+
+  - type: input
+    id: app-version
+    attributes:
+      label: App version
+      description: Visible in Settings → About, or on the Play / TestFlight listing.
+      placeholder: "e.g. 1.2.0+1"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - iOS
+        - iPadOS
+        - Android (phone)
+        - Android (tablet)
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: input
+    id: os-version
+    attributes:
+      label: OS version
+      description: iOS / iPadOS version, Android version + API level, device model.
+      placeholder: "e.g. iOS 18.2 on iPhone 15 Pro, or Android 14 (API 34) on Pixel 8"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: feature-area
+    attributes:
+      label: Feature area
+      description: Which part of the app is affected?
+      options:
+        - Rendering (Markdown / code blocks / tables / footnotes)
+        - Mermaid diagrams
+        - LaTeX math
+        - Admonitions (NOTE / WARNING / TIP …)
+        - Library (Recents / folder sources / search / pull-to-refresh)
+        - GitHub repo sync
+        - Onboarding
+        - Viewer UX (TOC, search, settings, PDF export)
+        - File open / share intent / default handler
+        - Themes / accessibility / localization
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the unexpected behaviour and what you expected instead.
+      placeholder: "When I open a file containing <…>, <…> happens. I expected <…>."
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps that reliably trigger the bug. Include a sample markdown snippet if relevant.
+      placeholder: |
+        1. Open the sample markdown below
+        2. Scroll to the <…> section
+        3. Tap on <…>
+        4. See <…>
+
+        ```markdown
+        (paste the minimal failing markdown here)
+        ```
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or screen recording
+      description: Drag and drop images / video here. Optional but very helpful for rendering + theme bugs.
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Console / crash logs
+      description: |
+        If the app crashed, paste any crash log snippet you have access to
+        (Xcode console, `adb logcat`, Sentry link if you've opted in).
+        Redact anything sensitive (paths, tokens) before pasting.
+      render: shell
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission checks
+      options:
+        - label: I am on the latest released version of the app.
+          required: true
+        - label: I searched existing issues and Discussions for a duplicate.
+          required: true
+        - label: This is not a security vulnerability (those go through [Security Advisories](https://github.com/cemililik/markdown-viewer-mobile/security/advisories)).
+          required: true

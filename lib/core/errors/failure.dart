@@ -134,3 +134,13 @@ final class AuthFailure extends Failure {
   const AuthFailure({required super.message, super.cause})
     : super(name: 'AuthFailure');
 }
+
+/// The repository tree exceeds the remote provider's single-call
+/// discovery limit (GitHub Trees API truncates at 100 000 entries)
+/// or the response body exceeds the client-side byte cap.
+///
+/// Retrying will not help. The user must sync a subdirectory instead.
+final class RepoTooLargeFailure extends Failure {
+  const RepoTooLargeFailure({required super.message, super.cause})
+    : super(name: 'RepoTooLargeFailure');
+}
