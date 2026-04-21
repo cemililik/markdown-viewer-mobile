@@ -5,15 +5,16 @@ Flutter. Designed to be the best reading experience for `.md` documents
 on a phone — including Mermaid diagrams, LaTeX math, syntax-highlighted
 code, tables, footnotes, and admonitions.
 
+[**Download on the App Store**](https://apps.apple.com/us/app/markdown-viewer-mobile/id6762259375) · [**Get it on Google Play**](https://play.google.com/store/apps/details?id=com.cemililik.markdown_viewer)
+
 ## Status
 
-**v1.2.0 — prepared 2026-04-20.** Phases 0–7 complete. Planned as the
-final active-development iteration for the app: v1.2 consolidates the
-findings from three parallel 2026-04-19 reviews (code / security /
-performance — 134 findings total), closes every P1 / High and most
-P2 / Medium items, and ships the mermaid dark-mode rendering fixes
-surfaced during on-device verification. Available on TestFlight and
-the Play Console production track.
+**v1.2.1 — released 2026-04-21.** Live on the App Store and Google Play.
+Phases 0–7 complete. This is the final active-development iteration for
+the app: v1.2 consolidated the findings from three parallel 2026-04-19
+reviews (code / security / performance — 134 findings total); v1.2.1 is
+a follow-up patch fixing the large-repo error message, `.md` file
+sharing, and the deeply nested folder tree display bug.
 
 v1.0 shipped after a full-application code review (128 findings across 8
 streams — all P0/P1 findings closed, architecture layer refactored), a

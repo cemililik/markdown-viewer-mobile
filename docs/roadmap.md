@@ -15,6 +15,7 @@ graph LR
     P6 --> V11[v1.1]
     V11 --> P7[Phase 7<br/>Hardening closeout]
     P7 --> V12[v1.2]
+    V12 --> V121[v1.2.1]
 
     style P0 fill:#2e7d32,color:#fff
     style P1 fill:#2e7d32,color:#fff
@@ -28,6 +29,7 @@ graph LR
     style V11 fill:#2e7d32,color:#fff
     style P7 fill:#2e7d32,color:#fff
     style V12 fill:#2e7d32,color:#fff
+    style V121 fill:#2e7d32,color:#fff
 ```
 
 ## Phase 0 — Foundation ✅
@@ -251,6 +253,30 @@ on-device verification.
 - [x] Tag `v1.2.0` published; release pipeline uploaded the signed
   IPA to TestFlight and the signed AAB to the Play Console
   production track (2026-04-20).
+
+### v1.2.1 patch (2026-04-21)
+
+- [x] **Large-repo sync surfaces a helpful error.** Syncing a repo
+  whose Git tree exceeds GitHub's 100 000-entry limit (e.g.
+  `torvalds/linux`) now maps the truncated-tree + oversized-body
+  paths to `RepoTooLargeFailure` with a message guiding the user
+  to paste a subdirectory URL instead.
+- [x] **Document sharing exports a named `.md` file.** The share
+  sheet now attaches a temporary `.md` file named after the
+  document title (unsafe chars sanitised, truncated to 64
+  codepoints) with the correct MIME type. Share failures surface
+  a localised snackbar instead of being silently dropped.
+- [x] **Deeply nested folder trees display correctly.** Fixed a
+  cumulative-indent bug that pushed filenames off-screen at depth
+  5+. Each level now adds a fixed delta offset and vertical tree
+  guide lines aid orientation (RTL-safe).
+- [x] **iOS entitlements build warning eliminated.** Removed the
+  `keychain-access-groups` entry; the implicit per-app default
+  provides identical isolation without triggering a variable-
+  expansion rewrite at sign time.
+- [x] Tag `v1.2.1` published; app live on the **App Store**
+  (https://apps.apple.com/us/app/markdown-viewer-mobile/id6762259375)
+  and **Google Play** (2026-04-21).
 
 ### Explicitly out of scope (tracked as post-v1 items)
 
