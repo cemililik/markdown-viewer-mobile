@@ -694,6 +694,21 @@ class _FolderEntryTile extends ConsumerStatefulWidget {
 class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
   Future<List<FolderEntry>>? _childrenFuture;
 
+  // keepScrollOffset: false prevents PageStorage interaction — the
+  // horizontal title scroller has no value in persisting its position,
+  // and without this flag it collides with the ExpansionTile's bool
+  // bucket, causing a 'bool is not a subtype of double?' cast error on
+  // scroll restoration.
+  final ScrollController _titleScrollController = ScrollController(
+    keepScrollOffset: false,
+  );
+
+  @override
+  void dispose() {
+    _titleScrollController.dispose();
+    super.dispose();
+  }
+
   void _loadChildrenIfNeeded() {
     _childrenFuture ??= ref
         .read(folderEnumeratorProvider)
@@ -718,6 +733,7 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
           ),
           title: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
+            controller: _titleScrollController,
             child: Text(entry.name),
           ),
           onTap:
@@ -740,6 +756,7 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
         leading: Icon(Icons.folder_outlined, color: theme.colorScheme.primary),
         title: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
+          controller: _titleScrollController,
           child: Text(
             entry.name,
             style: theme.textTheme.bodyLarge?.copyWith(
