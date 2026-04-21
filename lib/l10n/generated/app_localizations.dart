@@ -803,7 +803,7 @@ abstract class AppLocalizations {
   /// Option in the share menu that shares the raw markdown source.
   ///
   /// In en, this message translates to:
-  /// **'Share as text'**
+  /// **'Share as Markdown'**
   String get viewerShareMenuText;
 
   /// Option in the share menu that converts the document to PDF and opens the share sheet.
@@ -817,6 +817,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Generating PDF…'**
   String get viewerPdfGenerating;
+
+  /// Snackbar message shown when Markdown file sharing fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not share the document. Please try again.'**
+  String get viewerShareError;
 
   /// Snackbar message shown when PDF generation fails.
   ///
@@ -1321,6 +1327,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This URL is not supported. Only GitHub repository URLs are currently accepted.'**
   String get errorUnsupportedProvider;
+
+  /// User-facing message when the GitHub Trees API truncates the response (repo >100 000 files) or the response exceeds the client byte cap. Retrying will not help — the user must narrow the URL to a subdirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository is too large to sync in full. Paste a subdirectory URL instead — for example, github.com/owner/repo/tree/main/docs.'**
+  String get errorRepoTooLarge;
 
   /// User-facing message when a sync completes with some files failing.
   ///

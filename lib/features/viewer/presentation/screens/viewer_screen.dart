@@ -33,10 +33,45 @@ import 'package:markdown_viewer/features/viewer/presentation/widgets/viewer_sear
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:markdown_widget/markdown_widget.dart' show Toc;
 import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+
+/// Converts a document title into a safe filesystem filename stem for use
+/// in Markdown share operations.
+///
+/// Steps applied in order:
+///   1. Trim surrounding whitespace (prevents ".md " → double-extension
+///      when the caller appends ".md" to an already-trimmed name).
+///   2. Strip a trailing `.md` / `.markdown` extension so the caller can
+///      append the desired extension without doubling it.
+///   3. Replace filesystem-unsafe characters (`< > : " / \ | ? *`) with `-`.
+///   4. Trim again (a title that was *only* unsafe chars becomes "").
+///   5. Fall back to `'document'` when the result is empty.
+///   6. Truncate to [maxLength] codepoints and trim any trailing whitespace
+///      that the truncation may have exposed.
+@visibleForTesting
+String buildShareFilename(String title, {int maxLength = 64}) {
+  if (maxLength <= 0) return 'document';
+  var name =
+      title
+          .trim()
+          .replaceAll(RegExp(r'\.(md|markdown)$', caseSensitive: false), '')
+          .replaceAll(RegExp(r'[<>:"/\\|?*]'), '-')
+          // Collapse runs of dashes (e.g. "a///b" → "a-b") and strip any
+          // leading/trailing dashes so we don't produce "-title-" or
+          // "------" for titles composed entirely of unsafe characters.
+          .replaceAll(RegExp('-{2,}'), '-')
+          .replaceAll(RegExp(r'^-+|-+$'), '')
+          .trim();
+  if (name.isEmpty) name = 'document';
+  if (name.runes.length > maxLength) {
+    name = String.fromCharCodes(name.runes.take(maxLength)).trimRight();
+  }
+  return name;
+}
 
 /// Screen that loads and renders a single markdown document.
 ///
@@ -920,7 +955,7 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                   title: Text(l10n.viewerShareMenuText),
                   onTap: () {
                     Navigator.of(sheetContext).pop();
-                    _shareAsText(document);
+                    unawaited(_shareAsMarkdown(document));
                   },
                 ),
                 ListTile(
@@ -939,14 +974,28 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
     );
   }
 
-  void _shareAsText(Document document) {
-    final fallbackTitle = _titleFor(widget.documentId, '');
-    // Prefer the document's first H1 so hash-based filenames
-    // (files opened via share-intent) get a meaningful subject.
-    final title = extractPdfTitle(document.source, fallbackTitle);
-    SharePlus.instance.share(
-      ShareParams(text: document.source, subject: title),
-    );
+  Future<void> _shareAsMarkdown(Document document) async {
+    final l10n = context.l10n;
+    try {
+      final fallbackTitle = _titleFor(widget.documentId, '');
+      final title = extractPdfTitle(document.source, fallbackTitle);
+      final safeName = buildShareFilename(title);
+      final dir = await getTemporaryDirectory();
+      final file = File(p.join(dir.path, '$safeName.md'));
+      await file.writeAsString(document.source);
+      if (!mounted) return;
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [
+            XFile(file.path, mimeType: 'text/markdown', name: '$safeName.md'),
+          ],
+          subject: title,
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      _showLocalizedSnackBar((_) => l10n.viewerShareError);
+    }
   }
 
   Future<void> _shareAsPdf(Document document) async {

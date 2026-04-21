@@ -3,32 +3,22 @@
 <!--
     Minimum-surface entitlements for the app target.
 
-    The only declared entitlement is the default per-app Keychain
-    access group (`$(AppIdentifierPrefix)$(CFBundleIdentifier)`),
-    which mirrors Apple's default behaviour when no entitlements file
-    is present. Making that default explicit pins the PAT's storage
-    scope: a future share / notification-center extension added to
-    the project would otherwise silently expand its own Keychain
-    access-group set and gain visibility into the parent app's
-    credentials without anyone reviewing the change.
+    No `keychain-access-groups` is declared here. When that entitlement
+    is absent, iOS restricts the app to its own default access group
+    (`<TeamID>.<BundleID>`) — the same isolation as listing the group
+    explicitly, but without variable expansion at sign time. Listing
+    it explicitly would require `$(AppIdentifierPrefix)` or
+    `$(DEVELOPMENT_TEAM)`, either of which causes Xcode to rewrite the
+    file during codesign and emit an "Entitlements file was modified
+    during the build" error.
 
-    `$(CFBundleIdentifier)` is resolved by Xcode at build time so a
-    future bundle-id rename flows through here automatically without
-    a separate edit to this file.
-
-    Cross-extension PAT sharing is intentionally out of scope — see
-    ADR-0012 §PAT storage. Any future extension that needs Keychain
-    access must either run outside the app's access group (a new
-    entitlement row here) or surface its own PAT-entry UX; it must
-    not inherit the viewer's PAT silently.
+    A future extension that needs to share Keychain items with this app
+    must add an explicit shared group entitlement to BOTH targets and
+    go through a deliberate code-review step — it cannot silently
+    inherit the app's credentials. See ADR-0012 §PAT storage.
 
     Reference: security-review SR-20260419-029.
 -->
 <plist version="1.0">
-<dict>
-    <key>keychain-access-groups</key>
-    <array>
-        <string>$(AppIdentifierPrefix)$(CFBundleIdentifier)</string>
-    </array>
-</dict>
+<dict/>
 </plist>

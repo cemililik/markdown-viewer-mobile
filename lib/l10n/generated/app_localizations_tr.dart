@@ -419,13 +419,16 @@ class AppLocalizationsTr extends AppLocalizations {
   String get viewerShareMenuTitle => 'Farklı paylaş…';
 
   @override
-  String get viewerShareMenuText => 'Metin olarak paylaş';
+  String get viewerShareMenuText => 'Markdown olarak paylaş';
 
   @override
   String get viewerShareMenuPdf => 'PDF olarak dışa aktar';
 
   @override
   String get viewerPdfGenerating => 'PDF oluşturuluyor…';
+
+  @override
+  String get viewerShareError => 'Belge paylaşılamadı. Lütfen tekrar deneyin.';
 
   @override
   String get viewerPdfError => 'PDF oluşturulamadı. Lütfen tekrar deneyin.';
@@ -737,6 +740,10 @@ class AppLocalizationsTr extends AppLocalizations {
   @override
   String get errorUnsupportedProvider =>
       'Bu URL desteklenmiyor. Şu an yalnızca GitHub depo URL\'leri kabul edilmektedir.';
+
+  @override
+  String get errorRepoTooLarge =>
+      'Depo tam olarak senkronize edilemeyecek kadar büyük. Bunun yerine bir alt dizin URL\'si girin; örneğin github.com/owner/repo/tree/main/docs.';
 
   @override
   String errorPartialSync(int syncedCount, int failedCount) {

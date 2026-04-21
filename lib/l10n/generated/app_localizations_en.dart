@@ -423,13 +423,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get viewerShareMenuTitle => 'Share as…';
 
   @override
-  String get viewerShareMenuText => 'Share as text';
+  String get viewerShareMenuText => 'Share as Markdown';
 
   @override
   String get viewerShareMenuPdf => 'Export as PDF';
 
   @override
   String get viewerPdfGenerating => 'Generating PDF…';
+
+  @override
+  String get viewerShareError =>
+      'Could not share the document. Please try again.';
 
   @override
   String get viewerPdfError => 'Could not generate PDF. Please try again.';
@@ -743,6 +747,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get errorUnsupportedProvider =>
       'This URL is not supported. Only GitHub repository URLs are currently accepted.';
+
+  @override
+  String get errorRepoTooLarge =>
+      'Repository is too large to sync in full. Paste a subdirectory URL instead — for example, github.com/owner/repo/tree/main/docs.';
 
   @override
   String errorPartialSync(int syncedCount, int failedCount) {

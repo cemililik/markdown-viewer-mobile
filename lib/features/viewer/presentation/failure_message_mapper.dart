@@ -20,6 +20,7 @@ String mapFailureToViewerMessage(Failure failure, AppLocalizations l10n) {
     RateLimitedFailure() => l10n.errorRateLimited,
     AuthFailure() => l10n.errorAuthFailed,
     RepoNotFoundFailure() => l10n.errorRepoNotFound,
+    RepoTooLargeFailure() => l10n.errorRepoTooLarge,
     PartialSyncFailure() => l10n.errorUnknown,
     UnsupportedProviderFailure() => l10n.errorUnknown,
     UnknownFailure() => l10n.errorUnknown,
