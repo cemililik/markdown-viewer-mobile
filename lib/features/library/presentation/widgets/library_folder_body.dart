@@ -678,6 +678,15 @@ class _FolderEntryTile extends ConsumerStatefulWidget {
     required this.indent,
   });
 
+  // Shared geometry constants used by both the tile and the tree
+  // guide line so alignment stays correct if either value changes.
+  static const double tileIconSize = 20.0;
+  static const double tileContentPaddingH = 8.0;
+
+  // Guide line start margin: horizontal content padding + half the
+  // icon width places the 1 px border under the icon's vertical axis.
+  static const double guideLineMargin = tileContentPaddingH + tileIconSize / 2;
+
   /// The [LibraryFolder] the user picked as the active source.
   /// Threaded down through every level of the expansion tree so
   /// the nested enumerate call can reuse the root's security-
@@ -712,17 +721,19 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
     // automatically — using an absolute formula like `8 + indent * 12`
     // would double-count every ancestor level and push deep items off
     // screen (depth-5 file → 228 px just from padding on a 390 px screen).
-    final leftPadding = widget.indent == 0 ? 8.0 : 16.0;
+    final startPadding = widget.indent == 0 ? 8.0 : 16.0;
 
     if (entry is FolderFileEntry) {
       return Padding(
-        padding: EdgeInsets.only(left: leftPadding),
+        padding: EdgeInsetsDirectional.only(start: startPadding),
         child: ListTile(
           dense: true,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: _FolderEntryTile.tileContentPaddingH,
+          ),
           leading: Icon(
             Icons.description_outlined,
-            size: 20,
+            size: _FolderEntryTile.tileIconSize,
             color: theme.colorScheme.onSurfaceVariant,
           ),
           title: Text(entry.name, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -740,12 +751,12 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
     }
 
     return Padding(
-      padding: EdgeInsets.only(left: leftPadding),
+      padding: EdgeInsetsDirectional.only(start: startPadding),
       child: ExpansionTile(
         key: PageStorageKey<String>('browse-${entry.path}'),
         leading: Icon(
           Icons.folder_outlined,
-          size: 20,
+          size: _FolderEntryTile.tileIconSize,
           color: theme.colorScheme.primary,
         ),
         title: Text(
@@ -762,7 +773,9 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
           }
         },
         childrenPadding: EdgeInsets.zero,
-        tilePadding: EdgeInsets.zero,
+        tilePadding: const EdgeInsets.symmetric(
+          horizontal: _FolderEntryTile.tileContentPaddingH,
+        ),
         children: [
           if (_childrenFuture == null)
             const SizedBox.shrink()
@@ -791,17 +804,23 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
                 if (children.isEmpty) {
                   return _CenteredHint(text: l10n.libraryFoldersEmptyFolder);
                 }
-                // Tree guide line: a 1 px left border aligned under the
-                // folder icon (icon is 20 px wide; half = 10 px; plus the
-                // 8 px contentPadding of the tile = 18 px margin).
+                // Tree guide line: a 1 px border on the leading edge,
+                // aligned under the folder icon's vertical axis.
+                // Uses EdgeInsetsDirectional + a direction-aware border
+                // so the guide mirrors correctly in RTL locales.
+                final isLTR = Directionality.of(context) == TextDirection.ltr;
+                final guideSide = BorderSide(
+                  color: theme.colorScheme.outlineVariant,
+                  width: 1,
+                );
                 return Container(
-                  margin: const EdgeInsets.only(left: 18),
+                  margin: const EdgeInsetsDirectional.only(
+                    start: _FolderEntryTile.guideLineMargin,
+                  ),
                   decoration: BoxDecoration(
                     border: Border(
-                      left: BorderSide(
-                        color: theme.colorScheme.outlineVariant,
-                        width: 1,
-                      ),
+                      left: isLTR ? guideSide : BorderSide.none,
+                      right: isLTR ? BorderSide.none : guideSide,
                     ),
                   ),
                   child: Column(
