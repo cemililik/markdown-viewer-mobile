@@ -5,7 +5,7 @@ Flutter. Designed to be the best reading experience for `.md` documents
 on a phone — including Mermaid diagrams, LaTeX math, syntax-highlighted
 code, tables, footnotes, and admonitions.
 
-[**Download on the App Store**](https://apps.apple.com/us/app/markdown-viewer-mobile/id6762259375) · [**Get it on Google Play**](https://play.google.com/store/apps/details?id=com.cemililik.markdown_viewer)
+<a href="https://apps.apple.com/us/app/markdown-viewer-mobile/id6762259375"><img src="docs/assets/badge-app-store.svg" height="40" alt="Download on the App Store"></a>&nbsp;&nbsp;<a href="https://play.google.com/store/apps/details?id=com.cemililik.markdown_viewer"><img src="docs/assets/badge-google-play.png" height="40" alt="Get it on Google Play"></a>
 
 ## Status
 
