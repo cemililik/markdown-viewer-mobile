@@ -12,7 +12,6 @@ import 'package:markdown_viewer/features/library/domain/entities/library_source.
 import 'package:markdown_viewer/features/library/presentation/widgets/add_source_sheet.dart';
 import 'package:markdown_viewer/features/library/presentation/widgets/source_rename_dialog.dart';
 import 'package:markdown_viewer/features/repo_sync/application/remove_synced_repo.dart';
-import 'package:markdown_viewer/features/repo_sync/application/rename_synced_repo.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
 import 'package:markdown_viewer/features/repo_sync/presentation/sync_time_format.dart';
@@ -245,7 +244,7 @@ class _FolderSourceTile extends ConsumerWidget {
     );
     if (!context.mounted) return;
     if (action == 'rename') {
-      await _promptRename(context, ref);
+      await promptFolderRename(context, ref, folder);
     } else if (action == 'remove') {
       ref.read(libraryFoldersControllerProvider.notifier).remove(folder.path);
       ScaffoldMessenger.of(context)
@@ -254,26 +253,6 @@ class _FolderSourceTile extends ConsumerWidget {
           SnackBar(content: Text(l10n.libraryFoldersRemovedSnack)),
         );
     }
-  }
-
-  Future<void> _promptRename(BuildContext context, WidgetRef ref) async {
-    final l10n = context.l10n;
-    final result = await showSourceRenameDialog(
-      context,
-      title: l10n.libraryFoldersRenameDialogTitle,
-      hintText: l10n.libraryFoldersRenameDialogHint,
-      currentName: folder.customName ?? folder.displayName,
-    );
-    // `null` = user cancelled. An empty string is a deliberate
-    // "clear the override" signal — the controller normalises it
-    // to null so the displayName falls back to the path basename.
-    if (result == null || !context.mounted) return;
-    ref
-        .read(libraryFoldersControllerProvider.notifier)
-        .rename(path: folder.path, customName: result);
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(l10n.libraryFoldersRenamedSnack)));
   }
 }
 
@@ -385,7 +364,7 @@ class _SyncedRepoTile extends ConsumerWidget {
       unawaited(Navigator.of(context).maybePop());
       unawaited(context.push(RepoSyncRoute.location(url: repo.githubTreeUrl)));
     } else if (action == 'rename') {
-      await _promptRename(context, ref);
+      await promptSyncedRepoRename(context, ref, repo);
     } else if (action == 'remove') {
       await removeSyncedRepo(ref, repo.id);
       if (!context.mounted) return;
@@ -393,24 +372,5 @@ class _SyncedRepoTile extends ConsumerWidget {
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(l10n.syncRemovedRepoSnack)));
     }
-  }
-
-  Future<void> _promptRename(BuildContext context, WidgetRef ref) async {
-    final l10n = context.l10n;
-    final result = await showSourceRenameDialog(
-      context,
-      title: l10n.syncRenameDialogTitle,
-      hintText: l10n.syncRenameDialogHint,
-      currentName: repo.customName ?? repo.displayName,
-    );
-    // `null` = user cancelled. An empty string clears the override
-    // and the rename use-case normalises it to null so the
-    // `displayName` falls back to `owner/repo`.
-    if (result == null || !context.mounted) return;
-    await renameSyncedRepo(ref, repo.id, result);
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(l10n.syncRenamedRepoSnack)));
   }
 }

@@ -764,6 +764,11 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
   @override
   void dispose() {
     widget.collapseAllTrigger.removeListener(_handleCollapseAll);
+    // ExpansibleController extends ChangeNotifier; releasing its
+    // listener registrations on tile teardown keeps the leak
+    // tracker happy and prevents the post-build callback from
+    // landing on a deactivated state.
+    _expansionController.dispose();
     super.dispose();
   }
 

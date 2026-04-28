@@ -180,8 +180,8 @@ final contentSearchControllerProvider =
       ContentSearchController.new,
     );
 
-/// Convenience label builder — matches the display format the
-/// existing source-picker drawer uses (`Folder: basename`) so a
-/// search hit badge looks like everywhere else the source name
-/// appears.
+/// Routes through [LibraryFolder.displayName] so a renamed folder
+/// surfaces its custom label on the content-search hit badge with
+/// the same fallback chain (`customName` → basename → path) used
+/// everywhere else the source name appears.
 String defaultFolderSourceLabel(LibraryFolder folder) => folder.displayName;

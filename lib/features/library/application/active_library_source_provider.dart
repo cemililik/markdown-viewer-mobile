@@ -22,12 +22,16 @@ import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.d
 class ActiveLibrarySourceController extends Notifier<LibrarySource> {
   @override
   LibrarySource build() {
-    // Watch the folder list. Two reactions:
+    // Watch the folder list. Three reactions:
     //   - removed folder       → reset to Recents (stale-pointer guard).
     //   - renamed folder       → replace the held entity so the
     //     library AppBar / source-picker labels rebuild against the
     //     fresh `customName` without waiting on the next user
     //     navigation.
+    //   - refreshed bookmark   → replace the held entity so the
+    //     iOS security-scoped bookmark on the active source picks
+    //     up `LibraryFoldersController.updateBookmark` writes
+    //     instead of staying on the stale blob.
     ref.listen(libraryFoldersControllerProvider, (previous, next) {
       final current = state;
       if (current is FolderSource) {
@@ -40,17 +44,23 @@ class ActiveLibrarySourceController extends Notifier<LibrarySource> {
         }
         if (match == null) {
           state = const RecentsSource();
-        } else if (match.customName != current.folder.customName) {
+        } else if (match.customName != current.folder.customName ||
+            match.bookmark != current.folder.bookmark) {
           state = FolderSource(match);
         }
       }
     });
 
-    // Same fan-out for the synced-repos list.
+    // Same fan-out for the synced-repos list. The provider is a
+    // FutureProvider so loading / error states have no list to
+    // diff against — bail out instead of treating "no data yet"
+    // as "the active repo was removed" and dumping the user back
+    // to Recents on every cold start or provider invalidation.
     ref.listen(syncedReposProvider, (previous, next) {
+      if (!next.hasValue) return;
+      final repos = next.value!;
       final current = state;
       if (current is SyncedRepoSource) {
-        final repos = next.value ?? <SyncedRepo>[];
         SyncedRepo? match;
         for (final r in repos) {
           if (r.id == current.syncedRepo.id) {

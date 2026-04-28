@@ -22,7 +22,6 @@ import 'package:markdown_viewer/features/library/presentation/widgets/library_fo
 import 'package:markdown_viewer/features/library/presentation/widgets/source_picker_drawer.dart';
 import 'package:markdown_viewer/features/library/presentation/widgets/source_rename_dialog.dart';
 import 'package:markdown_viewer/features/repo_sync/application/remove_synced_repo.dart';
-import 'package:markdown_viewer/features/repo_sync/application/rename_synced_repo.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_notifier.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
@@ -475,21 +474,7 @@ class _RecentsEmptyWithSources extends ConsumerWidget {
     );
     if (!context.mounted) return;
     if (action == 'rename') {
-      final result = await showSourceRenameDialog(
-        context,
-        title: l10n.libraryFoldersRenameDialogTitle,
-        hintText: l10n.libraryFoldersRenameDialogHint,
-        currentName: folder.customName ?? folder.displayName,
-      );
-      if (result == null || !context.mounted) return;
-      ref
-          .read(libraryFoldersControllerProvider.notifier)
-          .rename(path: folder.path, customName: result);
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(
-          SnackBar(content: Text(l10n.libraryFoldersRenamedSnack)),
-        );
+      await promptFolderRename(context, ref, folder);
     } else if (action == 'remove') {
       ref.read(libraryFoldersControllerProvider.notifier).remove(folder.path);
       ScaffoldMessenger.of(context)
@@ -537,18 +522,7 @@ class _RecentsEmptyWithSources extends ConsumerWidget {
     if (action == 'update') {
       unawaited(context.push(RepoSyncRoute.location(url: repo.githubTreeUrl)));
     } else if (action == 'rename') {
-      final result = await showSourceRenameDialog(
-        context,
-        title: l10n.syncRenameDialogTitle,
-        hintText: l10n.syncRenameDialogHint,
-        currentName: repo.customName ?? repo.displayName,
-      );
-      if (result == null || !context.mounted) return;
-      await renameSyncedRepo(ref, repo.id, result);
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context)
-        ..hideCurrentSnackBar()
-        ..showSnackBar(SnackBar(content: Text(l10n.syncRenamedRepoSnack)));
+      await promptSyncedRepoRename(context, ref, repo);
     } else if (action == 'remove') {
       await removeSyncedRepo(ref, repo.id);
       if (!context.mounted) return;
