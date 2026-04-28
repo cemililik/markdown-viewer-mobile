@@ -254,6 +254,26 @@
   "@libraryFoldersRemove": {
     "description": "Long-press / context menu action to remove a library root from the drawer."
   },
+  "libraryFoldersRename": "Rename folder",
+  "@libraryFoldersRename": {
+    "description": "Long-press / context menu action to assign a custom display name to a library folder."
+  },
+  "libraryFoldersRenameDialogTitle": "Rename folder",
+  "@libraryFoldersRenameDialogTitle": {
+    "description": "Title of the dialog where the user types a custom name for a library folder."
+  },
+  "libraryFoldersRenameDialogHint": "Custom name (leave empty to reset)",
+  "@libraryFoldersRenameDialogHint": {
+    "description": "Placeholder text inside the rename dialog input. Empty string resets to the default basename."
+  },
+  "libraryFoldersRenamedSnack": "Folder renamed",
+  "@libraryFoldersRenamedSnack": {
+    "description": "Snackbar shown after the user renames a library folder."
+  },
+  "libraryFolderCollapseAllTooltip": "Collapse all folders",
+  "@libraryFolderCollapseAllTooltip": {
+    "description": "Tooltip on the icon button next to the search bar that closes every expanded folder in the library tree."
+  },
   "libraryFoldersAddCancelled": "Folder selection cancelled",
   "@libraryFoldersAddCancelled": {
     "description": "Snackbar shown when the directory picker is dismissed without a selection."
@@ -357,6 +377,10 @@
   "actionCancel": "Cancel",
   "@actionCancel": {
     "description": "Generic cancel button label."
+  },
+  "actionSave": "Save",
+  "@actionSave": {
+    "description": "Generic save button label, used as the confirmation button in dialogs."
   },
   "actionRetry": "Retry",
   "@actionRetry": {
@@ -820,6 +844,22 @@
   "syncRemovedRepoSnack": "Repository removed",
   "@syncRemovedRepoSnack": {
     "description": "Snackbar shown after a synced repository is removed."
+  },
+  "syncRenameRepo": "Rename",
+  "@syncRenameRepo": {
+    "description": "Long-press / context menu action to assign a custom display name to a synced repository."
+  },
+  "syncRenameDialogTitle": "Rename repository",
+  "@syncRenameDialogTitle": {
+    "description": "Title of the dialog where the user types a custom name for a synced repository."
+  },
+  "syncRenameDialogHint": "Custom name (leave empty to reset)",
+  "@syncRenameDialogHint": {
+    "description": "Placeholder text inside the rename dialog input. Empty string resets to the default owner/repo name."
+  },
+  "syncRenamedRepoSnack": "Repository renamed",
+  "@syncRenamedRepoSnack": {
+    "description": "Snackbar shown after the user renames a synced repository."
   },
   "syncRefreshTooltip": "Re-sync",
   "@syncRefreshTooltip": {

@@ -22,29 +22,46 @@ import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.d
 class ActiveLibrarySourceController extends Notifier<LibrarySource> {
   @override
   LibrarySource build() {
-    // Watch the folder list so a removed folder resets us to Recents.
+    // Watch the folder list. Two reactions:
+    //   - removed folder       → reset to Recents (stale-pointer guard).
+    //   - renamed folder       → replace the held entity so the
+    //     library AppBar / source-picker labels rebuild against the
+    //     fresh `customName` without waiting on the next user
+    //     navigation.
     ref.listen(libraryFoldersControllerProvider, (previous, next) {
       final current = state;
       if (current is FolderSource) {
-        final stillExists = next.any(
-          (folder) => folder.path == current.folder.path,
-        );
-        if (!stillExists) {
+        LibraryFolder? match;
+        for (final folder in next) {
+          if (folder.path == current.folder.path) {
+            match = folder;
+            break;
+          }
+        }
+        if (match == null) {
           state = const RecentsSource();
+        } else if (match.customName != current.folder.customName) {
+          state = FolderSource(match);
         }
       }
     });
 
-    // Watch the synced-repos list so a deleted repo also resets to Recents.
+    // Same fan-out for the synced-repos list.
     ref.listen(syncedReposProvider, (previous, next) {
       final current = state;
       if (current is SyncedRepoSource) {
         final repos = next.value ?? <SyncedRepo>[];
-        final stillExists = repos.any(
-          (SyncedRepo r) => r.id == current.syncedRepo.id,
-        );
-        if (!stillExists) {
+        SyncedRepo? match;
+        for (final r in repos) {
+          if (r.id == current.syncedRepo.id) {
+            match = r;
+            break;
+          }
+        }
+        if (match == null) {
           state = const RecentsSource();
+        } else if (match.customName != current.syncedRepo.customName) {
+          state = SyncedRepoSource(match);
         }
       }
     });

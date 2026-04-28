@@ -44,6 +44,13 @@ class SyncedRepos extends Table {
   /// release without a second schema bump. Nullable because
   /// backfilled rows have no ETag until the next successful sync.
   TextColumn get etag => text().nullable()();
+
+  /// Optional user-supplied display name shown in the library
+  /// drawer and content-search labels in place of the default
+  /// `owner/repo` form. Trimmed and `null`-coalesced upstream so an
+  /// empty input is stored as NULL (the "no override" state) rather
+  /// than an empty string. Nullable because most rows are unrenamed.
+  TextColumn get customName => text().nullable()();
 }
 
 @DataClassName('SyncedFileRow')
@@ -75,8 +82,13 @@ class AppDatabase extends _$AppDatabase {
   /// `getRepoByNaturalKey` hit indexed SEARCH paths instead of SCAN.
   /// Reference: performance-review PR-20260419-006/007 + If-None-Match
   /// (PR-20260419-016).
+  ///
+  /// v3: added `custom_name` column on `SyncedRepos` so users can
+  /// assign a friendly display name to a synced repository (the
+  /// drawer used to truncate `cemililik/markdown-viewer-mobile` to
+  /// `cemililik/markdo…` when several sources were stacked).
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -107,6 +119,9 @@ class AppDatabase extends _$AppDatabase {
         await m.createIndex(idxSyncedReposNaturalKey);
         await m.createIndex(idxSyncedReposLastSynced);
         await m.createIndex(idxSyncedFilesRepo);
+      }
+      if (from < 3) {
+        await m.addColumn(syncedRepos, syncedRepos.customName);
       }
     },
   );
@@ -153,6 +168,15 @@ class AppDatabase extends _$AppDatabase {
   Future<void> updateEtag(int id, String? etag) => (update(syncedRepos)..where(
     (t) => t.id.equals(id),
   )).write(SyncedReposCompanion(etag: Value(etag)));
+
+  /// Writes the `custom_name` column on the `synced_repos` row
+  /// identified by [id], leaving every other column untouched.
+  /// Passing `null` clears the override so [SyncedRepo.displayName]
+  /// falls back to `owner/repo`. A missing [id] is a silent no-op.
+  Future<void> updateCustomName(int id, String? customName) =>
+      (update(syncedRepos)..where(
+        (t) => t.id.equals(id),
+      )).write(SyncedReposCompanion(customName: Value(customName)));
 
   Future<void> deleteRepo(int id) =>
       (delete(syncedRepos)..where((t) => t.id.equals(id))).go();

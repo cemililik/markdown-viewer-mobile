@@ -51,12 +51,26 @@ abstract class SyncedRepo with _$SyncedRepo {
 
     /// Health of the last sync run.
     @Default(SyncStatus.ok) SyncStatus status,
+
+    /// Optional user-supplied display name. When non-null and
+    /// non-empty, [displayName] returns this instead of the default
+    /// `owner/repo` form so a long path like
+    /// `cemililik/markdown-viewer-mobile` can be shortened to a
+    /// readable label in the drawer.
+    String? customName,
   }) = _SyncedRepo;
 
   const SyncedRepo._();
 
-  /// Human-readable identifier shown in the UI, e.g. `owner/repo`.
-  String get displayName => '$owner/$repo';
+  /// Human-readable identifier shown in the UI. Returns the
+  /// user-supplied [customName] when present, otherwise falls back
+  /// to the default `owner/repo` form so legacy unrenamed rows
+  /// keep their existing label.
+  String get displayName {
+    final override = customName?.trim();
+    if (override != null && override.isNotEmpty) return override;
+    return '$owner/$repo';
+  }
 
   /// `true` when the last sync left at least some files usable.
   bool get hasContent => fileCount > 0;

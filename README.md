@@ -9,19 +9,23 @@ code, tables, footnotes, and admonitions.
 
 ## Status
 
-**v1.2.1 — released 2026-04-21.** Live on the App Store and Google Play.
-Phases 0–7 complete. This is the final active-development iteration for
-the app: v1.2 consolidated the findings from three parallel 2026-04-19
-reviews (code / security / performance — 134 findings total); v1.2.1 is
-a follow-up patch fixing the large-repo error message, `.md` file
-sharing, and the deeply nested folder tree display bug.
+**v1.3.0 — released 2026-04-21.** Live on the App Store and Google Play.
+Phases 0–7 complete. v1.3 is a small library-ergonomics release driven
+by post-launch user feedback: a collapse-all button next to the search
+bar so deep folder dives do not strand the user with a tower of open
+expansion tiles, and a Rename action on folder / synced-repo sources
+so long GitHub paths (`cemililik/markdown-viewer-mobile`) can be
+shortened to a readable alias in the drawer.
 
-v1.0 shipped after a full-application code review (128 findings across 8
-streams — all P0/P1 findings closed, architecture layer refactored), a
-dedicated security review (1 High + 8 Medium findings — the High and four
-Medium findings resolved before tagging), and `leak_tracker` globally
-enabled in the test harness. See [docs/roadmap.md](docs/roadmap.md) for
-the full delivery history and post-v1 candidates.
+v1.2 consolidated the findings from three parallel 2026-04-19 reviews
+(code / security / performance — 134 findings total). v1.2.1 patched
+the large-repo sync error message, document sharing, and the nested
+folder tree display bug. v1.0 shipped after a full-application code
+review (128 findings across 8 streams — all P0/P1 findings closed,
+architecture layer refactored), a dedicated security review, and
+`leak_tracker` globally enabled in the test harness. See
+[docs/roadmap.md](docs/roadmap.md) for the full delivery history and
+post-v1 candidates.
 
 ## Features
 

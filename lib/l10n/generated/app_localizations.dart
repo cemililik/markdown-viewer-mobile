@@ -440,6 +440,36 @@ abstract class AppLocalizations {
   /// **'Remove folder'**
   String get libraryFoldersRemove;
 
+  /// Long-press / context menu action to assign a custom display name to a library folder.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename folder'**
+  String get libraryFoldersRename;
+
+  /// Title of the dialog where the user types a custom name for a library folder.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename folder'**
+  String get libraryFoldersRenameDialogTitle;
+
+  /// Placeholder text inside the rename dialog input. Empty string resets to the default basename.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom name (leave empty to reset)'**
+  String get libraryFoldersRenameDialogHint;
+
+  /// Snackbar shown after the user renames a library folder.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder renamed'**
+  String get libraryFoldersRenamedSnack;
+
+  /// Tooltip on the icon button next to the search bar that closes every expanded folder in the library tree.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse all folders'**
+  String get libraryFolderCollapseAllTooltip;
+
   /// Snackbar shown when the directory picker is dismissed without a selection.
   ///
   /// In en, this message translates to:
@@ -583,6 +613,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cancel'**
   String get actionCancel;
+
+  /// Generic save button label, used as the confirmation button in dialogs.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get actionSave;
 
   /// Generic retry button label, e.g. on an error screen.
   ///
@@ -1237,6 +1273,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Repository removed'**
   String get syncRemovedRepoSnack;
+
+  /// Long-press / context menu action to assign a custom display name to a synced repository.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get syncRenameRepo;
+
+  /// Title of the dialog where the user types a custom name for a synced repository.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename repository'**
+  String get syncRenameDialogTitle;
+
+  /// Placeholder text inside the rename dialog input. Empty string resets to the default owner/repo name.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom name (leave empty to reset)'**
+  String get syncRenameDialogHint;
+
+  /// Snackbar shown after the user renames a synced repository.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository renamed'**
+  String get syncRenamedRepoSnack;
 
   /// Tooltip on the refresh icon shown next to a synced repo in the library drawer.
   ///

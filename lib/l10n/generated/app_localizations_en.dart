@@ -229,6 +229,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get libraryFoldersRemove => 'Remove folder';
 
   @override
+  String get libraryFoldersRename => 'Rename folder';
+
+  @override
+  String get libraryFoldersRenameDialogTitle => 'Rename folder';
+
+  @override
+  String get libraryFoldersRenameDialogHint =>
+      'Custom name (leave empty to reset)';
+
+  @override
+  String get libraryFoldersRenamedSnack => 'Folder renamed';
+
+  @override
+  String get libraryFolderCollapseAllTooltip => 'Collapse all folders';
+
+  @override
   String get libraryFoldersAddCancelled => 'Folder selection cancelled';
 
   @override
@@ -308,6 +324,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get actionCancel => 'Cancel';
+
+  @override
+  String get actionSave => 'Save';
 
   @override
   String get actionRetry => 'Retry';
@@ -661,6 +680,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get syncRemovedRepoSnack => 'Repository removed';
+
+  @override
+  String get syncRenameRepo => 'Rename';
+
+  @override
+  String get syncRenameDialogTitle => 'Rename repository';
+
+  @override
+  String get syncRenameDialogHint => 'Custom name (leave empty to reset)';
+
+  @override
+  String get syncRenamedRepoSnack => 'Repository renamed';
 
   @override
   String get syncRefreshTooltip => 'Re-sync';

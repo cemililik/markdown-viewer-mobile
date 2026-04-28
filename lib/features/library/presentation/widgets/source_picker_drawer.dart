@@ -10,12 +10,13 @@ import 'package:markdown_viewer/features/library/application/library_folders_pro
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_source.dart';
 import 'package:markdown_viewer/features/library/presentation/widgets/add_source_sheet.dart';
+import 'package:markdown_viewer/features/library/presentation/widgets/source_rename_dialog.dart';
 import 'package:markdown_viewer/features/repo_sync/application/remove_synced_repo.dart';
+import 'package:markdown_viewer/features/repo_sync/application/rename_synced_repo.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
 import 'package:markdown_viewer/features/repo_sync/presentation/sync_time_format.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
-import 'package:path/path.dart' as p;
 
 /// Source picker drawer for the library home screen.
 ///
@@ -176,8 +177,6 @@ class _FolderSourceTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final basename = p.basename(folder.path);
-    final displayName = basename.isEmpty ? folder.path : basename;
 
     return ListTile(
       leading: Icon(
@@ -188,7 +187,7 @@ class _FolderSourceTile extends ConsumerWidget {
                 : theme.colorScheme.onSurfaceVariant,
       ),
       title: Text(
-        displayName,
+        folder.displayName,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodyLarge?.copyWith(
@@ -215,13 +214,13 @@ class _FolderSourceTile extends ConsumerWidget {
         ref.read(activeLibrarySourceProvider.notifier).selectFolder(folder);
         Navigator.of(context).maybePop();
       },
-      onLongPress: () => _showRemoveSheet(context, ref),
+      onLongPress: () => _showActionsSheet(context, ref),
     );
   }
 
-  Future<void> _showRemoveSheet(BuildContext context, WidgetRef ref) async {
+  Future<void> _showActionsSheet(BuildContext context, WidgetRef ref) async {
     final l10n = context.l10n;
-    final selected = await showModalBottomSheet<bool>(
+    final action = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
       builder: (sheetContext) {
@@ -230,20 +229,51 @@ class _FolderSourceTile extends ConsumerWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
+                leading: const Icon(Icons.drive_file_rename_outline),
+                title: Text(l10n.libraryFoldersRename),
+                onTap: () => Navigator.of(sheetContext).pop('rename'),
+              ),
+              ListTile(
                 leading: const Icon(Icons.delete_outline),
                 title: Text(l10n.libraryFoldersRemove),
-                onTap: () => Navigator.of(sheetContext).pop(true),
+                onTap: () => Navigator.of(sheetContext).pop('remove'),
               ),
             ],
           ),
         );
       },
     );
-    if (selected != true || !context.mounted) return;
-    ref.read(libraryFoldersControllerProvider.notifier).remove(folder.path);
+    if (!context.mounted) return;
+    if (action == 'rename') {
+      await _promptRename(context, ref);
+    } else if (action == 'remove') {
+      ref.read(libraryFoldersControllerProvider.notifier).remove(folder.path);
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text(l10n.libraryFoldersRemovedSnack)),
+        );
+    }
+  }
+
+  Future<void> _promptRename(BuildContext context, WidgetRef ref) async {
+    final l10n = context.l10n;
+    final result = await showSourceRenameDialog(
+      context,
+      title: l10n.libraryFoldersRenameDialogTitle,
+      hintText: l10n.libraryFoldersRenameDialogHint,
+      currentName: folder.customName ?? folder.displayName,
+    );
+    // `null` = user cancelled. An empty string is a deliberate
+    // "clear the override" signal — the controller normalises it
+    // to null so the displayName falls back to the path basename.
+    if (result == null || !context.mounted) return;
+    ref
+        .read(libraryFoldersControllerProvider.notifier)
+        .rename(path: folder.path, customName: result);
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(l10n.libraryFoldersRemovedSnack)));
+      ..showSnackBar(SnackBar(content: Text(l10n.libraryFoldersRenamedSnack)));
   }
 }
 
@@ -337,6 +367,11 @@ class _SyncedRepoTile extends ConsumerWidget {
                   onTap: () => Navigator.of(sheetContext).pop('update'),
                 ),
                 ListTile(
+                  leading: const Icon(Icons.drive_file_rename_outline),
+                  title: Text(l10n.syncRenameRepo),
+                  onTap: () => Navigator.of(sheetContext).pop('rename'),
+                ),
+                ListTile(
                   leading: const Icon(Icons.delete_outline),
                   title: Text(l10n.syncRemoveRepo),
                   onTap: () => Navigator.of(sheetContext).pop('remove'),
@@ -349,6 +384,8 @@ class _SyncedRepoTile extends ConsumerWidget {
     if (action == 'update') {
       unawaited(Navigator.of(context).maybePop());
       unawaited(context.push(RepoSyncRoute.location(url: repo.githubTreeUrl)));
+    } else if (action == 'rename') {
+      await _promptRename(context, ref);
     } else if (action == 'remove') {
       await removeSyncedRepo(ref, repo.id);
       if (!context.mounted) return;
@@ -356,5 +393,24 @@ class _SyncedRepoTile extends ConsumerWidget {
         ..hideCurrentSnackBar()
         ..showSnackBar(SnackBar(content: Text(l10n.syncRemovedRepoSnack)));
     }
+  }
+
+  Future<void> _promptRename(BuildContext context, WidgetRef ref) async {
+    final l10n = context.l10n;
+    final result = await showSourceRenameDialog(
+      context,
+      title: l10n.syncRenameDialogTitle,
+      hintText: l10n.syncRenameDialogHint,
+      currentName: repo.customName ?? repo.displayName,
+    );
+    // `null` = user cancelled. An empty string clears the override
+    // and the rename use-case normalises it to null so the
+    // `displayName` falls back to `owner/repo`.
+    if (result == null || !context.mounted) return;
+    await renameSyncedRepo(ref, repo.id, result);
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(l10n.syncRenamedRepoSnack)));
   }
 }

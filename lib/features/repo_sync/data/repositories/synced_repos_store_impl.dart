@@ -50,6 +50,14 @@ class SyncedReposStoreImpl implements SyncedReposStore {
         status: Value(_statusToString(repo.status)),
       );
       await _db.updateRepo(companion);
+      // Read the canonical row back so the return value carries
+      // every persisted column — including `customName` and `etag`,
+      // which the companion intentionally omits to preserve their
+      // existing values across a re-sync. Returning `repo.copyWith(
+      // id: existing.id)` would drop the user's rename whenever a
+      // sync notifier built the input from URL parts.
+      final updatedRow = await _db.getRepoById(existing.id);
+      if (updatedRow != null) return _rowToEntity(updatedRow);
       return repo.copyWith(id: existing.id);
     }
 
@@ -152,6 +160,13 @@ class SyncedReposStoreImpl implements SyncedReposStore {
       _db.updateEtag(repoId, etag);
 
   @override
+  Future<void> rename(int repoId, String? customName) {
+    final trimmed = customName?.trim();
+    final normalised = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+    return _db.updateCustomName(repoId, normalised);
+  }
+
+  @override
   Future<void> deleteFilesNotIn(int repoId, Set<String> retainedPaths) {
     // Single batched SQL statement (`DELETE … WHERE … NOT IN`)
     // handled by the drift DAO. The previous per-row loop issued one
@@ -181,6 +196,7 @@ class SyncedReposStoreImpl implements SyncedReposStore {
     ),
     fileCount: row.fileCount,
     status: _statusFromString(row.status),
+    customName: row.customName,
   );
 
   static SyncStatus _statusFromString(String s) => switch (s) {
