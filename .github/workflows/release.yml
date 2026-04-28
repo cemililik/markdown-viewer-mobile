@@ -79,18 +79,52 @@ jobs:
 
       - name: Extract release notes
         id: notes
-        # Prefer the annotated tag message — that's the documented
-        # workflow in `docs/release-process.md`. If the tag is
-        # lightweight, fall back to the bulleted commit list
-        # between the previous tag and this one so the release
-        # still has *some* body. Heredoc'd into the step output so
-        # multi-line notes survive intact.
+        # Three strategies, tried in order:
+        #
+        #   1. The matching `## [<version>]` section in CHANGELOG.md.
+        #      The project standard documents user-facing release
+        #      notes there in proper markdown, so the GitHub Release
+        #      body and the Play Store "what's new" entry both pull
+        #      the canonical, human-edited copy.
+        #   2. The annotated tag message with any PGP / SSH signature
+        #      trailer stripped. `git tag -l --format='%(contents)'`
+        #      returns the full tag object payload, INCLUDING the
+        #      signature block when the tag is signed — which would
+        #      otherwise embed `-----BEGIN PGP SIGNATURE-----…` into
+        #      the GitHub Release body and the (truncated) Play Store
+        #      release notes. The `awk` filter cuts the stream as
+        #      soon as the signature header appears.
+        #   3. The commit log between the previous tag and this one,
+        #      so even a lightweight tag with no annotation gets
+        #      *some* body.
+        #
+        # Final safety net: a hardcoded "Release $TAG" so the
+        # downstream `softprops/action-gh-release` step can never
+        # publish an empty body.
+        #
+        # Notes are heredoc'd into the step output so multi-line
+        # markdown survives the GitHub Actions output protocol.
         run: |
           set -euo pipefail
           TAG="${GITHUB_REF#refs/tags/}"
-          NOTES="$(git tag -l --format='%(contents)' "$TAG" || true)"
-          # `%(contents)` returns an empty string for lightweight
-          # tags — fall through to the commit log in that case.
+          VERSION="${TAG#v}"
+          NOTES=""
+
+          if [ -f CHANGELOG.md ]; then
+            NOTES="$(awk -v target="$VERSION" '
+              /^## \[/ {
+                if (in_section) exit
+                if ($0 ~ "^## \\[" target "\\]") { in_section = 1; next }
+              }
+              in_section { print }
+            ' CHANGELOG.md)"
+          fi
+
+          if [ -z "${NOTES// }" ]; then
+            NOTES="$(git tag -l --format='%(contents)' "$TAG" \
+              | awk '/^-----BEGIN (PGP|SSH) SIGNATURE-----/ { exit } { print }')"
+          fi
+
           if [ -z "${NOTES// }" ]; then
             PREV="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
             if [ -n "$PREV" ]; then
@@ -99,9 +133,11 @@ jobs:
               NOTES="$(git log --pretty=format:'- %s' "${TAG}")"
             fi
           fi
+
           if [ -z "${NOTES// }" ]; then
             NOTES="Release $TAG"
           fi
+
           {
             echo "release_notes<<RELEASE_NOTES_EOF"
             echo "$NOTES"
