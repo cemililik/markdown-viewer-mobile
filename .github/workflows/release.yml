@@ -111,18 +111,37 @@ jobs:
           NOTES=""
 
           if [ -f CHANGELOG.md ]; then
+            # Match `## [<version>]` either alone or followed by any
+            # separator + trailing text — covers both bare headings and
+            # the keep-a-changelog dated form `## [<version>] — YYYY-MM-DD`
+            # (with hyphen *or* em-dash, since this project uses both).
+            # Comparison is by literal string prefix rather than regex so
+            # the dots in `1.2.3` cannot match arbitrary characters
+            # (e.g. a `1X2Y3` heading further up the file).
             NOTES="$(awk -v target="$VERSION" '
               /^## \[/ {
                 if (in_section) exit
-                if ($0 ~ "^## \\[" target "\\]") { in_section = 1; next }
+                prefix = "## [" target "]"
+                if ($0 == prefix) { in_section = 1; next }
+                rest = substr($0, length(prefix) + 1)
+                if (substr($0, 1, length(prefix)) == prefix && rest ~ /^[[:space:]]/) {
+                  in_section = 1
+                  next
+                }
               }
               in_section { print }
             ' CHANGELOG.md)"
           fi
 
           if [ -z "${NOTES// }" ]; then
+            # Anchor the signature header at both ends of the line so a
+            # tag message that happens to *quote* the canonical string
+            # (or starts a line with a longer text that begins with the
+            # header) does not cause a premature truncation. Only the
+            # exact, full-line canonical header marks the start of the
+            # signature block.
             NOTES="$(git tag -l --format='%(contents)' "$TAG" \
-              | awk '/^-----BEGIN (PGP|SSH) SIGNATURE-----/ { exit } { print }')"
+              | awk '/^-----BEGIN (PGP|SSH) SIGNATURE-----$/ { exit } { print }')"
           fi
 
           if [ -z "${NOTES// }" ]; then
