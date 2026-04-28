@@ -16,6 +16,7 @@ graph LR
     V11 --> P7[Phase 7<br/>Hardening closeout]
     P7 --> V12[v1.2]
     V12 --> V121[v1.2.1]
+    V121 --> V13[v1.3]
 
     style P0 fill:#2e7d32,color:#fff
     style P1 fill:#2e7d32,color:#fff
@@ -30,6 +31,7 @@ graph LR
     style P7 fill:#2e7d32,color:#fff
     style V12 fill:#2e7d32,color:#fff
     style V121 fill:#2e7d32,color:#fff
+    style V13 fill:#2e7d32,color:#fff
 ```
 
 ## Phase 0 — Foundation ✅
@@ -277,6 +279,36 @@ on-device verification.
 - [x] Tag `v1.2.1` published; app live on the **App Store**
   (https://apps.apple.com/us/app/markdown-viewer-mobile/id6762259375)
   and **Google Play** (2026-04-21).
+
+### v1.3.0 release (2026-04-21)
+
+Small library-ergonomics release driven by post-launch user
+feedback.
+
+- [x] **Collapse-all button next to the library search bar.**
+  Closes every expanded folder in the visible tree at once.
+  Disabled while a search query is active. Each tile owns its
+  own `ExpansibleController` and listens to a shared
+  `ValueNotifier<int>` "collapse trigger" hoisted to the body
+  state.
+- [x] **Rename action on folder and synced-repo sources.**
+  Long-press surface gains a "Rename" entry that opens a shared
+  `showSourceRenameDialog` (StatefulWidget owning its
+  `TextEditingController`). The current label is pre-selected
+  so the first keystroke replaces it; an empty / whitespace
+  confirm clears the override and falls back to the default
+  label. Drift schema bumped to v3 with a new
+  `synced_repos.custom_name` column; `LibraryFolder` gained a
+  `customName` field with sentinel-driven `copyWith`.
+- [x] **Active-source notifier tracks rename changes.** The
+  AppBar title, drawer, content-search labels, and Recents
+  source list rebuild instantly against the new label without
+  waiting on the next navigation.
+- [x] **Re-sync preserves user-supplied names.** The drift
+  store's upsert path re-reads the canonical row after writing
+  so the returned entity carries the persisted `customName`
+  and `etag`. Previously a re-sync from a fresh URL parse
+  silently dropped the rename.
 
 ### Explicitly out of scope (tracked as post-v1 items)
 

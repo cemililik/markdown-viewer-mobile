@@ -9,6 +9,63 @@ kept out of this file — they belong in commit history instead.
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-04-21
+
+Fourth minor release. Two library-ergonomics improvements driven
+by user feedback after the App Store / Google Play launch.
+
+### Added
+- **Collapse-all button next to the library search bar.** A new
+  icon button (Material `unfold_less`) lives to the right of the
+  search field on every folder source. Tapping it closes every
+  expanded subfolder in the visible tree at once, so a deep dive
+  into a nested directory does not strand the user with twenty
+  open expansion tiles to scroll past on the way back out. The
+  button is disabled while a search query is active because the
+  flat search-results list has no expansion state to collapse.
+- **Rename action on folder and synced-repo sources.** Long-press
+  a folder or synced repository in the source-picker drawer (or
+  in the Recents-empty home screen) and the action sheet now
+  exposes a "Rename" entry. The rename dialog pre-fills the
+  current label with the entire string pre-selected so the first
+  keystroke replaces it; an empty / whitespace-only confirm
+  clears the override and falls back to the default label
+  (`owner/repo` for synced repos, the path basename for folders).
+  GitHub paths like `cemililik/markdown-viewer-mobile` that
+  previously truncated to `cemililik/markdo…` in the drawer can
+  now be shortened to anything readable.
+
+### Changed
+- **Source rename propagates instantly.** The active library
+  source's title in the AppBar, the source-picker drawer, the
+  content-search source label, and the Recents source list all
+  rebuild against the new label without waiting on the next
+  navigation. The active-source notifier now tracks rename
+  changes alongside its existing remove-resets-to-Recents
+  behaviour.
+- **Re-sync preserves user-supplied names.** The drift store's
+  upsert path now re-reads the canonical row after writing so
+  the returned entity carries the persisted `customName` (and
+  `etag`). Previously the function reconstructed the result from
+  the input alone, which silently dropped the rename whenever a
+  re-sync ran from a fresh URL parse.
+
+### Internal
+- Drift schema bumped to v3: added `synced_repos.custom_name TEXT`
+  column. Migration is idempotent — existing rows keep their
+  default `owner/repo` label until the user explicitly renames.
+- `LibraryFolder` gained a `customName` field, a `displayName`
+  getter, and a sentinel-driven `copyWith` so rename and
+  bookmark refresh paths can update one field without dropping
+  the others. The shared-prefs JSON shape grew an optional
+  `customName` key; entries from earlier builds decode unchanged.
+- New shared `showSourceRenameDialog` widget (StatefulWidget that
+  owns its `TextEditingController` so the dialog teardown does
+  not throw "controller used after disposed").
+- Folder display-name computation centralised on
+  `LibraryFolder.displayName`. Removes four hand-rolled
+  "basename or path" snippets across the library screens.
+
 ## [1.2.1] — 2026-04-21
 
 Patch release fixing three user-visible bugs and hardening several
@@ -600,7 +657,8 @@ tracked in `docs/roadmap.md`.
   qualifier because that form evaluates inconsistently across archive
   phases.
 
-[Unreleased]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.2.1...HEAD
+[Unreleased]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/cemililik/markdown-viewer-mobile/compare/v1.0.2...v1.1.0

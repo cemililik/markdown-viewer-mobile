@@ -85,6 +85,12 @@ class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
+  /// Monotonic tick incremented every time the user taps the
+  /// collapse-all button. `_FolderEntryTile` instances listen to
+  /// this notifier and call `.collapse()` on their own
+  /// `ExpansibleController` when the value changes.
+  final ValueNotifier<int> _collapseAllTick = ValueNotifier<int>(0);
+
   /// Flat recursive walk cached once per folder source. We
   /// trigger the walk lazily on the first non-empty search so
   /// browsing a folder without searching does not pay the walk
@@ -162,7 +168,12 @@ class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
   void dispose() {
     _contentDebounceTimer?.cancel();
     _searchController.dispose();
+    _collapseAllTick.dispose();
     super.dispose();
+  }
+
+  void _collapseAll() {
+    _collapseAllTick.value++;
   }
 
   void _onSearchChanged(String value) {
@@ -249,11 +260,9 @@ class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
         // The folder-body never renders a "Recent" badge, but the
         // label is required for the shared [ContentMatchTile] API.
         recentsSourceLabel: l10n.libraryContentSearchSourceRecent,
-        folderSourceLabelBuilder: (folder) {
-          final basename = p.basename(folder.path);
-          final name = basename.isEmpty ? folder.path : basename;
-          return l10n.libraryContentSearchSourceFolder(name);
-        },
+        folderSourceLabelBuilder:
+            (folder) =>
+                l10n.libraryContentSearchSourceFolder(folder.displayName),
         syncedRepoSourceLabelBuilder: (_) => '',
       );
       if (!mounted || seq != _contentDispatchSeq) return;
@@ -283,47 +292,66 @@ class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
       children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-          child: TextField(
-            controller: _searchController,
-            onChanged: _onSearchChanged,
-            textInputAction: TextInputAction.search,
-            style: theme.textTheme.bodyLarge,
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: theme.colorScheme.surfaceContainerHigh,
-              hintText: l10n.libraryFolderSourceSearchHint(displayName),
-              prefixIcon: Icon(
-                Icons.search,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-              suffixIcon:
-                  _searchQuery.isEmpty
-                      ? null
-                      : IconButton(
-                        tooltip: l10n.librarySearchClear,
-                        icon: const Icon(Icons.close),
-                        onPressed: _clearSearch,
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: _onSearchChanged,
+                  textInputAction: TextInputAction.search,
+                  style: theme.textTheme.bodyLarge,
+                  decoration: InputDecoration(
+                    filled: true,
+                    fillColor: theme.colorScheme.surfaceContainerHigh,
+                    hintText: l10n.libraryFolderSourceSearchHint(displayName),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                    suffixIcon:
+                        _searchQuery.isEmpty
+                            ? null
+                            : IconButton(
+                              tooltip: l10n.librarySearchClear,
+                              icon: const Icon(Icons.close),
+                              onPressed: _clearSearch,
+                            ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    border: const OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(14)),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: const OutlineInputBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(14)),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: const BorderRadius.all(Radius.circular(14)),
+                      borderSide: BorderSide(
+                        color: theme.colorScheme.primary,
+                        width: 1.5,
                       ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
-              border: const OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(14)),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: const OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(14)),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: const BorderRadius.all(Radius.circular(14)),
-                borderSide: BorderSide(
-                  color: theme.colorScheme.primary,
-                  width: 1.5,
+                    ),
+                  ),
                 ),
               ),
-            ),
+              const SizedBox(width: 8),
+              IconButton(
+                tooltip: l10n.libraryFolderCollapseAllTooltip,
+                icon: const Icon(Icons.unfold_less),
+                onPressed: _searchQuery.isEmpty ? _collapseAll : null,
+                style: IconButton.styleFrom(
+                  backgroundColor: theme.colorScheme.surfaceContainerHigh,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.all(Radius.circular(14)),
+                  ),
+                  minimumSize: const Size(48, 48),
+                ),
+              ),
+            ],
           ),
         ),
         Expanded(
@@ -346,6 +374,7 @@ class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
                         'browse-${widget.folder.path}-${widget.refreshTick}',
                       ),
                       folder: widget.folder,
+                      collapseAllTrigger: _collapseAllTick,
                     )
                     : _FolderCombinedSearchView(
                       key: ValueKey('search-${widget.folder.path}'),
@@ -363,17 +392,23 @@ class _LibraryFolderBodyState extends ConsumerState<LibraryFolderBody> {
     );
   }
 
-  String _displayNameFor(LibraryFolder folder) {
-    final basename = p.basename(folder.path);
-    return basename.isEmpty ? folder.path : basename;
-  }
+  String _displayNameFor(LibraryFolder folder) => folder.displayName;
 }
 
 /// Browsing mode: lazy expansion-tile tree rooted at [folder].
 class _FolderBrowseView extends ConsumerStatefulWidget {
-  const _FolderBrowseView({required this.folder, super.key});
+  const _FolderBrowseView({
+    required this.folder,
+    required this.collapseAllTrigger,
+    super.key,
+  });
 
   final LibraryFolder folder;
+
+  /// Notifier whose value-change ticks every `_FolderEntryTile` to
+  /// collapse itself. Threaded down to every nested tile so a single
+  /// tap at the top closes the entire visible tree.
+  final Listenable collapseAllTrigger;
 
   @override
   ConsumerState<_FolderBrowseView> createState() => _FolderBrowseViewState();
@@ -426,6 +461,7 @@ class _FolderBrowseViewState extends ConsumerState<_FolderBrowseView> {
                 rootFolder: widget.folder,
                 entry: entries[index],
                 indent: 0,
+                collapseAllTrigger: widget.collapseAllTrigger,
               ),
         );
       },
@@ -483,8 +519,7 @@ class _FolderCombinedSearchView extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final l10n = context.l10n;
-    final displayName =
-        p.basename(folder.path).isEmpty ? folder.path : p.basename(folder.path);
+    final displayName = folder.displayName;
 
     return FutureBuilder<List<FolderFileEntry>>(
       future: recursiveFuture,
@@ -676,6 +711,7 @@ class _FolderEntryTile extends ConsumerStatefulWidget {
     required this.rootFolder,
     required this.entry,
     required this.indent,
+    required this.collapseAllTrigger,
   });
 
   // Shared geometry constants used by both the tile and the tree
@@ -696,12 +732,62 @@ class _FolderEntryTile extends ConsumerStatefulWidget {
   final FolderEntry entry;
   final int indent;
 
+  /// Listenable that ticks when the user taps the collapse-all
+  /// button. Each tile owns an [ExpansibleController] and
+  /// collapses itself in response so a single tap closes the
+  /// entire visible tree.
+  final Listenable collapseAllTrigger;
+
   @override
   ConsumerState<_FolderEntryTile> createState() => _FolderEntryTileState();
 }
 
 class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
   Future<List<FolderEntry>>? _childrenFuture;
+  final ExpansibleController _expansionController = ExpansibleController();
+
+  /// `true` when this tile renders a folder (not a file). File tiles
+  /// have no expansion state to collapse so they never register the
+  /// listener — a 1 000-file directory would otherwise allocate
+  /// 1 000 unused listener slots on the shared collapse trigger.
+  bool get _isFolder => widget.entry is FolderSubdirEntry;
+
+  @override
+  void initState() {
+    super.initState();
+    if (_isFolder) {
+      widget.collapseAllTrigger.addListener(_handleCollapseAll);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _FolderEntryTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_isFolder &&
+        oldWidget.collapseAllTrigger != widget.collapseAllTrigger) {
+      oldWidget.collapseAllTrigger.removeListener(_handleCollapseAll);
+      widget.collapseAllTrigger.addListener(_handleCollapseAll);
+    }
+  }
+
+  @override
+  void dispose() {
+    if (_isFolder) {
+      widget.collapseAllTrigger.removeListener(_handleCollapseAll);
+    }
+    // `ExpansibleController` extends `ChangeNotifier`; calling
+    // `dispose()` releases the internal listener list so a tile that
+    // unmounts mid-animation does not leak.
+    _expansionController.dispose();
+    super.dispose();
+  }
+
+  void _handleCollapseAll() {
+    if (!mounted) return;
+    if (_expansionController.isExpanded) {
+      _expansionController.collapse();
+    }
+  }
 
   void _loadChildrenIfNeeded() {
     _childrenFuture ??= ref
@@ -754,6 +840,7 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
       padding: EdgeInsetsDirectional.only(start: startPadding),
       child: ExpansionTile(
         key: PageStorageKey<String>('browse-${entry.path}'),
+        controller: _expansionController,
         leading: Icon(
           Icons.folder_outlined,
           size: _FolderEntryTile.tileIconSize,
@@ -830,6 +917,7 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
                           rootFolder: widget.rootFolder,
                           entry: child,
                           indent: widget.indent + 1,
+                          collapseAllTrigger: widget.collapseAllTrigger,
                         ),
                     ],
                   ),

@@ -228,6 +228,22 @@ class AppLocalizationsTr extends AppLocalizations {
   String get libraryFoldersRemove => 'Klasörü kaldır';
 
   @override
+  String get libraryFoldersRename => 'Klasörü yeniden adlandır';
+
+  @override
+  String get libraryFoldersRenameDialogTitle => 'Klasörü yeniden adlandır';
+
+  @override
+  String get libraryFoldersRenameDialogHint =>
+      'Özel ad (boş bırakırsan sıfırlanır)';
+
+  @override
+  String get libraryFoldersRenamedSnack => 'Klasör yeniden adlandırıldı';
+
+  @override
+  String get libraryFolderCollapseAllTooltip => 'Tüm klasörleri kapat';
+
+  @override
   String get libraryFoldersAddCancelled => 'Klasör seçimi iptal edildi';
 
   @override
@@ -305,6 +321,9 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get actionCancel => 'İptal';
+
+  @override
+  String get actionSave => 'Kaydet';
 
   @override
   String get actionRetry => 'Yeniden dene';
@@ -654,6 +673,22 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get syncRemovedRepoSnack => 'Depo kaldırıldı';
+
+  @override
+  String get syncRenameRepo => 'Yeniden adlandır';
+
+  @override
+  String get syncRenameDialogTitle => 'Depoyu yeniden adlandır';
+
+  @override
+  String get syncRenameDialogHint => 'Özel ad (boş bırakırsan sıfırlanır)';
+
+  @override
+  String get syncRenamedRepoSnack => 'Depo yeniden adlandırıldı';
+
+  @override
+  String get syncRenameRepoError =>
+      'Depo yeniden adlandırılamadı. Lütfen tekrar deneyin.';
 
   @override
   String get syncRefreshTooltip => 'Yeniden senkronize et';

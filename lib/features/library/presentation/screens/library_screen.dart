@@ -20,6 +20,7 @@ import 'package:markdown_viewer/features/library/presentation/widgets/add_source
 import 'package:markdown_viewer/features/library/presentation/widgets/content_search_results.dart';
 import 'package:markdown_viewer/features/library/presentation/widgets/library_folder_body.dart';
 import 'package:markdown_viewer/features/library/presentation/widgets/source_picker_drawer.dart';
+import 'package:markdown_viewer/features/library/presentation/widgets/source_rename_dialog.dart';
 import 'package:markdown_viewer/features/repo_sync/application/remove_synced_repo.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_notifier.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
@@ -113,11 +114,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         .submitQuery(
           raw: raw,
           recentsSourceLabel: l10n.libraryContentSearchSourceRecent,
-          folderSourceLabelBuilder: (folder) {
-            final basename = p.basename(folder.path);
-            final name = basename.isEmpty ? folder.path : basename;
-            return l10n.libraryContentSearchSourceFolder(name);
-          },
+          folderSourceLabelBuilder:
+              (folder) =>
+                  l10n.libraryContentSearchSourceFolder(folder.displayName),
           syncedRepoSourceLabelBuilder: (repo) {
             return l10n.libraryContentSearchSourceRepo(repo.displayName);
           },
@@ -159,11 +158,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         // keystroke. Reference: PR-review (Cluster F follow-up).
         final l10n = context.l10n;
         final recentsLabel = l10n.libraryContentSearchSourceRecent;
-        String folderLabel(LibraryFolder folder) {
-          final basename = p.basename(folder.path);
-          final name = basename.isEmpty ? folder.path : basename;
-          return l10n.libraryContentSearchSourceFolder(name);
-        }
+        String folderLabel(LibraryFolder folder) =>
+            l10n.libraryContentSearchSourceFolder(folder.displayName);
 
         String syncedRepoLabel(SyncedRepo repo) =>
             l10n.libraryContentSearchSourceRepo(repo.displayName);
@@ -238,8 +234,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       case RecentsSource():
         titleWidget = Text(l10n.navLibrary);
       case FolderSource(:final folder):
-        final basename = p.basename(folder.path);
-        final display = basename.isEmpty ? folder.path : basename;
+        final display = folder.displayName;
         titleWidget = Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -449,13 +444,13 @@ class _RecentsEmptyWithSources extends ConsumerWidget {
   final VoidCallback onOpenFile;
   final VoidCallback onAddSource;
 
-  Future<void> _showFolderRemoveSheet(
+  Future<void> _showFolderActionsSheet(
     BuildContext context,
     WidgetRef ref,
     LibraryFolder folder,
   ) async {
     final l10n = context.l10n;
-    final confirmed = await showModalBottomSheet<bool>(
+    final action = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
       builder:
@@ -464,19 +459,30 @@ class _RecentsEmptyWithSources extends ConsumerWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 ListTile(
+                  leading: const Icon(Icons.drive_file_rename_outline),
+                  title: Text(l10n.libraryFoldersRename),
+                  onTap: () => Navigator.of(sheetContext).pop('rename'),
+                ),
+                ListTile(
                   leading: const Icon(Icons.delete_outline),
                   title: Text(l10n.libraryFoldersRemove),
-                  onTap: () => Navigator.of(sheetContext).pop(true),
+                  onTap: () => Navigator.of(sheetContext).pop('remove'),
                 ),
               ],
             ),
           ),
     );
-    if (confirmed != true || !context.mounted) return;
-    ref.read(libraryFoldersControllerProvider.notifier).remove(folder.path);
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(SnackBar(content: Text(l10n.libraryFoldersRemovedSnack)));
+    if (!context.mounted) return;
+    if (action == 'rename') {
+      await promptFolderRename(context, ref, folder);
+    } else if (action == 'remove') {
+      ref.read(libraryFoldersControllerProvider.notifier).remove(folder.path);
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(content: Text(l10n.libraryFoldersRemovedSnack)),
+        );
+    }
   }
 
   Future<void> _showRepoActionsSheet(
@@ -499,6 +505,11 @@ class _RecentsEmptyWithSources extends ConsumerWidget {
                   onTap: () => Navigator.of(sheetContext).pop('update'),
                 ),
                 ListTile(
+                  leading: const Icon(Icons.drive_file_rename_outline),
+                  title: Text(l10n.syncRenameRepo),
+                  onTap: () => Navigator.of(sheetContext).pop('rename'),
+                ),
+                ListTile(
                   leading: const Icon(Icons.delete_outline),
                   title: Text(l10n.syncRemoveRepo),
                   onTap: () => Navigator.of(sheetContext).pop('remove'),
@@ -510,6 +521,8 @@ class _RecentsEmptyWithSources extends ConsumerWidget {
     if (!context.mounted) return;
     if (action == 'update') {
       unawaited(context.push(RepoSyncRoute.location(url: repo.githubTreeUrl)));
+    } else if (action == 'rename') {
+      await promptSyncedRepoRename(context, ref, repo);
     } else if (action == 'remove') {
       await removeSyncedRepo(ref, repo.id);
       if (!context.mounted) return;
@@ -572,8 +585,7 @@ class _RecentsEmptyWithSources extends ConsumerWidget {
           itemBuilder: (context, index) {
             if (index < folders.length) {
               final folder = folders[index];
-              final basename = p.basename(folder.path);
-              final display = basename.isEmpty ? folder.path : basename;
+              final display = folder.displayName;
               return ListTile(
                 leading: Icon(Icons.folder_outlined, color: scheme.primary),
                 title: Text(
@@ -591,7 +603,8 @@ class _RecentsEmptyWithSources extends ConsumerWidget {
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => onSelectFolder(folder),
-                onLongPress: () => _showFolderRemoveSheet(context, ref, folder),
+                onLongPress:
+                    () => _showFolderActionsSheet(context, ref, folder),
               );
             }
             final repo = syncedRepos[index - folders.length];
