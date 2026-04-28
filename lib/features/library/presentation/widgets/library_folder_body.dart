@@ -746,16 +746,25 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
   Future<List<FolderEntry>>? _childrenFuture;
   final ExpansibleController _expansionController = ExpansibleController();
 
+  /// `true` when this tile renders a folder (not a file). File tiles
+  /// have no expansion state to collapse so they never register the
+  /// listener — a 1 000-file directory would otherwise allocate
+  /// 1 000 unused listener slots on the shared collapse trigger.
+  bool get _isFolder => widget.entry is FolderSubdirEntry;
+
   @override
   void initState() {
     super.initState();
-    widget.collapseAllTrigger.addListener(_handleCollapseAll);
+    if (_isFolder) {
+      widget.collapseAllTrigger.addListener(_handleCollapseAll);
+    }
   }
 
   @override
   void didUpdateWidget(covariant _FolderEntryTile oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.collapseAllTrigger != widget.collapseAllTrigger) {
+    if (_isFolder &&
+        oldWidget.collapseAllTrigger != widget.collapseAllTrigger) {
       oldWidget.collapseAllTrigger.removeListener(_handleCollapseAll);
       widget.collapseAllTrigger.addListener(_handleCollapseAll);
     }
@@ -763,22 +772,18 @@ class _FolderEntryTileState extends ConsumerState<_FolderEntryTile> {
 
   @override
   void dispose() {
-    widget.collapseAllTrigger.removeListener(_handleCollapseAll);
-    // ExpansibleController extends ChangeNotifier; releasing its
-    // listener registrations on tile teardown keeps the leak
-    // tracker happy and prevents the post-build callback from
-    // landing on a deactivated state.
+    if (_isFolder) {
+      widget.collapseAllTrigger.removeListener(_handleCollapseAll);
+    }
+    // `ExpansibleController` extends `ChangeNotifier`; calling
+    // `dispose()` releases the internal listener list so a tile that
+    // unmounts mid-animation does not leak.
     _expansionController.dispose();
     super.dispose();
   }
 
   void _handleCollapseAll() {
-    // The controller throws if attached to a non-mounted state or
-    // a tile that never built an ExpansionTile (file rows). Guard
-    // both cases — a file tile registers the listener but should
-    // ignore the tick.
     if (!mounted) return;
-    if (widget.entry is! FolderSubdirEntry) return;
     if (_expansionController.isExpanded) {
       _expansionController.collapse();
     }

@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/core/errors/log_and_drop.dart';
+import 'package:markdown_viewer/core/text/source_rename.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/repositories/library_folders_store.dart';
 import 'package:markdown_viewer/features/library/domain/services/folder_enumerator.dart';
@@ -113,16 +114,24 @@ class LibraryFoldersController extends Notifier<List<LibraryFolder>> {
   }
 
   /// Replaces the [LibraryFolder.customName] on the entry at [path]
-  /// with [customName]. Passing `null` or an empty string clears the
-  /// override so [LibraryFolder.displayName] falls back to the path
-  /// basename. No-op when no entry matches [path]. Persistence is
-  /// fire-and-forget on the same `dropWithLog` path as `add` /
-  /// `remove`.
+  /// with [customName]. Passing `null` or an empty / whitespace-only
+  /// string clears the override so [LibraryFolder.displayName] falls
+  /// back to the path basename. Inputs are normalised through
+  /// [normaliseRenameInput] (trim + clamp to [sourceRenameMaxLength]
+  /// codepoints) so a non-UI caller cannot bypass the input cap.
+  ///
+  /// No-op when no entry matches [path] **or** when the normalised
+  /// value already equals the persisted `customName` — re-writing
+  /// the same value would otherwise queue a redundant disk write
+  /// and a misleading "renamed" snackbar at the call site.
+  ///
+  /// Persistence is fire-and-forget on the same `dropWithLog` path
+  /// as `add` / `remove`.
   void rename({required String path, required String? customName}) {
     final index = state.indexWhere((folder) => folder.path == path);
     if (index < 0) return;
-    final trimmed = customName?.trim();
-    final normalised = (trimmed == null || trimmed.isEmpty) ? null : trimmed;
+    final normalised = normaliseRenameInput(customName);
+    if (normalised == state[index].customName) return;
     final updatedList = [...state];
     updatedList[index] = state[index].copyWith(customName: normalised);
     state = _ordered(updatedList);

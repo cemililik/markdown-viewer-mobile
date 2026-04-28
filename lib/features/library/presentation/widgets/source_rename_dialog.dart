@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
+import 'package:markdown_viewer/core/text/source_rename.dart';
 import 'package:markdown_viewer/features/library/application/library_folders_provider.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/repo_sync/application/rename_synced_repo.dart';
@@ -32,6 +33,11 @@ Future<void> promptFolderRename(
   // "clear the override" signal — the controller normalises it
   // to null so the displayName falls back to the path basename.
   if (result == null || !context.mounted) return;
+  // Skip the snackbar (and the redundant disk write the controller
+  // already short-circuits) when the normalised input matches the
+  // persisted `customName`. Tapping Save without changing the text
+  // should feel like Cancel, not "renamed".
+  if (normaliseRenameInput(result) == folder.customName) return;
   ref
       .read(libraryFoldersControllerProvider.notifier)
       .rename(path: folder.path, customName: result);
@@ -60,6 +66,9 @@ Future<void> promptSyncedRepoRename(
     currentName: repo.customName ?? repo.displayName,
   );
   if (result == null || !context.mounted) return;
+  // Same no-op skip as the folder helper — Save without an actual
+  // change should not surface a "renamed" snackbar.
+  if (normaliseRenameInput(result) == repo.customName) return;
   await renameSyncedRepo(ref, repo.id, result);
   if (!context.mounted) return;
   ScaffoldMessenger.of(context)
@@ -156,6 +165,10 @@ class _SourceRenameDialogState extends State<_SourceRenameDialog> {
         controller: _controller,
         autofocus: true,
         textInputAction: TextInputAction.done,
+        // Hard cap (mirrored in the rename use-cases) so a paste of
+        // a multi-KB string cannot persist a pathological label that
+        // a future cold start has to reload on every drawer open.
+        maxLength: sourceRenameMaxLength,
         decoration: InputDecoration(hintText: widget.hintText),
         onSubmitted: (_) => _submit(),
       ),
