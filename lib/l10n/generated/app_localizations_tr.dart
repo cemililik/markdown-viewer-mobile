@@ -687,6 +687,10 @@ class AppLocalizationsTr extends AppLocalizations {
   String get syncRenamedRepoSnack => 'Depo yeniden adlandırıldı';
 
   @override
+  String get syncRenameRepoError =>
+      'Depo yeniden adlandırılamadı. Lütfen tekrar deneyin.';
+
+  @override
   String get syncRefreshTooltip => 'Yeniden senkronize et';
 
   @override

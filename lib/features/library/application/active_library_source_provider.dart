@@ -56,6 +56,14 @@ class ActiveLibrarySourceController extends Notifier<LibrarySource> {
     // diff against — bail out instead of treating "no data yet"
     // as "the active repo was removed" and dumping the user back
     // to Recents on every cold start or provider invalidation.
+    //
+    // The "any field changed" check uses the Freezed-generated
+    // value equality on `SyncedRepo` so a re-sync that updated
+    // `localRoot`, `status`, `fileCount`, `lastSyncedAt`, or
+    // `etag` (alongside the rename code path) flows the fresh
+    // entity into the active source. Holding only the customName
+    // diff would let the AppBar / drawer subtitle render against
+    // a stale `lastSyncedAt`.
     ref.listen(syncedReposProvider, (previous, next) {
       if (!next.hasValue) return;
       final repos = next.value!;
@@ -70,7 +78,7 @@ class ActiveLibrarySourceController extends Notifier<LibrarySource> {
         }
         if (match == null) {
           state = const RecentsSource();
-        } else if (match.customName != current.syncedRepo.customName) {
+        } else if (match != current.syncedRepo) {
           state = SyncedRepoSource(match);
         }
       }

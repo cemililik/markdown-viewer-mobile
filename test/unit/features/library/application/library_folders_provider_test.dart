@@ -221,9 +221,18 @@ void main() {
             .read(libraryFoldersControllerProvider.notifier)
             .updateBookmark(path: '/tmp/ios', bookmark: 'fresh-blob');
 
+        // Assert both halves of the contract:
+        //   1. In-memory state — the UI rebuilds against this.
+        //   2. Persistence side-effect — the store write is the
+        //      part that survives a cold restart, and the
+        //      pre-1.3.0 regression skipped this side as well.
         final state = container.read(libraryFoldersControllerProvider);
         expect(state.first.bookmark, 'fresh-blob');
         expect(state.first.customName, 'My iOS Folder');
+        expect(store.writeCount, 1);
+        final persisted = store.read();
+        expect(persisted.first.bookmark, 'fresh-blob');
+        expect(persisted.first.customName, 'My iOS Folder');
       },
     );
   });

@@ -694,6 +694,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get syncRenamedRepoSnack => 'Repository renamed';
 
   @override
+  String get syncRenameRepoError =>
+      'Could not rename the repository. Please try again.';
+
+  @override
   String get syncRefreshTooltip => 'Re-sync';
 
   @override

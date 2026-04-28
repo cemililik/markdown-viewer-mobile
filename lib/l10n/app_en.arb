@@ -861,6 +861,10 @@
   "@syncRenamedRepoSnack": {
     "description": "Snackbar shown after the user renames a synced repository."
   },
+  "syncRenameRepoError": "Could not rename the repository. Please try again.",
+  "@syncRenameRepoError": {
+    "description": "Snackbar shown when persisting a synced-repository rename fails."
+  },
   "syncRefreshTooltip": "Re-sync",
   "@syncRefreshTooltip": {
     "description": "Tooltip on the refresh icon shown next to a synced repo in the library drawer."

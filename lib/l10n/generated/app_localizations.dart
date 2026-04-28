@@ -1298,6 +1298,12 @@ abstract class AppLocalizations {
   /// **'Repository renamed'**
   String get syncRenamedRepoSnack;
 
+  /// Snackbar shown when persisting a synced-repository rename fails.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not rename the repository. Please try again.'**
+  String get syncRenameRepoError;
+
   /// Tooltip on the refresh icon shown next to a synced repo in the library drawer.
   ///
   /// In en, this message translates to:

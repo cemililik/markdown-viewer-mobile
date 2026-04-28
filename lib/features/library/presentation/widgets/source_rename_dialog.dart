@@ -69,7 +69,21 @@ Future<void> promptSyncedRepoRename(
   // Same no-op skip as the folder helper — Save without an actual
   // change should not surface a "renamed" snackbar.
   if (normaliseRenameInput(result) == repo.customName) return;
-  await renameSyncedRepo(ref, repo.id, result);
+  // Unlike the folder rename (`LibraryFoldersController.rename` is
+  // documented fire-and-forget — see its class doc), the synced-
+  // repo rename writes synchronously through Drift and can surface
+  // an `SqliteException` if the DB is locked / the row was deleted
+  // mid-edit. Wrap the await so a write failure shows a localised
+  // error snackbar instead of bubbling a red-screen exception.
+  try {
+    await renameSyncedRepo(ref, repo.id, result);
+  } on Object {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(l10n.syncRenameRepoError)));
+    return;
+  }
   if (!context.mounted) return;
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
