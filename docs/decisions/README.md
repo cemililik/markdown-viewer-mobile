@@ -51,6 +51,7 @@ supersedes an old one with a new ADR.
 | [0025](0025-codegen-lint-and-toolchain-maintenance.md) | Codegen, Riverpod lint, and toolchain maintenance | Accepted |
 | [0026](0026-risk-scoped-integration-and-performance-gates.md) | Risk-scoped CI quality gates | Accepted |
 | [0027](0027-performance-measurement-tiers.md) | Reference-device and hosted performance contracts | Accepted |
+| [0028](0028-confirmed-hosted-performance-regressions.md) | Confirmed hosted performance regressions | Proposed |
 
 ## Metadata and Relationships
 
