@@ -30,80 +30,95 @@ ProviderContainer _containerWith(_FakeStore store) {
 
 void main() {
   group('LibraryFoldersController', () {
-    test('should seeds initial state from the store, newest first', () {
-      final store = _FakeStore([
-        LibraryFolder(path: '/tmp/older', addedAt: DateTime.utc(2026, 4, 13)),
-        LibraryFolder(path: '/tmp/newer', addedAt: DateTime.utc(2026, 4, 14)),
-      ]);
-      final container = _containerWith(store);
+    test(
+      'should seed initial state from the store, newest first when the behavior is exercised',
+      () {
+        final store = _FakeStore([
+          LibraryFolder(path: '/tmp/older', addedAt: DateTime.utc(2026, 4, 13)),
+          LibraryFolder(path: '/tmp/newer', addedAt: DateTime.utc(2026, 4, 14)),
+        ]);
+        final container = _containerWith(store);
 
-      final state = container.read(libraryFoldersControllerProvider);
-      expect(state, hasLength(2));
-      expect(state[0].path, '/tmp/newer');
-      expect(state[1].path, '/tmp/older');
-    });
+        final state = container.read(libraryFoldersControllerProvider);
+        expect(state, hasLength(2));
+        expect(state[0].path, '/tmp/newer');
+        expect(state[1].path, '/tmp/older');
+      },
+    );
 
-    test('should add prepends a new entry and persists', () {
-      final store = _FakeStore();
-      final container = _containerWith(store);
+    test(
+      'should confirm that add prepends a new entry and persists when the behavior is exercised',
+      () {
+        final store = _FakeStore();
+        final container = _containerWith(store);
 
-      final added = container
-          .read(libraryFoldersControllerProvider.notifier)
-          .add('/tmp/a');
+        final added = container
+            .read(libraryFoldersControllerProvider.notifier)
+            .add('/tmp/a');
 
-      expect(added, isTrue);
-      final state = container.read(libraryFoldersControllerProvider);
-      expect(state, hasLength(1));
-      expect(state.first.path, '/tmp/a');
-      expect(state.first.bookmark, isNull);
-      expect(store.writeCount, 1);
-    });
+        expect(added, isTrue);
+        final state = container.read(libraryFoldersControllerProvider);
+        expect(state, hasLength(1));
+        expect(state.first.path, '/tmp/a');
+        expect(state.first.bookmark, isNull);
+        expect(store.writeCount, 1);
+      },
+    );
 
-    test('should add carries the optional iOS security-scoped bookmark', () {
-      final store = _FakeStore();
-      final container = _containerWith(store);
+    test(
+      'should confirm that add carries the optional iOS security-scoped bookmark when the behavior is exercised',
+      () {
+        final store = _FakeStore();
+        final container = _containerWith(store);
 
-      container
-          .read(libraryFoldersControllerProvider.notifier)
-          .add('/tmp/ios', bookmark: 'base64-blob');
+        container
+            .read(libraryFoldersControllerProvider.notifier)
+            .add('/tmp/ios', bookmark: 'base64-blob');
 
-      final state = container.read(libraryFoldersControllerProvider);
-      expect(state.first.bookmark, 'base64-blob');
-    });
+        final state = container.read(libraryFoldersControllerProvider);
+        expect(state.first.bookmark, 'base64-blob');
+      },
+    );
 
-    test('should add returns false and is a no-op for a duplicate path', () {
-      final store = _FakeStore([
-        LibraryFolder(path: '/tmp/dup', addedAt: DateTime.utc(2026, 4, 14)),
-      ]);
-      final container = _containerWith(store);
+    test(
+      'should confirm that add returns false and is a no-op for a duplicate path when the behavior is exercised',
+      () {
+        final store = _FakeStore([
+          LibraryFolder(path: '/tmp/dup', addedAt: DateTime.utc(2026, 4, 14)),
+        ]);
+        final container = _containerWith(store);
 
-      final added = container
-          .read(libraryFoldersControllerProvider.notifier)
-          .add('/tmp/dup');
+        final added = container
+            .read(libraryFoldersControllerProvider.notifier)
+            .add('/tmp/dup');
 
-      expect(added, isFalse);
-      expect(container.read(libraryFoldersControllerProvider), hasLength(1));
-      expect(store.writeCount, 0);
-    });
+        expect(added, isFalse);
+        expect(container.read(libraryFoldersControllerProvider), hasLength(1));
+        expect(store.writeCount, 0);
+      },
+    );
 
-    test('should remove drops the matching entry and persists', () {
-      final store = _FakeStore([
-        LibraryFolder(path: '/tmp/a', addedAt: DateTime.utc(2026, 4, 14)),
-        LibraryFolder(path: '/tmp/b', addedAt: DateTime.utc(2026, 4, 13)),
-      ]);
-      final container = _containerWith(store);
+    test(
+      'should confirm that remove drops the matching entry and persists when the behavior is exercised',
+      () {
+        final store = _FakeStore([
+          LibraryFolder(path: '/tmp/a', addedAt: DateTime.utc(2026, 4, 14)),
+          LibraryFolder(path: '/tmp/b', addedAt: DateTime.utc(2026, 4, 13)),
+        ]);
+        final container = _containerWith(store);
 
-      container
-          .read(libraryFoldersControllerProvider.notifier)
-          .remove('/tmp/a');
+        container
+            .read(libraryFoldersControllerProvider.notifier)
+            .remove('/tmp/a');
 
-      final state = container.read(libraryFoldersControllerProvider);
-      expect(state, hasLength(1));
-      expect(state.first.path, '/tmp/b');
-      expect(store.writeCount, 1);
-    });
+        final state = container.read(libraryFoldersControllerProvider);
+        expect(state, hasLength(1));
+        expect(state.first.path, '/tmp/b');
+        expect(store.writeCount, 1);
+      },
+    );
 
-    test('should remove is a no-op when the path is not present', () {
+    test('should leave state unchanged when the removed path is absent', () {
       final store = _FakeStore([
         LibraryFolder(path: '/tmp/a', addedAt: DateTime.utc(2026, 4, 14)),
       ]);
@@ -117,76 +132,88 @@ void main() {
       expect(store.writeCount, 0);
     });
 
-    test('should rename writes the trimmed customName and persists', () {
-      final store = _FakeStore([
-        LibraryFolder(path: '/tmp/notes', addedAt: DateTime.utc(2026, 4, 14)),
-      ]);
-      final container = _containerWith(store);
+    test(
+      'should confirm that rename writes the trimmed customName and persists when the behavior is exercised',
+      () {
+        final store = _FakeStore([
+          LibraryFolder(path: '/tmp/notes', addedAt: DateTime.utc(2026, 4, 14)),
+        ]);
+        final container = _containerWith(store);
 
-      container
-          .read(libraryFoldersControllerProvider.notifier)
-          .rename(path: '/tmp/notes', customName: '  My Notes  ');
+        container
+            .read(libraryFoldersControllerProvider.notifier)
+            .rename(path: '/tmp/notes', customName: '  My Notes  ');
 
-      final state = container.read(libraryFoldersControllerProvider);
-      expect(state.first.customName, 'My Notes');
-      expect(state.first.displayName, 'My Notes');
-      expect(store.writeCount, 1);
-    });
-
-    test('should rename normalises empty / whitespace input back to null', () {
-      final store = _FakeStore([
-        LibraryFolder(
-          path: '/tmp/notes',
-          addedAt: DateTime.utc(2026, 4, 14),
-          customName: 'Old',
-        ),
-      ]);
-      final container = _containerWith(store);
-
-      container
-          .read(libraryFoldersControllerProvider.notifier)
-          .rename(path: '/tmp/notes', customName: '   ');
-
-      final state = container.read(libraryFoldersControllerProvider);
-      expect(state.first.customName, isNull);
-      // displayName falls back to the basename now that the override
-      // is gone.
-      expect(state.first.displayName, 'notes');
-      expect(store.writeCount, 1);
-    });
-
-    test('should rename clamps over-long input to the source-rename cap', () {
-      final store = _FakeStore([
-        LibraryFolder(path: '/tmp/notes', addedAt: DateTime.utc(2026, 4, 14)),
-      ]);
-      final container = _containerWith(store);
-
-      // 200 chars — well over the 64-char cap.
-      container
-          .read(libraryFoldersControllerProvider.notifier)
-          .rename(path: '/tmp/notes', customName: 'a' * 200);
-
-      final state = container.read(libraryFoldersControllerProvider);
-      expect(state.first.customName, isNotNull);
-      // Codepoint length must not exceed the cap.
-      expect(state.first.customName!.runes.length, lessThanOrEqualTo(64));
-    });
-
-    test('should rename is a no-op when the path is not present', () {
-      final store = _FakeStore([
-        LibraryFolder(path: '/tmp/a', addedAt: DateTime.utc(2026, 4, 14)),
-      ]);
-      final container = _containerWith(store);
-
-      container
-          .read(libraryFoldersControllerProvider.notifier)
-          .rename(path: '/tmp/ghost', customName: 'X');
-
-      expect(store.writeCount, 0);
-    });
+        final state = container.read(libraryFoldersControllerProvider);
+        expect(state.first.customName, 'My Notes');
+        expect(state.first.displayName, 'My Notes');
+        expect(store.writeCount, 1);
+      },
+    );
 
     test(
-      'should rename short-circuits when the normalised value is unchanged',
+      'should confirm that rename normalises empty / whitespace input back to null when the behavior is exercised',
+      () {
+        final store = _FakeStore([
+          LibraryFolder(
+            path: '/tmp/notes',
+            addedAt: DateTime.utc(2026, 4, 14),
+            customName: 'Old',
+          ),
+        ]);
+        final container = _containerWith(store);
+
+        container
+            .read(libraryFoldersControllerProvider.notifier)
+            .rename(path: '/tmp/notes', customName: '   ');
+
+        final state = container.read(libraryFoldersControllerProvider);
+        expect(state.first.customName, isNull);
+        // displayName falls back to the basename now that the override
+        // is gone.
+        expect(state.first.displayName, 'notes');
+        expect(store.writeCount, 1);
+      },
+    );
+
+    test(
+      'should confirm that rename clamps over-long input to the source-rename cap when the behavior is exercised',
+      () {
+        final store = _FakeStore([
+          LibraryFolder(path: '/tmp/notes', addedAt: DateTime.utc(2026, 4, 14)),
+        ]);
+        final container = _containerWith(store);
+
+        // 200 chars — well over the 64-char cap.
+        container
+            .read(libraryFoldersControllerProvider.notifier)
+            .rename(path: '/tmp/notes', customName: 'a' * 200);
+
+        final state = container.read(libraryFoldersControllerProvider);
+        expect(state.first.customName, isNotNull);
+        // Codepoint length must not exceed the cap.
+        expect(state.first.customName!.runes.length, lessThanOrEqualTo(64));
+      },
+    );
+
+    test(
+      'should confirm that rename is a no-op when the path is not present',
+      () {
+        final store = _FakeStore([
+          LibraryFolder(path: '/tmp/a', addedAt: DateTime.utc(2026, 4, 14)),
+        ]);
+        final container = _containerWith(store);
+
+        container
+            .read(libraryFoldersControllerProvider.notifier)
+            .rename(path: '/tmp/ghost', customName: 'X');
+
+        expect(store.writeCount, 0);
+      },
+    );
+
+    test(
+      'should confirm that rename short-circuits when the normalised value is unchanged',
       () {
         final store = _FakeStore([
           LibraryFolder(
@@ -207,8 +234,8 @@ void main() {
     );
 
     test(
-      'should updateBookmark preserves the rename — regression guard for the '
-      'pre-1.3.0 fresh-constructor path that silently dropped customName',
+      'should confirm that updateBookmark preserves the rename — regression guard for the '
+      'pre-1.3.0 fresh-constructor path that silently dropped customName when the behavior is exercised',
       () {
         final store = _FakeStore([
           LibraryFolder(

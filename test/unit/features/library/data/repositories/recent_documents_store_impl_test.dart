@@ -33,15 +33,18 @@ void main() {
       if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
     });
 
-    test('should returns an empty list on a fresh install', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = RecentDocumentsStoreImpl(prefs);
+    test(
+      'should return an empty list on a fresh install when the behavior is exercised',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = RecentDocumentsStoreImpl(prefs);
 
-      expect(store.read(), isEmpty);
-    });
+        expect(store.read(), isEmpty);
+      },
+    );
 
     test(
-      'should write then read round-trips entries preserving order',
+      'should round-trip entries in order when recent documents are written then read',
       () async {
         final prefs = await SharedPreferences.getInstance();
         final store = RecentDocumentsStoreImpl(prefs);
@@ -67,25 +70,28 @@ void main() {
       },
     );
 
-    test('should writing an empty list clears any existing entries', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = RecentDocumentsStoreImpl(prefs);
+    test(
+      'should confirm that writing an empty list clears any existing entries when the behavior is exercised',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = RecentDocumentsStoreImpl(prefs);
 
-      await store.write(<RecentDocument>[
-        RecentDocument(
-          documentId: DocumentId(pathA),
-          openedAt: DateTime.utc(2026, 4, 13),
-        ),
-      ]);
-      expect(store.read(), hasLength(1));
+        await store.write(<RecentDocument>[
+          RecentDocument(
+            documentId: DocumentId(pathA),
+            openedAt: DateTime.utc(2026, 4, 13),
+          ),
+        ]);
+        expect(store.read(), hasLength(1));
 
-      await store.write(const <RecentDocument>[]);
+        await store.write(const <RecentDocument>[]);
 
-      expect(store.read(), isEmpty);
-    });
+        expect(store.read(), isEmpty);
+      },
+    );
 
     test(
-      'should returns an empty list when the stored blob is not valid JSON',
+      'should return an empty list when the stored blob is not valid JSON',
       () async {
         SharedPreferences.setMockInitialValues(<String, Object>{
           'library.recentDocuments': 'not json{',
@@ -98,7 +104,7 @@ void main() {
     );
 
     test(
-      'should round-trips the display name for folder-sourced files',
+      'should round-trip the display name for folder-sourced files when the behavior is exercised',
       () async {
         final prefs = await SharedPreferences.getInstance();
         final store = RecentDocumentsStoreImpl(prefs);
@@ -117,33 +123,36 @@ void main() {
       },
     );
 
-    test('should round-trips the pinned flag and preview snippet', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = RecentDocumentsStoreImpl(prefs);
+    test(
+      'should round-trip the pinned flag and preview snippet when the behavior is exercised',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = RecentDocumentsStoreImpl(prefs);
 
-      await store.write(<RecentDocument>[
-        RecentDocument(
-          documentId: DocumentId(pathA),
-          openedAt: DateTime.utc(2026, 4, 13, 10),
-          isPinned: true,
-          preview: 'Opening sentence.',
-        ),
-        RecentDocument(
-          documentId: DocumentId(pathB),
-          openedAt: DateTime.utc(2026, 4, 13, 9),
-        ),
-      ]);
+        await store.write(<RecentDocument>[
+          RecentDocument(
+            documentId: DocumentId(pathA),
+            openedAt: DateTime.utc(2026, 4, 13, 10),
+            isPinned: true,
+            preview: 'Opening sentence.',
+          ),
+          RecentDocument(
+            documentId: DocumentId(pathB),
+            openedAt: DateTime.utc(2026, 4, 13, 9),
+          ),
+        ]);
 
-      final round = store.read();
-      expect(round, hasLength(2));
-      expect(round[0].isPinned, isTrue);
-      expect(round[0].preview, 'Opening sentence.');
-      expect(round[1].isPinned, isFalse);
-      expect(round[1].preview, isNull);
-    });
+        final round = store.read();
+        expect(round, hasLength(2));
+        expect(round[0].isPinned, isTrue);
+        expect(round[0].preview, 'Opening sentence.');
+        expect(round[1].isPinned, isFalse);
+        expect(round[1].preview, isNull);
+      },
+    );
 
     test(
-      'should accepts legacy entries without the pinned / preview fields',
+      'should accept legacy entries without the pinned / preview fields when the behavior is exercised',
       () async {
         final legacyPath = '${tempDir.path}/legacy.md';
         File(legacyPath).writeAsStringSync('');
@@ -163,7 +172,7 @@ void main() {
     );
 
     test(
-      'should skips malformed entries but keeps the well-formed ones',
+      'should skip malformed entries but keep the well-formed ones when the behavior is exercised',
       () async {
         final pathC = '${tempDir.path}/c.md';
         final pathD = '${tempDir.path}/d.md';
@@ -194,7 +203,7 @@ void main() {
     );
 
     test(
-      'should read() returns stale entries intact; cold start never hits disk',
+      'should confirm that read() returns stale entries intact; cold start never hits disk when the behavior is exercised',
       () async {
         // Behaviour change: `read()` is purely in-memory. Earlier
         // versions called `File(path).existsSync()` per entry, which

@@ -20,7 +20,7 @@ void main() {
 
   group('Admonitions golden', () {
     goldenTest(
-      'should note, warning, tip, and caution admonition blocks',
+      'should render note, warning, tip, and caution admonition blocks when captured',
       fileName: 'admonitions',
       pumpBeforeTest: goldenPumpBeforeTest,
       pumpWidget: goldenPumpWidget,
@@ -28,9 +28,9 @@ void main() {
           () => GoldenTestGroup(
             children: standardGoldenScenarios(
               builder:
-                  (locale, textScaler, brightness) => markdownGoldenHarness(
+                  (locale, textScaler, appTheme) => markdownGoldenHarness(
                     'admonitions.md',
-                    brightness: brightness,
+                    appTheme: appTheme,
                     locale: locale,
                     textScaler: textScaler,
                   ),

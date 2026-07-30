@@ -98,37 +98,40 @@ void main() {
   // ── Decode + Parse ──────────────────────────────────────────────────
 
   group('Decode + Parse benchmark', () {
-    test('should parses a ~1 MB document in under 200 ms', () {
-      final bytes = generateLargeMarkdown(targetKb: 1024);
+    test(
+      'should parse a ~1 MB document in under 200 ms when the behavior is exercised',
+      () {
+        final bytes = generateLargeMarkdown(targetKb: 1024);
 
-      final stopwatch = Stopwatch()..start();
-      final doc = parser.parse(
-        id: const DocumentId('benchmark/large'),
-        bytes: bytes,
-      );
-      stopwatch.stop();
+        final stopwatch = Stopwatch()..start();
+        final doc = parser.parse(
+          id: const DocumentId('benchmark/large'),
+          bytes: bytes,
+        );
+        stopwatch.stop();
 
-      printOnFailure(
-        'Decode + Parse (${(bytes.length / 1024).round()} KB): '
-        '${stopwatch.elapsedMilliseconds} ms  '
-        '(${doc.lineCount} lines, ${doc.headings.length} headings)',
-      );
+        printOnFailure(
+          'Decode + Parse (${(bytes.length / 1024).round()} KB): '
+          '${stopwatch.elapsedMilliseconds} ms  '
+          '(${doc.lineCount} lines, ${doc.headings.length} headings)',
+        );
 
-      expect(
-        stopwatch.elapsedMilliseconds,
-        lessThan(200),
-        reason:
-            'Decode + Parse budget from docs/rendering-pipeline.md: '
-            '< 200 ms for a 1 MB document on reference hardware.',
-      );
-    });
+        expect(
+          stopwatch.elapsedMilliseconds,
+          lessThan(200),
+          reason:
+              'Decode + Parse budget from docs/rendering-pipeline.md: '
+              '< 200 ms for a 1 MB document on reference hardware.',
+        );
+      },
+    );
   });
 
   // ── Widget Build ────────────────────────────────────────────────────
 
   group('Widget Build benchmark', () {
     testWidgets(
-      'should builds the widget tree for a ~1 MB document in under 150 ms',
+      'should build the widget tree for a ~1 MB document in under 150 ms when the widget is exercised',
       (tester) async {
         // Use a standard 390×844 (iPhone 14) logical-pixel viewport so
         // the layout pass mirrors a real device.
@@ -176,7 +179,7 @@ void main() {
 
   group('Code Highlight benchmark', () {
     testWidgets(
-      'should syntax-highlights a 1 000-line Dart block in under 50 ms',
+      'should syntax-highlight a 1 000-line Dart block in under 50 ms when the widget is exercised',
       (tester) async {
         tester.view.physicalSize = const Size(390, 844);
         tester.view.devicePixelRatio = 3.0;

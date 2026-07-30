@@ -53,30 +53,31 @@ void main() {
   }
 
   group('MathView', () {
-    testWidgets('should renders a valid inline expression as a Math widget', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        standaloneHarness(const MathView.inline(expression: 'E = mc^2')),
-      );
-      await tester.pumpAndSettle();
+    testWidgets(
+      'should render a valid inline expression as a Math widget when the widget is exercised',
+      (tester) async {
+        await tester.pumpWidget(
+          standaloneHarness(const MathView.inline(expression: 'E = mc^2')),
+        );
+        await tester.pumpAndSettle();
 
-      // On the success path Math.tex builds a real Math widget; on
-      // the failure path it builds our _MathErrorFallback, which
-      // contains a Container with the raw expression as text. If a
-      // Math widget is in the tree, the expression was parsed.
-      expect(find.byType(Math), findsOneWidget);
-      expect(
-        find.textContaining('E = mc^2', findRichText: true),
-        findsNothing,
-        reason:
-            'A valid inline expression should render as typeset math, '
-            'not fall back to the raw-TeX error placeholder.',
-      );
-    });
+        // On the success path Math.tex builds a real Math widget; on
+        // the failure path it builds our _MathErrorFallback, which
+        // contains a Container with the raw expression as text. If a
+        // Math widget is in the tree, the expression was parsed.
+        expect(find.byType(Math), findsOneWidget);
+        expect(
+          find.textContaining('E = mc^2', findRichText: true),
+          findsNothing,
+          reason:
+              'A valid inline expression should render as typeset math, '
+              'not fall back to the raw-TeX error placeholder.',
+        );
+      },
+    );
 
     testWidgets(
-      'should renders a valid display expression with horizontal scroll',
+      'should render a valid display expression with horizontal scroll when the widget is exercised',
       (tester) async {
         await tester.pumpWidget(
           standaloneHarness(const MathView.display(expression: r'\frac{a}{b}')),
@@ -89,7 +90,7 @@ void main() {
     );
 
     testWidgets(
-      'should falls back to an inline error placeholder on malformed input',
+      'should fall back to an inline error placeholder on malformed input when the widget is exercised',
       (tester) async {
         const malformed = r'\frac{1}{';
         await tester.pumpWidget(
@@ -118,7 +119,7 @@ void main() {
 
   group('MarkdownView math integration', () {
     testWidgets(
-      'should inline `\$ … \$` in a paragraph reaches the rendered tree as inline Math',
+      'should confirm that inline `\$ … \$` in a paragraph reaches the rendered tree as inline Math when the widget is exercised',
       (tester) async {
         useTallSurface(tester);
         final doc = parseFixture('math.md');
@@ -149,7 +150,7 @@ void main() {
     );
 
     testWidgets(
-      'should malformed math in the fixture does not crash the viewer',
+      'should confirm that malformed math in the fixture does not crash the viewer when the widget is exercised',
       (tester) async {
         useTallSurface(tester);
         final doc = parseFixture('math.md');
@@ -172,23 +173,24 @@ void main() {
       },
     );
 
-    testWidgets('should literal dollar signs do not trigger math rendering', (
-      tester,
-    ) async {
-      useTallSurface(tester);
-      final doc = parseFixture('math.md');
+    testWidgets(
+      'should confirm that literal dollar signs do not trigger math rendering when the widget is exercised',
+      (tester) async {
+        useTallSurface(tester);
+        final doc = parseFixture('math.md');
 
-      await tester.pumpWidget(markdownHarness(doc));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(markdownHarness(doc));
+        await tester.pumpAndSettle();
 
-      // The literal-dollar paragraph must surface as readable
-      // prose. If the escape handling broke, the `$100` and `$5`
-      // parts would be swallowed by a (broken) inline match.
-      expect(find.textContaining(r'$100', findRichText: true), findsWidgets);
-    });
+        // The literal-dollar paragraph must surface as readable
+        // prose. If the escape handling broke, the `$100` and `$5`
+        // parts would be swallowed by a (broken) inline match.
+        expect(find.textContaining(r'$100', findRichText: true), findsWidgets);
+      },
+    );
 
     testWidgets(
-      'should math widget sizes are stable across scroll (no layout jitter)',
+      'should confirm that math widget sizes are stable across scroll (no layout jitter) when the widget is exercised',
       (tester) async {
         // Render on a viewport that is deliberately shorter than the
         // document so a scroll is necessary to bring later math blocks

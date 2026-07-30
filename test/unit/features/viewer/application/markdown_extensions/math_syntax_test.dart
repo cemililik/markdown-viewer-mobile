@@ -48,36 +48,45 @@ void main() {
   }
 
   group('InlineMathSyntax', () {
-    test('should recognise a single inline math expression in a paragraph', () {
-      final nodes = parse(r'Einstein says $E = mc^2$ about mass-energy.');
+    test(
+      'should recognise a single inline math expression in a paragraph when the behavior is exercised',
+      () {
+        final nodes = parse(r'Einstein says $E = mc^2$ about mass-energy.');
 
-      final matches = findByTag(nodes, mathInlineTag);
+        final matches = findByTag(nodes, mathInlineTag);
 
-      expect(matches, hasLength(1));
-      expect(plainTextOf(matches.single), 'E = mc^2');
-    });
+        expect(matches, hasLength(1));
+        expect(plainTextOf(matches.single), 'E = mc^2');
+      },
+    );
 
-    test('should recognise multiple inline expressions in one paragraph', () {
-      final nodes = parse(r'$\alpha$, $\beta$, and $\gamma$.');
+    test(
+      'should recognise multiple inline expressions in one paragraph when the behavior is exercised',
+      () {
+        final nodes = parse(r'$\alpha$, $\beta$, and $\gamma$.');
 
-      final matches = findByTag(nodes, mathInlineTag);
+        final matches = findByTag(nodes, mathInlineTag);
 
-      expect(matches.map(plainTextOf).toList(), [
-        r'\alpha',
-        r'\beta',
-        r'\gamma',
-      ]);
-    });
+        expect(matches.map(plainTextOf).toList(), [
+          r'\alpha',
+          r'\beta',
+          r'\gamma',
+        ]);
+      },
+    );
 
-    test(r'should not match empty `$$` as an inline math expression', () {
-      final nodes = parse(r'Just prose with $$ in it.');
+    test(
+      r'should not match empty `$$` as an inline math expression when the behavior is exercised',
+      () {
+        final nodes = parse(r'Just prose with $$ in it.');
 
-      final matches = findByTag(nodes, mathInlineTag);
+        final matches = findByTag(nodes, mathInlineTag);
 
-      expect(matches, isEmpty);
-    });
+        expect(matches, isEmpty);
+      },
+    );
 
-    test(r'should leave escaped `\$` alone', () {
+    test(r'should leave escaped `\$` alone when the behavior is exercised', () {
       // Escaped dollar followed by a number — the `\` should prevent
       // the dollar from opening a math run. The `markdown` package
       // applies escape processing before our inline syntax runs.
@@ -88,26 +97,29 @@ void main() {
       expect(matches, isEmpty);
     });
 
-    test('should not match adjacent currency amounts as one math run', () {
-      // Regression guard: without the negative lookahead `(?!\d)` on
-      // the closing `$`, the regex would match `$5 and $` as a math
-      // run wrapping `5 and `, turning currency text into garbage
-      // math. Both forms below must stay as plain prose.
-      final nodes = parse(r'Pay $5 and $10 in change.');
+    test(
+      'should not match adjacent currency amounts as one math run when the behavior is exercised',
+      () {
+        // Regression guard: without the negative lookahead `(?!\d)` on
+        // the closing `$`, the regex would match `$5 and $` as a math
+        // run wrapping `5 and `, turning currency text into garbage
+        // math. Both forms below must stay as plain prose.
+        final nodes = parse(r'Pay $5 and $10 in change.');
 
-      final matches = findByTag(nodes, mathInlineTag);
+        final matches = findByTag(nodes, mathInlineTag);
 
-      expect(
-        matches,
-        isEmpty,
-        reason:
-            'Currency-like `\$5 and \$10` must not be eaten by the '
-            'inline math regex.',
-      );
-    });
+        expect(
+          matches,
+          isEmpty,
+          reason:
+              'Currency-like `\$5 and \$10` must not be eaten by the '
+              'inline math regex.',
+        );
+      },
+    );
 
     test(
-      'should not span an opener and a closer that sit on different lines',
+      'should not span an opener and a closer that sit on different lines when the behavior is exercised',
       () {
         // Real cross-line case: an opening `$` at the end of one line
         // and a closing `$` at the start of the next line. Without
@@ -124,25 +136,30 @@ void main() {
   });
 
   group('DisplayMathBlockSyntax', () {
-    test(r'should recognise a single-line `$$ … $$` display block', () {
-      final nodes = parse(r'$$E = mc^2$$');
+    test(
+      r'should recognise a single-line `$$ … $$` display block when the behavior is exercised',
+      () {
+        final nodes = parse(r'$$E = mc^2$$');
 
-      final displays = findByTag(nodes, mathBlockTag);
-      final inlines = findByTag(nodes, mathInlineTag);
+        final displays = findByTag(nodes, mathBlockTag);
+        final inlines = findByTag(nodes, mathInlineTag);
 
-      expect(
-        displays,
-        hasLength(1),
-        reason:
-            'A line containing only `\$\$ … \$\$` must be parsed '
-            'as a display block by DisplayMathBlockSyntax.',
-      );
-      expect(plainTextOf(displays.single), 'E = mc^2');
-      expect(inlines, isEmpty);
-    });
+        expect(
+          displays,
+          hasLength(1),
+          reason:
+              'A line containing only `\$\$ … \$\$` must be parsed '
+              'as a display block by DisplayMathBlockSyntax.',
+        );
+        expect(plainTextOf(displays.single), 'E = mc^2');
+        expect(inlines, isEmpty);
+      },
+    );
 
-    test('should recognise a multi-line display block', () {
-      const source = r'''
+    test(
+      'should recognise a multi-line display block when the behavior is exercised',
+      () {
+        const source = r'''
 Prose before.
 
 $$
@@ -153,19 +170,20 @@ $$
 Prose after.
 ''';
 
-      final nodes = parse(source);
-      final displays = findByTag(nodes, mathBlockTag);
+        final nodes = parse(source);
+        final displays = findByTag(nodes, mathBlockTag);
 
-      expect(displays, hasLength(1));
-      expect(
-        plainTextOf(displays.single),
-        contains(r'\frac{\partial^2 u}{\partial t^2}'),
-      );
-      expect(plainTextOf(displays.single), contains(r'\nabla^2 u'));
-    });
+        expect(displays, hasLength(1));
+        expect(
+          plainTextOf(displays.single),
+          contains(r'\frac{\partial^2 u}{\partial t^2}'),
+        );
+        expect(plainTextOf(displays.single), contains(r'\nabla^2 u'));
+      },
+    );
 
     test(r'should reject an empty `$$$$` block AND preserve the literal '
-        'characters as paragraph text', () {
+        'characters as paragraph text when the behavior is exercised', () {
       // Regression guard: an empty math block must NOT advance the
       // BlockParser when it returns null. If it does, the line is
       // silently consumed and the user's `$$$$` characters
@@ -196,7 +214,7 @@ Prose after.
     });
 
     test(
-      'should leave `\$\$ … \$\$` mid-paragraph as literal text, not a block',
+      'should leave `\$\$ … \$\$` mid-paragraph as literal text, not a block when the behavior is exercised',
       () {
         // Regression guard: with the previous InlineSyntax-based
         // implementation, `$$ … $$` inside a sentence matched and
@@ -214,21 +232,27 @@ Prose after.
   });
 
   group('factory shape', () {
-    test('should block factory returns one DisplayMathBlockSyntax', () {
-      final syntaxes = buildMathBlockSyntaxes();
+    test(
+      'should confirm that block factory returns one DisplayMathBlockSyntax when the behavior is exercised',
+      () {
+        final syntaxes = buildMathBlockSyntaxes();
 
-      expect(syntaxes, hasLength(1));
-      expect(syntaxes.single, isA<DisplayMathBlockSyntax>());
-    });
+        expect(syntaxes, hasLength(1));
+        expect(syntaxes.single, isA<DisplayMathBlockSyntax>());
+      },
+    );
 
-    test('should inline factory returns one InlineMathSyntax', () {
-      // Regression guard: a future refactor must not silently ship
-      // a list of zero (forgetting to register) or two (re-adding
-      // the deleted DisplayMathSyntax) inline syntaxes.
-      final syntaxes = buildMathInlineSyntaxes();
+    test(
+      'should confirm that inline factory returns one InlineMathSyntax when the behavior is exercised',
+      () {
+        // Regression guard: a future refactor must not silently ship
+        // a list of zero (forgetting to register) or two (re-adding
+        // the deleted DisplayMathSyntax) inline syntaxes.
+        final syntaxes = buildMathInlineSyntaxes();
 
-      expect(syntaxes, hasLength(1));
-      expect(syntaxes.single, isA<InlineMathSyntax>());
-    });
+        expect(syntaxes, hasLength(1));
+        expect(syntaxes.single, isA<InlineMathSyntax>());
+      },
+    );
   });
 }

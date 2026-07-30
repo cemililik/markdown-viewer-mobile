@@ -10,16 +10,19 @@ void main() {
   const repo = DocumentRepositoryImpl(parser: MarkdownParser());
 
   group('DocumentRepositoryImpl.load', () {
-    test('should load and parse an existing fixture file', () async {
-      const path = DocumentId('test/fixtures/markdown/minimal.md');
+    test(
+      'should load and parse an existing fixture file when the behavior is exercised',
+      () async {
+        const path = DocumentId('test/fixtures/markdown/minimal.md');
 
-      final doc = await repo.load(path);
+        final doc = await repo.load(path);
 
-      expect(doc.id, path);
-      expect(doc.source, contains('# Hello'));
-      expect(doc.headings, hasLength(1));
-      expect(doc.headings.single.text, 'Hello');
-    });
+        expect(doc.id, path);
+        expect(doc.source, contains('# Hello'));
+        expect(doc.headings, hasLength(1));
+        expect(doc.headings.single.text, 'Hello');
+      },
+    );
 
     test(
       'should throw FileNotFoundFailure when the path does not exist',
@@ -42,7 +45,7 @@ void main() {
     );
 
     test(
-      'should throw ParseFailure for a file that is not valid UTF-8',
+      'should throw ParseFailure for a file that is not valid UTF-8 when the behavior is exercised',
       () async {
         // Write a byte sequence that cannot decode as UTF-8 into a
         // temp file and point the repository at it.
@@ -59,7 +62,7 @@ void main() {
     );
 
     test(
-      'should parse a >= 200 KiB document through the isolate branch',
+      'should parse a >= 200 KiB document through the isolate branch when the behavior is exercised',
       () async {
         // DocumentRepositoryImpl offloads to Isolate.run when the
         // byte count reaches the 200 KiB threshold documented in

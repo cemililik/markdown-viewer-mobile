@@ -76,14 +76,21 @@ void main() {
 
   group('MermaidBlock', () {
     testWidgets(
-      'should shows the loading placeholder while the future is pending',
+      'should show the loading placeholder while the future is pending when the widget is exercised',
       (tester) async {
         final renderer = _PendingMermaidRenderer();
 
         await tester.pumpWidget(harness(renderer: renderer));
 
         expect(find.byType(CircularProgressIndicator), findsOneWidget);
-        expect(find.text(en.mermaidLoading), findsOneWidget);
+        expect(
+          find.byWidgetPredicate(
+            (widget) =>
+                widget is Semantics &&
+                widget.properties.label == en.mermaidLoading,
+          ),
+          findsOneWidget,
+        );
 
         // Resolve the pending future so the dispose path doesn't leak
         // a microtask into the next test run.
@@ -93,7 +100,7 @@ void main() {
     );
 
     testWidgets(
-      'should renders an Image when the renderer returns a successful result',
+      'should render an Image when the renderer returns a successful result',
       (tester) async {
         final renderer = _CannedMermaidRenderer(_successResult());
 
@@ -106,7 +113,7 @@ void main() {
     );
 
     testWidgets(
-      'should renders the localized error placeholder when the renderer fails',
+      'should render the localized error placeholder when the renderer fails',
       (tester) async {
         final renderer = _CannedMermaidRenderer(
           const MermaidRenderFailure('mermaid parse error'),
@@ -115,8 +122,14 @@ void main() {
         await tester.pumpWidget(harness(renderer: renderer));
         await tester.pumpAndSettle();
 
-        expect(find.text(en.mermaidRenderErrorTitle), findsOneWidget);
-        expect(find.text(en.mermaidRenderErrorBody), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(en.mermaidRenderErrorTitle),
+          findsOneWidget,
+        );
+        expect(
+          find.bySemanticsLabel(en.mermaidRenderErrorBody),
+          findsOneWidget,
+        );
         // The renderer's failure message is surfaced as a small
         // monospace detail line so on-device debugging has
         // something concrete to read.
@@ -126,7 +139,7 @@ void main() {
     );
 
     testWidgets(
-      'should renders Turkish localized strings on the error placeholder when '
+      'should render Turkish localized strings on the error placeholder when '
       'locale is tr',
       (tester) async {
         final renderer = _CannedMermaidRenderer(
@@ -138,12 +151,15 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text(tr.mermaidRenderErrorTitle), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(tr.mermaidRenderErrorTitle),
+          findsOneWidget,
+        );
       },
     );
 
     testWidgets(
-      'should threads a Material 3 themeVariables init directive into render() '
+      'should thread a Material 3 themeVariables init directive into render() '
       'when the source has no init of its own',
       (tester) async {
         final renderer = _CannedMermaidRenderer(_successResult());
@@ -160,7 +176,7 @@ void main() {
     );
 
     testWidgets(
-      'should differentiates light and dark renders via different init directives',
+      'should differentiate light and dark renders via different init directives when the widget is exercised',
       (tester) async {
         final lightRenderer = _CannedMermaidRenderer(_successResult());
         await tester.pumpWidget(
@@ -188,7 +204,7 @@ void main() {
     );
 
     testWidgets(
-      'should passes an empty init directive when the user source already has one',
+      'should pass an empty init directive when the user source already has one',
       (tester) async {
         final renderer = _CannedMermaidRenderer(_successResult());
 
@@ -213,8 +229,8 @@ void main() {
     );
 
     testWidgets(
-      'should wraps the rendered image in an InteractiveViewer with a SizedBox '
-      'parent whose dimensions preserve the renderer-supplied aspect ratio',
+      'should wrap the rendered image in an InteractiveViewer with a SizedBox '
+      'parent whose dimensions preserve the renderer-supplied aspect ratio when the widget is exercised',
       (tester) async {
         final renderer = _CannedMermaidRenderer(
           _successResult(width: 200, height: 50),
@@ -241,7 +257,7 @@ void main() {
     );
 
     testWidgets(
-      'should falls back to a 16:9 aspect ratio when the renderer reports a '
+      'should fall back to a 16:9 aspect ratio when the renderer reports a '
       'zero-sized bitmap',
       (tester) async {
         final renderer = _CannedMermaidRenderer(
@@ -263,8 +279,8 @@ void main() {
     );
 
     testWidgets(
-      'should caps the displayed diagram height at 60% of the screen height for '
-      'tall diagrams so the outer scroll always has room to catch gestures',
+      'should cap the displayed diagram height at 60% of the screen height for '
+      'tall diagrams so the outer scroll always has room to catch gestures when the widget is exercised',
       (tester) async {
         // 200×2000 is a ~1:10 aspect ratio — the classic tall
         // flowchart that used to eat the whole viewport.
@@ -294,7 +310,7 @@ void main() {
     );
 
     testWidgets(
-      'should rebuilds and re-renders when the MermaidBlock.code prop changes',
+      'should rebuild and re-render when the MermaidBlock.code property changes',
       (tester) async {
         final renderer = _CodeAwareMermaidRenderer({
           'flowchart LR; A-->B': _successResult(width: 100, height: 60),

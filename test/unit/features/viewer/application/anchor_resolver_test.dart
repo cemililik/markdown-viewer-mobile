@@ -14,36 +14,48 @@ void main() {
       _h('Third Step', 'third-step', level: 3),
     ];
 
-    test('should plain lowercase slug matches the corresponding heading', () {
-      final result = resolveAnchor(href: '#my-heading', headings: headings);
-      expect(result?.text, 'My Heading');
-    });
-
-    test('should mismatched case still resolves (GitHub parity)', () {
-      final result = resolveAnchor(href: '#My-Heading', headings: headings);
-      expect(result?.text, 'My Heading');
-    });
-
-    test('should percent-encoded space resolves (e.g. `%20`)', () {
-      // A renderer that URL-encodes the slug instead of hyphenating
-      // it (`my%20heading`) must still land on the same target.
-      final result = resolveAnchor(
-        href: '#my%20heading',
-        headings: [_h('my heading', 'my heading')],
-      );
-      expect(result?.anchor, 'my heading');
-    });
-
-    test('should plus-sign-as-space (`+`) resolves', () {
-      final result = resolveAnchor(
-        href: '#my+heading',
-        headings: [_h('my heading', 'my heading')],
-      );
-      expect(result?.anchor, 'my heading');
-    });
+    test(
+      'should confirm that plain lowercase slug matches the corresponding heading when the behavior is exercised',
+      () {
+        final result = resolveAnchor(href: '#my-heading', headings: headings);
+        expect(result?.text, 'My Heading');
+      },
+    );
 
     test(
-      'should percent-encoded space-separated href resolves via slug pipeline',
+      'should confirm that mismatched case still resolves (GitHub parity) when the behavior is exercised',
+      () {
+        final result = resolveAnchor(href: '#My-Heading', headings: headings);
+        expect(result?.text, 'My Heading');
+      },
+    );
+
+    test(
+      'should confirm that percent-encoded space resolves (e.g. `%20`) when the behavior is exercised',
+      () {
+        // A renderer that URL-encodes the slug instead of hyphenating
+        // it (`my%20heading`) must still land on the same target.
+        final result = resolveAnchor(
+          href: '#my%20heading',
+          headings: [_h('my heading', 'my heading')],
+        );
+        expect(result?.anchor, 'my heading');
+      },
+    );
+
+    test(
+      'should confirm that plus-sign-as-space (`+`) resolves when the behavior is exercised',
+      () {
+        final result = resolveAnchor(
+          href: '#my+heading',
+          headings: [_h('my heading', 'my heading')],
+        );
+        expect(result?.anchor, 'my heading');
+      },
+    );
+
+    test(
+      'should confirm that percent-encoded space-separated href resolves via slug pipeline when the behavior is exercised',
       () {
         // A renderer that URL-encodes a human-readable fragment
         // (`#My Heading With Spaces` → `#My%20Heading%20With%20Spaces`)
@@ -57,31 +69,37 @@ void main() {
       },
     );
 
-    test('should percent-encoded unicode slug resolves', () {
-      // `kullanıcı-ayarları` — Turkish characters encoded as
-      // `kullan%C4%B1c%C4%B1-ayarlar%C4%B1`.
-      final result = resolveAnchor(
-        href: '#kullan%C4%B1c%C4%B1-ayarlar%C4%B1',
-        headings: headings,
-      );
-      expect(result?.anchor, 'kullanıcı-ayarları');
-    });
+    test(
+      'should confirm that percent-encoded unicode slug resolves when the behavior is exercised',
+      () {
+        // `kullanıcı-ayarları` — Turkish characters encoded as
+        // `kullan%C4%B1c%C4%B1-ayarlar%C4%B1`.
+        final result = resolveAnchor(
+          href: '#kullan%C4%B1c%C4%B1-ayarlar%C4%B1',
+          headings: headings,
+        );
+        expect(result?.anchor, 'kullanıcı-ayarları');
+      },
+    );
 
-    test('should returns null when no heading matches', () {
+    test('should return null when no heading matches', () {
       final result = resolveAnchor(href: '#nowhere', headings: headings);
       expect(result, isNull);
     });
 
-    test('should returns null for non-anchor href', () {
-      final result = resolveAnchor(
-        href: 'https://example.com',
-        headings: headings,
-      );
-      expect(result, isNull);
-    });
+    test(
+      'should return null for non-anchor href when the behavior is exercised',
+      () {
+        final result = resolveAnchor(
+          href: 'https://example.com',
+          headings: headings,
+        );
+        expect(result, isNull);
+      },
+    );
 
     test(
-      'should case mismatch at several mix points resolves to same slug',
+      'should confirm that case mismatch at several mix points resolves to same slug when the behavior is exercised',
       () {
         // Covers the path where `_onLinkTap` (or a GitHub renderer that
         // preserved the author's capitalisation in the href) hands us
@@ -97,28 +115,37 @@ void main() {
       },
     );
 
-    test('should empty anchor (`#` alone) returns null', () {
-      final result = resolveAnchor(href: '#', headings: headings);
-      expect(result, isNull);
-    });
+    test(
+      'should confirm that empty anchor (`#` alone) returns null when the behavior is exercised',
+      () {
+        final result = resolveAnchor(href: '#', headings: headings);
+        expect(result, isNull);
+      },
+    );
 
-    test('should malformed percent escape falls through to raw comparison', () {
-      // `%ZZ` is not a valid encoded byte. `decodeComponent` throws;
-      // we swallow and keep the raw path. A heading with that literal
-      // anchor still resolves.
-      final result = resolveAnchor(
-        href: '#literal%ZZ',
-        headings: [_h('weird', 'literal%zz')],
-      );
-      expect(result?.anchor, 'literal%zz');
-    });
+    test(
+      'should confirm that malformed percent escape falls through to raw comparison when the behavior is exercised',
+      () {
+        // `%ZZ` is not a valid encoded byte. `decodeComponent` throws;
+        // we swallow and keep the raw path. A heading with that literal
+        // anchor still resolves.
+        final result = resolveAnchor(
+          href: '#literal%ZZ',
+          headings: [_h('weird', 'literal%zz')],
+        );
+        expect(result?.anchor, 'literal%zz');
+      },
+    );
 
-    test('should first match wins when two headings share a slug', () {
-      final result = resolveAnchor(
-        href: '#dup',
-        headings: [_h('First', 'dup'), _h('Second', 'dup')],
-      );
-      expect(result?.text, 'First');
-    });
+    test(
+      'should confirm that first match wins when two headings share a slug',
+      () {
+        final result = resolveAnchor(
+          href: '#dup',
+          headings: [_h('First', 'dup'), _h('Second', 'dup')],
+        );
+        expect(result?.text, 'First');
+      },
+    );
   });
 }

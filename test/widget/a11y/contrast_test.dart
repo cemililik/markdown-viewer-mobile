@@ -16,30 +16,33 @@ void main() {
     };
 
     for (final MapEntry(key: name, value: theme) in themes.entries) {
-      test('should meet text and non-text contrast in the $name theme', () {
-        final scheme = theme.colorScheme;
+      test(
+        'should meet text and non-text contrast in the $name theme when the behavior is exercised',
+        () {
+          final scheme = theme.colorScheme;
 
-        expect(
-          contrastRatio(scheme.onSurface, scheme.surface),
-          greaterThanOrEqualTo(4.5),
-          reason: '$name body text must meet WCAG AA.',
-        );
-        expect(
-          contrastRatio(scheme.onSurfaceVariant, scheme.surface),
-          greaterThanOrEqualTo(4.5),
-          reason: '$name secondary text must meet WCAG AA.',
-        );
-        expect(
-          contrastRatio(scheme.primary, scheme.surface),
-          greaterThanOrEqualTo(3),
-          reason: '$name active controls must meet non-text contrast.',
-        );
-        expect(
-          contrastRatio(scheme.error, scheme.surface),
-          greaterThanOrEqualTo(4.5),
-          reason: '$name error text must meet WCAG AA.',
-        );
-      });
+          expect(
+            contrastRatio(scheme.onSurface, scheme.surface),
+            greaterThanOrEqualTo(4.5),
+            reason: '$name body text must meet WCAG AA.',
+          );
+          expect(
+            contrastRatio(scheme.onSurfaceVariant, scheme.surface),
+            greaterThanOrEqualTo(4.5),
+            reason: '$name secondary text must meet WCAG AA.',
+          );
+          expect(
+            contrastRatio(scheme.primary, scheme.surface),
+            greaterThanOrEqualTo(3),
+            reason: '$name active controls must meet non-text contrast.',
+          );
+          expect(
+            contrastRatio(scheme.error, scheme.surface),
+            greaterThanOrEqualTo(4.5),
+            reason: '$name error text must meet WCAG AA.',
+          );
+        },
+      );
     }
   });
 
@@ -74,18 +77,26 @@ void main() {
 
     for (final contrastCase in cases) {
       test('should keep every token at WCAG AA contrast in the '
-          '${contrastCase.name} theme', () {
+          '${contrastCase.name} theme when the behavior is exercised', () {
         final adjusted = ensureCodeThemeContrast(
           contrastCase.palette,
           background: contrastCase.background,
           fallback: contrastCase.theme.colorScheme.onSurface,
         );
 
+        expect(adjusted, isNotEmpty);
+        expect(adjusted.keys, unorderedEquals(contrastCase.palette.keys));
         for (final MapEntry(key: token, value: style) in adjusted.entries) {
           final color = style.color;
-          if (color == null) {
-            continue;
+          if (contrastCase.palette[token]?.color != null) {
+            expect(
+              color,
+              isNotNull,
+              reason:
+                  '${contrastCase.name} token "$token" must retain a colour.',
+            );
           }
+          if (color == null) continue;
           expect(
             contrastRatio(color, contrastCase.background),
             greaterThanOrEqualTo(4.5),

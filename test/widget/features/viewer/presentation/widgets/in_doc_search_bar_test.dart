@@ -51,7 +51,7 @@ void main() {
 
   group('ViewerSearchBar', () {
     testWidgets(
-      'should renders the field without a counter when the query is empty',
+      'should render the field without a counter when the query is empty',
       (tester) async {
         final controller = TextEditingController();
         addTearDown(controller.dispose);
@@ -71,12 +71,12 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text(l10n.viewerSearchHint), findsOneWidget);
-        expect(find.text(l10n.viewerSearchNoResults), findsNothing);
+        expect(find.bySemanticsLabel(l10n.viewerSearchHint), findsOneWidget);
+        expect(find.bySemanticsLabel(l10n.viewerSearchNoResults), findsNothing);
       },
     );
 
-    testWidgets('should shows the match counter when there are results', (
+    testWidgets('should show the match counter when there are results', (
       tester,
     ) async {
       final controller = TextEditingController(text: 'foo');
@@ -98,11 +98,14 @@ void main() {
       await tester.pumpAndSettle();
 
       // 1-based counter: index 2 → "3 / 12"
-      expect(find.text(l10n.viewerSearchMatchCount(3, 12)), findsOneWidget);
+      expect(
+        find.bySemanticsLabel(l10n.viewerSearchMatchCount(3, 12)),
+        findsOneWidget,
+      );
     });
 
     testWidgets(
-      'should shows the no-results label when the query matches nothing',
+      'should show the no-results label when the query matches nothing',
       (tester) async {
         final controller = TextEditingController(text: 'xyz');
         addTearDown(controller.dispose);
@@ -122,42 +125,46 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text(l10n.viewerSearchNoResults), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(l10n.viewerSearchNoResults),
+          findsOneWidget,
+        );
       },
     );
 
-    testWidgets('should nav buttons are disabled while matchCount is zero', (
-      tester,
-    ) async {
-      final controller = TextEditingController(text: 'xyz');
-      addTearDown(controller.dispose);
-      final focusNode = FocusNode();
-      addTearDown(focusNode.dispose);
-      var nextCalled = 0;
-      var prevCalled = 0;
-      await tester.pumpWidget(
-        harness(
-          controller: controller,
-          focusNode: focusNode,
-          matchCount: 0,
-          currentMatchIndex: 0,
-          onQueryChanged: (_) {},
-          onPrevious: () => prevCalled += 1,
-          onNext: () => nextCalled += 1,
-          onClose: () {},
-        ),
-      );
-      await tester.pumpAndSettle();
+    testWidgets(
+      'should confirm that nav buttons are disabled while matchCount is zero when the widget is exercised',
+      (tester) async {
+        final controller = TextEditingController(text: 'xyz');
+        addTearDown(controller.dispose);
+        final focusNode = FocusNode();
+        addTearDown(focusNode.dispose);
+        var nextCalled = 0;
+        var prevCalled = 0;
+        await tester.pumpWidget(
+          harness(
+            controller: controller,
+            focusNode: focusNode,
+            matchCount: 0,
+            currentMatchIndex: 0,
+            onQueryChanged: (_) {},
+            onPrevious: () => prevCalled += 1,
+            onNext: () => nextCalled += 1,
+            onClose: () {},
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.byTooltip(l10n.viewerSearchNextTooltip));
-      await tester.tap(find.byTooltip(l10n.viewerSearchPreviousTooltip));
-      await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip(l10n.viewerSearchNextTooltip));
+        await tester.tap(find.byTooltip(l10n.viewerSearchPreviousTooltip));
+        await tester.pumpAndSettle();
 
-      expect(nextCalled, 0);
-      expect(prevCalled, 0);
-    });
+        expect(nextCalled, 0);
+        expect(prevCalled, 0);
+      },
+    );
 
-    testWidgets('should tapping next / prev fires the callbacks', (
+    testWidgets('should fire the callbacks when next or previous is tapped', (
       tester,
     ) async {
       final controller = TextEditingController(text: 'foo');

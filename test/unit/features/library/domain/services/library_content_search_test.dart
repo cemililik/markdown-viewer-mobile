@@ -13,69 +13,81 @@ void main() {
       );
     }
 
-    test('should empty query returns no matches', () {
-      final result = searchInContents(
-        ContentSearchRequest(
-          documents: [doc('a', 'The quick brown fox.')],
-          normalisedQuery: '',
-        ),
-      );
-      expect(result, isEmpty);
-    });
-
-    test('should returns only documents that contain the query', () {
-      final result = searchInContents(
-        ContentSearchRequest(
-          documents: [
-            doc('alpha', 'The quick brown fox jumps.'),
-            doc('beta', 'A slow blue whale.'),
-            doc('gamma', 'Brown sugar, brown rice.'),
-          ],
-          normalisedQuery: 'brown',
-        ),
-      );
-      expect(result.map((m) => m.displayName), ['gamma.md', 'alpha.md']);
-    });
-
-    test('should case-insensitive match works on ALL-CAPS and Turkish', () {
-      final result = searchInContents(
-        ContentSearchRequest(
-          documents: [
-            doc('a', 'Dökümanın İÇİNDE bir cümle.'),
-            doc('b', 'başka bir belge.'),
-          ],
-          normalisedQuery: 'i̇çi̇nde',
-        ),
-      );
-      // The Turkish dotted-I lowercases to a sequence that does not
-      // match the ASCII-lowercased query, which is documented
-      // behaviour — the caller already lowercases via Dart's default
-      // toLowerCase(). We assert the English branch matches and the
-      // Turkish branch does not, confirming the normalisation
-      // boundary.
-      expect(result, isEmpty);
-
-      final ascii = searchInContents(
-        ContentSearchRequest(
-          documents: [doc('a', 'cümle içinde geçer')],
-          normalisedQuery: 'cümle',
-        ),
-      );
-      expect(ascii, hasLength(1));
-    });
-
-    test('should match count is accurate for repeated hits', () {
-      final result = searchInContents(
-        ContentSearchRequest(
-          documents: [doc('a', 'todo todo todo foo TODO')],
-          normalisedQuery: 'todo',
-        ),
-      );
-      expect(result.single.matchCount, 4);
-    });
+    test(
+      'should confirm that empty query returns no matches when the behavior is exercised',
+      () {
+        final result = searchInContents(
+          ContentSearchRequest(
+            documents: [doc('a', 'The quick brown fox.')],
+            normalisedQuery: '',
+          ),
+        );
+        expect(result, isEmpty);
+      },
+    );
 
     test(
-      'should sorts results by descending match count then alphabetically',
+      'should return only documents that contain the query when the behavior is exercised',
+      () {
+        final result = searchInContents(
+          ContentSearchRequest(
+            documents: [
+              doc('alpha', 'The quick brown fox jumps.'),
+              doc('beta', 'A slow blue whale.'),
+              doc('gamma', 'Brown sugar, brown rice.'),
+            ],
+            normalisedQuery: 'brown',
+          ),
+        );
+        expect(result.map((m) => m.displayName), ['gamma.md', 'alpha.md']);
+      },
+    );
+
+    test(
+      'should confirm that case-insensitive match works on ALL-CAPS and Turkish when the behavior is exercised',
+      () {
+        final result = searchInContents(
+          ContentSearchRequest(
+            documents: [
+              doc('a', 'Dökümanın İÇİNDE bir cümle.'),
+              doc('b', 'başka bir belge.'),
+            ],
+            normalisedQuery: 'i̇çi̇nde',
+          ),
+        );
+        // The Turkish dotted-I lowercases to a sequence that does not
+        // match the ASCII-lowercased query, which is documented
+        // behaviour — the caller already lowercases via Dart's default
+        // toLowerCase(). We assert the English branch matches and the
+        // Turkish branch does not, confirming the normalisation
+        // boundary.
+        expect(result, isEmpty);
+
+        final ascii = searchInContents(
+          ContentSearchRequest(
+            documents: [doc('a', 'cümle içinde geçer')],
+            normalisedQuery: 'cümle',
+          ),
+        );
+        expect(ascii, hasLength(1));
+      },
+    );
+
+    test(
+      'should match count is accurate for repeated hits when the behavior is exercised',
+      () {
+        final result = searchInContents(
+          ContentSearchRequest(
+            documents: [doc('a', 'todo todo todo foo TODO')],
+            normalisedQuery: 'todo',
+          ),
+        );
+        expect(result.single.matchCount, 4);
+      },
+    );
+
+    test(
+      'should sort results by descending match count then alphabetically when the behavior is exercised',
       () {
         final result = searchInContents(
           ContentSearchRequest(
@@ -91,7 +103,7 @@ void main() {
       },
     );
 
-    test('should respects maxResults cap', () {
+    test('should respect maxResults cap when the behavior is exercised', () {
       final docs = [for (var i = 0; i < 60; i++) doc('d$i', 'lorem ipsum $i')];
       final result = searchInContents(
         ContentSearchRequest(
@@ -103,66 +115,78 @@ void main() {
       expect(result, hasLength(10));
     });
 
-    test('should snippet centres on the first match and preserves offset', () {
-      final body = 'Before text. ${'x' * 40}keyword${'y' * 40} after text.';
-      final result = searchInContents(
-        ContentSearchRequest(
-          documents: [doc('snip', body)],
-          normalisedQuery: 'keyword',
-        ),
-      );
-      final match = result.single;
-      expect(match.snippetMatchLength, 'keyword'.length);
-      expect(
-        match.snippet.substring(
-          match.snippetMatchStart,
-          match.snippetMatchStart + match.snippetMatchLength,
-        ),
-        'keyword',
-      );
-    });
+    test(
+      'should confirm that snippet centres on the first match and preserves offset when the behavior is exercised',
+      () {
+        final body = 'Before text. ${'x' * 40}keyword${'y' * 40} after text.';
+        final result = searchInContents(
+          ContentSearchRequest(
+            documents: [doc('snip', body)],
+            normalisedQuery: 'keyword',
+          ),
+        );
+        final match = result.single;
+        expect(match.snippetMatchLength, 'keyword'.length);
+        expect(
+          match.snippet.substring(
+            match.snippetMatchStart,
+            match.snippetMatchStart + match.snippetMatchLength,
+          ),
+          'keyword',
+        );
+      },
+    );
 
-    test('should snippet collapses whitespace so output stays on one line', () {
-      const body = 'line1\n\n\nhello\n\nline3';
-      final result = searchInContents(
-        ContentSearchRequest(
-          documents: [doc('ws', body)],
-          normalisedQuery: 'hello',
-        ),
-      );
-      final snippet = result.single.snippet;
-      expect(snippet, isNot(contains('\n')));
-      expect(
-        snippet.substring(
-          result.single.snippetMatchStart,
-          result.single.snippetMatchStart + result.single.snippetMatchLength,
-        ),
-        'hello',
-      );
-    });
+    test(
+      'should confirm that snippet collapses whitespace so output stays on one line when the behavior is exercised',
+      () {
+        const body = 'line1\n\n\nhello\n\nline3';
+        final result = searchInContents(
+          ContentSearchRequest(
+            documents: [doc('ws', body)],
+            normalisedQuery: 'hello',
+          ),
+        );
+        final snippet = result.single.snippet;
+        expect(snippet, isNot(contains('\n')));
+        expect(
+          snippet.substring(
+            result.single.snippetMatchStart,
+            result.single.snippetMatchStart + result.single.snippetMatchLength,
+          ),
+          'hello',
+        );
+      },
+    );
 
-    test('should empty documents are skipped', () {
-      final result = searchInContents(
-        ContentSearchRequest(
-          documents: [doc('a', ''), doc('b', 'real content matches')],
-          normalisedQuery: 'content',
-        ),
-      );
-      expect(result, hasLength(1));
-      expect(result.single.displayName, 'b.md');
-    });
+    test(
+      'should confirm that empty documents are skipped when the behavior is exercised',
+      () {
+        final result = searchInContents(
+          ContentSearchRequest(
+            documents: [doc('a', ''), doc('b', 'real content matches')],
+            normalisedQuery: 'content',
+          ),
+        );
+        expect(result, hasLength(1));
+        expect(result.single.displayName, 'b.md');
+      },
+    );
 
-    test('should documents without the query do not appear in results', () {
-      final result = searchInContents(
-        ContentSearchRequest(
-          documents: [
-            doc('a', 'apple banana cherry'),
-            doc('b', 'dragonfruit eggplant fig'),
-          ],
-          normalisedQuery: 'nomatchhere',
-        ),
-      );
-      expect(result, isEmpty);
-    });
+    test(
+      'should confirm that documents without the query do not appear in results when the behavior is exercised',
+      () {
+        final result = searchInContents(
+          ContentSearchRequest(
+            documents: [
+              doc('a', 'apple banana cherry'),
+              doc('b', 'dragonfruit eggplant fig'),
+            ],
+            normalisedQuery: 'nomatchhere',
+          ),
+        );
+        expect(result, isEmpty);
+      },
+    );
   });
 }

@@ -436,11 +436,17 @@ class MarkdownView extends StatelessWidget {
     // the parser-side block list in pathological-but-realistic cases
     // (frontmatter, HTML blocks, trailing whitespace runs) — ignoring
     // this callback silently desyncs TOC navigation.
+    var tocItems = const <Toc>[];
     final widgets = generator.buildWidgets(
       sourceToRender,
       config: config,
-      onTocList: onTocList,
+      onTocList: (items) {
+        tocItems = items;
+        onTocList?.call(items);
+      },
     );
+    final headingWidgetIndexes =
+        tocItems.map((item) => item.widgetIndex).toSet();
 
     // Wrap each rendered block in a `KeyedSubtree` whose `GlobalKey`
     // comes from the shared [blockKeys] map. The keys let
@@ -475,14 +481,18 @@ class MarkdownView extends StatelessWidget {
     );
 
     for (var i = 0; i < widgets.length; i += 1) {
+      final renderedWidget =
+          headingWidgetIndexes.contains(i)
+              ? Semantics(header: true, child: widgets[i])
+              : widgets[i];
       if (keys != null) {
         final key = keys.putIfAbsent(
           i,
           () => GlobalKey(debugLabel: 'doc-block-$i'),
         );
-        columnChildren.add(KeyedSubtree(key: key, child: widgets[i]));
+        columnChildren.add(KeyedSubtree(key: key, child: renderedWidget));
       } else {
-        columnChildren.add(widgets[i]);
+        columnChildren.add(renderedWidget);
       }
     }
 

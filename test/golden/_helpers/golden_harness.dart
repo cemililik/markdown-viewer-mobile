@@ -15,48 +15,35 @@ export '../../_helpers/markdown_fixtures.dart';
 /// coordinates by a device-pixel ratio.
 const Size kGoldenViewport = Size(390, 844);
 
-/// Builds the project-wide locale, brightness, and text-scale matrix.
+/// Application themes exercised by the canonical golden matrix.
+enum GoldenAppTheme { light, dark, sepia }
+
+/// Builds the project-wide locale, theme, and text-scale matrix.
 List<GoldenTestScenario> standardGoldenScenarios({
   required Widget Function(
     Locale locale,
     TextScaler textScaler,
-    Brightness brightness,
+    GoldenAppTheme appTheme,
   )
   builder,
 }) {
+  const locales = <(String, Locale)>[
+    ('en', Locale('en')),
+    ('tr', Locale('tr')),
+  ];
+  const scales = <(String, TextScaler)>[
+    ('1x', TextScaler.noScaling),
+    ('2x', TextScaler.linear(2)),
+  ];
+
   return [
-    GoldenTestScenario(
-      name: 'en-light-1x',
-      child: builder(
-        const Locale('en'),
-        TextScaler.noScaling,
-        Brightness.light,
-      ),
-    ),
-    GoldenTestScenario(
-      name: 'tr-light-1x',
-      child: builder(
-        const Locale('tr'),
-        TextScaler.noScaling,
-        Brightness.light,
-      ),
-    ),
-    GoldenTestScenario(
-      name: 'en-dark-2x',
-      child: builder(
-        const Locale('en'),
-        const TextScaler.linear(2),
-        Brightness.dark,
-      ),
-    ),
-    GoldenTestScenario(
-      name: 'tr-dark-2x',
-      child: builder(
-        const Locale('tr'),
-        const TextScaler.linear(2),
-        Brightness.dark,
-      ),
-    ),
+    for (final (localeName, locale) in locales)
+      for (final appTheme in GoldenAppTheme.values)
+        for (final (scaleName, textScaler) in scales)
+          GoldenTestScenario(
+            name: '$localeName-${appTheme.name}-$scaleName',
+            child: builder(locale, textScaler, appTheme),
+          ),
   ];
 }
 
@@ -72,6 +59,17 @@ Future<void> goldenPumpBeforeTest(WidgetTester tester) async {
     () => VisibilityDetectorController.instance.updateInterval = original,
   );
   await tester.pumpAndSettle();
+}
+
+/// Settles the widget tree and waits for every in-memory image to decode.
+Future<void> goldenPumpBeforeTestWithImages(WidgetTester tester) async {
+  await goldenPumpBeforeTest(tester);
+  final imageElements = find.byType(Image).evaluate().toList();
+  for (final element in imageElements) {
+    final provider = (element.widget as Image).image;
+    await tester.runAsync(() => precacheImage(provider, element));
+  }
+  await tester.pump();
 }
 
 /// Pump-widget action that pins the test surface to [kGoldenViewport]
@@ -92,16 +90,13 @@ Widget goldenAppHarness({
   required Widget home,
   Locale locale = const Locale('en'),
   TextScaler textScaler = TextScaler.noScaling,
-  Brightness brightness = Brightness.light,
+  GoldenAppTheme appTheme = GoldenAppTheme.light,
 }) {
   return SizedBox(
     width: kGoldenViewport.width,
     height: kGoldenViewport.height,
     child: MaterialApp(
-      theme:
-          brightness == Brightness.dark
-              ? AppTheme.dark(null)
-              : AppTheme.light(null),
+      theme: _themeData(appTheme),
       locale: locale,
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -125,18 +120,24 @@ Widget goldenAppHarness({
 /// from its parent, so wrapping the entire [MaterialApp] in a [SizedBox]
 /// matching [kGoldenViewport] gives the layout engine a concrete size.
 ///
-/// [brightness] controls the theme; defaults to [Brightness.light].
+/// [appTheme] controls the theme; defaults to [GoldenAppTheme.light].
 Widget markdownGoldenHarness(
   String fixtureName, {
-  Brightness brightness = Brightness.light,
+  GoldenAppTheme appTheme = GoldenAppTheme.light,
   Locale locale = const Locale('en'),
   TextScaler textScaler = TextScaler.noScaling,
 }) {
   final doc = parseMarkdownFixture(fixtureName);
   return goldenAppHarness(
-    brightness: brightness,
+    appTheme: appTheme,
     locale: locale,
     textScaler: textScaler,
     home: Scaffold(body: MarkdownView(document: doc)),
   );
 }
+
+ThemeData _themeData(GoldenAppTheme appTheme) => switch (appTheme) {
+  GoldenAppTheme.light => AppTheme.light(null),
+  GoldenAppTheme.dark => AppTheme.dark(null),
+  GoldenAppTheme.sepia => AppTheme.sepia(),
+};

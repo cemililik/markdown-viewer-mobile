@@ -22,13 +22,16 @@ void main() {
   }
 
   group('ThemeModeController', () {
-    test('should seed its initial value from the settings store', () {
-      store.themeMode = AppThemeMode.dark;
+    test(
+      'should seed its initial value from the settings store when the behavior is exercised',
+      () {
+        store.themeMode = AppThemeMode.dark;
 
-      final container = buildContainer();
+        final container = buildContainer();
 
-      expect(container.read(themeModeControllerProvider), AppThemeMode.dark);
-    });
+        expect(container.read(themeModeControllerProvider), AppThemeMode.dark);
+      },
+    );
 
     test('should default to system theme when no value is persisted', () {
       final container = buildContainer();
@@ -36,17 +39,20 @@ void main() {
       expect(container.read(themeModeControllerProvider), AppThemeMode.system);
     });
 
-    test('should update state and persist a changed theme', () {
-      final container = buildContainer();
+    test(
+      'should update state and persist a changed theme when the behavior is exercised',
+      () {
+        final container = buildContainer();
 
-      container
-          .read(themeModeControllerProvider.notifier)
-          .set(AppThemeMode.sepia);
+        container
+            .read(themeModeControllerProvider.notifier)
+            .set(AppThemeMode.sepia);
 
-      expect(container.read(themeModeControllerProvider), AppThemeMode.sepia);
-      expect(store.themeMode, AppThemeMode.sepia);
-      expect(store.themeWrites, 1);
-    });
+        expect(container.read(themeModeControllerProvider), AppThemeMode.sepia);
+        expect(store.themeMode, AppThemeMode.sepia);
+        expect(store.themeWrites, 1);
+      },
+    );
 
     test('should skip persistence when the theme is unchanged', () {
       final container = buildContainer();
@@ -60,13 +66,16 @@ void main() {
   });
 
   group('LocaleController', () {
-    test('should seed its initial value from the settings store', () {
-      store.locale = AppLocale.turkish;
+    test(
+      'should seed its initial value from the settings store when the behavior is exercised',
+      () {
+        store.locale = AppLocale.turkish;
 
-      final container = buildContainer();
+        final container = buildContainer();
 
-      expect(container.read(localeControllerProvider), AppLocale.turkish);
-    });
+        expect(container.read(localeControllerProvider), AppLocale.turkish);
+      },
+    );
 
     test('should default to system locale when no value is persisted', () {
       final container = buildContainer();
@@ -74,15 +83,20 @@ void main() {
       expect(container.read(localeControllerProvider), AppLocale.system);
     });
 
-    test('should update state and persist a changed locale', () {
-      final container = buildContainer();
+    test(
+      'should update state and persist a changed locale when the behavior is exercised',
+      () {
+        final container = buildContainer();
 
-      container.read(localeControllerProvider.notifier).set(AppLocale.english);
+        container
+            .read(localeControllerProvider.notifier)
+            .set(AppLocale.english);
 
-      expect(container.read(localeControllerProvider), AppLocale.english);
-      expect(store.locale, AppLocale.english);
-      expect(store.localeWrites, 1);
-    });
+        expect(container.read(localeControllerProvider), AppLocale.english);
+        expect(store.locale, AppLocale.english);
+        expect(store.localeWrites, 1);
+      },
+    );
 
     test('should skip persistence when the locale is unchanged', () {
       final container = buildContainer();
@@ -94,86 +108,101 @@ void main() {
   });
 
   group('ReadingSettingsController', () {
-    test('should seed initial state from the store', () {
-      store.readingSettings = const ReadingSettings(
-        fontScale: 1.2,
-        width: ReadingWidth.wide,
-        lineHeight: ReadingLineHeight.airy,
-      );
+    test(
+      'should seed initial state from the store when the behavior is exercised',
+      () {
+        store.readingSettings = const ReadingSettings(
+          fontScale: 1.2,
+          width: ReadingWidth.wide,
+          lineHeight: ReadingLineHeight.airy,
+        );
 
-      final container = buildContainer();
+        final container = buildContainer();
 
-      expect(
-        container.read(readingSettingsControllerProvider),
-        store.readingSettings,
-      );
-    });
+        expect(
+          container.read(readingSettingsControllerProvider),
+          store.readingSettings,
+        );
+      },
+    );
 
-    test('should update state and persist a changed font scale', () {
-      final container = buildContainer();
+    test(
+      'should update state and persist a changed font scale when the behavior is exercised',
+      () {
+        final container = buildContainer();
 
-      container
-          .read(readingSettingsControllerProvider.notifier)
-          .setFontScale(1.2);
+        container
+            .read(readingSettingsControllerProvider.notifier)
+            .setFontScale(1.2);
 
-      expect(
-        container.read(readingSettingsControllerProvider).fontScale,
-        closeTo(1.2, 1e-9),
-      );
-      expect(store.readingSettings.fontScale, closeTo(1.2, 1e-9));
-      expect(store.readingWrites, 1);
-    });
+        expect(
+          container.read(readingSettingsControllerProvider).fontScale,
+          closeTo(1.2, 1e-9),
+        );
+        expect(store.readingSettings.fontScale, closeTo(1.2, 1e-9));
+        expect(store.readingWrites, 1);
+      },
+    );
 
-    test('should clamp font scale before persisting it', () {
-      final container = buildContainer();
-      final controller = container.read(
-        readingSettingsControllerProvider.notifier,
-      );
+    test(
+      'should clamp font scale before persisting it when the behavior is exercised',
+      () {
+        final container = buildContainer();
+        final controller = container.read(
+          readingSettingsControllerProvider.notifier,
+        );
 
-      controller.setFontScale(5);
-      expect(store.readingSettings.fontScale, ReadingSettings.maxFontScale);
+        controller.setFontScale(5);
+        expect(store.readingSettings.fontScale, ReadingSettings.maxFontScale);
 
-      controller.setFontScale(0.1);
-      expect(store.readingSettings.fontScale, ReadingSettings.minFontScale);
-      expect(store.readingWrites, 2);
-    });
+        controller.setFontScale(0.1);
+        expect(store.readingSettings.fontScale, ReadingSettings.minFontScale);
+        expect(store.readingWrites, 2);
+      },
+    );
 
-    test('should update width and line height independently', () {
-      final container = buildContainer();
-      final controller = container.read(
-        readingSettingsControllerProvider.notifier,
-      );
+    test(
+      'should update width and line height independently when the behavior is exercised',
+      () {
+        final container = buildContainer();
+        final controller = container.read(
+          readingSettingsControllerProvider.notifier,
+        );
 
-      controller
-        ..setWidth(ReadingWidth.wide)
-        ..setLineHeight(ReadingLineHeight.airy);
+        controller
+          ..setWidth(ReadingWidth.wide)
+          ..setLineHeight(ReadingLineHeight.airy);
 
-      final state = container.read(readingSettingsControllerProvider);
-      expect(state.width, ReadingWidth.wide);
-      expect(state.lineHeight, ReadingLineHeight.airy);
-      expect(state.fontScale, ReadingSettings.defaults.fontScale);
-      expect(store.readingWrites, 2);
-    });
+        final state = container.read(readingSettingsControllerProvider);
+        expect(state.width, ReadingWidth.wide);
+        expect(state.lineHeight, ReadingLineHeight.airy);
+        expect(state.fontScale, ReadingSettings.defaults.fontScale);
+        expect(store.readingWrites, 2);
+      },
+    );
 
-    test('should restore and persist every reading default', () {
-      store.readingSettings = const ReadingSettings(
-        fontScale: 1.4,
-        width: ReadingWidth.wide,
-        lineHeight: ReadingLineHeight.airy,
-      );
-      final container = buildContainer();
+    test(
+      'should restore and persist every reading default when the behavior is exercised',
+      () {
+        store.readingSettings = const ReadingSettings(
+          fontScale: 1.4,
+          width: ReadingWidth.wide,
+          lineHeight: ReadingLineHeight.airy,
+        );
+        final container = buildContainer();
 
-      container
-          .read(readingSettingsControllerProvider.notifier)
-          .resetToDefaults();
+        container
+            .read(readingSettingsControllerProvider.notifier)
+            .resetToDefaults();
 
-      expect(
-        container.read(readingSettingsControllerProvider),
-        ReadingSettings.defaults,
-      );
-      expect(store.readingSettings, ReadingSettings.defaults);
-      expect(store.readingWrites, 1);
-    });
+        expect(
+          container.read(readingSettingsControllerProvider),
+          ReadingSettings.defaults,
+        );
+        expect(store.readingSettings, ReadingSettings.defaults);
+        expect(store.readingWrites, 1);
+      },
+    );
 
     test('should skip persistence when reading settings are unchanged', () {
       final container = buildContainer();
@@ -192,23 +221,29 @@ void main() {
   });
 
   group('KeepScreenOnController', () {
-    test('should seed its initial value from the settings store', () {
-      store.keepScreenOn = true;
+    test(
+      'should seed its initial value from the settings store when the behavior is exercised',
+      () {
+        store.keepScreenOn = true;
 
-      final container = buildContainer();
+        final container = buildContainer();
 
-      expect(container.read(keepScreenOnControllerProvider), isTrue);
-    });
+        expect(container.read(keepScreenOnControllerProvider), isTrue);
+      },
+    );
 
-    test('should update state and persist a changed value', () {
-      final container = buildContainer();
+    test(
+      'should update state and persist a changed value when the behavior is exercised',
+      () {
+        final container = buildContainer();
 
-      container.read(keepScreenOnControllerProvider.notifier).set(true);
+        container.read(keepScreenOnControllerProvider.notifier).set(true);
 
-      expect(container.read(keepScreenOnControllerProvider), isTrue);
-      expect(store.keepScreenOn, isTrue);
-      expect(store.keepScreenOnWrites, 1);
-    });
+        expect(container.read(keepScreenOnControllerProvider), isTrue);
+        expect(store.keepScreenOn, isTrue);
+        expect(store.keepScreenOnWrites, 1);
+      },
+    );
 
     test('should skip persistence when the value is unchanged', () {
       final container = buildContainer();

@@ -21,9 +21,27 @@
   "libraryRecentFileMissing": "Bu dosya artık mevcut değil — listeden kaldırıldı.",
   "libraryRecentJustNow": "Az önce",
   "libraryRecentMinutesAgo": "{count, plural, =1{1 dakika önce} other{{count} dakika önce}}",
+  "@libraryRecentMinutesAgo": {
+    "description": "Plural relative time label for documents opened a few minutes ago.",
+    "placeholders": {
+      "count": { "type": "int", "example": "5" }
+    }
+  },
   "libraryRecentHoursAgo": "{count, plural, =1{1 saat önce} other{{count} saat önce}}",
+  "@libraryRecentHoursAgo": {
+    "description": "Plural relative time label for documents opened a few hours ago.",
+    "placeholders": {
+      "count": { "type": "int", "example": "3" }
+    }
+  },
   "libraryRecentYesterday": "Dün",
   "libraryRecentDaysAgo": "{count, plural, other{{count} gün önce}}",
+  "@libraryRecentDaysAgo": {
+    "description": "Plural relative time label for documents opened several days ago.",
+    "placeholders": {
+      "count": { "type": "int", "example": "5" }
+    }
+  },
   "libraryRecentLongAgo": "Bir süre önce",
 
   "libraryGreetingMorning": "Günaydın",
@@ -154,6 +172,12 @@
   "diagramFullscreenCloseTooltip": "Tam ekranı kapat",
   "mermaidDiagramLabel": "Mermaid diyagramı. Yakınlaştırmak için sıkıştırın, kaydırmak için sürükleyin.",
   "viewerReadingTime": "{minutes} dk okuma",
+  "@viewerReadingTime": {
+    "description": "Reading-time estimate shown at the top of the document content. Always shows at least 1 min.",
+    "placeholders": {
+      "minutes": { "type": "int" }
+    }
+  },
   "viewerBackToTopTooltip": "Başa dön",
   "viewerBookmarkSaveTooltip": "Kaldığın yeri kaydet veya güncelle",
   "viewerBookmarkSaved": "Kaldığın yer kaydedildi",
@@ -268,7 +292,20 @@
   "syncRenameRepoError": "Depo yeniden adlandırılamadı. Lütfen tekrar deneyin.",
   "syncRefreshTooltip": "Yeniden senkronize et",
   "syncFilesFound": "{count, plural, =0{Markdown dosyası bulunamadı} =1{1 markdown dosyası bulundu} other{{count} markdown dosyası bulundu}}",
+  "@syncFilesFound": {
+    "description": "Plural message showing how many .md files were discovered in a repo.",
+    "placeholders": {
+      "count": { "type": "int", "example": "12" }
+    }
+  },
   "syncProgress": "{total} dosyadan {current} tanesi indiriliyor",
+  "@syncProgress": {
+    "description": "Per-file progress indicator during a sync.",
+    "placeholders": {
+      "current": { "type": "int", "example": "5" },
+      "total": { "type": "int", "example": "12" }
+    }
+  },
   "syncCompleted": "Senkronizasyon tamamlandı",
   "syncPartial": "Bazı dosyalar indirilemedi.",
   "syncLastSyncedJustNow": "Az önce senkronize edildi",
@@ -299,9 +336,23 @@
   "errorUnsupportedProvider": "Bu URL desteklenmiyor. Şu an yalnızca GitHub depo URL'leri kabul edilmektedir.",
   "errorRepoTooLarge": "Depo tam olarak senkronize edilemeyecek kadar büyük. Bunun yerine bir alt dizin URL'si girin; örneğin github.com/owner/repo/tree/main/docs.",
   "errorPartialSync": "Senkronizasyon kısmen tamamlandı: {syncedCount} dosya kaydedildi, {failedCount} başarısız oldu.",
+  "@errorPartialSync": {
+    "description": "User-facing message when a sync completes with some files failing.",
+    "placeholders": {
+      "syncedCount": { "type": "int", "example": "42" },
+      "failedCount": { "type": "int", "example": "3" }
+    }
+  },
 
   "onboardingSkip": "Atla",
   "onboardingPageIndicator": "Sayfa {current} / {total}",
+  "@onboardingPageIndicator": {
+    "description": "Screen-reader-only label for the page-indicator dot row on the onboarding screen.",
+    "placeholders": {
+      "current": { "type": "int", "example": "2" },
+      "total": { "type": "int", "example": "3" }
+    }
+  },
   "onboardingNext": "İleri",
   "onboardingGetStarted": "Başlayalım",
   "onboardingWelcomeTitle": "Markdown Viewer'a hoş geldiniz",
@@ -323,6 +374,12 @@
   "syncTryItButton": "Deneyin",
   "syncRecentSyncsHeader": "Senkronize edilmiş depolar",
   "syncRecentFileCount": "{count, plural, =1{1 dosya} other{{count} dosya}}",
+  "@syncRecentFileCount": {
+    "description": "File count shown in the recent syncs list.",
+    "placeholders": {
+      "count": { "type": "int", "example": "32" }
+    }
+  },
   "syncRecentResync": "Güncelle",
   "syncRecentOpen": "Aç"
 }

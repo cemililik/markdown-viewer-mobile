@@ -19,7 +19,7 @@ void main() {
     });
 
     test(
-      'should returns null for a document that has never been bookmarked',
+      'should return null for a document that has never been bookmarked when the behavior is exercised',
       () async {
         final prefs = await SharedPreferences.getInstance();
         final store = ReadingPositionStoreImpl(prefs, logger: _silentLogger);
@@ -29,7 +29,7 @@ void main() {
     );
 
     test(
-      'should write then read round-trips the offset and timestamp',
+      'should round-trip the offset and timestamp when a position is written then read',
       () async {
         final prefs = await SharedPreferences.getInstance();
         final store = ReadingPositionStoreImpl(prefs, logger: _silentLogger);
@@ -48,27 +48,30 @@ void main() {
       },
     );
 
-    test('should clear removes a previously written bookmark', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = ReadingPositionStoreImpl(prefs, logger: _silentLogger);
-      const id = DocumentId('/tmp/clear.md');
+    test(
+      'should confirm that clear removes a previously written bookmark when the behavior is exercised',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = ReadingPositionStoreImpl(prefs, logger: _silentLogger);
+        const id = DocumentId('/tmp/clear.md');
 
-      await store.write(
-        ReadingPosition(
-          documentId: id,
-          offset: 42,
-          savedAt: DateTime.utc(2026, 4, 13),
-        ),
-      );
-      expect(store.read(id), isNotNull);
+        await store.write(
+          ReadingPosition(
+            documentId: id,
+            offset: 42,
+            savedAt: DateTime.utc(2026, 4, 13),
+          ),
+        );
+        expect(store.read(id), isNotNull);
 
-      await store.clear(id);
+        await store.clear(id);
 
-      expect(store.read(id), isNull);
-    });
+        expect(store.read(id), isNull);
+      },
+    );
 
     test(
-      'should two different document paths sit in two different storage slots',
+      'should confirm that two different document paths sit in two different storage slots when the behavior is exercised',
       () async {
         final prefs = await SharedPreferences.getInstance();
         final store = ReadingPositionStoreImpl(prefs, logger: _silentLogger);
@@ -96,7 +99,7 @@ void main() {
     );
 
     test(
-      'should does not leak the raw file path into SharedPreferences keys',
+      'should not leak the raw file path into SharedPreferences keys when the behavior is exercised',
       () async {
         final prefs = await SharedPreferences.getInstance();
         final store = ReadingPositionStoreImpl(prefs, logger: _silentLogger);
@@ -122,7 +125,7 @@ void main() {
     );
 
     test(
-      'should survives a corrupted JSON blob by returning null instead of throwing',
+      'should survive a corrupted JSON blob by returning null instead of throwing when the behavior is exercised',
       () async {
         SharedPreferences.setMockInitialValues({
           // Use the same hash the impl would produce for the test path

@@ -9,14 +9,14 @@ void main() {
   const supported = AppLocalizations.supportedLocales;
 
   group('resolveSystemLocale', () {
-    test('should returns Turkish when the OS primary is Turkish', () {
+    test('should return Turkish when the OS primary is Turkish', () {
       final resolved = resolveSystemLocale(const [
         Locale('tr', 'TR'),
       ], supported);
       expect(resolved, const Locale('tr'));
     });
 
-    test('should returns English when the OS primary is English', () {
+    test('should return English when the OS primary is English', () {
       final resolved = resolveSystemLocale(const [
         Locale('en', 'US'),
       ], supported);
@@ -24,7 +24,7 @@ void main() {
     });
 
     test(
-      'should falls back to English for a completely unsupported OS language',
+      'should fall back to English for a completely unsupported OS language when the behavior is exercised',
       () {
         // German primary, no other preference — the product rule is "anything
         // that is not tr or en falls back to en".
@@ -36,7 +36,7 @@ void main() {
     );
 
     test(
-      'should honours a later Turkish entry when the primary is unsupported',
+      'should honour a later Turkish entry when the primary is unsupported',
       () {
         // A German expat who speaks Turkish has the OS list [de, tr, en].
         // We should land on Turkish — the first of their preferences we can
@@ -51,7 +51,7 @@ void main() {
     );
 
     test(
-      'should honours a later English entry when the primary is unsupported and tr '
+      'should honour a later English entry when the primary is unsupported and tr '
       'is not present at all',
       () {
         final resolved = resolveSystemLocale(const [
@@ -62,27 +62,30 @@ void main() {
       },
     );
 
-    test('should returns English when the OS preferred list is empty', () {
+    test('should return English when the OS preferred list is empty', () {
       final resolved = resolveSystemLocale(const <Locale>[], supported);
       expect(resolved, const Locale('en'));
     });
 
-    test('should returns English when the OS preferred list is null', () {
+    test('should return English when the OS preferred list is null', () {
       final resolved = resolveSystemLocale(null, supported);
       expect(resolved, const Locale('en'));
     });
 
-    test('should matches on languageCode ignoring country and script', () {
-      // A regional variant like zh_Hant_HK should not be interpreted as
-      // English or Turkish — it's simply unsupported and falls back.
-      final resolved = resolveSystemLocale(const [
-        Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
-      ], supported);
-      expect(resolved, const Locale('en'));
-    });
+    test(
+      'should match on languageCode ignoring country and script when the behavior is exercised',
+      () {
+        // A regional variant like zh_Hant_HK should not be interpreted as
+        // English or Turkish — it's simply unsupported and falls back.
+        final resolved = resolveSystemLocale(const [
+          Locale.fromSubtags(languageCode: 'zh', scriptCode: 'Hant'),
+        ], supported);
+        expect(resolved, const Locale('en'));
+      },
+    );
 
     test(
-      'should derive selectable locales from generated supported locales',
+      'should derive selectable locales from generated supported locales when the behavior is exercised',
       () {
         final generatedLanguageCodes =
             AppLocalizations.supportedLocales
@@ -99,19 +102,30 @@ void main() {
       },
     );
 
-    test('should resolve a future supported locale without code changes', () {
-      const futureSupported = <Locale>[
-        Locale('en'),
-        Locale('tr'),
-        Locale('de'),
-      ];
+    test(
+      'should resolve a future supported locale without code changes when the behavior is exercised',
+      () {
+        const futureSupported = <Locale>[
+          Locale('en'),
+          Locale('tr'),
+          Locale('de'),
+        ];
 
+        final resolved = resolveSystemLocale(const [
+          Locale('ja', 'JP'),
+          Locale('de', 'DE'),
+        ], futureSupported);
+
+        expect(resolved, const Locale('de'));
+      },
+    );
+
+    test('should return English when the supported locale list is empty', () {
       final resolved = resolveSystemLocale(const [
-        Locale('ja', 'JP'),
-        Locale('de', 'DE'),
-      ], futureSupported);
+        Locale('tr', 'TR'),
+      ], const <Locale>[]);
 
-      expect(resolved, const Locale('de'));
+      expect(resolved, const Locale('en'));
     });
   });
 }

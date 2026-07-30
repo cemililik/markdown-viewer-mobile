@@ -32,46 +32,49 @@ gantt
 ```
 ''';
 
-    test('should em-dash characters survive the AST → string round-trip', () {
-      final codes = extractMermaidCodes(source);
-      expect(codes, hasLength(1));
+    test(
+      'should confirm that em-dash characters survive the AST → string round-trip when the behavior is exercised',
+      () {
+        final codes = extractMermaidCodes(source);
+        expect(codes, hasLength(1));
 
-      final code = codes.first;
-      // Hard assertions: the literal em-dash must survive intact and
-      // no HTML entity form must leak through.
-      expect(
-        code.contains('—'),
-        isTrue,
-        reason:
-            'em-dash characters must survive the markdown round-trip; '
-            'losing them is the smoking gun for a smart-punctuation or '
-            'entity-encoding bug',
-      );
-      expect(
-        code.contains('&mdash;'),
-        isFalse,
-        reason: 'no HTML entity form may leak through to the renderer',
-      );
-      expect(
-        code.contains('&#8212;'),
-        isFalse,
-        reason: 'no decimal entity form may leak through to the renderer',
-      );
-      expect(
-        code.contains('&#x2014;'),
-        isFalse,
-        reason: 'no hex entity form may leak through to the renderer',
-      );
+        final code = codes.first;
+        // Hard assertions: the literal em-dash must survive intact and
+        // no HTML entity form must leak through.
+        expect(
+          code.contains('—'),
+          isTrue,
+          reason:
+              'em-dash characters must survive the markdown round-trip; '
+              'losing them is the smoking gun for a smart-punctuation or '
+              'entity-encoding bug',
+        );
+        expect(
+          code.contains('&mdash;'),
+          isFalse,
+          reason: 'no HTML entity form may leak through to the renderer',
+        );
+        expect(
+          code.contains('&#8212;'),
+          isFalse,
+          reason: 'no decimal entity form may leak through to the renderer',
+        );
+        expect(
+          code.contains('&#x2014;'),
+          isFalse,
+          reason: 'no hex entity form may leak through to the renderer',
+        );
 
-      // The exact tasks from the fence must be intact, byte-for-byte.
-      expect(
-        code.contains('Blog — Why safety matters        :2026-03-31, 5d'),
-        isTrue,
-      );
-      expect(
-        code.contains('YouTube — 5-min demo             :2026-04-02, 5d'),
-        isTrue,
-      );
-    });
+        // The exact tasks from the fence must be intact, byte-for-byte.
+        expect(
+          code.contains('Blog — Why safety matters        :2026-03-31, 5d'),
+          isTrue,
+        );
+        expect(
+          code.contains('YouTube — 5-min demo             :2026-04-02, 5d'),
+          isTrue,
+        );
+      },
+    );
   });
 }

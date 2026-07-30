@@ -37,35 +37,45 @@ void main() {
   }
 
   group('AdmonitionKind.tryFromName', () {
-    test('should recognises every known kind case-insensitively', () {
-      for (final kind in AdmonitionKind.values) {
-        expect(AdmonitionKind.tryFromName(kind.name), kind);
-        expect(AdmonitionKind.tryFromName(kind.name.toUpperCase()), kind);
-      }
-    });
+    test(
+      'should recognise every known kind case-insensitively when the behavior is exercised',
+      () {
+        for (final kind in AdmonitionKind.values) {
+          expect(AdmonitionKind.tryFromName(kind.name), kind);
+          expect(AdmonitionKind.tryFromName(kind.name.toUpperCase()), kind);
+        }
+      },
+    );
 
-    test('should returns null for unknown kind names', () {
-      expect(AdmonitionKind.tryFromName(''), isNull);
-      expect(AdmonitionKind.tryFromName('unknown'), isNull);
-      expect(AdmonitionKind.tryFromName('danger'), isNull);
-    });
+    test(
+      'should return null for unknown kind names when the behavior is exercised',
+      () {
+        expect(AdmonitionKind.tryFromName(''), isNull);
+        expect(AdmonitionKind.tryFromName('unknown'), isNull);
+        expect(AdmonitionKind.tryFromName('danger'), isNull);
+      },
+    );
   });
 
   group('tryParseAdmonitionKind', () {
-    test('should returns the kind for each markdown-alert div variant', () {
-      // Every kind emitted by package:markdown's AlertBlockSyntax
-      // must round-trip through tryParseAdmonitionKind into the
-      // matching enum value.
-      for (final kind in AdmonitionKind.values) {
-        final element = md.Element.empty('div')
-          ..attributes['class'] = 'markdown-alert markdown-alert-${kind.name}';
+    test(
+      'should return the kind for each markdown-alert div variant when the behavior is exercised',
+      () {
+        // Every kind emitted by package:markdown's AlertBlockSyntax
+        // must round-trip through tryParseAdmonitionKind into the
+        // matching enum value.
+        for (final kind in AdmonitionKind.values) {
+          final element = md.Element.empty(
+            'div',
+          )..attributes['class'] = 'markdown-alert markdown-alert-${kind.name}';
 
-        expect(tryParseAdmonitionKind(element), kind);
-      }
-    });
+          expect(tryParseAdmonitionKind(element), kind);
+        }
+      },
+    );
 
     test(
-      'should returns null for a plain div without the markdown-alert class',
+      'should return null for a plain div without the markdown-alert class when the behavior is exercised',
       () {
         final element = md.Element.empty('div')
           ..attributes['class'] = 'some-other-class';
@@ -74,14 +84,17 @@ void main() {
       },
     );
 
-    test('should returns null for a div with no class attribute at all', () {
-      final element = md.Element.empty('div');
+    test(
+      'should return null for a div with no class attribute at all when the behavior is exercised',
+      () {
+        final element = md.Element.empty('div');
 
-      expect(tryParseAdmonitionKind(element), isNull);
-    });
+        expect(tryParseAdmonitionKind(element), isNull);
+      },
+    );
 
     test(
-      'should returns null for a non-div element even with the alert class',
+      'should return null for a non-div element even with the alert class when the behavior is exercised',
       () {
         final element = md.Element.empty('span')
           ..attributes['class'] = 'markdown-alert markdown-alert-note';
@@ -90,24 +103,29 @@ void main() {
       },
     );
 
-    test('should returns null when the kind token is unknown', () {
+    test('should return null when the kind token is unknown', () {
       final element = md.Element.empty('div')
         ..attributes['class'] = 'markdown-alert markdown-alert-danger';
 
       expect(tryParseAdmonitionKind(element), isNull);
     });
 
-    test('should tolerates extra whitespace between class tokens', () {
-      final element = md.Element.empty('div')
-        ..attributes['class'] = '  markdown-alert   markdown-alert-warning  ';
+    test(
+      'should tolerate extra whitespace between class tokens when the behavior is exercised',
+      () {
+        final element = md.Element.empty('div')
+          ..attributes['class'] = '  markdown-alert   markdown-alert-warning  ';
 
-      expect(tryParseAdmonitionKind(element), AdmonitionKind.warning);
-    });
+        expect(tryParseAdmonitionKind(element), AdmonitionKind.warning);
+      },
+    );
   });
 
   group('AlertBlockSyntax integration', () {
-    test('should produces a markdown-alert div for every fixture kind', () {
-      const source = '''
+    test(
+      'should produce a markdown-alert div for every fixture kind when the behavior is exercised',
+      () {
+        const source = '''
 > [!NOTE]
 > Body one.
 
@@ -124,21 +142,22 @@ void main() {
 > Body five.
 ''';
 
-      final nodes = parse(source);
-      final divs = findByTag(nodes, 'div');
-      final kinds = divs.map(tryParseAdmonitionKind).toList();
+        final nodes = parse(source);
+        final divs = findByTag(nodes, 'div');
+        final kinds = divs.map(tryParseAdmonitionKind).toList();
 
-      expect(kinds, [
-        AdmonitionKind.note,
-        AdmonitionKind.tip,
-        AdmonitionKind.important,
-        AdmonitionKind.warning,
-        AdmonitionKind.caution,
-      ]);
-    });
+        expect(kinds, [
+          AdmonitionKind.note,
+          AdmonitionKind.tip,
+          AdmonitionKind.important,
+          AdmonitionKind.warning,
+          AdmonitionKind.caution,
+        ]);
+      },
+    );
 
     test(
-      'should leaves a plain blockquote as a blockquote element, not a div',
+      'should leave a plain blockquote as a blockquote element, not a div when the behavior is exercised',
       () {
         const source = '''
 > Just a normal blockquote without a kind marker.

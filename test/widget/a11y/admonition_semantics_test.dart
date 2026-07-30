@@ -27,44 +27,46 @@ void main() {
   }
 
   for (final kind in AdmonitionKind.values) {
-    testWidgets('should ${kind.name} admonition title has header semantics', (
-      tester,
-    ) async {
-      await withSemanticsAudit(tester, () async {
-        await tester.pumpWidget(harness(kind));
-        await tester.pumpAndSettle();
+    testWidgets(
+      'should confirm that ${kind.name} admonition title has header semantics when the widget is exercised',
+      (tester) async {
+        await withSemanticsAudit(tester, () async {
+          await tester.pumpWidget(harness(kind));
+          await tester.pumpAndSettle();
 
-        final title = titleForAdmonition(l10n, kind);
-        final titleNode = tester.getSemantics(find.bySemanticsLabel(title));
+          final title = titleForAdmonition(l10n, kind);
+          final titleNode = tester.getSemantics(find.bySemanticsLabel(title));
 
-        expect(
-          titleNode,
-          matchesSemantics(label: title, isHeader: true),
-          reason:
-              'Admonition "${kind.name}" title must carry isHeader so screen '
-              'readers announce it as a section heading.',
-        );
-      });
-    });
+          expect(
+            titleNode,
+            matchesSemantics(label: title, isHeader: true),
+            reason:
+                'Admonition "${kind.name}" title must carry isHeader so screen '
+                'readers announce it as a section heading.',
+          );
+        });
+      },
+    );
   }
 
-  testWidgets('should admonition icon is excluded from the semantics tree', (
-    tester,
-  ) async {
-    await withSemanticsAudit(tester, () async {
-      await tester.pumpWidget(harness(AdmonitionKind.note));
-      await tester.pumpAndSettle();
+  testWidgets(
+    'should confirm that admonition icon is excluded from the semantics tree when the widget is exercised',
+    (tester) async {
+      await withSemanticsAudit(tester, () async {
+        await tester.pumpWidget(harness(AdmonitionKind.note));
+        await tester.pumpAndSettle();
 
-      expect(
-        find.ancestor(
-          of: find.byIcon(Icons.info_outline),
-          matching: find.byType(ExcludeSemantics),
-        ),
-        findsOneWidget,
-        reason:
-            'The decorative icon must remain structurally excluded from '
-            'semantics.',
-      );
-    });
-  });
+        expect(
+          find.ancestor(
+            of: find.byIcon(Icons.info_outline),
+            matching: find.byType(ExcludeSemantics),
+          ),
+          findsOneWidget,
+          reason:
+              'The decorative icon must remain structurally excluded from '
+              'semantics.',
+        );
+      });
+    },
+  );
 }

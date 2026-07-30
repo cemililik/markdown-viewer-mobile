@@ -24,50 +24,51 @@ void main() {
     addTearDown(() => LeakTesting.settings = original);
   });
 
-  testWidgets('should expose DiagramFullscreenScreen image and close control', (
-    tester,
-  ) async {
-    await withSemanticsAudit(tester, () async {
-      await tester.pumpWidget(
-        MaterialApp(
-          locale: const Locale('en'),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: DiagramFullscreenScreen(
-            args: DiagramFullscreenArgs(
-              pngBytes: base64Decode(
-                'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC'
-                'AAAAC0lEQVR42mNgAAIAAAUAAen63/AAAAAASUVORK5CYII=',
+  testWidgets(
+    'should expose DiagramFullscreenScreen image and close control when the widget is exercised',
+    (tester) async {
+      await withSemanticsAudit(tester, () async {
+        await tester.pumpWidget(
+          MaterialApp(
+            locale: const Locale('en'),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: DiagramFullscreenScreen(
+              args: DiagramFullscreenArgs(
+                pngBytes: base64Decode(
+                  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwC'
+                  'AAAAC0lEQVR42mNgAAIAAAUAAen63/AAAAAASUVORK5CYII=',
+                ),
+                width: 200,
+                height: 100,
               ),
-              width: 200,
-              height: 100,
             ),
           ),
-        ),
-      );
-      await tester.pumpAndSettle();
+        );
+        await tester.pumpAndSettle();
 
-      final image =
-          tester
-              .getSemantics(find.bySemanticsLabel(l10n.mermaidDiagramLabel))
-              .getSemanticsData();
-      expect(image.flagsCollection.isImage, isTrue);
-      final imageSize = tester.getSize(find.byType(Image));
-      expect(imageSize.width, greaterThan(0));
-      expect(imageSize.height, greaterThan(0));
+        final image =
+            tester
+                .getSemantics(find.bySemanticsLabel(l10n.mermaidDiagramLabel))
+                .getSemanticsData();
+        expect(image.flagsCollection.isImage, isTrue);
+        final imageSize = tester.getSize(find.byType(Image));
+        expect(imageSize.width, greaterThan(0));
+        expect(imageSize.height, greaterThan(0));
 
-      final close =
-          tester
-              .getSemantics(
-                find.bySemanticsLabel(l10n.diagramFullscreenCloseTooltip),
-              )
-              .getSemanticsData();
-      expect(close.label, l10n.diagramFullscreenCloseTooltip);
-      expect(close.flagsCollection.isButton, isTrue);
-      expect(close.hasAction(SemanticsAction.tap), isTrue);
+        final close =
+            tester
+                .getSemantics(
+                  find.bySemanticsLabel(l10n.diagramFullscreenCloseTooltip),
+                )
+                .getSemanticsData();
+        expect(close.label, l10n.diagramFullscreenCloseTooltip);
+        expect(close.flagsCollection.isButton, isTrue);
+        expect(close.hasAction(SemanticsAction.tap), isTrue);
 
-      expectEveryTapTargetLabeled(tester);
-      expectTapTargetsAtLeast(tester);
-    });
-  });
+        expectEveryTapTargetLabeled(tester);
+        expectTapTargetsAtLeast(tester);
+      });
+    },
+  );
 }

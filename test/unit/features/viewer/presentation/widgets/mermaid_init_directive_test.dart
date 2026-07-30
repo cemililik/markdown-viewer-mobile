@@ -25,8 +25,8 @@ void main() {
     }
 
     test(
-      'should wraps the payload in the mermaid init directive sigil and ends with '
-      'a newline so the actual diagram source starts on a fresh line',
+      'should wrap the payload in the mermaid init directive sigil and end with '
+      'a newline so the actual diagram source starts on a fresh line when the behavior is exercised',
       () {
         final directive = buildMermaidInitDirective(lightScheme);
 
@@ -36,7 +36,7 @@ void main() {
     );
 
     test(
-      'should pins theme to "base" so themeVariables overrides take effect',
+      'should pin theme to "base" so themeVariables overrides take effect when the behavior is exercised',
       () {
         final directive = buildMermaidInitDirective(lightScheme);
         final payload =
@@ -47,35 +47,38 @@ void main() {
       },
     );
 
-    test('should every colour variable value is a #RRGGBB hex string', () {
-      final directive = buildMermaidInitDirective(lightScheme);
-      final payload =
-          jsonDecode(stripWrapper(directive)) as Map<String, dynamic>;
-      final vars = payload['themeVariables'] as Map<String, dynamic>;
+    test(
+      'should confirm that every colour variable value is a #RRGGBB hex string when the behavior is exercised',
+      () {
+        final directive = buildMermaidInitDirective(lightScheme);
+        final payload =
+            jsonDecode(stripWrapper(directive)) as Map<String, dynamic>;
+        final vars = payload['themeVariables'] as Map<String, dynamic>;
 
-      // A short list of variables that are NOT colours by
-      // contract — typography knobs like `fontSize` carry CSS
-      // length values (`16px`) and the hex check would
-      // legitimately reject them. Everything else must be a
-      // 6-digit hex colour because mermaid rejects named
-      // colours and `rgba(...)` strings.
-      const nonColourKeys = <String>{'fontSize', 'fontFamily'};
+        // A short list of variables that are NOT colours by
+        // contract — typography knobs like `fontSize` carry CSS
+        // length values (`16px`) and the hex check would
+        // legitimately reject them. Everything else must be a
+        // 6-digit hex colour because mermaid rejects named
+        // colours and `rgba(...)` strings.
+        const nonColourKeys = <String>{'fontSize', 'fontFamily'};
 
-      final hexPattern = RegExp(r'^#[0-9a-fA-F]{6}$');
-      for (final entry in vars.entries) {
-        if (nonColourKeys.contains(entry.key)) continue;
-        expect(
-          entry.value,
-          matches(hexPattern),
-          reason:
-              '${entry.key} must be a 6-digit hex colour (mermaid '
-              'rejects named colours and transparent hex).',
-        );
-      }
-    });
+        final hexPattern = RegExp(r'^#[0-9a-fA-F]{6}$');
+        for (final entry in vars.entries) {
+          if (nonColourKeys.contains(entry.key)) continue;
+          expect(
+            entry.value,
+            matches(hexPattern),
+            reason:
+                '${entry.key} must be a 6-digit hex colour (mermaid '
+                'rejects named colours and transparent hex).',
+          );
+        }
+      },
+    );
 
     test(
-      'should mindmap branch palette covers the cScale slots used by mermaid',
+      'should confirm that mindmap branch palette covers the cScale slots used by mermaid when the behavior is exercised',
       () {
         final directive = buildMermaidInitDirective(lightScheme);
         final payload =
@@ -103,8 +106,8 @@ void main() {
     );
 
     test(
-      'should covers every diagram type the viewer fixture exercises (flowchart, '
-      'sequence, class, state, gantt, ER)',
+      'should cover every diagram type the viewer fixture exercises (flowchart, '
+      'sequence, class, state, gantt, ER) when the behavior is exercised',
       () {
         final directive = buildMermaidInitDirective(lightScheme);
         final payload =
@@ -132,8 +135,8 @@ void main() {
     );
 
     test(
-      'should produces a different palette for light vs dark schemes built from '
-      'the same seed',
+      'should produce a different palette for light vs dark schemes built from '
+      'the same seed when the behavior is exercised',
       () {
         final lightDirective = buildMermaidInitDirective(lightScheme);
         final darkDirective = buildMermaidInitDirective(darkScheme);

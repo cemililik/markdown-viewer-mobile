@@ -69,7 +69,7 @@ void main() {
   });
 
   goldenTest(
-    'should render the LibraryScreen empty state across locale and scale',
+    'should render the LibraryScreen empty state across locale, theme, and scale when captured',
     fileName: 'library_empty',
     pumpBeforeTest: goldenPumpBeforeTest,
     pumpWidget: goldenPumpWidget,
@@ -77,18 +77,18 @@ void main() {
         () => GoldenTestGroup(
           children: standardGoldenScenarios(
             builder:
-                (locale, textScaler, brightness) => _libraryHarness(
+                (locale, textScaler, appTheme) => _libraryHarness(
                   preferences,
                   locale: locale,
                   textScaler: textScaler,
-                  brightness: brightness,
+                  appTheme: appTheme,
                 ),
           ),
         ),
   );
 
   goldenTest(
-    'should render the ViewerScreen error state across locale and scale',
+    'should render the ViewerScreen error state across locale, theme, and scale when captured',
     fileName: 'viewer_error',
     pumpBeforeTest: goldenPumpBeforeTest,
     pumpWidget: goldenPumpWidget,
@@ -96,10 +96,10 @@ void main() {
         () => GoldenTestGroup(
           children: standardGoldenScenarios(
             builder:
-                (locale, textScaler, brightness) => goldenAppHarness(
+                (locale, textScaler, appTheme) => goldenAppHarness(
                   locale: locale,
                   textScaler: textScaler,
-                  brightness: brightness,
+                  appTheme: appTheme,
                   home: ProviderScope(
                     overrides: [
                       documentRepositoryProvider.overrideWithValue(
@@ -125,7 +125,7 @@ void main() {
   );
 
   goldenTest(
-    'should render the SettingsScreen across locale and scale',
+    'should render the SettingsScreen across locale, theme, and scale when captured',
     fileName: 'settings',
     pumpBeforeTest: goldenPumpBeforeTest,
     pumpWidget: goldenPumpWidget,
@@ -133,10 +133,10 @@ void main() {
         () => GoldenTestGroup(
           children: standardGoldenScenarios(
             builder:
-                (locale, textScaler, brightness) => goldenAppHarness(
+                (locale, textScaler, appTheme) => goldenAppHarness(
                   locale: locale,
                   textScaler: textScaler,
-                  brightness: brightness,
+                  appTheme: appTheme,
                   home: ProviderScope(
                     overrides: [
                       settingsStoreProvider.overrideWithValue(
@@ -154,7 +154,7 @@ void main() {
   );
 
   goldenTest(
-    'should render the OnboardingScreen across locale and scale',
+    'should render the OnboardingScreen across locale, theme, and scale when captured',
     fileName: 'onboarding',
     pumpBeforeTest: goldenPumpBeforeTest,
     pumpWidget: goldenPumpWidget,
@@ -162,10 +162,10 @@ void main() {
         () => GoldenTestGroup(
           children: standardGoldenScenarios(
             builder:
-                (locale, textScaler, brightness) => goldenAppHarness(
+                (locale, textScaler, appTheme) => goldenAppHarness(
                   locale: locale,
                   textScaler: textScaler,
-                  brightness: brightness,
+                  appTheme: appTheme,
                   home: ProviderScope(
                     overrides: [
                       onboardingStoreProvider.overrideWithValue(
@@ -180,7 +180,7 @@ void main() {
   );
 
   goldenTest(
-    'should render the RepoSyncScreen across locale and scale',
+    'should render the RepoSyncScreen across locale, theme, and scale when captured',
     fileName: 'repo_sync',
     pumpBeforeTest: goldenPumpBeforeTest,
     pumpWidget: goldenPumpWidget,
@@ -188,10 +188,10 @@ void main() {
         () => GoldenTestGroup(
           children: standardGoldenScenarios(
             builder:
-                (locale, textScaler, brightness) => goldenAppHarness(
+                (locale, textScaler, appTheme) => goldenAppHarness(
                   locale: locale,
                   textScaler: textScaler,
-                  brightness: brightness,
+                  appTheme: appTheme,
                   home: ProviderScope(
                     overrides: [
                       patStoreProvider.overrideWithValue(
@@ -211,18 +211,18 @@ void main() {
   );
 
   goldenTest(
-    'should render the DiagramFullscreenScreen across locale and scale',
+    'should render the DiagramFullscreenScreen across locale, theme, and scale when captured',
     fileName: 'diagram_fullscreen',
-    pumpBeforeTest: goldenPumpBeforeTest,
+    pumpBeforeTest: goldenPumpBeforeTestWithImages,
     pumpWidget: goldenPumpWidget,
     builder:
         () => GoldenTestGroup(
           children: standardGoldenScenarios(
             builder:
-                (locale, textScaler, brightness) => goldenAppHarness(
+                (locale, textScaler, appTheme) => goldenAppHarness(
                   locale: locale,
                   textScaler: textScaler,
-                  brightness: brightness,
+                  appTheme: appTheme,
                   home: DiagramFullscreenScreen(
                     args: DiagramFullscreenArgs(
                       pngBytes:
@@ -244,7 +244,7 @@ Widget _libraryHarness(
   SharedPreferences preferences, {
   required Locale locale,
   required TextScaler textScaler,
-  required Brightness brightness,
+  required GoldenAppTheme appTheme,
 }) {
   final router = GoRouter(
     routes: [
@@ -269,10 +269,11 @@ Widget _libraryHarness(
       ],
       child: MaterialApp.router(
         routerConfig: router,
-        theme:
-            brightness == Brightness.dark
-                ? AppTheme.dark(null)
-                : AppTheme.light(null),
+        theme: switch (appTheme) {
+          GoldenAppTheme.light => AppTheme.light(null),
+          GoldenAppTheme.dark => AppTheme.dark(null),
+          GoldenAppTheme.sepia => AppTheme.sepia(),
+        },
         locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,

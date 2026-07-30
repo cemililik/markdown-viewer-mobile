@@ -23,6 +23,7 @@ void main() {
         onboardingStoreProvider.overrideWithValue(_OnboardingStore()),
       ],
       child: MaterialApp(
+        theme: ThemeData(platform: TargetPlatform.android),
         locale: const Locale('en'),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
@@ -38,7 +39,7 @@ void main() {
   }
 
   testWidgets(
-    'should expose OnboardingScreen page headers controls and position',
+    'should expose OnboardingScreen page headers controls and position when the widget is exercised',
     (tester) async {
       await withSemanticsAudit(tester, () async {
         await tester.pumpWidget(harness());
@@ -83,6 +84,33 @@ void main() {
           ),
           findsOneWidget,
         );
+
+        await tester.tap(find.bySemanticsLabel(l10n.onboardingNext));
+        await tester.pump();
+        header =
+            tester
+                .getSemantics(
+                  find.bySemanticsLabel(l10n.onboardingDefaultTitle),
+                )
+                .getSemanticsData();
+        expect(header.flagsCollection.isHeader, isTrue);
+        expect(
+          find.bySemanticsLabel(
+            l10n.onboardingPageIndicator(3, currentOnboardingVersion),
+          ),
+          findsOneWidget,
+        );
+        for (final label in [
+          l10n.onboardingDefaultOpenSettings,
+          l10n.onboardingGetStarted,
+        ]) {
+          final data =
+              tester
+                  .getSemantics(find.bySemanticsLabel(label))
+                  .getSemanticsData();
+          expect(data.flagsCollection.isButton, isTrue);
+          expect(data.hasAction(SemanticsAction.tap), isTrue);
+        }
 
         expectEveryTapTargetLabeled(tester);
         expectTapTargetsAtLeast(tester);

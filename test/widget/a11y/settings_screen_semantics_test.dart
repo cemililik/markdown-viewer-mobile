@@ -43,36 +43,37 @@ void main() {
     );
   }
 
-  testWidgets('should section headers carry isHeader semantics', (
-    tester,
-  ) async {
-    await withSemanticsAudit(tester, () async {
-      await tester.pumpWidget(harness());
-      await tester.pumpAndSettle();
+  testWidgets(
+    'should confirm that section headers carry isHeader semantics when the widget is exercised',
+    (tester) async {
+      await withSemanticsAudit(tester, () async {
+        await tester.pumpWidget(harness());
+        await tester.pumpAndSettle();
 
-      final expectedHeaders = [
-        l10n.settingsThemeTitle,
-        l10n.settingsLanguageTitle,
-        l10n.settingsReadingTitle,
-        l10n.settingsDisplayTitle,
-      ];
-      for (final title in expectedHeaders) {
-        final label = find.text(title);
-        if (label.evaluate().isEmpty) {
-          await tester.scrollUntilVisible(
-            label,
-            240,
-            scrollable: find.byType(Scrollable).first,
+        final expectedHeaders = [
+          l10n.settingsThemeTitle,
+          l10n.settingsLanguageTitle,
+          l10n.settingsReadingTitle,
+          l10n.settingsDisplayTitle,
+        ];
+        for (final title in expectedHeaders) {
+          final label = find.bySemanticsLabel(title);
+          if (label.evaluate().isEmpty) {
+            await tester.scrollUntilVisible(
+              label,
+              240,
+              scrollable: find.byType(Scrollable).first,
+            );
+          }
+          expect(
+            tester.getSemantics(find.bySemanticsLabel(title)),
+            matchesSemantics(label: title, isHeader: true),
+            reason: 'Settings section "$title" must remain a semantic header.',
           );
         }
-        expect(
-          tester.getSemantics(find.bySemanticsLabel(title)),
-          matchesSemantics(label: title, isHeader: true),
-          reason: 'Settings section "$title" must remain a semantic header.',
-        );
-      }
-      expectEveryTapTargetLabeled(tester);
-      expectTapTargetsAtLeast(tester);
-    });
-  });
+        expectEveryTapTargetLabeled(tester);
+        expectTapTargetsAtLeast(tester);
+      });
+    },
+  );
 }

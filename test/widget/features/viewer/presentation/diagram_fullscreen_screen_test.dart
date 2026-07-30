@@ -109,7 +109,7 @@ void main() {
   }
 
   testWidgets(
-    'should renders close button and keeps reset hidden until transform is dirty',
+    'should render the close button and keep reset hidden when the transform is clean',
     (tester) async {
       await tester.pumpWidget(
         harness(
@@ -143,7 +143,7 @@ void main() {
     },
   );
 
-  testWidgets('should tapping close pops the route', (tester) async {
+  testWidgets('should pop the route when close is tapped', (tester) async {
     final navigatorKey = GlobalKey<NavigatorState>();
     var popped = false;
 
@@ -193,7 +193,7 @@ void main() {
   });
 
   testWidgets(
-    'should close button stays reachable after a tap on the diagram body',
+    'should confirm that close button stays reachable after a tap on the diagram body when the widget is exercised',
     (tester) async {
       // A prior iteration wrapped the image in a GestureDetector that
       // toggled the chrome bar on tap. A missed tap on the close

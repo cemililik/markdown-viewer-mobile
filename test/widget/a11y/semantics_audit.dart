@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -60,11 +62,41 @@ void expectTapTargetsAtLeast(WidgetTester tester, {double minimum = 48}) {
       );
     }
   }
+  for (final entry in _globalSemanticsNodes(tester)) {
+    final data = entry.node.getSemanticsData();
+    if (entry.node.isMergedIntoParent ||
+        !data.hasAction(SemanticsAction.tap) ||
+        data.flagsCollection.isHidden ||
+        entry.rect.isEmpty) {
+      continue;
+    }
+    final centerHandlers = _tapHandlersAt(tester, entry.rect.center);
+    final inset = math.min(2.0, entry.rect.shortestSide / 4);
+    final samplePoints = <Offset>[
+      entry.rect.topCenter + Offset(0, inset),
+      entry.rect.centerLeft + Offset(inset, 0),
+      entry.rect.centerRight + Offset(-inset, 0),
+      entry.rect.bottomCenter + Offset(0, -inset),
+    ];
+    final sampleCoverage = [
+      for (final point in samplePoints)
+        _tapHandlersAt(tester, point).intersection(centerHandlers).isNotEmpty,
+    ];
+    final uncovered = sampleCoverage.any((covered) => !covered);
+    if (centerHandlers.isEmpty || uncovered) {
+      undersized.add(
+        'label="${data.label}" semantics=${entry.rect} '
+        'handlers=${centerHandlers.length} coverage=$sampleCoverage',
+      );
+    }
+  }
 
   expect(
     undersized,
     isEmpty,
-    reason: 'Interactive semantics must meet the 48×48 dp target.',
+    reason:
+        'Interactive semantics and physical pointer targets must meet the '
+        '48×48 dp target.',
   );
 }
 
@@ -92,3 +124,38 @@ List<SemanticsNode> _semanticsNodes(WidgetTester tester) {
   visit(root!);
   return nodes;
 }
+
+List<({SemanticsNode node, Rect rect})> _globalSemanticsNodes(
+  WidgetTester tester,
+) {
+  // ignore: deprecated_member_use
+  final root = tester.binding.pipelineOwner.semanticsOwner!.rootSemanticsNode!;
+  final entries = <({SemanticsNode node, Rect rect})>[];
+
+  void visit(SemanticsNode node, Matrix4 parentTransform) {
+    final transform = parentTransform.clone();
+    final localTransform = node.transform;
+    if (localTransform != null) transform.multiply(localTransform);
+    entries.add((
+      node: node,
+      rect: MatrixUtils.transformRect(transform, node.rect),
+    ));
+    node.visitChildren((child) {
+      visit(child, transform);
+      return true;
+    });
+  }
+
+  final logicalPixelScale = 1 / tester.view.devicePixelRatio;
+  visit(root, Matrix4.diagonal3Values(logicalPixelScale, logicalPixelScale, 1));
+  return entries;
+}
+
+Set<RenderPointerListener> _tapHandlersAt(WidgetTester tester, Offset point) =>
+    tester
+        .hitTestOnBinding(point)
+        .path
+        .map((entry) => entry.target)
+        .whereType<RenderPointerListener>()
+        .where((target) => target.onPointerDown != null)
+        .toSet();

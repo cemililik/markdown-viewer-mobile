@@ -36,6 +36,9 @@ Locale resolveSystemLocale(
   Iterable<Locale> supportedLocales,
 ) {
   final supported = supportedLocales.toList(growable: false);
+  if (supported.isEmpty) {
+    return const Locale('en');
+  }
   final fallback = supported.firstWhere(
     (locale) => locale.languageCode == 'en',
     orElse: () => supported.first,

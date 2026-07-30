@@ -47,33 +47,39 @@ void main() {
 
   group('SettingsScreen', () {
     testWidgets(
-      'should renders four theme segments and three language segments in English',
+      'should render four theme segments and three language segments in English when the widget is exercised',
       (tester) async {
         await tester.pumpWidget(await buildHarness());
         await tester.pumpAndSettle();
 
-        expect(find.text(en.settingsThemeTitle), findsOneWidget);
+        expect(find.bySemanticsLabel(en.settingsThemeTitle), findsOneWidget);
         // "System" is the label for BOTH the theme "System" segment
         // and the language "System" segment — they share the same
         // copy after the l10n shortening. Expect two matches.
-        expect(find.text(en.settingsThemeSystem), findsNWidgets(2));
-        expect(find.text(en.settingsThemeLight), findsOneWidget);
-        expect(find.text(en.settingsThemeDark), findsOneWidget);
-        expect(find.text(en.settingsThemeSepia), findsOneWidget);
+        expect(find.bySemanticsLabel(en.settingsThemeSystem), findsNWidgets(2));
+        expect(find.bySemanticsLabel(en.settingsThemeLight), findsOneWidget);
+        expect(find.bySemanticsLabel(en.settingsThemeDark), findsOneWidget);
+        expect(find.bySemanticsLabel(en.settingsThemeSepia), findsOneWidget);
 
-        expect(find.text(en.settingsLanguageTitle), findsOneWidget);
-        expect(find.text(en.settingsLanguageEnglish), findsOneWidget);
-        expect(find.text(en.settingsLanguageTurkish), findsOneWidget);
+        expect(find.bySemanticsLabel(en.settingsLanguageTitle), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(en.settingsLanguageEnglish),
+          findsOneWidget,
+        );
+        expect(
+          find.bySemanticsLabel(en.settingsLanguageTurkish),
+          findsOneWidget,
+        );
       },
     );
 
     testWidgets(
-      'should tapping a theme radio updates the ThemeModeController state',
+      'should update the ThemeModeController state when a theme radio is tapped',
       (tester) async {
         await tester.pumpWidget(await buildHarness());
         await tester.pumpAndSettle();
 
-        await tester.tap(find.text(en.settingsThemeDark));
+        await tester.tap(find.bySemanticsLabel(en.settingsThemeDark));
         await tester.pumpAndSettle();
 
         final element = tester.element(find.byType(SettingsScreen));
@@ -83,12 +89,12 @@ void main() {
     );
 
     testWidgets(
-      'should tapping a language radio updates the LocaleController state',
+      'should update the LocaleController state when a language radio is tapped',
       (tester) async {
         await tester.pumpWidget(await buildHarness());
         await tester.pumpAndSettle();
 
-        await tester.tap(find.text(en.settingsLanguageTurkish));
+        await tester.tap(find.bySemanticsLabel(en.settingsLanguageTurkish));
         await tester.pumpAndSettle();
 
         final element = tester.element(find.byType(SettingsScreen));
@@ -97,16 +103,23 @@ void main() {
       },
     );
 
-    testWidgets('should renders Turkish copy under the tr locale', (
-      tester,
-    ) async {
-      await tester.pumpWidget(await buildHarness(locale: const Locale('tr')));
-      await tester.pumpAndSettle();
+    testWidgets(
+      'should render Turkish copy under the tr locale when the widget is exercised',
+      (tester) async {
+        await tester.pumpWidget(await buildHarness(locale: const Locale('tr')));
+        await tester.pumpAndSettle();
 
-      expect(find.text(tr.settingsThemeTitle), findsOneWidget);
-      expect(find.text(tr.settingsLanguageTitle), findsOneWidget);
-      expect(find.text(tr.settingsLanguageTurkish), findsOneWidget);
-      expect(find.text(tr.settingsLanguageEnglish), findsOneWidget);
-    });
+        expect(find.bySemanticsLabel(tr.settingsThemeTitle), findsOneWidget);
+        expect(find.bySemanticsLabel(tr.settingsLanguageTitle), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(tr.settingsLanguageTurkish),
+          findsOneWidget,
+        );
+        expect(
+          find.bySemanticsLabel(tr.settingsLanguageEnglish),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }

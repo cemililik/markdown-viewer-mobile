@@ -100,7 +100,7 @@ void main() {
 
   group('ViewerScreen', () {
     testWidgets(
-      'should shows the loading view while the repository is pending',
+      'should show the loading view while the repository is pending when the widget is exercised',
       (tester) async {
         final completer = Completer<Document>();
         await tester.pumpWidget(
@@ -111,7 +111,7 @@ void main() {
         await tester.pump();
 
         expect(find.byType(CircularProgressIndicator), findsOneWidget);
-        expect(find.text(l10n.viewerLoading), findsOneWidget);
+        expect(find.bySemanticsLabel(l10n.viewerLoading), findsOneWidget);
 
         // Complete the future so the test can tear down cleanly. The
         // provider transitions to its data state, ViewerScreen rebuilds
@@ -123,43 +123,45 @@ void main() {
       },
     );
 
-    testWidgets('should renders the document body after a successful load', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        await harness(const _ImmediateDocumentRepository(sampleDocument)),
-      );
-      await tester.pumpAndSettle();
+    testWidgets(
+      'should render the document body after a successful load when the widget is exercised',
+      (tester) async {
+        await tester.pumpWidget(
+          await harness(const _ImmediateDocumentRepository(sampleDocument)),
+        );
+        await tester.pumpAndSettle();
 
-      // `markdown_widget` renders the source into real text nodes so a
-      // substring match on "Body text." is enough to prove the data
-      // branch was taken.
-      expect(find.textContaining('Body text.'), findsOneWidget);
-      // The app bar shows the basename, never the full path.
-      expect(find.text('example.md'), findsOneWidget);
-    });
-
-    testWidgets('should maps a Failure to the localized error view', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        await harness(
-          const _ThrowingDocumentRepository(
-            FileNotFoundFailure(message: 'gone'),
-          ),
-        ),
-      );
-      await tester.pumpAndSettle();
-
-      expect(find.text(l10n.errorFileNotFound), findsOneWidget);
-      expect(find.byIcon(Icons.error_outline), findsOneWidget);
-      // Retry button is present and labelled per the actionRetry ARB
-      // key — tapping it would invalidate the provider.
-      expect(find.text(l10n.actionRetry), findsOneWidget);
-    });
+        // `markdown_widget` renders the source into real text nodes so a
+        // substring match on "Body text." is enough to prove the data
+        // branch was taken.
+        expect(find.textContaining('Body text.'), findsOneWidget);
+        // The app bar shows the basename, never the full path.
+        expect(find.text('example.md'), findsOneWidget);
+      },
+    );
 
     testWidgets(
-      'should wraps a non-Failure exception in UnknownFailure and still shows an error',
+      'should map a Failure to the localized error view when the widget is exercised',
+      (tester) async {
+        await tester.pumpWidget(
+          await harness(
+            const _ThrowingDocumentRepository(
+              FileNotFoundFailure(message: 'gone'),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        expect(find.bySemanticsLabel(l10n.errorFileNotFound), findsOneWidget);
+        expect(find.byIcon(Icons.error_outline), findsOneWidget);
+        // Retry button is present and labelled per the actionRetry ARB
+        // key — tapping it would invalidate the provider.
+        expect(find.bySemanticsLabel(l10n.actionRetry), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'should wrap a non-Failure exception in UnknownFailure and still shows an error when the widget is exercised',
       (tester) async {
         await tester.pumpWidget(
           await harness(_ThrowingNonFailureRepository(StateError('boom'))),
@@ -167,12 +169,12 @@ void main() {
         await tester.pumpAndSettle();
 
         // errorUnknown ARB key content
-        expect(find.text(l10n.errorUnknown), findsOneWidget);
+        expect(find.bySemanticsLabel(l10n.errorUnknown), findsOneWidget);
       },
     );
 
     testWidgets(
-      'should bookmark icon is outlined on first build when no position is saved',
+      'should confirm that bookmark icon is outlined on first build when no position is saved',
       (tester) async {
         await tester.pumpWidget(
           await harness(const _ImmediateDocumentRepository(sampleDocument)),
@@ -185,7 +187,7 @@ void main() {
     );
 
     testWidgets(
-      'should bookmark icon flips to filled after the user taps the AppBar action',
+      'should confirm that bookmark icon flips to filled after the user taps the AppBar action when the widget is exercised',
       (tester) async {
         await tester.pumpWidget(
           await harness(const _ImmediateDocumentRepository(sampleDocument)),
@@ -196,12 +198,12 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(find.byIcon(Icons.bookmark), findsOneWidget);
-        expect(find.text(l10n.viewerBookmarkSaved), findsOneWidget);
+        expect(_snackBarText(tester), contains(l10n.viewerBookmarkSaved));
       },
     );
 
     testWidgets(
-      'should bookmark icon shows filled on first build when a position is already '
+      'should confirm that bookmark icon shows filled on first build when a position is already '
       'saved for this document',
       (tester) async {
         final store = _InMemoryReadingPositionStore();
@@ -230,7 +232,7 @@ void main() {
     );
 
     testWidgets(
-      'should shows the back-to-top FAB tooltip widget on the data state',
+      'should show the back-to-top FAB tooltip widget on the data state when the widget is exercised',
       (tester) async {
         await tester.pumpWidget(
           await harness(const _ImmediateDocumentRepository(sampleDocument)),
@@ -245,7 +247,7 @@ void main() {
     );
 
     testWidgets(
-      'should tapping bookmark on an already-saved doc updates the snackbar copy '
+      'should update the snackbar copy when bookmark is tapped on an already-saved doc '
       'rather than clearing the bookmark',
       (tester) async {
         final store = _InMemoryReadingPositionStore();
@@ -280,14 +282,17 @@ void main() {
 
         // Still filled — tap is save/update, not toggle.
         expect(find.byIcon(Icons.bookmark), findsOneWidget);
-        expect(find.text(l10n.viewerBookmarkUpdated), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(l10n.viewerBookmarkUpdated),
+          findsOneWidget,
+        );
         // And the store still carries a position (not cleared).
         expect(store.read(id), isNotNull);
       },
     );
 
     testWidgets(
-      'should first ever bookmark save appends the long-press hint to the snackbar',
+      'should confirm that first ever bookmark save appends the long-press hint to the snackbar when the widget is exercised',
       (tester) async {
         await tester.pumpWidget(
           await harness(const _ImmediateDocumentRepository(sampleDocument)),
@@ -297,13 +302,14 @@ void main() {
         await tester.tap(find.byIcon(Icons.bookmark_outline));
         await tester.pumpAndSettle();
 
-        expect(find.text(l10n.viewerBookmarkSaved), findsOneWidget);
-        expect(find.text(l10n.viewerBookmarkLongPressHint), findsOneWidget);
+        final snackBarText = _snackBarText(tester);
+        expect(snackBarText, contains(l10n.viewerBookmarkSaved));
+        expect(snackBarText, contains(l10n.viewerBookmarkLongPressHint));
       },
     );
 
     testWidgets(
-      'should the long-press hint does not repeat once the settings flag is seen',
+      'should confirm that the long-press hint does not repeat once the settings flag is seen when the widget is exercised',
       (tester) async {
         await tester.pumpWidget(
           await harness(
@@ -318,13 +324,16 @@ void main() {
         await tester.tap(find.byIcon(Icons.bookmark_outline));
         await tester.pumpAndSettle();
 
-        expect(find.text(l10n.viewerBookmarkSaved), findsOneWidget);
-        expect(find.text(l10n.viewerBookmarkLongPressHint), findsNothing);
+        expect(find.bySemanticsLabel(l10n.viewerBookmarkSaved), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(l10n.viewerBookmarkLongPressHint),
+          findsNothing,
+        );
       },
     );
 
     testWidgets(
-      'should AppBar shows search, TOC, reading-panel and bookmark actions in the data state',
+      'should confirm that AppBar shows search, TOC, reading-panel and bookmark actions in the data state when the widget is exercised',
       (tester) async {
         await tester.pumpWidget(
           await harness(const _ImmediateDocumentRepository(sampleDocument)),
@@ -341,7 +350,7 @@ void main() {
     );
 
     testWidgets(
-      'should tapping the reading settings action opens the Aa bottom sheet',
+      'should open the Aa bottom sheet when the reading settings action is tapped',
       (tester) async {
         await tester.pumpWidget(
           await harness(const _ImmediateDocumentRepository(sampleDocument)),
@@ -352,14 +361,23 @@ void main() {
         await tester.pumpAndSettle();
 
         // Sheet header + the All settings affordance both appear.
-        expect(find.text(l10n.viewerReadingPanelTitle), findsOneWidget);
-        expect(find.text(l10n.viewerReadingPanelAllSettings), findsOneWidget);
-        expect(find.text(l10n.viewerReadingPanelResetButton), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(l10n.viewerReadingPanelTitle),
+          findsOneWidget,
+        );
+        expect(
+          find.bySemanticsLabel(l10n.viewerReadingPanelAllSettings),
+          findsOneWidget,
+        );
+        expect(
+          find.bySemanticsLabel(l10n.viewerReadingPanelResetButton),
+          findsOneWidget,
+        );
       },
     );
 
     testWidgets(
-      'should AppBar title falls back to the recents display name for folder-sourced files',
+      'should confirm that AppBar title falls back to the recents display name for folder-sourced files when the widget is exercised',
       (tester) async {
         // Seed the recents store with a folder-sourced entry
         // whose path is an opaque sha256 cache blob and whose
@@ -391,7 +409,7 @@ void main() {
     );
 
     testWidgets(
-      'should tapping the search action opens the bottom search bar',
+      'should open the bottom search bar when the search action is tapped',
       (tester) async {
         await tester.pumpWidget(
           await harness(const _ImmediateDocumentRepository(sampleDocument)),
@@ -412,7 +430,7 @@ void main() {
     );
 
     testWidgets(
-      'should typing a query that matches the source shows the 1-based counter',
+      'should confirm that typing a query that matches the source shows the 1-based counter when the widget is exercised',
       (tester) async {
         await tester.pumpWidget(
           await harness(const _ImmediateDocumentRepository(sampleDocument)),
@@ -427,12 +445,15 @@ void main() {
 
         // The sample source is '# Example\n\nBody text.' — one
         // match for 'Body', so the counter reads '1 / 1'.
-        expect(find.text(l10n.viewerSearchMatchCount(1, 1)), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(l10n.viewerSearchMatchCount(1, 1)),
+          findsOneWidget,
+        );
       },
     );
 
     testWidgets(
-      'should typing a query that matches nothing shows the localized empty label',
+      'should confirm that typing a query that matches nothing shows the localized empty label when the widget is exercised',
       (tester) async {
         await tester.pumpWidget(
           await harness(const _ImmediateDocumentRepository(sampleDocument)),
@@ -445,12 +466,15 @@ void main() {
         await tester.enterText(find.byType(TextField), 'zzz');
         await tester.pumpAndSettle();
 
-        expect(find.text(l10n.viewerSearchNoResults), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(l10n.viewerSearchNoResults),
+          findsOneWidget,
+        );
       },
     );
 
     testWidgets(
-      'should tapping the TOC action opens the right drawer with the heading',
+      'should open the right drawer with the heading when the TOC action is tapped',
       (tester) async {
         await tester.pumpWidget(
           await harness(const _ImmediateDocumentRepository(sampleDocument)),
@@ -462,13 +486,15 @@ void main() {
 
         // Drawer header + the single heading from the sample
         // document are visible now.
-        expect(find.text(l10n.viewerTocTitle), findsOneWidget);
+        final drawer =
+            tester.getSemantics(find.byType(Drawer)).getSemanticsData();
+        expect(drawer.label, l10n.viewerTocTitle);
         expect(find.text('Example'), findsWidgets);
       },
     );
 
     testWidgets(
-      'should long-press on a saved bookmark opens the Go to / Remove menu',
+      'should confirm that long-press on a saved bookmark opens the Go to / Remove menu when the widget is exercised',
       (tester) async {
         final store = _InMemoryReadingPositionStore();
         await store.write(
@@ -495,21 +521,37 @@ void main() {
         await tester.longPress(find.byIcon(Icons.bookmark));
         await tester.pumpAndSettle();
 
-        expect(find.text(l10n.viewerBookmarkMenuGoTo), findsOneWidget);
-        expect(find.text(l10n.viewerBookmarkMenuRemove), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(l10n.viewerBookmarkMenuGoTo),
+          findsOneWidget,
+        );
+        expect(
+          find.bySemanticsLabel(l10n.viewerBookmarkMenuRemove),
+          findsOneWidget,
+        );
 
         // Tap Remove → the bookmark is cleared and the icon
         // flips back to outlined.
-        await tester.tap(find.text(l10n.viewerBookmarkMenuRemove));
+        await tester.tap(find.bySemanticsLabel(l10n.viewerBookmarkMenuRemove));
         await tester.pumpAndSettle();
 
         expect(store.read(id), isNull);
         expect(find.byIcon(Icons.bookmark_outline), findsOneWidget);
-        expect(find.text(l10n.viewerBookmarkCleared), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(l10n.viewerBookmarkCleared),
+          findsOneWidget,
+        );
       },
     );
   });
 }
+
+String _snackBarText(WidgetTester tester) => tester
+    .widgetList<Text>(
+      find.descendant(of: find.byType(SnackBar), matching: find.byType(Text)),
+    )
+    .map((text) => text.data ?? text.textSpan?.toPlainText() ?? '')
+    .join('\n');
 
 final class _ImmediateDocumentRepository implements DocumentRepository {
   const _ImmediateDocumentRepository(this._document);

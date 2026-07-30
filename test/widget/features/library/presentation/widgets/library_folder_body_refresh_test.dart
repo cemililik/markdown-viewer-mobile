@@ -76,14 +76,17 @@ void main() {
     );
   }
 
-  testWidgets('should wraps the body in a RefreshIndicator', (tester) async {
-    await tester.pumpWidget(harness(onRefresh: () async {}));
-    await tester.pumpAndSettle();
-    expect(find.byType(RefreshIndicator), findsOneWidget);
-  });
+  testWidgets(
+    'should wrap the body in a RefreshIndicator when the widget is exercised',
+    (tester) async {
+      await tester.pumpWidget(harness(onRefresh: () async {}));
+      await tester.pumpAndSettle();
+      expect(find.byType(RefreshIndicator), findsOneWidget);
+    },
+  );
 
   testWidgets(
-    'should swipe-down gesture invokes the provided onRefresh callback',
+    'should confirm that swipe-down gesture invokes the provided onRefresh callback when the widget is exercised',
     (tester) async {
       var refreshCalls = 0;
       await tester.pumpWidget(
@@ -106,7 +109,7 @@ void main() {
   );
 
   testWidgets(
-    'should refreshTick bump during an active search does not crash the body',
+    'should confirm that refreshTick bump during an active search does not crash the body when the widget is exercised',
     (tester) async {
       // Regression guard. An earlier version of `didUpdateWidget`
       // unconditionally nulled the cached recursive-walk future when

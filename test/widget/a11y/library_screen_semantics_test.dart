@@ -70,89 +70,91 @@ void main() {
     );
   }
 
-  testWidgets('should expose the empty LibraryScreen structure and actions', (
-    tester,
-  ) async {
-    await withSemanticsAudit(tester, () async {
-      await tester.pumpWidget(harness(const <RecentDocument>[]));
-      await tester.pumpAndSettle();
+  testWidgets(
+    'should expose the empty LibraryScreen structure and actions when the widget is exercised',
+    (tester) async {
+      await withSemanticsAudit(tester, () async {
+        await tester.pumpWidget(harness(const <RecentDocument>[]));
+        await tester.pumpAndSettle();
 
-      final title =
-          tester
-              .getSemantics(find.bySemanticsLabel(l10n.navLibrary))
-              .getSemanticsData();
-      expect(title.label, l10n.navLibrary);
-      expect(title.flagsCollection.isHeader, isTrue);
-      for (final label in [
-        l10n.libraryFoldersOpenDrawerTooltip,
-        l10n.navSettings,
-        l10n.actionOpenFile,
-        l10n.libraryActionMenuOpenFolder,
-        l10n.actionSyncRepo,
-      ]) {
-        final finder = find.bySemanticsLabel(label);
-        expect(
-          finder,
-          findsOneWidget,
-          reason: 'Library action "$label" must have a semantics node.',
-        );
-        final data = tester.getSemantics(finder).getSemanticsData();
-        expect(data.label, label);
-        expect(
-          data.hasAction(SemanticsAction.tap),
-          isTrue,
-          reason: 'Library action "$label" must expose a tap action.',
-        );
-        expect(
-          data.flagsCollection.isButton,
-          isTrue,
-          reason: 'Library action "$label" must be labelled as a button.',
-        );
-      }
-      expectEveryTapTargetLabeled(tester);
-      expectTapTargetsAtLeast(tester);
-    });
-  });
-
-  testWidgets('should expose pinned and chronological LibraryScreen headers', (
-    tester,
-  ) async {
-    await withSemanticsAudit(tester, () async {
-      final now = DateTime.now();
-      await tester.pumpWidget(
-        harness([
-          RecentDocument(
-            documentId: const DocumentId('/tmp/pinned.md'),
-            openedAt: now,
-            isPinned: true,
-          ),
-          RecentDocument(
-            documentId: const DocumentId('/tmp/recent.md'),
-            openedAt: now.subtract(const Duration(minutes: 1)),
-          ),
-        ]),
-      );
-      await tester.pumpAndSettle();
-
-      for (final label in [
-        l10n.libraryRecentPinnedSection,
-        l10n.libraryRecentGroupToday,
-      ]) {
-        final data =
+        final title =
             tester
-                .getSemantics(find.bySemanticsLabel(label))
+                .getSemantics(find.bySemanticsLabel(l10n.navLibrary))
                 .getSemanticsData();
-        expect(data.label, label);
-        expect(
-          data.flagsCollection.isHeader,
-          isTrue,
-          reason: 'Library section "$label" must be a semantic header.',
+        expect(title.label, l10n.navLibrary);
+        expect(title.flagsCollection.isHeader, isTrue);
+        for (final label in [
+          l10n.libraryFoldersOpenDrawerTooltip,
+          l10n.navSettings,
+          l10n.actionOpenFile,
+          l10n.libraryActionMenuOpenFolder,
+          l10n.actionSyncRepo,
+        ]) {
+          final finder = find.bySemanticsLabel(label);
+          expect(
+            finder,
+            findsOneWidget,
+            reason: 'Library action "$label" must have a semantics node.',
+          );
+          final data = tester.getSemantics(finder).getSemanticsData();
+          expect(data.label, label);
+          expect(
+            data.hasAction(SemanticsAction.tap),
+            isTrue,
+            reason: 'Library action "$label" must expose a tap action.',
+          );
+          expect(
+            data.flagsCollection.isButton,
+            isTrue,
+            reason: 'Library action "$label" must be labelled as a button.',
+          );
+        }
+        expectEveryTapTargetLabeled(tester);
+        expectTapTargetsAtLeast(tester);
+      });
+    },
+  );
+
+  testWidgets(
+    'should expose pinned and chronological LibraryScreen headers when the widget is exercised',
+    (tester) async {
+      await withSemanticsAudit(tester, () async {
+        final now = DateTime.now();
+        await tester.pumpWidget(
+          harness([
+            RecentDocument(
+              documentId: const DocumentId('/tmp/pinned.md'),
+              openedAt: now,
+              isPinned: true,
+            ),
+            RecentDocument(
+              documentId: const DocumentId('/tmp/recent.md'),
+              openedAt: now.subtract(const Duration(minutes: 1)),
+            ),
+          ]),
         );
-      }
-      expectEveryTapTargetLabeled(tester);
-      expectTapTargetsAtLeast(tester);
-    });
-  });
+        await tester.pumpAndSettle();
+
+        for (final label in [
+          l10n.libraryRecentPinnedSection,
+          l10n.libraryRecentGroupToday,
+        ]) {
+          final data =
+              tester
+                  .getSemantics(find.bySemanticsLabel(label))
+                  .getSemanticsData();
+          expect(data.label, label);
+          expect(
+            data.flagsCollection.isHeader,
+            isTrue,
+            reason: 'Library section "$label" must be a semantic header.',
+          );
+        }
+        expectEveryTapTargetLabeled(tester);
+        expectTapTargetsAtLeast(tester);
+      });
+    },
+  );
 }
 
 final class _RecentStore implements RecentDocumentsStore {

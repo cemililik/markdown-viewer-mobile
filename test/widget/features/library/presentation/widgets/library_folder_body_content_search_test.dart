@@ -115,7 +115,7 @@ void main() {
   }
 
   testWidgets(
-    'should content matches surface below filename matches when the query has no filename hit',
+    'should confirm that content matches surface below filename matches when the query has no filename hit',
     (tester) async {
       // "Dart" does not appear in `readme.md` or `notes.md`, so the
       // filename filter yields nothing. The content stub returns a
@@ -150,16 +150,19 @@ void main() {
       // empty state because the filename filter misses. Now the
       // content section renders with the match.
       expect(
-        find.text(l10n.libraryFolderSourceSearchNoResults('stub')),
+        find.bySemanticsLabel(l10n.libraryFolderSourceSearchNoResults('stub')),
         findsNothing,
       );
-      expect(find.text(l10n.libraryContentSearchHeader), findsOneWidget);
+      expect(
+        find.bySemanticsLabel(l10n.libraryContentSearchHeader),
+        findsOneWidget,
+      );
       expect(find.text('notes.md'), findsOneWidget);
     },
   );
 
   testWidgets(
-    'should short queries (< 3 chars) suppress the content section entirely',
+    'should confirm that short queries (< 3 chars) suppress the content section entirely when the widget is exercised',
     (tester) async {
       // At 1–2 characters the content scan is a noise-trap (too
       // many false positives, wasted isolate work). The body
@@ -191,12 +194,15 @@ void main() {
       expect(find.text('readme.md'), findsOneWidget);
       // Content header stays hidden until the query reaches the
       // min length.
-      expect(find.text(l10n.libraryContentSearchHeader), findsNothing);
+      expect(
+        find.bySemanticsLabel(l10n.libraryContentSearchHeader),
+        findsNothing,
+      );
     },
   );
 
   testWidgets(
-    'should content section shows an empty-state message when the scan finishes with no hits',
+    'should confirm that content section shows an empty-state message when the scan finishes with no hits',
     (tester) async {
       // The scan runs (query ≥ 3 chars) but the source has no hits.
       // The "No matches in any document" line should appear beneath
@@ -227,11 +233,14 @@ void main() {
       // Neither filename filter nor content scan hits — the body
       // falls back to the single centred "no matches" hint.
       expect(
-        find.text(l10n.libraryFolderSourceSearchNoResults('stub')),
+        find.bySemanticsLabel(l10n.libraryFolderSourceSearchNoResults('stub')),
         findsOneWidget,
       );
       // Content header must not stand alone without content.
-      expect(find.text(l10n.libraryContentSearchHeader), findsNothing);
+      expect(
+        find.bySemanticsLabel(l10n.libraryContentSearchHeader),
+        findsNothing,
+      );
     },
   );
 }

@@ -7,6 +7,12 @@ import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'semantics_audit.dart';
 
 void main() {
+  late AppLocalizations l10n;
+
+  setUpAll(() async {
+    l10n = await AppLocalizations.delegate.load(const Locale('en'));
+  });
+
   Widget harness({
     required List<HeadingRef> headings,
     void Function(HeadingRef)? onHeadingSelected,
@@ -31,7 +37,7 @@ void main() {
   }
 
   testWidgets(
-    'should each heading entry has button semantics and the heading text as label',
+    'should confirm that each heading entry has button semantics and the heading text as label when the widget is exercised',
     (tester) async {
       await withSemanticsAudit(tester, () async {
         final headings = [
@@ -62,6 +68,25 @@ void main() {
         scaffoldState.openEndDrawer();
         await tester.pumpAndSettle();
 
+        final drawer =
+            tester.getSemantics(find.byType(Drawer)).getSemanticsData();
+        expect(drawer.label, l10n.viewerTocTitle);
+        final title =
+            tester
+                .getSemantics(
+                  find.descendant(
+                    of: find.byType(Drawer),
+                    matching: find.byWidgetPredicate(
+                      (widget) =>
+                          widget is Semantics &&
+                          widget.properties.header == true,
+                    ),
+                  ),
+                )
+                .getSemanticsData();
+        expect(title.label, l10n.viewerTocTitle);
+        expect(title.flagsCollection.isHeader, isTrue);
+
         for (final heading in headings) {
           expect(
             tester.getSemantics(find.bySemanticsLabel(heading.text)),
@@ -85,7 +110,7 @@ void main() {
   );
 
   testWidgets(
-    'should empty-document state renders a localized empty hint text',
+    'should confirm that empty-document state renders a localized empty hint text when the widget is exercised',
     (tester) async {
       await withSemanticsAudit(tester, () async {
         await tester.pumpWidget(harness(headings: const []));
@@ -95,8 +120,7 @@ void main() {
         scaffoldState.openEndDrawer();
         await tester.pumpAndSettle();
 
-        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-        expect(find.text(l10n.viewerTocEmpty), findsOneWidget);
+        expect(find.bySemanticsLabel(l10n.viewerTocEmpty), findsOneWidget);
       });
     },
   );

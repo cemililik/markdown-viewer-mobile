@@ -93,7 +93,7 @@ graph TD
     const diagramCode = 'graph TD\n  A --> B';
 
     test(
-      'should returns valid PDF bytes when mermaidImages is empty (placeholder path)',
+      'should return valid PDF bytes when mermaidImages is empty (placeholder path)',
       () async {
         final bytes = await exportToPdf('Test', mermaidSource);
         expect(bytes, isNotEmpty);
@@ -107,7 +107,7 @@ graph TD
     );
 
     test(
-      'should returns valid PDF bytes when a pre-rendered PNG is supplied',
+      'should return valid PDF bytes when a pre-rendered PNG is supplied',
       () async {
         final bytes = await exportToPdf(
           'Test',
@@ -120,7 +120,7 @@ graph TD
     );
 
     test(
-      'should unrecognised diagram source falls back to placeholder',
+      'should confirm that unrecognised diagram source falls back to placeholder when the behavior is exercised',
       () async {
         // Supply a PNG for a different source — the exporter must not crash
         // and must still produce a valid PDF using the placeholder path.
@@ -136,12 +136,12 @@ graph TD
   });
 
   group('extractPdfTitle', () {
-    test('should returns the first H1 heading when present', () {
+    test('should return the first H1 heading when present', () {
       const source = '# My Document\n\nSome body text.';
       expect(extractPdfTitle(source, 'fallback'), 'My Document');
     });
 
-    test('should returns the normalized fallback when no H1 is present', () {
+    test('should return the normalized fallback when no H1 is present', () {
       const source = '## Section\n\nNo top-level heading.';
       // The fallback is run through _cleanText so HTML entities and
       // non-Latin-1 characters are substituted just like heading text.
@@ -149,7 +149,7 @@ graph TD
     });
 
     test(
-      'should normalizes fallback through the same cleaning path as H1 text',
+      'should normalize fallback through the same cleaning path as H1 text when the behavior is exercised',
       () {
         // An em-dash in the fallback should be replaced with '--' so the
         // PDF output is consistent regardless of whether the title came
@@ -163,49 +163,63 @@ graph TD
   });
 
   group('Latin Extended-A transliteration', () {
-    test('should transliterates Turkish characters', () {
-      // ğ Ğ ş Ş ı İ are all > U+00FF and would produce glyph boxes in the
-      // built-in Helvetica font without explicit mapping.
-      // ü (U+00FC) is within Latin-1 and passes through unchanged.
-      expect(
-        extractPdfTitle('No heading.', 'Ğüzel bir şey — ı ve İ'),
-        'Güzel bir sey -- i ve I',
-      );
-    });
+    test(
+      'should transliterate Turkish characters when the behavior is exercised',
+      () {
+        // ğ Ğ ş Ş ı İ are all > U+00FF and would produce glyph boxes in the
+        // built-in Helvetica font without explicit mapping.
+        // ü (U+00FC) is within Latin-1 and passes through unchanged.
+        expect(
+          extractPdfTitle('No heading.', 'Ğüzel bir şey — ı ve İ'),
+          'Güzel bir sey -- i ve I',
+        );
+      },
+    );
 
-    test('should transliterates Polish characters', () {
-      // ó (U+00F3) is within Latin-1 and passes through unchanged.
-      expect(
-        extractPdfTitle('No heading.', 'Łódź — Ąą Ćć Ęę Śś Źź Żż Ńń'),
-        'Lódz -- Aa Cc Ee Ss Zz Zz Nn',
-      );
-    });
+    test(
+      'should transliterate Polish characters when the behavior is exercised',
+      () {
+        // ó (U+00F3) is within Latin-1 and passes through unchanged.
+        expect(
+          extractPdfTitle('No heading.', 'Łódź — Ąą Ćć Ęę Śś Źź Żż Ńń'),
+          'Lódz -- Aa Cc Ee Ss Zz Zz Nn',
+        );
+      },
+    );
 
-    test('should transliterates Czech characters', () {
-      expect(
-        extractPdfTitle('No heading.', 'Čeština: Čč Šš Žž Řř Ěě Ďď Ťť'),
-        'Cestina: Cc Ss Zz Rr Ee Dd Tt',
-      );
-    });
+    test(
+      'should transliterate Czech characters when the behavior is exercised',
+      () {
+        expect(
+          extractPdfTitle('No heading.', 'Čeština: Čč Šš Žž Řř Ěě Ďď Ťť'),
+          'Cestina: Cc Ss Zz Rr Ee Dd Tt',
+        );
+      },
+    );
 
-    test('should catch-all strips remaining non-Latin-1 characters', () {
-      // Any character above U+00FF not covered by the explicit table
-      // is removed rather than producing a glyph box.
-      expect(
-        extractPdfTitle('No heading.', 'A\u0400B'), // U+0400 Cyrillic
-        'AB',
-      );
-    });
+    test(
+      'should confirm that catch-all strips remaining non-Latin-1 characters when the behavior is exercised',
+      () {
+        // Any character above U+00FF not covered by the explicit table
+        // is removed rather than producing a glyph box.
+        expect(
+          extractPdfTitle('No heading.', 'A\u0400B'), // U+0400 Cyrillic
+          'AB',
+        );
+      },
+    );
   });
 
   group('extractMermaidCodes — HTML entity decoding', () {
-    test('should decodes &lt; &gt; &quot; in fenced mermaid code blocks', () {
-      // The markdown parser HTML-escapes raw <, >, " characters inside
-      // fenced code blocks. Mermaid's lexer rejects &lt;/&gt;/&quot;
-      // as unrecognized text, so extractMermaidCodes must decode them
-      // back to the original characters before handing the source to
-      // the renderer.
-      const source = '''
+    test(
+      'should decode &lt; &gt; &quot; in fenced mermaid code blocks when the behavior is exercised',
+      () {
+        // The markdown parser HTML-escapes raw <, >, " characters inside
+        // fenced code blocks. Mermaid's lexer rejects &lt;/&gt;/&quot;
+        // as unrecognized text, so extractMermaidCodes must decode them
+        // back to the original characters before handing the source to
+        // the renderer.
+        const source = '''
 ```mermaid
 graph LR
     A["LLaMA<br/>Factory"] --> B["Multi<br/>GPU"]
@@ -214,36 +228,42 @@ graph LR
     end
 ```
 ''';
-      final codes = extractMermaidCodes(source);
-      expect(codes, hasLength(1));
-      expect(codes.first, contains('<br/>'));
-      expect(codes.first, contains('"LLaMA<br/>Factory"'));
-      expect(codes.first, contains('subgraph "ForgeLM Unique"'));
-      expect(codes.first, isNot(contains('&lt;')));
-      expect(codes.first, isNot(contains('&gt;')));
-      expect(codes.first, isNot(contains('&quot;')));
-    });
+        final codes = extractMermaidCodes(source);
+        expect(codes, hasLength(1));
+        expect(codes.first, contains('<br/>'));
+        expect(codes.first, contains('"LLaMA<br/>Factory"'));
+        expect(codes.first, contains('subgraph "ForgeLM Unique"'));
+        expect(codes.first, isNot(contains('&lt;')));
+        expect(codes.first, isNot(contains('&gt;')));
+        expect(codes.first, isNot(contains('&quot;')));
+      },
+    );
 
-    test('should preserves literal entity text via amp-last decode order', () {
-      // If an author writes the literal five-character sequence "&lt;"
-      // inside a mermaid label, markdown stores it as "&amp;lt;" (the
-      // "&" is itself escaped). Decoding &lt; first and &amp; last
-      // yields "&lt;" — exactly what the author wrote — rather than
-      // collapsing the whole thing to "<".
-      const source = '''
+    test(
+      'should preserve literal entity text via amp-last decode order when the behavior is exercised',
+      () {
+        // If an author writes the literal five-character sequence "&lt;"
+        // inside a mermaid label, markdown stores it as "&amp;lt;" (the
+        // "&" is itself escaped). Decoding &lt; first and &amp; last
+        // yields "&lt;" — exactly what the author wrote — rather than
+        // collapsing the whole thing to "<".
+        const source = '''
 ```mermaid
 graph LR
     A[Shows &lt; as text]
 ```
 ''';
-      final codes = extractMermaidCodes(source);
-      expect(codes, hasLength(1));
-      expect(codes.first, contains('&lt;'));
-      expect(codes.first, isNot(contains('<')));
-    });
+        final codes = extractMermaidCodes(source);
+        expect(codes, hasLength(1));
+        expect(codes.first, contains('&lt;'));
+        expect(codes.first, isNot(contains('<')));
+      },
+    );
 
-    test('should leaves plain-ASCII diagrams untouched', () {
-      const source = '''
+    test(
+      'should leave plain-ASCII diagrams untouched when the behavior is exercised',
+      () {
+        const source = '''
 ```mermaid
 mindmap
   root((Root))
@@ -251,18 +271,19 @@ mindmap
     Branch B
 ```
 ''';
-      final codes = extractMermaidCodes(source);
-      expect(codes, hasLength(1));
-      expect(
-        codes.first,
-        equals('mindmap\n  root((Root))\n    Branch A\n    Branch B'),
-      );
-    });
+        final codes = extractMermaidCodes(source);
+        expect(codes, hasLength(1));
+        expect(
+          codes.first,
+          equals('mindmap\n  root((Root))\n    Branch A\n    Branch B'),
+        );
+      },
+    );
   });
 
   group('fire-emoji normalization', () {
     test(
-      'should replaces 🔥 (U+1F525) with [fire] via extractPdfTitle fallback',
+      'should replace 🔥 (U+1F525) with [fire] via extractPdfTitle fallback when the behavior is exercised',
       () {
         // _cleanText is private; exercise it through extractPdfTitle's fallback
         // path (no H1 in source → fallback runs through the same cleaning
@@ -274,9 +295,12 @@ mindmap
       },
     );
 
-    test('should replaces 🔥 in H1 heading text', () {
-      const source = '# Hot \u{1F525} Title\n\nBody text.';
-      expect(extractPdfTitle(source, 'fallback'), 'Hot [fire] Title');
-    });
+    test(
+      'should replace 🔥 in H1 heading text when the behavior is exercised',
+      () {
+        const source = '# Hot \u{1F525} Title\n\nBody text.';
+        expect(extractPdfTitle(source, 'fallback'), 'Hot [fire] Title');
+      },
+    );
   });
 }

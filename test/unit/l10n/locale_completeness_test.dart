@@ -45,75 +45,101 @@ void main() {
       );
     });
 
-    test('should keep every locale message key in parity with English', () {
-      final enKeys = _messageKeys(english);
-      for (final file in otherLocales) {
-        final localeKeys = _messageKeys(_decodeArb(file));
-        final missing = enKeys.difference(localeKeys);
-        final extra = localeKeys.difference(enKeys);
+    test(
+      'should keep every locale message key in parity with English when the behavior is exercised',
+      () {
+        final enKeys = _messageKeys(english);
+        for (final file in otherLocales) {
+          final localeKeys = _messageKeys(_decodeArb(file));
+          final missing = enKeys.difference(localeKeys);
+          final extra = localeKeys.difference(enKeys);
 
-        expect(
-          missing,
-          isEmpty,
-          reason:
-              '${_basename(file.path)} is missing keys present in app_en.arb: '
-              '${missing.join(', ')}',
-        );
-        expect(
-          extra,
-          isEmpty,
-          reason:
-              '${_basename(file.path)} has keys not present in app_en.arb: '
-              '${extra.join(', ')}',
-        );
-      }
-    });
-
-    test('should keep placeholder sets in parity with English', () {
-      for (final file in otherLocales) {
-        final locale = _decodeArb(file);
-        for (final key in _messageKeys(english)) {
-          final sourceMessage = english[key]! as String;
-          final localizedMessage = locale[key]! as String;
-          final expected = _placeholderReferences(sourceMessage);
-          final actual = _placeholderReferences(localizedMessage);
           expect(
-            actual,
-            expected,
+            missing,
+            isEmpty,
             reason:
-                '${_basename(file.path)} message "$key" must use the same '
-                'placeholder set as app_en.arb',
+                '${_basename(file.path)} is missing keys present in app_en.arb: '
+                '${missing.join(', ')}',
+          );
+          expect(
+            extra,
+            isEmpty,
+            reason:
+                '${_basename(file.path)} has keys not present in app_en.arb: '
+                '${extra.join(', ')}',
           );
         }
-      }
-    });
+      },
+    );
 
-    test('should keep plural categories in parity with English', () {
-      for (final key in _messageKeys(english)) {
-        final sourceMessage = english[key];
-        if (sourceMessage is! String || !sourceMessage.contains(', plural,')) {
-          continue;
-        }
-        final expected = _pluralCategories(sourceMessage);
-
+    test(
+      'should keep placeholder sets in parity with English when the behavior is exercised',
+      () {
         for (final file in otherLocales) {
           final locale = _decodeArb(file);
-          final localizedMessage = locale[key];
-          expect(
-            localizedMessage,
-            isA<String>(),
-            reason: '${_basename(file.path)} message "$key" must be a string',
-          );
-          expect(
-            _pluralCategories(localizedMessage! as String),
-            expected,
-            reason:
-                '${_basename(file.path)} plural "$key" must declare the same '
-                'categories as app_en.arb',
-          );
+          for (final key in _messageKeys(english)) {
+            final sourceMessage = english[key]! as String;
+            final localizedMessage = locale[key]! as String;
+            final expectedReferences = _placeholderReferences(sourceMessage);
+            final actualReferences = _placeholderReferences(localizedMessage);
+            final expectedDeclarations = _placeholderDeclarations(english, key);
+            final actualDeclarations = _placeholderDeclarations(locale, key);
+            expect(
+              actualReferences,
+              expectedReferences,
+              reason:
+                  '${_basename(file.path)} message "$key" must use the same '
+                  'placeholder set as app_en.arb',
+            );
+            expect(
+              expectedDeclarations.keys,
+              expectedReferences,
+              reason:
+                  'app_en.arb metadata for "$key" must declare every '
+                  'placeholder used by its message',
+            );
+            expect(
+              actualDeclarations,
+              expectedDeclarations,
+              reason:
+                  '${_basename(file.path)} metadata for "$key" must declare '
+                  'the same placeholder names and types as app_en.arb',
+            );
+          }
         }
-      }
-    });
+      },
+    );
+
+    test(
+      'should keep plural categories in parity with English when the behavior is exercised',
+      () {
+        for (final key in _messageKeys(english)) {
+          final sourceMessage = english[key];
+          if (sourceMessage is! String ||
+              !sourceMessage.contains(', plural,')) {
+            continue;
+          }
+          final expected = _pluralCategories(sourceMessage);
+
+          for (final file in otherLocales) {
+            final locale = _decodeArb(file);
+            final localizedMessage = locale[key];
+            expect(
+              localizedMessage,
+              isA<String>(),
+              reason: '${_basename(file.path)} message "$key" must be a string',
+            );
+            expect(
+              _pluralCategories(localizedMessage! as String),
+              expected,
+              reason:
+                  '${_basename(file.path)} plural "$key" must declare the same '
+                  'categories as app_en.arb',
+            );
+          }
+        }
+      },
+    );
   });
 }
 
@@ -130,6 +156,20 @@ Set<String> _placeholderReferences(String message) =>
     RegExp(
       r'\{([A-Za-z_][A-Za-z0-9_]*)(?:\s*,|\})',
     ).allMatches(message).map((match) => match.group(1)!).toSet();
+
+Map<String, String?> _placeholderDeclarations(
+  Map<String, dynamic> arb,
+  String key,
+) {
+  final metadata = arb['@$key'];
+  if (metadata is! Map<String, dynamic>) return const {};
+  final placeholders = metadata['placeholders'];
+  if (placeholders is! Map<String, dynamic>) return const {};
+  return placeholders.map((name, value) {
+    final declaration = value as Map<String, dynamic>;
+    return MapEntry(name, declaration['type'] as String?);
+  });
+}
 
 Set<String> _pluralCategories(String message) =>
     RegExp(

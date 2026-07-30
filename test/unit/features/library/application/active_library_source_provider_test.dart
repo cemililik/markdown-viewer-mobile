@@ -30,41 +30,60 @@ ProviderContainer _containerWith(_FakeStore store) {
 
 void main() {
   group('ActiveLibrarySourceController', () {
-    test('should defaults to RecentsSource on first build', () {
-      final container = _containerWith(_FakeStore());
+    test(
+      'should default to RecentsSource on first build when the behavior is exercised',
+      () {
+        final container = _containerWith(_FakeStore());
 
-      expect(container.read(activeLibrarySourceProvider), isA<RecentsSource>());
-    });
-
-    test('should selectFolder switches state to a FolderSource', () {
-      final folder = LibraryFolder(
-        path: '/tmp/notes',
-        addedAt: DateTime.utc(2026, 4, 14),
-      );
-      final container = _containerWith(_FakeStore([folder]));
-
-      container.read(activeLibrarySourceProvider.notifier).selectFolder(folder);
-
-      final state = container.read(activeLibrarySourceProvider);
-      expect(state, isA<FolderSource>());
-      expect((state as FolderSource).folder.path, '/tmp/notes');
-    });
-
-    test('should selectRecents flips back to RecentsSource', () {
-      final folder = LibraryFolder(
-        path: '/tmp/notes',
-        addedAt: DateTime.utc(2026, 4, 14),
-      );
-      final container = _containerWith(_FakeStore([folder]));
-
-      container.read(activeLibrarySourceProvider.notifier).selectFolder(folder);
-      container.read(activeLibrarySourceProvider.notifier).selectRecents();
-
-      expect(container.read(activeLibrarySourceProvider), isA<RecentsSource>());
-    });
+        expect(
+          container.read(activeLibrarySourceProvider),
+          isA<RecentsSource>(),
+        );
+      },
+    );
 
     test(
-      'should auto-falls back to Recents when the active folder is removed',
+      'should confirm that selectFolder switches state to a FolderSource when the behavior is exercised',
+      () {
+        final folder = LibraryFolder(
+          path: '/tmp/notes',
+          addedAt: DateTime.utc(2026, 4, 14),
+        );
+        final container = _containerWith(_FakeStore([folder]));
+
+        container
+            .read(activeLibrarySourceProvider.notifier)
+            .selectFolder(folder);
+
+        final state = container.read(activeLibrarySourceProvider);
+        expect(state, isA<FolderSource>());
+        expect((state as FolderSource).folder.path, '/tmp/notes');
+      },
+    );
+
+    test(
+      'should confirm that selectRecents flips back to RecentsSource when the behavior is exercised',
+      () {
+        final folder = LibraryFolder(
+          path: '/tmp/notes',
+          addedAt: DateTime.utc(2026, 4, 14),
+        );
+        final container = _containerWith(_FakeStore([folder]));
+
+        container
+            .read(activeLibrarySourceProvider.notifier)
+            .selectFolder(folder);
+        container.read(activeLibrarySourceProvider.notifier).selectRecents();
+
+        expect(
+          container.read(activeLibrarySourceProvider),
+          isA<RecentsSource>(),
+        );
+      },
+    );
+
+    test(
+      'should automatically fall back to Recents when the active folder is removed',
       () {
         final folder = LibraryFolder(
           path: '/tmp/notes',
@@ -98,7 +117,7 @@ void main() {
     );
 
     test(
-      'should rebuilds the held FolderSource entity when the active folder is '
+      'should rebuild the held FolderSource entity when the active folder is '
       'renamed so the AppBar / drawer pick up the fresh customName',
       () {
         final folder = LibraryFolder(
@@ -123,7 +142,7 @@ void main() {
       },
     );
 
-    test('should rebuilds the held FolderSource entity when the bookmark is '
+    test('should rebuild the held FolderSource entity when the bookmark is '
         'refreshed so iOS scoped-bookmark updates reach the active source', () {
       final folder = LibraryFolder(
         path: '/tmp/ios',
@@ -144,7 +163,7 @@ void main() {
       expect((state as FolderSource).folder.bookmark, 'fresh-blob');
     });
 
-    test('should leaves the active source untouched when the folder list emits '
+    test('should leave the active source untouched when the folder list emits '
         'an unrelated change (no spurious rebuild)', () {
       final folder = LibraryFolder(
         path: '/tmp/notes',

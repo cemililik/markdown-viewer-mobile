@@ -10,7 +10,7 @@ const _currentClose = '\uE003';
 void main() {
   group('buildHighlightedSource', () {
     test(
-      'should returns original source unchanged when matchOffsets is empty',
+      'should return original source unchanged when matchOffsets is empty',
       () {
         const source = 'hello world';
 
@@ -26,7 +26,7 @@ void main() {
     );
 
     test(
-      'should returns original source unchanged when queryLength is zero',
+      'should return original source unchanged when queryLength is zero',
       () {
         const source = 'hello world';
 
@@ -41,37 +41,43 @@ void main() {
       },
     );
 
-    test('should wraps the single match with current-match markers', () {
-      const source = 'hello world';
+    test(
+      'should wrap the single match with current-match markers when the behavior is exercised',
+      () {
+        const source = 'hello world';
 
-      final result = buildHighlightedSource(
-        source: source,
-        matchOffsets: const [6],
-        queryLength: 5,
-        currentMatchIndex: 0,
-      );
+        final result = buildHighlightedSource(
+          source: source,
+          matchOffsets: const [6],
+          queryLength: 5,
+          currentMatchIndex: 0,
+        );
 
-      expect(result, 'hello ${_currentOpen}world$_currentClose');
-    });
-
-    test('should wraps non-current match with normal markers', () {
-      const source = 'foo bar foo';
-
-      final result = buildHighlightedSource(
-        source: source,
-        matchOffsets: const [0, 8],
-        queryLength: 3,
-        currentMatchIndex: 1,
-      );
-
-      expect(
-        result,
-        '${_normalOpen}foo$_normalClose bar ${_currentOpen}foo$_currentClose',
-      );
-    });
+        expect(result, 'hello ${_currentOpen}world$_currentClose');
+      },
+    );
 
     test(
-      'should handles currentMatchIndex pointing at the first of many matches',
+      'should wrap non-current match with normal markers when the behavior is exercised',
+      () {
+        const source = 'foo bar foo';
+
+        final result = buildHighlightedSource(
+          source: source,
+          matchOffsets: const [0, 8],
+          queryLength: 3,
+          currentMatchIndex: 1,
+        );
+
+        expect(
+          result,
+          '${_normalOpen}foo$_normalClose bar ${_currentOpen}foo$_currentClose',
+        );
+      },
+    );
+
+    test(
+      'should handle currentMatchIndex pointing at the first of many matches when the behavior is exercised',
       () {
         const source = 'aa bb aa cc aa';
         final offsets = [0, 6, 12];
@@ -92,72 +98,84 @@ void main() {
       },
     );
 
-    test('should handles match at the very start of source', () {
-      const source = 'world hello';
+    test(
+      'should handle match at the very start of source when the behavior is exercised',
+      () {
+        const source = 'world hello';
 
-      final result = buildHighlightedSource(
-        source: source,
-        matchOffsets: const [0],
-        queryLength: 5,
-        currentMatchIndex: 0,
-      );
+        final result = buildHighlightedSource(
+          source: source,
+          matchOffsets: const [0],
+          queryLength: 5,
+          currentMatchIndex: 0,
+        );
 
-      expect(result, '${_currentOpen}world$_currentClose hello');
-    });
-
-    test('should handles match at the very end of source', () {
-      const source = 'hello world';
-
-      final result = buildHighlightedSource(
-        source: source,
-        matchOffsets: const [6],
-        queryLength: 5,
-        currentMatchIndex: 0,
-      );
-
-      expect(result, 'hello ${_currentOpen}world$_currentClose');
-    });
-
-    test('should skips matches that fall inside a fenced code block', () {
-      const source = '```\nhello world\n```\nhello outside';
-
-      // "hello" appears at offset 4 (inside fence) and at offset 20 (outside).
-      final result = buildHighlightedSource(
-        source: source,
-        matchOffsets: const [4, 20],
-        queryLength: 5,
-        currentMatchIndex: 1,
-      );
-
-      // Offset 4 is inside the fence — no markers there.
-      // Offset 20 is match index 1, so currentMatchIndex 1 → current markers.
-      expect(result, contains('${_currentOpen}hello$_currentClose'));
-      expect(result, isNot(contains('${_normalOpen}hello$_normalClose')));
-      expect(
-        result.indexOf(_normalOpen),
-        -1,
-        reason: 'no normal markers should appear',
-      );
-    });
-
-    test('should skips matches that fall inside an inline code span', () {
-      const source = 'See `hello` for details. hello again.';
-      // "hello" at offset 5 (inside backticks) and offset 25 (outside).
-
-      final result = buildHighlightedSource(
-        source: source,
-        matchOffsets: const [5, 25],
-        queryLength: 5,
-        currentMatchIndex: 1,
-      );
-
-      expect(result, contains('${_currentOpen}hello$_currentClose'));
-      // The inline-code match must NOT be wrapped.
-      expect(result, contains('`hello`'));
-    });
+        expect(result, '${_currentOpen}world$_currentClose hello');
+      },
+    );
 
     test(
-      'should preserves text between and around multiple matches exactly',
+      'should handle match at the very end of source when the behavior is exercised',
+      () {
+        const source = 'hello world';
+
+        final result = buildHighlightedSource(
+          source: source,
+          matchOffsets: const [6],
+          queryLength: 5,
+          currentMatchIndex: 0,
+        );
+
+        expect(result, 'hello ${_currentOpen}world$_currentClose');
+      },
+    );
+
+    test(
+      'should skip matches that fall inside a fenced code block when the behavior is exercised',
+      () {
+        const source = '```\nhello world\n```\nhello outside';
+
+        // "hello" appears at offset 4 (inside fence) and at offset 20 (outside).
+        final result = buildHighlightedSource(
+          source: source,
+          matchOffsets: const [4, 20],
+          queryLength: 5,
+          currentMatchIndex: 1,
+        );
+
+        // Offset 4 is inside the fence — no markers there.
+        // Offset 20 is match index 1, so currentMatchIndex 1 → current markers.
+        expect(result, contains('${_currentOpen}hello$_currentClose'));
+        expect(result, isNot(contains('${_normalOpen}hello$_normalClose')));
+        expect(
+          result.indexOf(_normalOpen),
+          -1,
+          reason: 'no normal markers should appear',
+        );
+      },
+    );
+
+    test(
+      'should skip matches that fall inside an inline code span when the behavior is exercised',
+      () {
+        const source = 'See `hello` for details. hello again.';
+        // "hello" at offset 5 (inside backticks) and offset 25 (outside).
+
+        final result = buildHighlightedSource(
+          source: source,
+          matchOffsets: const [5, 25],
+          queryLength: 5,
+          currentMatchIndex: 1,
+        );
+
+        expect(result, contains('${_currentOpen}hello$_currentClose'));
+        // The inline-code match must NOT be wrapped.
+        expect(result, contains('`hello`'));
+      },
+    );
+
+    test(
+      'should preserve text between and around multiple matches exactly when the behavior is exercised',
       () {
         const source = 'ab cd ab';
 
@@ -175,35 +193,44 @@ void main() {
   });
 
   group('findCodeRanges', () {
-    test('should returns empty list for source with no code regions', () {
-      expect(findCodeRanges('plain text'), isEmpty);
-    });
-
-    test('should identifies a fenced code block range', () {
-      const source = 'before\n```\ncode\n```\nafter';
-      final ranges = findCodeRanges(source);
-
-      expect(ranges, hasLength(1));
-      expect(ranges.first.$1, lessThanOrEqualTo(source.indexOf('```')));
-      expect(
-        ranges.first.$2,
-        greaterThanOrEqualTo(source.lastIndexOf('```') + 3),
-      );
-    });
-
-    test('should identifies an inline code span', () {
-      const source = 'use `foo` here';
-      final ranges = findCodeRanges(source);
-
-      expect(ranges, hasLength(1));
-      final start = source.indexOf('`foo`');
-      final end = start + '`foo`'.length;
-      expect(ranges.first.$1, start);
-      expect(ranges.first.$2, end);
-    });
+    test(
+      'should return empty list for source with no code regions when the behavior is exercised',
+      () {
+        expect(findCodeRanges('plain text'), isEmpty);
+      },
+    );
 
     test(
-      'should does not report inline code inside a fenced block as a separate range',
+      'should identify a fenced code block range when the behavior is exercised',
+      () {
+        const source = 'before\n```\ncode\n```\nafter';
+        final ranges = findCodeRanges(source);
+
+        expect(ranges, hasLength(1));
+        expect(ranges.first.$1, lessThanOrEqualTo(source.indexOf('```')));
+        expect(
+          ranges.first.$2,
+          greaterThanOrEqualTo(source.lastIndexOf('```') + 3),
+        );
+      },
+    );
+
+    test(
+      'should identify an inline code span when the behavior is exercised',
+      () {
+        const source = 'use `foo` here';
+        final ranges = findCodeRanges(source);
+
+        expect(ranges, hasLength(1));
+        final start = source.indexOf('`foo`');
+        final end = start + '`foo`'.length;
+        expect(ranges.first.$1, start);
+        expect(ranges.first.$2, end);
+      },
+    );
+
+    test(
+      'should not report inline code inside a fenced block as a separate range when the behavior is exercised',
       () {
         const source = '```\n`inner`\n```';
         final ranges = findCodeRanges(source);

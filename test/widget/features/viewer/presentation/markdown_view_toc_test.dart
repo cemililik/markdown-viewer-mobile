@@ -59,7 +59,7 @@ void main() {
   }
 
   testWidgets(
-    'should onTocList fires with a widgetIndex for every heading in the document',
+    'should confirm that onTocList fires with a widgetIndex for every heading in the document when the widget is exercised',
     (tester) async {
       tester.view.physicalSize = const Size(1200, 4000);
       tester.view.devicePixelRatio = 1.0;
@@ -110,7 +110,7 @@ void main() {
   );
 
   testWidgets(
-    'should blockKeys grows to cover every widgetIndex captured via onTocList',
+    'should confirm that blockKeys grows to cover every widgetIndex captured via onTocList when the widget is exercised',
     (tester) async {
       tester.view.physicalSize = const Size(1200, 4000);
       tester.view.devicePixelRatio = 1.0;

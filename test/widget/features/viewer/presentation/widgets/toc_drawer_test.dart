@@ -51,27 +51,35 @@ void main() {
   }
 
   group('TocDrawer', () {
-    testWidgets('should renders every heading in document order', (
-      tester,
-    ) async {
-      final doc = makeDocument(const [
-        HeadingRef(level: 1, text: 'Intro', anchor: 'intro', blockIndex: 0),
-        HeadingRef(level: 2, text: 'Details', anchor: 'details', blockIndex: 2),
-        HeadingRef(level: 3, text: 'Notes', anchor: 'notes', blockIndex: 5),
-      ]);
+    testWidgets(
+      'should render every heading in document order when the widget is exercised',
+      (tester) async {
+        final doc = makeDocument(const [
+          HeadingRef(level: 1, text: 'Intro', anchor: 'intro', blockIndex: 0),
+          HeadingRef(
+            level: 2,
+            text: 'Details',
+            anchor: 'details',
+            blockIndex: 2,
+          ),
+          HeadingRef(level: 3, text: 'Notes', anchor: 'notes', blockIndex: 5),
+        ]);
 
-      await tester.pumpWidget(harness(doc));
-      await tester.tap(find.text('open'));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(harness(doc));
+        await tester.tap(find.text('open'));
+        await tester.pumpAndSettle();
 
-      expect(find.text(l10n.viewerTocTitle), findsOneWidget);
-      expect(find.text('Intro'), findsOneWidget);
-      expect(find.text('Details'), findsOneWidget);
-      expect(find.text('Notes'), findsOneWidget);
-    });
+        final drawer =
+            tester.getSemantics(find.byType(Drawer)).getSemanticsData();
+        expect(drawer.label, l10n.viewerTocTitle);
+        expect(find.text('Intro'), findsOneWidget);
+        expect(find.text('Details'), findsOneWidget);
+        expect(find.text('Notes'), findsOneWidget);
+      },
+    );
 
     testWidgets(
-      'should tapping a heading closes the drawer and fires the callback',
+      'should close the drawer and fire the callback when a heading is tapped',
       (tester) async {
         HeadingRef? selected;
         final doc = makeDocument(const [
@@ -102,7 +110,7 @@ void main() {
     );
 
     testWidgets(
-      'should renders the localized empty state when the document has no headings',
+      'should render the localized empty state when the document has no headings',
       (tester) async {
         final doc = makeDocument(const []);
 
@@ -110,7 +118,7 @@ void main() {
         await tester.tap(find.text('open'));
         await tester.pumpAndSettle();
 
-        expect(find.text(l10n.viewerTocEmpty), findsOneWidget);
+        expect(find.bySemanticsLabel(l10n.viewerTocEmpty), findsOneWidget);
       },
     );
   });

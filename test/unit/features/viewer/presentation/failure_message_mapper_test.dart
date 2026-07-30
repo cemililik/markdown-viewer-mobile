@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/core/errors/failure.dart';
@@ -34,16 +36,19 @@ void main() {
       l10n = await loadLocale('en');
     });
 
-    test('should FileNotFoundFailure maps to the errorFileNotFound key', () {
-      const failure = FileNotFoundFailure(message: 'x');
+    test(
+      'should confirm that FileNotFoundFailure maps to the errorFileNotFound key when the behavior is exercised',
+      () {
+        const failure = FileNotFoundFailure(message: 'x');
 
-      final result = mapFailureToViewerMessage(failure, l10n);
+        final result = mapFailureToViewerMessage(failure, l10n);
 
-      expect(result, l10n.errorFileNotFound);
-    });
+        expect(result, l10n.errorFileNotFound);
+      },
+    );
 
     test(
-      'should PermissionDeniedFailure maps to the errorPermissionDenied key',
+      'should confirm that PermissionDeniedFailure maps to the errorPermissionDenied key when the behavior is exercised',
       () {
         const failure = PermissionDeniedFailure(message: 'x');
 
@@ -53,77 +58,108 @@ void main() {
       },
     );
 
-    test('should ParseFailure maps to the errorParseFailed key', () {
-      const failure = ParseFailure(message: 'x');
+    test(
+      'should confirm that ParseFailure maps to the errorParseFailed key when the behavior is exercised',
+      () {
+        const failure = ParseFailure(message: 'x');
 
-      final result = mapFailureToViewerMessage(failure, l10n);
+        final result = mapFailureToViewerMessage(failure, l10n);
 
-      expect(result, l10n.errorParseFailed);
-    });
+        expect(result, l10n.errorParseFailed);
+      },
+    );
 
-    test('should RenderFailure maps to the errorRenderFailed key', () {
-      const failure = RenderFailure(message: 'x');
+    test(
+      'should confirm that RenderFailure maps to the errorRenderFailed key when the behavior is exercised',
+      () {
+        const failure = RenderFailure(message: 'x');
 
-      final result = mapFailureToViewerMessage(failure, l10n);
+        final result = mapFailureToViewerMessage(failure, l10n);
 
-      expect(result, l10n.errorRenderFailed);
-    });
+        expect(result, l10n.errorRenderFailed);
+      },
+    );
 
-    test('should UnknownFailure maps to the errorUnknown key', () {
-      const failure = UnknownFailure(message: 'x');
+    test(
+      'should confirm that UnknownFailure maps to the errorUnknown key when the behavior is exercised',
+      () {
+        const failure = UnknownFailure(message: 'x');
 
-      final result = mapFailureToViewerMessage(failure, l10n);
+        final result = mapFailureToViewerMessage(failure, l10n);
 
-      expect(result, l10n.errorUnknown);
-    });
+        expect(result, l10n.errorUnknown);
+      },
+    );
 
-    test('should cover every concrete Failure subtype', () {
-      expect(
-        failures.map((failure) => failure.runtimeType).toSet(),
-        hasLength(12),
-      );
-    });
+    test(
+      'should cover every concrete Failure subtype when the behavior is exercised',
+      () {
+        final declaredSubtypeNames =
+            RegExp(r'final class (\w+Failure) extends Failure')
+                .allMatches(
+                  File('lib/core/errors/failure.dart').readAsStringSync(),
+                )
+                .map((match) => match.group(1)!)
+                .toSet();
+        final fixtureSubtypeNames =
+            failures.map((failure) => failure.name).toSet();
 
-    test('should deliberately map fallback failure types to errorUnknown', () {
-      for (final failure in failures.where(
-        (failure) =>
-            failure is PartialSyncFailure ||
-            failure is UnsupportedProviderFailure ||
-            failure is UnknownFailure,
-      )) {
-        expect(mapFailureToViewerMessage(failure, l10n), l10n.errorUnknown);
-      }
-    });
-
-    test('should return the expected key for every Failure subtype', () {
-      final expected = <Type, String>{
-        FileNotFoundFailure: l10n.errorFileNotFound,
-        PermissionDeniedFailure: l10n.errorPermissionDenied,
-        ParseFailure: l10n.errorParseFailed,
-        RenderFailure: l10n.errorRenderFailed,
-        NetworkUnavailableFailure: l10n.errorNetworkUnavailable,
-        RateLimitedFailure: l10n.errorRateLimited,
-        AuthFailure: l10n.errorAuthFailed,
-        RepoNotFoundFailure: l10n.errorRepoNotFound,
-        RepoTooLargeFailure: l10n.errorRepoTooLarge,
-        PartialSyncFailure: l10n.errorUnknown,
-        UnsupportedProviderFailure: l10n.errorUnknown,
-        UnknownFailure: l10n.errorUnknown,
-      };
-
-      for (final failure in failures) {
         expect(
-          mapFailureToViewerMessage(failure, l10n),
-          expected[failure.runtimeType],
-          reason: '${failure.runtimeType} must map to its intended ARB key',
+          fixtureSubtypeNames,
+          declaredSubtypeNames,
+          reason:
+              'Every concrete Failure declared in failure.dart needs an '
+              'independent mapper fixture.',
         );
-      }
-    });
+      },
+    );
+
+    test(
+      'should deliberately map fallback failure types to errorUnknown when the behavior is exercised',
+      () {
+        for (final failure in failures.where(
+          (failure) =>
+              failure is PartialSyncFailure ||
+              failure is UnsupportedProviderFailure ||
+              failure is UnknownFailure,
+        )) {
+          expect(mapFailureToViewerMessage(failure, l10n), l10n.errorUnknown);
+        }
+      },
+    );
+
+    test(
+      'should return the expected key for every Failure subtype when the behavior is exercised',
+      () {
+        final expected = <Type, String>{
+          FileNotFoundFailure: l10n.errorFileNotFound,
+          PermissionDeniedFailure: l10n.errorPermissionDenied,
+          ParseFailure: l10n.errorParseFailed,
+          RenderFailure: l10n.errorRenderFailed,
+          NetworkUnavailableFailure: l10n.errorNetworkUnavailable,
+          RateLimitedFailure: l10n.errorRateLimited,
+          AuthFailure: l10n.errorAuthFailed,
+          RepoNotFoundFailure: l10n.errorRepoNotFound,
+          RepoTooLargeFailure: l10n.errorRepoTooLarge,
+          PartialSyncFailure: l10n.errorUnknown,
+          UnsupportedProviderFailure: l10n.errorUnknown,
+          UnknownFailure: l10n.errorUnknown,
+        };
+
+        for (final failure in failures) {
+          expect(
+            mapFailureToViewerMessage(failure, l10n),
+            expected[failure.runtimeType],
+            reason: '${failure.runtimeType} must map to its intended ARB key',
+          );
+        }
+      },
+    );
   });
 
   group('mapFailureToViewerMessage (tr)', () {
     test('should return a distinct translation for every Failure, not fall '
-        'back to the English copy', () async {
+        'back to the English copy when the behavior is exercised', () async {
       // Asserting only `isNotEmpty` used to pass even when the ARB
       // generator silently emitted the English string into the
       // Turkish locale. Comparing each TR result against the matching

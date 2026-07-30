@@ -82,7 +82,7 @@ void main() {
   }
 
   testWidgets(
-    'should expose ViewerScreen header labelled actions and bookmark state',
+    'should expose ViewerScreen header labelled actions and bookmark state when the widget is exercised',
     (tester) async {
       await withSemanticsAudit(tester, () async {
         await tester.pumpWidget(
@@ -95,6 +95,11 @@ void main() {
                 .getSemantics(find.bySemanticsLabel('accessible.md'))
                 .getSemanticsData();
         expect(title.flagsCollection.isHeader, isTrue);
+        final documentHeading =
+            tester
+                .getSemantics(find.bySemanticsLabel('Accessible'))
+                .getSemanticsData();
+        expect(documentHeading.flagsCollection.isHeader, isTrue);
 
         for (final label in [
           l10n.viewerShareTooltip,
@@ -139,27 +144,28 @@ void main() {
     },
   );
 
-  testWidgets('should expose ViewerScreen loading state as a live region', (
-    tester,
-  ) async {
-    await withSemanticsAudit(tester, () async {
-      final completer = Completer<Document>();
-      await tester.pumpWidget(
-        await harness(_PendingRepository(completer.future)),
-      );
-      await tester.pump();
+  testWidgets(
+    'should expose ViewerScreen loading state as a live region when the widget is exercised',
+    (tester) async {
+      await withSemanticsAudit(tester, () async {
+        final completer = Completer<Document>();
+        await tester.pumpWidget(
+          await harness(_PendingRepository(completer.future)),
+        );
+        await tester.pump();
 
-      final loading =
-          tester
-              .getSemantics(find.bySemanticsLabel(l10n.viewerLoading))
-              .getSemanticsData();
-      expect(loading.label, l10n.viewerLoading);
-      expect(loading.flagsCollection.isLiveRegion, isTrue);
+        final loading =
+            tester
+                .getSemantics(find.bySemanticsLabel(l10n.viewerLoading))
+                .getSemanticsData();
+        expect(loading.label, l10n.viewerLoading);
+        expect(loading.flagsCollection.isLiveRegion, isTrue);
 
-      completer.complete(document);
-      await tester.pumpAndSettle();
-    });
-  });
+        completer.complete(document);
+        await tester.pumpAndSettle();
+      });
+    },
+  );
 }
 
 final class _DocumentRepository implements DocumentRepository {

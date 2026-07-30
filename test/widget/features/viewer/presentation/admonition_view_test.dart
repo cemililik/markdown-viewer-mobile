@@ -88,7 +88,7 @@ void main() {
 
   group('AdmonitionView', () {
     testWidgets(
-      'should shows the localized title and the matching icon for note',
+      'should show the localized title and the matching icon for note when the widget is exercised',
       (tester) async {
         await tester.pumpWidget(
           standaloneHarness(
@@ -100,14 +100,14 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text(en.admonitionNoteTitle), findsOneWidget);
+        expect(find.bySemanticsLabel(en.admonitionNoteTitle), findsOneWidget);
         expect(find.byIcon(Icons.info_outline), findsOneWidget);
         expect(find.textContaining('Body', findRichText: true), findsOneWidget);
       },
     );
 
     testWidgets(
-      'should shows the warning icon and Turkish title under tr locale',
+      'should show the warning icon and Turkish title under tr locale when the widget is exercised',
       (tester) async {
         await tester.pumpWidget(
           standaloneHarness(
@@ -120,43 +120,52 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text(tr.admonitionWarningTitle), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(tr.admonitionWarningTitle),
+          findsOneWidget,
+        );
         expect(find.byIcon(Icons.warning_amber_outlined), findsOneWidget);
       },
     );
 
-    testWidgets('should every kind renders its expected icon', (tester) async {
-      // Regression guard: a future palette refactor must keep one
-      // distinct icon per kind so users can recognise the alert
-      // style at a glance.
-      const expected = <AdmonitionKind, IconData>{
-        AdmonitionKind.note: Icons.info_outline,
-        AdmonitionKind.tip: Icons.lightbulb_outline,
-        AdmonitionKind.important: Icons.star_outline,
-        AdmonitionKind.warning: Icons.warning_amber_outlined,
-        AdmonitionKind.caution: Icons.dangerous_outlined,
-      };
+    testWidgets(
+      'should confirm that every kind renders its expected icon when the widget is exercised',
+      (tester) async {
+        // Regression guard: a future palette refactor must keep one
+        // distinct icon per kind so users can recognise the alert
+        // style at a glance.
+        const expected = <AdmonitionKind, IconData>{
+          AdmonitionKind.note: Icons.info_outline,
+          AdmonitionKind.tip: Icons.lightbulb_outline,
+          AdmonitionKind.important: Icons.star_outline,
+          AdmonitionKind.warning: Icons.warning_amber_outlined,
+          AdmonitionKind.caution: Icons.dangerous_outlined,
+        };
 
-      for (final entry in expected.entries) {
-        await tester.pumpWidget(
-          standaloneHarness(
-            AdmonitionView(kind: entry.key, body: const TextSpan(text: 'body')),
-          ),
-        );
-        await tester.pumpAndSettle();
+        for (final entry in expected.entries) {
+          await tester.pumpWidget(
+            standaloneHarness(
+              AdmonitionView(
+                kind: entry.key,
+                body: const TextSpan(text: 'body'),
+              ),
+            ),
+          );
+          await tester.pumpAndSettle();
 
-        expect(
-          find.byIcon(entry.value),
-          findsOneWidget,
-          reason: '${entry.key.name} must render ${entry.value} icon',
-        );
-      }
-    });
+          expect(
+            find.byIcon(entry.value),
+            findsOneWidget,
+            reason: '${entry.key.name} must render ${entry.value} icon',
+          );
+        }
+      },
+    );
   });
 
   group('MarkdownView admonition integration', () {
     testWidgets(
-      'should renders an AdmonitionView for every alert kind in the fixture',
+      'should render an AdmonitionView for every alert kind in the fixture when the widget is exercised',
       (tester) async {
         useTallSurface(tester);
         final doc = parseFixture('admonitions.md');
@@ -182,32 +191,38 @@ void main() {
       },
     );
 
-    testWidgets('should localized titles appear on the rendered admonitions', (
-      tester,
-    ) async {
-      useTallSurface(tester);
-      final doc = parseFixture('admonitions.md');
+    testWidgets(
+      'should confirm that localized titles appear on the rendered admonitions when the widget is exercised',
+      (tester) async {
+        useTallSurface(tester);
+        final doc = parseFixture('admonitions.md');
 
-      await tester.pumpWidget(markdownHarness(doc));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(markdownHarness(doc));
+        await tester.pumpAndSettle();
 
-      for (final title in const [
-        'Note',
-        'Tip',
-        'Important',
-        'Warning',
-        'Caution',
-      ]) {
-        expect(
-          find.text(title),
-          findsOneWidget,
-          reason: '$title heading must be rendered exactly once',
-        );
-      }
-    });
+        for (final kind in AdmonitionKind.values) {
+          final title = titleForAdmonition(en, kind);
+          final titleText = tester.widget<Text>(
+            find
+                .descendant(
+                  of: find.byWidgetPredicate(
+                    (widget) => widget is AdmonitionView && widget.kind == kind,
+                  ),
+                  matching: find.byType(Text),
+                )
+                .first,
+          );
+          expect(
+            titleText.data,
+            title,
+            reason: '${kind.name} must render its localized heading',
+          );
+        }
+      },
+    );
 
     testWidgets(
-      'should plain blockquotes without a kind marker keep default rendering',
+      'should confirm that plain blockquotes without a kind marker keep default rendering when the widget is exercised',
       (tester) async {
         useTallSurface(tester);
         final doc = parseFixture('admonitions.md');
@@ -229,7 +244,7 @@ void main() {
     );
 
     testWidgets(
-      'should unknown kind markers fall back to a normal blockquote',
+      'should confirm that unknown kind markers fall back to a normal blockquote when the widget is exercised',
       (tester) async {
         useTallSurface(tester);
         final doc = parseFixture('admonitions.md');
@@ -256,7 +271,7 @@ void main() {
     );
 
     testWidgets(
-      'should nested inline markup inside an admonition body is preserved',
+      'should confirm that nested inline markup inside an admonition body is preserved when the widget is exercised',
       (tester) async {
         useTallSurface(tester);
         final doc = parseFixture('admonitions.md');

@@ -6,7 +6,7 @@ import '../../../_helpers/golden_harness.dart';
 void main() {
   group('Code blocks golden', () {
     goldenTest(
-      'should syntax-highlighted fenced code blocks in light and dark themes',
+      'should render syntax-highlighted fenced code blocks when captured',
       fileName: 'code_blocks',
       pumpBeforeTest: goldenPumpBeforeTest,
       pumpWidget: goldenPumpWidget,
@@ -14,9 +14,9 @@ void main() {
           () => GoldenTestGroup(
             children: standardGoldenScenarios(
               builder:
-                  (locale, textScaler, brightness) => markdownGoldenHarness(
+                  (locale, textScaler, appTheme) => markdownGoldenHarness(
                     'code_blocks.md',
-                    brightness: brightness,
+                    appTheme: appTheme,
                     locale: locale,
                     textScaler: textScaler,
                   ),

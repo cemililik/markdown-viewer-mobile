@@ -24,38 +24,39 @@ void main() {
     );
   }
 
-  testWidgets('should error view is a live region with the message as label', (
-    tester,
-  ) async {
-    await withSemanticsAudit(tester, () async {
-      const message = 'Something went wrong';
-      await tester.pumpWidget(harness(message: message));
-      await tester.pumpAndSettle();
+  testWidgets(
+    'should confirm that error view is a live region with the message as label when the widget is exercised',
+    (tester) async {
+      await withSemanticsAudit(tester, () async {
+        const message = 'Something went wrong';
+        await tester.pumpWidget(harness(message: message));
+        await tester.pumpAndSettle();
 
-      // The live-region container intentionally delegates its accessible text
-      // to the child to prevent duplicate VoiceOver and TalkBack announcements.
-      final liveRegion = find.byWidgetPredicate(
-        (w) => w is Semantics && w.properties.liveRegion == true,
-      );
-      expect(
-        liveRegion,
-        findsOneWidget,
-        reason:
-            'ErrorView must be a live region so screen readers announce the '
-            'error message as soon as it appears on screen.',
-      );
-      expect(
-        find.bySemanticsLabel(message),
-        findsOneWidget,
-        reason:
-            'The error message must be readable by screen readers via the '
-            'child Text widget — not duplicated on the Semantics container.',
-      );
-    });
-  });
+        // The live-region container intentionally delegates its accessible text
+        // to the child to prevent duplicate VoiceOver and TalkBack announcements.
+        final liveRegion = find.byWidgetPredicate(
+          (w) => w is Semantics && w.properties.liveRegion == true,
+        );
+        expect(
+          liveRegion,
+          findsOneWidget,
+          reason:
+              'ErrorView must be a live region so screen readers announce the '
+              'error message as soon as it appears on screen.',
+        );
+        expect(
+          find.bySemanticsLabel(message),
+          findsOneWidget,
+          reason:
+              'The error message must be readable by screen readers via the '
+              'child Text widget — not duplicated on the Semantics container.',
+        );
+      });
+    },
+  );
 
   testWidgets(
-    'should decorative error icon is excluded from the semantics tree',
+    'should confirm that decorative error icon is excluded from the semantics tree when the widget is exercised',
     (tester) async {
       await withSemanticsAudit(tester, () async {
         await tester.pumpWidget(harness(message: 'Oops'));
@@ -76,7 +77,7 @@ void main() {
   );
 
   testWidgets(
-    'should retry button is reachable as a button when onRetry is set',
+    'should confirm that retry button is reachable as a button when onRetry is set',
     (tester) async {
       await withSemanticsAudit(tester, () async {
         var tapped = false;

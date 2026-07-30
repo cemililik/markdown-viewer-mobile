@@ -3,31 +3,37 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/features/library/application/content_search_provider.dart';
 
 void main() {
-  test('should idle state is empty by default', () {
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-    final state = container.read(contentSearchControllerProvider);
-    expect(state.query, '');
-    expect(state.results, isEmpty);
-    expect(state.isLoading, isFalse);
-  });
+  test(
+    'should confirm that idle state is empty by default when the behavior is exercised',
+    () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final state = container.read(contentSearchControllerProvider);
+      expect(state.query, '');
+      expect(state.results, isEmpty);
+      expect(state.isLoading, isFalse);
+    },
+  );
 
-  test('should empty query reverts to idle immediately', () {
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-    container
-        .read(contentSearchControllerProvider.notifier)
-        .submitQuery(
-          raw: '   ',
-          recentsSourceLabel: 'Recent',
-          folderSourceLabelBuilder: (_) => 'Folder',
-          syncedRepoSourceLabelBuilder: (_) => 'Repo',
-        );
-    final state = container.read(contentSearchControllerProvider);
-    expect(state.query, '');
-    expect(state.results, isEmpty);
-    expect(state.isLoading, isFalse);
-  });
+  test(
+    'should confirm that empty query reverts to idle immediately when the behavior is exercised',
+    () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      container
+          .read(contentSearchControllerProvider.notifier)
+          .submitQuery(
+            raw: '   ',
+            recentsSourceLabel: 'Recent',
+            folderSourceLabelBuilder: (_) => 'Folder',
+            syncedRepoSourceLabelBuilder: (_) => 'Repo',
+          );
+      final state = container.read(contentSearchControllerProvider);
+      expect(state.query, '');
+      expect(state.results, isEmpty);
+      expect(state.isLoading, isFalse);
+    },
+  );
 
   // Note: end-to-end dispatch (debounce → service → state update)
   // depends on the recents / folders / synced-repos Riverpod
@@ -39,7 +45,7 @@ void main() {
   // the state-machine behaviour of the notifier itself.
 
   test(
-    'should non-empty submit flips the state to loading with the normalised query',
+    'should confirm that non-empty submit flips the state to loading with the normalised query when the behavior is exercised',
     () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
@@ -57,20 +63,23 @@ void main() {
     },
   );
 
-  test('should clear() returns the notifier to idle', () {
-    final container = ProviderContainer();
-    addTearDown(container.dispose);
-    final notifier = container.read(contentSearchControllerProvider.notifier);
-    notifier.submitQuery(
-      raw: 'abcd',
-      recentsSourceLabel: 'Recent',
-      folderSourceLabelBuilder: (_) => 'F',
-      syncedRepoSourceLabelBuilder: (_) => 'R',
-    );
-    notifier.clear();
-    final state = container.read(contentSearchControllerProvider);
-    expect(state.query, '');
-    expect(state.results, isEmpty);
-    expect(state.isLoading, isFalse);
-  });
+  test(
+    'should confirm that clear() returns the notifier to idle when the behavior is exercised',
+    () {
+      final container = ProviderContainer();
+      addTearDown(container.dispose);
+      final notifier = container.read(contentSearchControllerProvider.notifier);
+      notifier.submitQuery(
+        raw: 'abcd',
+        recentsSourceLabel: 'Recent',
+        folderSourceLabelBuilder: (_) => 'F',
+        syncedRepoSourceLabelBuilder: (_) => 'R',
+      );
+      notifier.clear();
+      final state = container.read(contentSearchControllerProvider);
+      expect(state.query, '');
+      expect(state.results, isEmpty);
+      expect(state.isLoading, isFalse);
+    },
+  );
 }

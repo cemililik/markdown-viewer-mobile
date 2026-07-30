@@ -60,8 +60,8 @@ void main() {
 
   group('MermaidRendererImpl (real WebView)', () {
     testWidgets(
-      'should renders a flowchart source to a non-empty PNG bitmap with natural '
-      'pixel dimensions',
+      'should render a flowchart source to a non-empty PNG bitmap with natural '
+      'pixel dimensions when the widget is exercised',
       (tester) async {
         final result = await renderer.render('flowchart TD\n  Start --> Stop');
 
@@ -90,8 +90,8 @@ void main() {
     );
 
     testWidgets(
-      'should returns MermaidRenderFailure for a deliberately broken diagram '
-      'without crashing the renderer',
+      'should return MermaidRenderFailure for a deliberately broken diagram '
+      'without crashing the renderer when the widget is exercised',
       (tester) async {
         final result = await renderer.render('flowchart LR\n  A -->');
 
@@ -109,30 +109,31 @@ void main() {
       },
     );
 
-    testWidgets('should cache short-circuits a repeated identical render', (
-      tester,
-    ) async {
-      const source = 'flowchart LR\n  Cached --> Hit';
+    testWidgets(
+      'should confirm that cache short-circuits a repeated identical render when the widget is exercised',
+      (tester) async {
+        const source = 'flowchart LR\n  Cached --> Hit';
 
-      final coldStopwatch = Stopwatch()..start();
-      await renderer.render(source);
-      coldStopwatch.stop();
+        final coldStopwatch = Stopwatch()..start();
+        await renderer.render(source);
+        coldStopwatch.stop();
 
-      final warmStopwatch = Stopwatch()..start();
-      await renderer.render(source);
-      warmStopwatch.stop();
+        final warmStopwatch = Stopwatch()..start();
+        await renderer.render(source);
+        warmStopwatch.stop();
 
-      expect(
-        warmStopwatch.elapsedMicroseconds,
-        lessThan(coldStopwatch.elapsedMicroseconds),
-        reason:
-            'Warm render hit the LRU cache and must come back faster '
-            'than the cold render that paid the JS eval cost.',
-      );
-    });
+        expect(
+          warmStopwatch.elapsedMicroseconds,
+          lessThan(coldStopwatch.elapsedMicroseconds),
+          reason:
+              'Warm render hit the LRU cache and must come back faster '
+              'than the cold render that paid the JS eval cost.',
+        );
+      },
+    );
 
     testWidgets(
-      'should every diagram type from the fixture renders without throwing',
+      'should confirm that every diagram type from the fixture renders without throwing when the widget is exercised',
       (tester) async {
         // Mirrors the kinds enumerated in
         // `test/fixtures/markdown/mermaid.md`. Anything that fails
@@ -160,7 +161,7 @@ void main() {
     );
 
     testWidgets(
-      'should cache hit-rate reaches 100 % after repeated identical renders',
+      'should confirm that cache hit-rate reaches 100 % after repeated identical renders when the widget is exercised',
       (tester) async {
         const source = 'flowchart LR\n  HitRate --> Check';
 
@@ -192,7 +193,7 @@ void main() {
     );
 
     testWidgets(
-      'should cold prewarm + first render stays under the 800 ms budget',
+      'should confirm that cold prewarm + first render stays under the 800 ms budget when the widget is exercised',
       (tester) async {
         // Captured in setUpAll before any other render warmed the
         // cache. The 800 ms budget comes from

@@ -17,7 +17,7 @@ void main() {
 
   group('GFM features golden', () {
     goldenTest(
-      'should tables, task lists, strikethrough, and footnote refs',
+      'should render tables, task lists, strikethrough, and footnote refs when captured',
       fileName: 'gfm_features',
       pumpBeforeTest: goldenPumpBeforeTest,
       pumpWidget: goldenPumpWidget,
@@ -25,9 +25,9 @@ void main() {
           () => GoldenTestGroup(
             children: standardGoldenScenarios(
               builder:
-                  (locale, textScaler, brightness) => markdownGoldenHarness(
+                  (locale, textScaler, appTheme) => markdownGoldenHarness(
                     'gfm_features.md',
-                    brightness: brightness,
+                    appTheme: appTheme,
                     locale: locale,
                     textScaler: textScaler,
                   ),

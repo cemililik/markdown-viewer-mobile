@@ -69,7 +69,7 @@ void main() {
 
   group('FolderFileMaterializer', () {
     test(
-      'should bookmark-less folders short-circuit to the source path',
+      'should confirm that bookmark-less folders short-circuit to the source path when the behavior is exercised',
       () async {
         final fake = _FakeChannel(payload: Uint8List(0));
         final materializer = makeMaterializer(fake);
@@ -95,33 +95,36 @@ void main() {
       },
     );
 
-    test('should bookmarked folders write the channel bytes into the cache and '
-        'return the cache path', () async {
-      final payload = Uint8List.fromList('# Hello'.codeUnits);
-      final fake = _FakeChannel(payload: payload);
-      final materializer = makeMaterializer(fake);
+    test(
+      'should confirm that bookmarked folders write the channel bytes into the cache and '
+      'return the cache path when the behavior is exercised',
+      () async {
+        final payload = Uint8List.fromList('# Hello'.codeUnits);
+        final fake = _FakeChannel(payload: payload);
+        final materializer = makeMaterializer(fake);
 
-      final folder = LibraryFolder(
-        path: '/tmp/notes',
-        addedAt: DateTime.utc(2026, 4, 14),
-        bookmark: 'base64-blob',
-      );
+        final folder = LibraryFolder(
+          path: '/tmp/notes',
+          addedAt: DateTime.utc(2026, 4, 14),
+          bookmark: 'base64-blob',
+        );
 
-      final cachePath = await materializer.materialize(
-        folder: folder,
-        sourcePath: '/tmp/notes/intro.md',
-      );
+        final cachePath = await materializer.materialize(
+          folder: folder,
+          sourcePath: '/tmp/notes/intro.md',
+        );
 
-      expect(cachePath, contains('library_folder_files'));
-      expect(cachePath.endsWith('.md'), isTrue);
-      expect(File(cachePath).existsSync(), isTrue);
-      expect(await File(cachePath).readAsBytes(), payload);
-      expect(fake.reads, hasLength(1));
-      expect(fake.reads.single.bookmark, 'base64-blob');
-      expect(fake.reads.single.path, '/tmp/notes/intro.md');
-    });
+        expect(cachePath, contains('library_folder_files'));
+        expect(cachePath.endsWith('.md'), isTrue);
+        expect(File(cachePath).existsSync(), isTrue);
+        expect(await File(cachePath).readAsBytes(), payload);
+        expect(fake.reads, hasLength(1));
+        expect(fake.reads.single.bookmark, 'base64-blob');
+        expect(fake.reads.single.path, '/tmp/notes/intro.md');
+      },
+    );
 
-    test('should preserves the .markdown extension when present', () async {
+    test('should preserve the .markdown extension when present', () async {
       final fake = _FakeChannel(
         payload: Uint8List.fromList('payload'.codeUnits),
       );
@@ -142,7 +145,7 @@ void main() {
     });
 
     test(
-      'should two materializations of the same source land at the same slot',
+      'should confirm that two materializations of the same source land at the same slot when the behavior is exercised',
       () async {
         final firstFake = _FakeChannel(
           payload: Uint8List.fromList('first'.codeUnits),

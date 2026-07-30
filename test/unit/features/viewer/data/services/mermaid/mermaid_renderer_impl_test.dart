@@ -15,7 +15,7 @@ const String _tinyPngBase64 =
 void main() {
   group('MermaidRendererImpl', () {
     test('should hit the channel exactly once for a repeated source thanks to '
-        'the cache', () async {
+        'the cache when the behavior is exercised', () async {
       final channel = _FakeChannel();
       final renderer = MermaidRendererImpl(
         channel: channel,
@@ -45,7 +45,7 @@ void main() {
     });
 
     test('should collapse two concurrent identical render calls to one channel '
-        'eval', () async {
+        'eval when the behavior is exercised', () async {
       final channel = _FakeChannel();
       final renderer = MermaidRendererImpl(
         channel: channel,
@@ -72,7 +72,7 @@ void main() {
     });
 
     test(
-      'should run distinct sources through the channel separately',
+      'should run distinct sources through the channel separately when the behavior is exercised',
       () async {
         final channel = _FakeChannel();
         final renderer = MermaidRendererImpl(
@@ -96,7 +96,7 @@ void main() {
     );
 
     test(
-      'should translate a channel error reply into a MermaidRenderFailure',
+      'should translate a channel error reply into a MermaidRenderFailure when the behavior is exercised',
       () async {
         final channel = _FakeChannel();
         final renderer = MermaidRendererImpl(
@@ -142,23 +142,26 @@ void main() {
       },
     );
 
-    test('should return a failure for every render after dispose', () async {
-      final channel = _FakeChannel();
-      final renderer = MermaidRendererImpl(
-        channel: channel,
-        mermaidJs: '/* fake */',
-      );
-      await renderer.prewarm();
-      await renderer.dispose();
+    test(
+      'should return a failure for every render after dispose when the behavior is exercised',
+      () async {
+        final channel = _FakeChannel();
+        final renderer = MermaidRendererImpl(
+          channel: channel,
+          mermaidJs: '/* fake */',
+        );
+        await renderer.prewarm();
+        await renderer.dispose();
 
-      final result = await renderer.render('anything');
+        final result = await renderer.render('anything');
 
-      expect(result, isA<MermaidRenderFailure>());
-      expect((result as MermaidRenderFailure).message, contains('disposed'));
-    });
+        expect(result, isA<MermaidRenderFailure>());
+        expect((result as MermaidRenderFailure).message, contains('disposed'));
+      },
+    );
 
     test('should prepend a non-empty initDirective verbatim to a source with '
-        'no frontmatter', () async {
+        'no frontmatter when the behavior is exercised', () async {
       final channel = _FakeChannel();
       final renderer = MermaidRendererImpl(
         channel: channel,
@@ -186,52 +189,55 @@ void main() {
       );
     });
 
-    test('should splice the init directive AFTER a leading YAML frontmatter '
-        'block so mermaid still sees `---` on line 1', () async {
-      final channel = _FakeChannel();
-      final renderer = MermaidRendererImpl(
-        channel: channel,
-        mermaidJs: '/* fake */',
-      );
-      await renderer.prewarm();
+    test(
+      'should splice the init directive AFTER a leading YAML frontmatter '
+      'block so mermaid still sees `---` on line 1 when the behavior is exercised',
+      () async {
+        final channel = _FakeChannel();
+        final renderer = MermaidRendererImpl(
+          channel: channel,
+          mermaidJs: '/* fake */',
+        );
+        await renderer.prewarm();
 
-      const directive =
-          '%%{init: {"theme":"base","themeVariables":{"primaryColor":"#abcdef"}}}%%\n';
-      const userSource =
-          '---\ntitle: Architecture Evolution\n---\nflowchart LR\n  A --> B';
-      channel.scriptResult(
-        'flowchart LR',
-        png: _tinyPngBase64,
-        width: 100,
-        height: 50,
-      );
-      await renderer.render(userSource, initDirective: directive);
+        const directive =
+            '%%{init: {"theme":"base","themeVariables":{"primaryColor":"#abcdef"}}}%%\n';
+        const userSource =
+            '---\ntitle: Architecture Evolution\n---\nflowchart LR\n  A --> B';
+        channel.scriptResult(
+          'flowchart LR',
+          png: _tinyPngBase64,
+          width: 100,
+          height: 50,
+        );
+        await renderer.render(userSource, initDirective: directive);
 
-      expect(channel.observedSources, hasLength(1));
-      final observed = channel.observedSources.single;
-      expect(
-        observed,
-        startsWith('---\n'),
-        reason:
-            'The YAML frontmatter opener must remain at the absolute '
-            'start of the source — otherwise mermaid fails to parse '
-            'the frontmatter and the diagram body.',
-      );
-      expect(
-        observed,
-        contains(directive),
-        reason: 'The init directive must still reach mermaid.',
-      );
-      final directiveIdx = observed.indexOf(directive);
-      final closingIdx = observed.indexOf('\n---\n');
-      expect(
-        directiveIdx,
-        greaterThan(closingIdx),
-        reason:
-            'The directive must be spliced in after the frontmatter '
-            'closer, not prepended before the opener.',
-      );
-    });
+        expect(channel.observedSources, hasLength(1));
+        final observed = channel.observedSources.single;
+        expect(
+          observed,
+          startsWith('---\n'),
+          reason:
+              'The YAML frontmatter opener must remain at the absolute '
+              'start of the source — otherwise mermaid fails to parse '
+              'the frontmatter and the diagram body.',
+        );
+        expect(
+          observed,
+          contains(directive),
+          reason: 'The init directive must still reach mermaid.',
+        );
+        final directiveIdx = observed.indexOf(directive);
+        final closingIdx = observed.indexOf('\n---\n');
+        expect(
+          directiveIdx,
+          greaterThan(closingIdx),
+          reason:
+              'The directive must be spliced in after the frontmatter '
+              'closer, not prepended before the opener.',
+        );
+      },
+    );
 
     test(
       'should leave the user-authored directive alone and force antiscript '
@@ -293,7 +299,7 @@ void main() {
 
     test(
       'should queue a render() call issued before prewarm() completes, '
-      'initialise once, then drain the request against the real channel',
+      'initialise once, then drain the request against the real channel when the behavior is exercised',
       () async {
         final channel = _DelayedInitializingChannel();
         final renderer = MermaidRendererImpl(
@@ -336,7 +342,7 @@ void main() {
     );
 
     test('should give two distinct initDirectives for the same source distinct '
-        'cache slots', () async {
+        'cache slots when the behavior is exercised', () async {
       final channel = _FakeChannel();
       final renderer = MermaidRendererImpl(
         channel: channel,
@@ -372,7 +378,7 @@ void main() {
     });
 
     test(
-      'should reject a result with a zero-sized bitmap as a failure',
+      'should reject a result with a zero-sized bitmap as a failure when the behavior is exercised',
       () async {
         final channel = _FakeChannel();
         final renderer = MermaidRendererImpl(

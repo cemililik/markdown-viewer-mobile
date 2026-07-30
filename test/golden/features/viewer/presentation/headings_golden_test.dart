@@ -6,7 +6,7 @@ import '../../../_helpers/golden_harness.dart';
 void main() {
   group('Headings golden', () {
     goldenTest(
-      'should heading levels render correctly in light and dark themes',
+      'should render heading levels correctly when captured',
       fileName: 'headings',
       pumpBeforeTest: goldenPumpBeforeTest,
       pumpWidget: goldenPumpWidget,
@@ -14,9 +14,9 @@ void main() {
           () => GoldenTestGroup(
             children: standardGoldenScenarios(
               builder:
-                  (locale, textScaler, brightness) => markdownGoldenHarness(
+                  (locale, textScaler, appTheme) => markdownGoldenHarness(
                     'headings.md',
-                    brightness: brightness,
+                    appTheme: appTheme,
                     locale: locale,
                     textScaler: textScaler,
                   ),

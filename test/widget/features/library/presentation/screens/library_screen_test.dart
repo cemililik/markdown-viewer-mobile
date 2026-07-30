@@ -157,16 +157,25 @@ void main() {
 
   group('LibraryScreen', () {
     testWidgets(
-      'should empty state shows the welcome icon plus three onboarding buttons',
+      'should confirm that empty state shows the welcome icon plus three onboarding buttons when the widget is exercised',
       (tester) async {
         await tester.pumpWidget(_harness(_InMemoryStore()));
         await tester.pumpAndSettle();
 
         expect(find.byIcon(Icons.menu_book_outlined), findsOneWidget);
-        expect(find.text(_l10n.libraryEmptyTitle), findsOneWidget);
-        expect(find.text(_l10n.libraryActionMenuOpenFile), findsOneWidget);
-        expect(find.text(_l10n.libraryActionMenuOpenFolder), findsOneWidget);
-        expect(find.text(_l10n.libraryActionMenuSyncRepo), findsOneWidget);
+        expect(find.bySemanticsLabel(_l10n.libraryEmptyTitle), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(_l10n.libraryActionMenuOpenFile),
+          findsOneWidget,
+        );
+        expect(
+          find.bySemanticsLabel(_l10n.libraryActionMenuOpenFolder),
+          findsOneWidget,
+        );
+        expect(
+          find.bySemanticsLabel(_l10n.libraryActionMenuSyncRepo),
+          findsOneWidget,
+        );
         expect(
           find.byType(FloatingActionButton),
           findsNothing,
@@ -176,7 +185,7 @@ void main() {
     );
 
     testWidgets(
-      'should AppBar hamburger opens the source picker drawer with Recents + Add source',
+      'should confirm that AppBar hamburger opens the source picker drawer with Recents + Add source when the widget is exercised',
       (tester) async {
         await tester.pumpWidget(_harness(_InMemoryStore()));
         await tester.pumpAndSettle();
@@ -186,19 +195,31 @@ void main() {
         // text may appear in other places like Recents body
         // headers when a folder has recent documents; in the
         // empty harness that is not a worry.)
-        expect(find.text(_l10n.libraryFoldersDrawerTitle), findsNothing);
+        expect(
+          find.bySemanticsLabel(_l10n.libraryFoldersDrawerTitle),
+          findsNothing,
+        );
 
         await tester.tap(find.byTooltip(_l10n.libraryFoldersOpenDrawerTooltip));
         await tester.pumpAndSettle();
 
-        expect(find.text(_l10n.libraryFoldersDrawerTitle), findsOneWidget);
-        expect(find.text(_l10n.librarySourceRecents), findsOneWidget);
-        expect(find.text(_l10n.libraryAddSourceButton), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(_l10n.libraryFoldersDrawerTitle),
+          findsOneWidget,
+        );
+        expect(
+          find.bySemanticsLabel(_l10n.librarySourceRecents),
+          findsOneWidget,
+        );
+        expect(
+          find.bySemanticsLabel(_l10n.libraryAddSourceButton),
+          findsOneWidget,
+        );
       },
     );
 
     testWidgets(
-      'should drawer renders a tile for every persisted library folder under Sources',
+      'should confirm that drawer renders a tile for every persisted library folder under Sources when the widget is exercised',
       (tester) async {
         final foldersStore = _InMemoryFoldersStore([
           LibraryFolder(path: '/tmp/notes', addedAt: DateTime.utc(2026, 4, 14)),
@@ -218,7 +239,7 @@ void main() {
         expect(
           find.descendant(
             of: inDrawer,
-            matching: find.text(_l10n.librarySourceSectionHeader),
+            matching: find.bySemanticsLabel(_l10n.librarySourceSectionHeader),
           ),
           findsOneWidget,
         );
@@ -234,7 +255,7 @@ void main() {
     );
 
     testWidgets(
-      'should selecting a folder in the drawer switches the body to its tree view',
+      'should confirm that selecting a folder in the drawer switches the body to its tree view when the widget is exercised',
       (tester) async {
         final foldersStore = _InMemoryFoldersStore([
           LibraryFolder(path: '/tmp/notes', addedAt: DateTime.utc(2026, 4, 14)),
@@ -260,19 +281,28 @@ void main() {
         // AppBar title now shows the folder basename; the
         // folder-scoped search placeholder appears in the body.
         expect(
-          find.text(_l10n.libraryFolderSourceSearchHint('notes')),
+          find.bySemanticsLabel(_l10n.libraryFolderSourceSearchHint('notes')),
           findsOneWidget,
         );
         // Greeting no longer shows because we left the Recents
         // source.
-        expect(find.text(_l10n.libraryGreetingMorning), findsNothing);
-        expect(find.text(_l10n.libraryGreetingAfternoon), findsNothing);
-        expect(find.text(_l10n.libraryGreetingEvening), findsNothing);
+        expect(
+          find.bySemanticsLabel(_l10n.libraryGreetingMorning),
+          findsNothing,
+        );
+        expect(
+          find.bySemanticsLabel(_l10n.libraryGreetingAfternoon),
+          findsNothing,
+        );
+        expect(
+          find.bySemanticsLabel(_l10n.libraryGreetingEvening),
+          findsNothing,
+        );
       },
     );
 
     testWidgets(
-      'should populated Recents source shows an extended Open file FAB',
+      'should confirm that populated Recents source shows an extended Open file FAB when the widget is exercised',
       (tester) async {
         final store = _InMemoryStore([
           RecentDocument(
@@ -285,17 +315,14 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(
-          find.widgetWithText(
-            FloatingActionButton,
-            _l10n.libraryActionMenuOpenFile,
-          ),
+          find.bySemanticsLabel(_l10n.libraryActionMenuOpenFile),
           findsOneWidget,
         );
       },
     );
 
     testWidgets(
-      'should populated state shows greeting + search + Today group + tile + FAB',
+      'should confirm that populated state shows greeting + search + Today group + tile + FAB when the widget is exercised',
       (tester) async {
         final now = DateTime.now();
         final store = _InMemoryStore([
@@ -319,20 +346,28 @@ void main() {
           _l10n.libraryGreetingEvening,
         };
         expect(
-          greetingCandidates.any((g) => find.text(g).evaluate().isNotEmpty),
+          greetingCandidates.any(
+            (g) => find.bySemanticsLabel(g).evaluate().isNotEmpty,
+          ),
           isTrue,
           reason:
               'Greeting header must render one of the three time-of-day '
               'salutations.',
         );
-        expect(find.text(_l10n.libraryGreetingSubtitle(2)), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(_l10n.libraryGreetingSubtitle(2)),
+          findsOneWidget,
+        );
 
         // Search field.
-        expect(find.text(_l10n.librarySearchHint), findsOneWidget);
+        expect(find.bySemanticsLabel(_l10n.librarySearchHint), findsOneWidget);
 
         // Today group header (both alpha.md and beta.md were touched
         // within the current day).
-        expect(find.text(_l10n.libraryRecentGroupToday), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(_l10n.libraryRecentGroupToday),
+          findsOneWidget,
+        );
 
         // Tiles.
         expect(find.text('alpha.md'), findsOneWidget);
@@ -340,20 +375,17 @@ void main() {
 
         // Extended Open file FAB on the populated Recents source.
         expect(
-          find.widgetWithText(
-            FloatingActionButton,
-            _l10n.libraryActionMenuOpenFile,
-          ),
+          find.bySemanticsLabel(_l10n.libraryActionMenuOpenFile),
           findsOneWidget,
         );
 
         // Old empty state is gone.
-        expect(find.text(_l10n.libraryEmptyTitle), findsNothing);
+        expect(find.bySemanticsLabel(_l10n.libraryEmptyTitle), findsNothing);
       },
     );
 
     testWidgets(
-      'should pinned entries appear in their own section above the time groups',
+      'should confirm that pinned entries appear in their own section above the time groups when the widget is exercised',
       (tester) async {
         final now = DateTime.now();
         final store = _InMemoryStore([
@@ -371,15 +403,21 @@ void main() {
         await tester.pumpWidget(_harness(store));
         await tester.pumpAndSettle();
 
-        expect(find.text(_l10n.libraryRecentPinnedSection), findsOneWidget);
-        expect(find.text(_l10n.libraryRecentGroupToday), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(_l10n.libraryRecentPinnedSection),
+          findsOneWidget,
+        );
+        expect(
+          find.bySemanticsLabel(_l10n.libraryRecentGroupToday),
+          findsOneWidget,
+        );
         expect(find.text('pinned.md'), findsOneWidget);
         expect(find.text('regular.md'), findsOneWidget);
       },
     );
 
     testWidgets(
-      'should search filters tiles by basename and shows the empty state when no match',
+      'should confirm that search filters tiles by basename and shows the empty state when no match',
       (tester) async {
         final now = DateTime.now();
         final store = _InMemoryStore([
@@ -405,14 +443,17 @@ void main() {
         // No-match path: empty state copy appears.
         await tester.enterText(find.byType(TextField), 'zzz');
         await tester.pumpAndSettle();
-        expect(find.text(_l10n.librarySearchNoResults), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(_l10n.librarySearchNoResults),
+          findsOneWidget,
+        );
         expect(find.text('alpha.md'), findsNothing);
         expect(find.text('beta.md'), findsNothing);
       },
     );
 
     testWidgets(
-      'should preview snippet appears as a third subtitle line when set on the entry',
+      'should confirm that preview snippet appears as a third subtitle line when set on the entry',
       (tester) async {
         final store = _InMemoryStore([
           RecentDocument(
@@ -430,7 +471,7 @@ void main() {
     );
 
     testWidgets(
-      'should Clear all opens a confirmation dialog and wipes the list',
+      'should confirm that Clear all opens a confirmation dialog and wipes the list when the widget is exercised',
       (tester) async {
         final store = _InMemoryStore([
           RecentDocument(
@@ -446,23 +487,27 @@ void main() {
         // below the tiles and may be off-screen on the default test
         // surface.
         await tester.scrollUntilVisible(
-          find.widgetWithText(TextButton, _l10n.libraryRecentClearAll),
+          find.bySemanticsLabel(_l10n.libraryRecentClearAll),
           200,
           scrollable: find.byType(Scrollable).first,
         );
-        await tester.tap(
-          find.widgetWithText(TextButton, _l10n.libraryRecentClearAll),
-        );
+        await tester.tap(find.bySemanticsLabel(_l10n.libraryRecentClearAll));
         await tester.pumpAndSettle();
-        expect(find.text(_l10n.libraryRecentClearConfirmTitle), findsOneWidget);
+        expect(
+          find.bySemanticsLabel(_l10n.libraryRecentClearConfirmTitle),
+          findsOneWidget,
+        );
 
         await tester.tap(
-          find.widgetWithText(FilledButton, _l10n.libraryRecentClearAll),
+          find.descendant(
+            of: find.byType(AlertDialog),
+            matching: find.byType(FilledButton),
+          ),
         );
         await tester.pumpAndSettle();
 
         expect(find.text('alpha.md'), findsNothing);
-        expect(find.text(_l10n.libraryEmptyTitle), findsOneWidget);
+        expect(find.bySemanticsLabel(_l10n.libraryEmptyTitle), findsOneWidget);
       },
     );
   });
@@ -474,40 +519,52 @@ void main() {
       l10n = await AppLocalizations.delegate.load(const Locale('en'));
     });
 
-    test('should greetingFor picks morning/afternoon/evening by hour', () {
-      expect(greetingFor(5, l10n), 'Good morning');
-      expect(greetingFor(11, l10n), 'Good morning');
-      expect(greetingFor(12, l10n), 'Good afternoon');
-      expect(greetingFor(17, l10n), 'Good afternoon');
-      expect(greetingFor(18, l10n), 'Good evening');
-      expect(greetingFor(4, l10n), 'Good evening');
-    });
+    test(
+      'should confirm that greetingFor picks morning/afternoon/evening by hour when the behavior is exercised',
+      () {
+        expect(greetingFor(5, l10n), 'Good morning');
+        expect(greetingFor(11, l10n), 'Good morning');
+        expect(greetingFor(12, l10n), 'Good afternoon');
+        expect(greetingFor(17, l10n), 'Good afternoon');
+        expect(greetingFor(18, l10n), 'Good evening');
+        expect(greetingFor(4, l10n), 'Good evening');
+      },
+    );
 
     test(
-      'should formatRelativeOpenedAt returns Just now for sub-minute deltas',
+      'should confirm that formatRelativeOpenedAt returns Just now for sub-minute deltas when the behavior is exercised',
       () {
         final now = DateTime.now().subtract(const Duration(seconds: 10));
         expect(formatRelativeOpenedAt(l10n, now), 'Just now');
       },
     );
 
-    test('should formatRelativeOpenedAt returns minutes-ago plural', () {
-      final now = DateTime.now().subtract(const Duration(minutes: 5));
-      expect(formatRelativeOpenedAt(l10n, now), '5 minutes ago');
-    });
-
-    test('should formatRelativeOpenedAt returns hours-ago plural', () {
-      final now = DateTime.now().subtract(const Duration(hours: 3));
-      expect(formatRelativeOpenedAt(l10n, now), '3 hours ago');
-    });
-
-    test('should formatRelativeOpenedAt returns Yesterday for one day ago', () {
-      final now = DateTime.now().subtract(const Duration(days: 1, hours: 1));
-      expect(formatRelativeOpenedAt(l10n, now), 'Yesterday');
-    });
+    test(
+      'should confirm that formatRelativeOpenedAt returns minutes-ago plural when the behavior is exercised',
+      () {
+        final now = DateTime.now().subtract(const Duration(minutes: 5));
+        expect(formatRelativeOpenedAt(l10n, now), '5 minutes ago');
+      },
+    );
 
     test(
-      'should formatRelativeOpenedAt returns days-ago plural below one week',
+      'should confirm that formatRelativeOpenedAt returns hours-ago plural when the behavior is exercised',
+      () {
+        final now = DateTime.now().subtract(const Duration(hours: 3));
+        expect(formatRelativeOpenedAt(l10n, now), '3 hours ago');
+      },
+    );
+
+    test(
+      'should confirm that formatRelativeOpenedAt returns Yesterday for one day ago when the behavior is exercised',
+      () {
+        final now = DateTime.now().subtract(const Duration(days: 1, hours: 1));
+        expect(formatRelativeOpenedAt(l10n, now), 'Yesterday');
+      },
+    );
+
+    test(
+      'should confirm that formatRelativeOpenedAt returns days-ago plural below one week when the behavior is exercised',
       () {
         final now = DateTime.now().subtract(const Duration(days: 4));
         expect(formatRelativeOpenedAt(l10n, now), '4 days ago');
@@ -515,7 +572,7 @@ void main() {
     );
 
     test(
-      'should formatRelativeOpenedAt falls through to long-ago after a week',
+      'should confirm that formatRelativeOpenedAt falls through to long-ago after a week when the behavior is exercised',
       () {
         final now = DateTime.now().subtract(const Duration(days: 30));
         expect(formatRelativeOpenedAt(l10n, now), 'A while back');

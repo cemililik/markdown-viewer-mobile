@@ -68,33 +68,39 @@ void main() {
   }
 
   group('viewerDocumentProvider', () {
-    test('should resolve to the parsed document on success', () async {
-      final container = makeContainer(
-        const _FakeDocumentRepository(sampleDocument),
-      );
-      addTearDown(container.dispose);
+    test(
+      'should resolve to the parsed document on success when the behavior is exercised',
+      () async {
+        final container = makeContainer(
+          const _FakeDocumentRepository(sampleDocument),
+        );
+        addTearDown(container.dispose);
 
-      final value = await awaitSettled(container, id);
+        final value = await awaitSettled(container, id);
 
-      expect(value.hasValue, isTrue);
-      expect(value.requireValue, sampleDocument);
-    });
-
-    test('should surface a typed Failure through AsyncValue.error', () async {
-      const failure = FileNotFoundFailure(message: 'missing');
-      final container = makeContainer(
-        const _ThrowingDocumentRepository(failure),
-      );
-      addTearDown(container.dispose);
-
-      final value = await awaitSettled(container, id);
-
-      expect(value.hasError, isTrue);
-      expect(value.error, same(failure));
-    });
+        expect(value.hasValue, isTrue);
+        expect(value.requireValue, sampleDocument);
+      },
+    );
 
     test(
-      'should keep distinct ids in independent provider instances',
+      'should surface a typed Failure through AsyncValue.error when the behavior is exercised',
+      () async {
+        const failure = FileNotFoundFailure(message: 'missing');
+        final container = makeContainer(
+          const _ThrowingDocumentRepository(failure),
+        );
+        addTearDown(container.dispose);
+
+        final value = await awaitSettled(container, id);
+
+        expect(value.hasError, isTrue);
+        expect(value.error, same(failure));
+      },
+    );
+
+    test(
+      'should keep distinct ids in independent provider instances when the behavior is exercised',
       () async {
         // Regression guard: the family provider must produce a fresh
         // AsyncValue per DocumentId so invalidating one document does

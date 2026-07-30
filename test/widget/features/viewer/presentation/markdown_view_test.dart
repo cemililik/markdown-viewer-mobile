@@ -85,65 +85,67 @@ void main() {
   }
 
   group('MarkdownView code blocks', () {
-    testWidgets('should renders Dart fence with multiple highlighted spans', (
-      tester,
-    ) async {
-      useTallSurface(tester);
-      final doc = parseFixture('code_blocks.md');
+    testWidgets(
+      'should render Dart fence with multiple highlighted spans when the widget is exercised',
+      (tester) async {
+        useTallSurface(tester);
+        final doc = parseFixture('code_blocks.md');
 
-      await tester.pumpWidget(harness(doc));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(harness(doc));
+        await tester.pumpAndSettle();
 
-      // The Dart sample contains the literal "void main()". A
-      // RichText that contains it must exist somewhere in the tree.
-      final richTexts = tester.widgetList<RichText>(find.byType(RichText));
-      final dartRichText = richTexts.firstWhere(
-        (rt) => rt.text.toPlainText().contains('void main()'),
-        orElse:
-            () =>
-                throw StateError(
-                  'No RichText found that contains the Dart sample text',
-                ),
-      );
+        // The Dart sample contains the literal "void main()". A
+        // RichText that contains it must exist somewhere in the tree.
+        final richTexts = tester.widgetList<RichText>(find.byType(RichText));
+        final dartRichText = richTexts.firstWhere(
+          (rt) => rt.text.toPlainText().contains('void main()'),
+          orElse:
+              () =>
+                  throw StateError(
+                    'No RichText found that contains the Dart sample text',
+                  ),
+        );
 
-      final spanCount = countTextSpans(dartRichText.text);
-      expect(
-        spanCount,
-        greaterThan(1),
-        reason:
-            'A highlighted Dart fence must tokenise into multiple '
-            'TextSpans. A leaf-span count of 1 means the highlighter '
-            'never ran and the entire fence body collapsed into a '
-            'single styled blob — got $spanCount.',
-      );
-    });
-
-    testWidgets('should falls back gracefully on an unknown language', (
-      tester,
-    ) async {
-      useTallSurface(tester);
-      final doc = parseFixture('code_blocks.md');
-
-      await tester.pumpWidget(harness(doc));
-      await tester.pumpAndSettle();
-
-      // The fictional-lang fence is upper-case so it can't collide
-      // with a real keyword the highlighter might still recognise.
-      final richTexts = tester.widgetList<RichText>(find.byType(RichText));
-      final fallback = richTexts.where(
-        (rt) => rt.text.toPlainText().contains(
-          'THIS IS PLAIN TEXT THAT MUST FALL BACK GRACEFULLY',
-        ),
-      );
-      expect(
-        fallback,
-        isNotEmpty,
-        reason: 'Unknown-language fence must still render its body verbatim.',
-      );
-    });
+        final spanCount = countTextSpans(dartRichText.text);
+        expect(
+          spanCount,
+          greaterThan(1),
+          reason:
+              'A highlighted Dart fence must tokenise into multiple '
+              'TextSpans. A leaf-span count of 1 means the highlighter '
+              'never ran and the entire fence body collapsed into a '
+              'single styled blob — got $spanCount.',
+        );
+      },
+    );
 
     testWidgets(
-      'should renders the same content in dark theme without crashing',
+      'should fall back gracefully on an unknown language when the widget is exercised',
+      (tester) async {
+        useTallSurface(tester);
+        final doc = parseFixture('code_blocks.md');
+
+        await tester.pumpWidget(harness(doc));
+        await tester.pumpAndSettle();
+
+        // The fictional-lang fence is upper-case so it can't collide
+        // with a real keyword the highlighter might still recognise.
+        final richTexts = tester.widgetList<RichText>(find.byType(RichText));
+        final fallback = richTexts.where(
+          (rt) => rt.text.toPlainText().contains(
+            'THIS IS PLAIN TEXT THAT MUST FALL BACK GRACEFULLY',
+          ),
+        );
+        expect(
+          fallback,
+          isNotEmpty,
+          reason: 'Unknown-language fence must still render its body verbatim.',
+        );
+      },
+    );
+
+    testWidgets(
+      'should render the same content in dark theme without crashing when the widget is exercised',
       (tester) async {
         useTallSurface(tester);
         // Regression guard: the dark `PreConfig` path uses different
@@ -164,75 +166,86 @@ void main() {
   });
 
   group('MarkdownView GFM features', () {
-    testWidgets('should renders table headers and body cells as text nodes', (
-      tester,
-    ) async {
-      useTallSurface(tester);
-      final doc = parseFixture('gfm_features.md');
+    testWidgets(
+      'should render table headers and body cells as text nodes when the widget is exercised',
+      (tester) async {
+        useTallSurface(tester);
+        final doc = parseFixture('gfm_features.md');
 
-      await tester.pumpWidget(harness(doc));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(harness(doc));
+        await tester.pumpAndSettle();
 
-      // Header row
-      expect(find.textContaining('Tier', findRichText: true), findsOneWidget);
-      expect(
-        find.textContaining('Latency', findRichText: true),
-        findsOneWidget,
-      );
-      // Body cells
-      expect(find.textContaining('Local', findRichText: true), findsOneWidget);
-      expect(find.textContaining('500 ms', findRichText: true), findsOneWidget);
-    });
-
-    testWidgets('should renders task list checkboxes', (tester) async {
-      useTallSurface(tester);
-      final doc = parseFixture('gfm_features.md');
-
-      await tester.pumpWidget(harness(doc));
-      await tester.pumpAndSettle();
-
-      // markdown_widget renders task-list items as `Icon` widgets
-      // (Icons.check_box / Icons.check_box_outline_blank) inside its
-      // own `MCheckBox` wrapper, not as the Material `Checkbox`. The
-      // fixture has 4 list items: 2 checked, 2 unchecked.
-      expect(find.byIcon(Icons.check_box), findsNWidgets(2));
-      expect(find.byIcon(Icons.check_box_outline_blank), findsNWidgets(2));
-    });
-
-    testWidgets('should strips footnote definitions from the document body', (
-      tester,
-    ) async {
-      useTallSurface(tester);
-      final doc = parseFixture('gfm_features.md');
-
-      await tester.pumpWidget(harness(doc));
-      await tester.pumpAndSettle();
-
-      // Positive guard: verify the fixture actually rendered before asserting
-      // absences. A render failure that swallows exceptions would otherwise
-      // make findsNothing trivially pass.
-      expect(
-        find.textContaining(
-          'GitHub-Flavoured Markdown Features',
-          findRichText: true,
-        ),
-        findsOneWidget,
-      );
-
-      // Definitions are extracted and shown in popup sheets — they must
-      // not appear as paragraph text in the rendered document.
-      expect(
-        find.textContaining('First footnote body', findRichText: true),
-        findsNothing,
-      );
-      expect(
-        find.textContaining('Second footnote body', findRichText: true),
-        findsNothing,
-      );
-    });
+        // Header row
+        expect(find.textContaining('Tier', findRichText: true), findsOneWidget);
+        expect(
+          find.textContaining('Latency', findRichText: true),
+          findsOneWidget,
+        );
+        // Body cells
+        expect(
+          find.textContaining('Local', findRichText: true),
+          findsOneWidget,
+        );
+        expect(
+          find.textContaining('500 ms', findRichText: true),
+          findsOneWidget,
+        );
+      },
+    );
 
     testWidgets(
-      'should renders strikethrough text without dropping characters',
+      'should render task list checkboxes when the widget is exercised',
+      (tester) async {
+        useTallSurface(tester);
+        final doc = parseFixture('gfm_features.md');
+
+        await tester.pumpWidget(harness(doc));
+        await tester.pumpAndSettle();
+
+        // markdown_widget renders task-list items as `Icon` widgets
+        // (Icons.check_box / Icons.check_box_outline_blank) inside its
+        // own `MCheckBox` wrapper, not as the Material `Checkbox`. The
+        // fixture has 4 list items: 2 checked, 2 unchecked.
+        expect(find.byIcon(Icons.check_box), findsNWidgets(2));
+        expect(find.byIcon(Icons.check_box_outline_blank), findsNWidgets(2));
+      },
+    );
+
+    testWidgets(
+      'should strip footnote definitions from the document body when the widget is exercised',
+      (tester) async {
+        useTallSurface(tester);
+        final doc = parseFixture('gfm_features.md');
+
+        await tester.pumpWidget(harness(doc));
+        await tester.pumpAndSettle();
+
+        // Positive guard: verify the fixture actually rendered before asserting
+        // absences. A render failure that swallows exceptions would otherwise
+        // make findsNothing trivially pass.
+        expect(
+          find.textContaining(
+            'GitHub-Flavoured Markdown Features',
+            findRichText: true,
+          ),
+          findsOneWidget,
+        );
+
+        // Definitions are extracted and shown in popup sheets — they must
+        // not appear as paragraph text in the rendered document.
+        expect(
+          find.textContaining('First footnote body', findRichText: true),
+          findsNothing,
+        );
+        expect(
+          find.textContaining('Second footnote body', findRichText: true),
+          findsNothing,
+        );
+      },
+    );
+
+    testWidgets(
+      'should render strikethrough text without dropping characters when the widget is exercised',
       (tester) async {
         useTallSurface(tester);
         final doc = parseFixture('gfm_features.md');

@@ -18,49 +18,50 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('MarkdownViewerApp', () {
-    testWidgets('should boot and render the library empty state', (
-      tester,
-    ) async {
-      SharedPreferences.setMockInitialValues(<String, Object>{
-        'onboarding.seenVersion': currentOnboardingVersion,
-      });
-      final prefs = await SharedPreferences.getInstance();
+    testWidgets(
+      'should boot and render the library empty state when the widget is exercised',
+      (tester) async {
+        SharedPreferences.setMockInitialValues(<String, Object>{
+          'onboarding.seenVersion': currentOnboardingVersion,
+        });
+        final prefs = await SharedPreferences.getInstance();
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            settingsStoreProvider.overrideWithValue(SettingsStoreImpl(prefs)),
-            recentDocumentsStoreProvider.overrideWithValue(
-              RecentDocumentsStoreImpl(prefs),
-            ),
-            libraryFoldersStoreProvider.overrideWithValue(
-              LibraryFoldersStoreImpl(prefs),
-            ),
-            folderEnumeratorProvider.overrideWithValue(
-              const FolderEnumeratorImpl(),
-            ),
-            onboardingStoreProvider.overrideWithValue(
-              OnboardingStoreImpl(prefs),
-            ),
-            consentStoreProvider.overrideWithValue(ConsentStoreImpl(prefs)),
-          ],
-          child: const MarkdownViewerApp(),
-        ),
-      );
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              settingsStoreProvider.overrideWithValue(SettingsStoreImpl(prefs)),
+              recentDocumentsStoreProvider.overrideWithValue(
+                RecentDocumentsStoreImpl(prefs),
+              ),
+              libraryFoldersStoreProvider.overrideWithValue(
+                LibraryFoldersStoreImpl(prefs),
+              ),
+              folderEnumeratorProvider.overrideWithValue(
+                const FolderEnumeratorImpl(),
+              ),
+              onboardingStoreProvider.overrideWithValue(
+                OnboardingStoreImpl(prefs),
+              ),
+              consentStoreProvider.overrideWithValue(ConsentStoreImpl(prefs)),
+            ],
+            child: const MarkdownViewerApp(),
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      // Load the English localizations so the test matches the ARB
-      // values by key instead of coupling the assertions to a
-      // specific English string — a key rename or a locale change
-      // would otherwise surface as a mystery test failure. See the
-      // testing-standards rule: "Never use `find.text` for strings
-      // that will be localized."
-      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        // Load the English localizations so the test matches the ARB
+        // values by key instead of coupling the assertions to a
+        // specific English string — a key rename or a locale change
+        // would otherwise surface as a mystery test failure. See the
+        // testing-standards rule: "Never use `find.text` for strings
+        // that will be localized."
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
 
-      expect(find.byType(MaterialApp), findsOneWidget);
-      expect(find.byIcon(Icons.menu_book_outlined), findsOneWidget);
-      expect(find.text(l10n.navLibrary), findsOneWidget);
-      expect(find.text(l10n.libraryEmptyTitle), findsOneWidget);
-    });
+        expect(find.byType(MaterialApp), findsOneWidget);
+        expect(find.byIcon(Icons.menu_book_outlined), findsOneWidget);
+        expect(find.bySemanticsLabel(l10n.navLibrary), findsOneWidget);
+        expect(find.bySemanticsLabel(l10n.libraryEmptyTitle), findsOneWidget);
+      },
+    );
   });
 }

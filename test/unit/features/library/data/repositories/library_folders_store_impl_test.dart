@@ -9,15 +9,18 @@ void main() {
       SharedPreferences.setMockInitialValues(<String, Object>{});
     });
 
-    test('should returns an empty list on a fresh install', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = LibraryFoldersStoreImpl(prefs);
+    test(
+      'should return an empty list on a fresh install when the behavior is exercised',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = LibraryFoldersStoreImpl(prefs);
 
-      expect(store.read(), isEmpty);
-    });
+        expect(store.read(), isEmpty);
+      },
+    );
 
     test(
-      'should write then read round-trips entries preserving order',
+      'should round-trip entries in order when folders are written then read',
       () async {
         final prefs = await SharedPreferences.getInstance();
         final store = LibraryFoldersStoreImpl(prefs);
@@ -42,7 +45,7 @@ void main() {
     );
 
     test(
-      'should returns an empty list when the stored blob is not valid JSON',
+      'should return an empty list when the stored blob is not valid JSON',
       () async {
         SharedPreferences.setMockInitialValues(<String, Object>{
           'library.folders': 'not json{',
@@ -54,61 +57,70 @@ void main() {
       },
     );
 
-    test('should round-trips the optional bookmark field', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = LibraryFoldersStoreImpl(prefs);
+    test(
+      'should round-trip the optional bookmark field when the behavior is exercised',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = LibraryFoldersStoreImpl(prefs);
 
-      await store.write(<LibraryFolder>[
-        LibraryFolder(
-          path: '/tmp/ios-bookmarked',
-          addedAt: DateTime.utc(2026, 4, 14),
-          bookmark: 'base64-bookmark-blob',
-        ),
-        LibraryFolder(path: '/tmp/plain', addedAt: DateTime.utc(2026, 4, 13)),
-      ]);
+        await store.write(<LibraryFolder>[
+          LibraryFolder(
+            path: '/tmp/ios-bookmarked',
+            addedAt: DateTime.utc(2026, 4, 14),
+            bookmark: 'base64-bookmark-blob',
+          ),
+          LibraryFolder(path: '/tmp/plain', addedAt: DateTime.utc(2026, 4, 13)),
+        ]);
 
-      final round = store.read();
-      expect(round, hasLength(2));
-      expect(round[0].bookmark, 'base64-bookmark-blob');
-      expect(round[1].bookmark, isNull);
-    });
-
-    test('should accepts legacy entries without the bookmark field', () async {
-      SharedPreferences.setMockInitialValues(<String, Object>{
-        'library.folders':
-            '[{"path":"/tmp/legacy","addedAt":"2026-04-14T10:00:00.000Z"}]',
-      });
-      final prefs = await SharedPreferences.getInstance();
-      final store = LibraryFoldersStoreImpl(prefs);
-
-      final round = store.read();
-      expect(round, hasLength(1));
-      expect(round.first.bookmark, isNull);
-    });
-
-    test('should round-trips the optional customName field', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = LibraryFoldersStoreImpl(prefs);
-
-      await store.write(<LibraryFolder>[
-        LibraryFolder(
-          path: '/tmp/renamed',
-          addedAt: DateTime.utc(2026, 4, 14),
-          customName: 'My Notes',
-        ),
-        LibraryFolder(path: '/tmp/plain', addedAt: DateTime.utc(2026, 4, 13)),
-      ]);
-
-      final round = store.read();
-      expect(round, hasLength(2));
-      expect(round[0].customName, 'My Notes');
-      expect(round[0].displayName, 'My Notes');
-      expect(round[1].customName, isNull);
-      expect(round[1].displayName, 'plain');
-    });
+        final round = store.read();
+        expect(round, hasLength(2));
+        expect(round[0].bookmark, 'base64-bookmark-blob');
+        expect(round[1].bookmark, isNull);
+      },
+    );
 
     test(
-      'should accepts legacy entries written without the customName key',
+      'should accept legacy entries without the bookmark field when the behavior is exercised',
+      () async {
+        SharedPreferences.setMockInitialValues(<String, Object>{
+          'library.folders':
+              '[{"path":"/tmp/legacy","addedAt":"2026-04-14T10:00:00.000Z"}]',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final store = LibraryFoldersStoreImpl(prefs);
+
+        final round = store.read();
+        expect(round, hasLength(1));
+        expect(round.first.bookmark, isNull);
+      },
+    );
+
+    test(
+      'should round-trip the optional customName field when the behavior is exercised',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = LibraryFoldersStoreImpl(prefs);
+
+        await store.write(<LibraryFolder>[
+          LibraryFolder(
+            path: '/tmp/renamed',
+            addedAt: DateTime.utc(2026, 4, 14),
+            customName: 'My Notes',
+          ),
+          LibraryFolder(path: '/tmp/plain', addedAt: DateTime.utc(2026, 4, 13)),
+        ]);
+
+        final round = store.read();
+        expect(round, hasLength(2));
+        expect(round[0].customName, 'My Notes');
+        expect(round[0].displayName, 'My Notes');
+        expect(round[1].customName, isNull);
+        expect(round[1].displayName, 'plain');
+      },
+    );
+
+    test(
+      'should accept legacy entries written without the customName key when the behavior is exercised',
       () async {
         // Forward-compat regression guard: any entry persisted by a
         // pre-1.3.0 build has no `customName` key. The decode must
@@ -130,7 +142,7 @@ void main() {
     );
 
     test(
-      'should skips malformed entries but keeps the well-formed ones',
+      'should skip malformed entries but keep the well-formed ones when the behavior is exercised',
       () async {
         SharedPreferences.setMockInitialValues(<String, Object>{
           'library.folders':
