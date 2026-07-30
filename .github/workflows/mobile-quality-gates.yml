@@ -86,8 +86,6 @@ jobs:
             exit 1
           fi
           sudo chmod 0666 /dev/kvm
-          "${ANDROID_HOME:?ANDROID_HOME is required}/emulator/emulator" \
-            -accel-check
 
       - name: Run fixed Android quality profile
         uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0

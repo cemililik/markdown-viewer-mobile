@@ -17,6 +17,12 @@ trap capture_android_log EXIT
 mkdir -p build/quality-logs/android build/performance
 flutter --version
 adb devices -l
+emulator_binary="${ANDROID_HOME:?ANDROID_HOME is required}/emulator/emulator"
+if ! acceleration_status="$("$emulator_binary" -accel-check 2>&1)"; then
+  printf '%s\n' "$acceleration_status" >&2
+  exit 1
+fi
+printf '%s\n' "$acceleration_status"
 adb shell wm size 1080x2400
 adb shell wm density 420
 adb shell settings put global window_animation_scale 0
@@ -42,7 +48,6 @@ if [[ "$RUN_ANDROID_BENCHMARK" == "true" ]]; then
   dart_version="$(jq -r '.dartSdkVersion' <<<"$flutter_json")"
   java_version_output="$(java -version 2>&1)"
   java_version="${java_version_output%%$'\n'*}"
-  emulator_binary="${ANDROID_HOME:?ANDROID_HOME is required}/emulator/emulator"
   if ! emulator_version_output="$("$emulator_binary" -version 2>&1)"; then
     printf '%s\n' "$emulator_version_output" >&2
     exit 1
