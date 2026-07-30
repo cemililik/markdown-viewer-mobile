@@ -1,7 +1,8 @@
 import 'dart:convert';
 
-/// Version of the machine-readable benchmark and baseline contract.
-const benchmarkSchemaVersion = 2;
+import 'benchmark_schema.dart';
+
+export 'benchmark_schema.dart' show benchmarkSchemaVersion;
 
 /// Hosted regression metrics and aggregation rules approved in ADR-0027.
 const benchmarkMetricPolicies = <String, BenchmarkMetricPolicy>{
@@ -93,18 +94,33 @@ BenchmarkEvaluation evaluateBenchmark({
 }) {
   _validateEnvelope(result, path: 'result');
   _validateEnvelope(baseline, path: 'baseline');
+  _validateResultKeys(result, 'result');
+  _validateBaselineKeys(baseline);
   _expectEqual(
     result['suite'],
     baseline['suite'],
     'result.suite must match baseline.suite',
   );
 
+  final baselineRecordedAt = DateTime.tryParse(
+    _requiredString(baseline['recordedAt'], 'baseline.recordedAt'),
+  );
+  if (baselineRecordedAt == null) {
+    throw const BenchmarkContractException(
+      'baseline.recordedAt must be an ISO-8601 timestamp',
+    );
+  }
   final validUntil = DateTime.tryParse(
     _requiredString(baseline['validUntil'], 'baseline.validUntil'),
   );
   if (validUntil == null) {
     throw const BenchmarkContractException(
       'baseline.validUntil must be an ISO-8601 timestamp',
+    );
+  }
+  if (!validUntil.toUtc().isAfter(baselineRecordedAt.toUtc())) {
+    throw const BenchmarkContractException(
+      'baseline.validUntil must be after baseline.recordedAt',
     );
   }
   final currentTime = (now ?? DateTime.now()).toUtc();
@@ -156,6 +172,7 @@ BenchmarkEvaluation evaluateBenchmark({
   }
 
   final measurement = _requiredMap(result['measurement'], 'result.measurement');
+  _validateMeasurement(measurement, 'result.measurement');
   _expectInteger(
     measurement['warmUpCount'],
     1,
@@ -190,6 +207,12 @@ BenchmarkEvaluation evaluateBenchmark({
     final name = entry.key;
     final policy = entry.value;
     final measured = _requiredMap(resultMetrics[name], 'result.metrics.$name');
+    _expectExactKeys(measured, const {
+      'unit',
+      'aggregation',
+      'samples',
+      'value',
+    }, 'result.metrics.$name');
     final reference = _requiredMap(
       baselineMetrics[name],
       'baseline.metrics.$name',
@@ -270,8 +293,14 @@ Map<String, Object?> buildBenchmarkBaseline({
       'baseline calibration requires exactly five complete result files',
     );
   }
+  if (!validUntil.toUtc().isAfter(recordedAt.toUtc())) {
+    throw const BenchmarkContractException(
+      'baseline validity must end after it is recorded',
+    );
+  }
   final first = calibrations.first.result;
   _validateEnvelope(first, path: 'calibration[0]');
+  _validateResultKeys(first, 'calibration[0]');
   final suite = _requiredString(first['suite'], 'calibration[0].suite');
   final environment = _requiredMap(
     first['environment'],
@@ -292,11 +321,14 @@ Map<String, Object?> buildBenchmarkBaseline({
     for (final name in benchmarkMetricPolicies.keys) name: <double>[],
   };
   final provenance = <Map<String, Object?>>[];
+  final runIds = <String>{};
+  final resultDigests = <String>{};
 
   for (var index = 0; index < calibrations.length; index += 1) {
     final calibration = calibrations[index];
     final result = calibration.result;
     _validateEnvelope(result, path: 'calibration[$index]');
+    _validateResultKeys(result, 'calibration[$index]');
     _expectEqual(
       result['suite'],
       suite,
@@ -340,6 +372,7 @@ Map<String, Object?> buildBenchmarkBaseline({
       result['measurement'],
       'calibration[$index].measurement',
     );
+    _validateMeasurement(measurement, 'calibration[$index].measurement');
     _expectInteger(
       measurement['warmUpCount'],
       1,
@@ -376,11 +409,22 @@ Map<String, Object?> buildBenchmarkBaseline({
       currentEnvironment['runObservations'],
       'calibration[$index].environment.runObservations',
     );
+    final runId = _requiredString(
+      observations['runId'],
+      'calibration[$index].environment.runObservations.runId',
+    );
+    if (!runIds.add(runId)) {
+      throw BenchmarkContractException(
+        'calibration[$index] duplicates runId $runId',
+      );
+    }
+    if (!resultDigests.add(calibration.sha256)) {
+      throw BenchmarkContractException(
+        'calibration[$index] duplicates a result SHA-256',
+      );
+    }
     provenance.add(<String, Object?>{
-      'runId': _requiredString(
-        observations['runId'],
-        'calibration[$index].environment.runObservations.runId',
-      ),
+      'runId': runId,
       'runAttempt': _positiveInteger(
         observations['runAttempt'],
         'calibration[$index].environment.runObservations.runAttempt',
@@ -431,6 +475,12 @@ double _validateCalibrationMetric(
   BenchmarkMetricPolicy policy,
   int calibrationIndex,
 ) {
+  _expectExactKeys(metric, const {
+    'unit',
+    'aggregation',
+    'samples',
+    'value',
+  }, 'calibration[$calibrationIndex].metrics.$name');
   _expectEqual(
     metric['unit'],
     policy.unit,
@@ -456,7 +506,7 @@ double _validateCalibrationMetric(
       ),
   ];
   final aggregate = _aggregate(samples, policy.aggregation);
-  final reported = _nonNegativeFiniteNumber(
+  final reported = _positiveFiniteNumber(
     metric['value'],
     'calibration[$calibrationIndex].metrics.$name.value',
   );
@@ -476,6 +526,36 @@ void _validateEnvelope(Map<String, Object?> input, {required String path}) {
     '$path.schemaVersion',
   );
   _requiredString(input['suite'], '$path.suite');
+}
+
+void _validateResultKeys(Map<String, Object?> result, String path) {
+  _expectExactKeys(result, const {
+    'schemaVersion',
+    'suite',
+    'measurement',
+    'fixtures',
+    'environment',
+    'metrics',
+    'timelineSummaries',
+  }, path);
+}
+
+void _validateBaselineKeys(Map<String, Object?> baseline) {
+  _expectExactKeys(baseline, const {
+    'schemaVersion',
+    'suite',
+    'recordedAt',
+    'validUntil',
+    'regressionThresholdPercent',
+    'profile',
+    'fixtures',
+    'metrics',
+    'provenance',
+  }, 'baseline');
+}
+
+void _validateMeasurement(Map<String, Object?> measurement, String path) {
+  _expectExactKeys(measurement, const {'warmUpCount', 'sampleCount'}, path);
 }
 
 void _validateProfile(Map<String, Object?> profile, String path) {
@@ -723,12 +803,17 @@ void _validateProvenance(Map<String, Object?> baseline) {
     baseline['provenance'],
     'baseline.provenance',
   );
+  _expectExactKeys(provenance, const {
+    'calibrationRuns',
+  }, 'baseline.provenance');
   final runs = provenance['calibrationRuns'];
   if (runs is! List || runs.length != 5) {
     throw const BenchmarkContractException(
       'baseline.provenance.calibrationRuns must contain exactly five runs',
     );
   }
+  final runIds = <String>{};
+  final resultDigests = <String>{};
   for (var index = 0; index < runs.length; index += 1) {
     final run = _requiredMap(
       runs[index],
@@ -743,10 +828,16 @@ void _validateProvenance(Map<String, Object?> baseline) {
       'guestMemoryKb',
       'resultSha256',
     }, 'baseline.provenance.calibrationRuns[$index]');
-    _requiredString(
+    final runId = _requiredString(
       run['runId'],
       'baseline.provenance.calibrationRuns[$index].runId',
     );
+    if (!runIds.add(runId)) {
+      throw BenchmarkContractException(
+        'baseline.provenance.calibrationRuns[$index].runId '
+        'must be unique',
+      );
+    }
     _positiveInteger(
       run['runAttempt'],
       'baseline.provenance.calibrationRuns[$index].runAttempt',
@@ -783,6 +874,12 @@ void _validateProvenance(Map<String, Object?> baseline) {
       throw BenchmarkContractException(
         'baseline.provenance.calibrationRuns[$index].resultSha256 '
         'must be a lowercase SHA-256',
+      );
+    }
+    if (!resultDigests.add(digest)) {
+      throw BenchmarkContractException(
+        'baseline.provenance.calibrationRuns[$index].resultSha256 '
+        'must be unique',
       );
     }
   }

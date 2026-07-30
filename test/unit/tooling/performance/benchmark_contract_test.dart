@@ -159,7 +159,7 @@ void main() {
   );
 
   test(
-    'should reject a stale baseline when its validity window is evaluated',
+    'should reject a stale or inverted baseline validity window when evaluated',
     () {
       expect(
         () => evaluateBenchmark(
@@ -172,6 +172,23 @@ void main() {
             (error) => error.message,
             'message',
             contains('expired'),
+          ),
+        ),
+      );
+
+      final inverted = _baseline();
+      inverted['recordedAt'] = '2026-10-31T00:00:00Z';
+      expect(
+        () => evaluateBenchmark(
+          result: _result(),
+          baseline: inverted,
+          now: DateTime.utc(2026, 7, 30),
+        ),
+        throwsA(
+          isA<BenchmarkContractException>().having(
+            (error) => error.message,
+            'message',
+            contains('must be after'),
           ),
         ),
       );
@@ -224,7 +241,7 @@ void main() {
   );
 
   test(
-    'should reject incomplete or differently configured calibration when a baseline is built',
+    'should reject incomplete duplicate or differently configured calibration when a baseline is built',
     () {
       final fourRuns = <CalibrationInput>[
         for (var index = 0; index < 4; index += 1)
@@ -240,8 +257,27 @@ void main() {
             sha256: index.toString() * 64,
           ),
       ];
+      final duplicateRun = <CalibrationInput>[
+        for (var index = 0; index < 5; index += 1)
+          CalibrationInput(
+            result: _result(runId: 'same-run'),
+            sha256: index.toString() * 64,
+          ),
+      ];
+      final duplicateResult = <CalibrationInput>[
+        for (var index = 0; index < 5; index += 1)
+          CalibrationInput(
+            result: _result(runId: 'run-$index'),
+            sha256: 'a' * 64,
+          ),
+      ];
 
-      for (final calibrations in [fourRuns, differentProfile]) {
+      for (final calibrations in [
+        fourRuns,
+        differentProfile,
+        duplicateRun,
+        duplicateResult,
+      ]) {
         expect(
           () => buildBenchmarkBaseline(
             calibrations: calibrations,

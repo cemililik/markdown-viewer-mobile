@@ -56,4 +56,29 @@ void main() {
       expect(benchmark, isNot(contains('.codeUnits')));
     },
   );
+
+  test(
+    'should bound iOS commands below the workflow timeout when quality gates are inspected',
+    () {
+      final workflow =
+          File('.github/workflows/mobile-quality-gates.yml').readAsStringSync();
+      final runner = File('tool/ci/run_ios_integration.sh').readAsStringSync();
+      final watchdog = File('tool/ci/run_with_timeout.py').readAsStringSync();
+
+      expect(
+        workflow,
+        contains(
+          RegExp(
+            r'ios:\s+name: iOS integration[\s\S]*?'
+            'timeout-minutes: 90',
+          ),
+        ),
+      );
+      expect(workflow, contains("IOS_DRIVE_TIMEOUT_SECONDS: '4200'"));
+      expect(workflow, contains('run_with_timeout.py 300'));
+      expect(runner, contains('run_with_timeout.py'));
+      expect(watchdog, contains('start_new_session=True'));
+      expect(watchdog, contains('os.killpg'));
+    },
+  );
 }

@@ -4,10 +4,6 @@ import 'package:integration_test/integration_test.dart';
 import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_renderer_impl.dart';
 import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
 
-const _negativeGateControl = bool.fromEnvironment(
-  'MERMAID_GATE_NEGATIVE_CONTROL',
-);
-
 /// End-to-end mermaid renderer test against a real
 /// `HeadlessInAppWebView` running the bundled `mermaid.min.js`.
 ///
@@ -77,9 +73,6 @@ void main() {
         expect(success.pngBytes[7], 0x0A);
         expect(success.width, greaterThan(0));
         expect(success.height, greaterThan(0));
-        if (_negativeGateControl) {
-          fail('Controlled failure: the real Mermaid gate must turn red.');
-        }
       },
     );
 

@@ -21,6 +21,8 @@ import 'package:markdown_viewer/features/viewer/presentation/widgets/markdown_vi
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
+import '../../tool/performance/benchmark_schema.dart';
+
 const _measuredRepetitions = 5;
 const _oneMiB = 1024 * 1024;
 const _scrollLineCount = 10000;
@@ -60,7 +62,7 @@ void main() {
 
   tearDownAll(() async {
     binding.reportData = <String, Object>{
-      'schemaVersion': 2,
+      'schemaVersion': benchmarkSchemaVersion,
       'suite': 'android-fixed-profile-v1',
       'measurement': <String, Object>{
         'warmUpCount': 1,

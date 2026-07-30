@@ -31,9 +31,6 @@ if [[ "$RUN_ANDROID_CRITICAL" == "true" ]]; then
     --no-dds
     --timeout 1800
   )
-  if [[ "${CRITICAL_NEGATIVE_CONTROL:-false}" == "true" ]]; then
-    critical_arguments+=(--dart-define=MERMAID_GATE_NEGATIVE_CONTROL=true)
-  fi
   flutter drive "${critical_arguments[@]}" \
     2>&1 | tee build/quality-logs/android/integration.log
 fi
@@ -144,14 +141,35 @@ if [[ "$RUN_ANDROID_BENCHMARK" == "true" ]]; then
   export BENCHMARK_METADATA_PATH=build/performance/environment.json
   export BENCHMARK_OUTPUT_PATH=build/performance/result.json
   export FLUTTER_TEST_OUTPUTS_DIR=build/performance
-  flutter drive \
-    --driver=test_driver/performance_test.dart \
-    --target=integration_test/benchmark/render_benchmark_test.dart \
-    --profile \
-    --no-dds \
-    --device-id "emulator-${EMULATOR_PORT:-5554}" \
-    --timeout 1800 \
-    2>&1 | tee build/quality-logs/android/benchmark.log
+  performance_arguments=(
+    --driver=test_driver/performance_test.dart
+    --target=integration_test/benchmark/render_benchmark_test.dart
+    --profile
+    --no-dds
+    --device-id "emulator-${EMULATOR_PORT:-5554}"
+    --timeout 1800
+  )
+  run_performance_driver() {
+    local log_path="$1"
+    flutter drive "${performance_arguments[@]}" 2>&1 | tee "$log_path"
+  }
+
+  benchmark_log=build/quality-logs/android/benchmark.log
+  if ! run_performance_driver "$benchmark_log"; then
+    if grep -Fq 'Service connection disposed' "$benchmark_log" &&
+      grep -Fq 'adb: device offline' "$benchmark_log"; then
+      echo "::warning::Retrying once after a confirmed ADB transport failure."
+      adb reconnect offline || true
+      if ! timeout 60s adb wait-for-device || ! adb shell true; then
+        echo "ADB did not recover after the confirmed transport failure." >&2
+        exit 1
+      fi
+      run_performance_driver \
+        build/quality-logs/android/benchmark-infrastructure-retry.log
+    else
+      exit 1
+    fi
+  fi
 
   jq '.timelineSummaries' \
     build/performance/result.json \

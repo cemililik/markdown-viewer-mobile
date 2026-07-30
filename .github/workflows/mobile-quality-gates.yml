@@ -18,11 +18,6 @@ on:
         required: false
         default: false
         type: boolean
-      critical_negative_control:
-        description: Deliberately fail the temporary critical-gate control.
-        required: false
-        default: false
-        type: boolean
       benchmark_mode:
         description: Enforce or calibrate the hosted regression baseline.
         required: false
@@ -94,7 +89,6 @@ jobs:
           RUN_ANDROID_BENCHMARK: ${{ inputs.run_android_benchmark }}
           BENCHMARK_MODE: ${{ inputs.benchmark_mode }}
           BENCHMARK_CALIBRATION_INDEX: ${{ inputs.calibration_index }}
-          CRITICAL_NEGATIVE_CONTROL: ${{ inputs.critical_negative_control }}
         with:
           api-level: 35
           emulator-build: 15507667
@@ -151,7 +145,7 @@ jobs:
     name: iOS integration
     if: ${{ inputs.run_ios_critical }}
     runs-on: macos-26
-    timeout-minutes: 60
+    timeout-minutes: 90
 
     steps:
       - name: Checkout without persisted credentials
@@ -190,14 +184,19 @@ jobs:
       - name: Run iOS critical integration suite
         env:
           SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+          IOS_DRIVE_TIMEOUT_SECONDS: '4200'
         run: bash tool/ci/run_ios_integration.sh
 
       - name: Capture iOS simulator log
         if: always() && steps.simulator.outputs.udid != ''
         run: |
           mkdir -p build/quality-logs/ios
-          xcrun simctl spawn "${{ steps.simulator.outputs.udid }}" \
+          python3 tool/ci/run_with_timeout.py 300 \
+            xcrun simctl spawn "${{ steps.simulator.outputs.udid }}" \
             log show --last 30m \
+            --style compact \
+            --predicate \
+            'process == "Runner" OR process CONTAINS[c] "WebKit"' \
             > build/quality-logs/ios/simulator.log || true
 
       - name: Delete iOS simulator

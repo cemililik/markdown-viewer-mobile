@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 2,
+  "suite": "android-fixed-profile-v1",
+  "recordedAt": "2026-07-30T10:31:07.607456Z",
+  "validUntil": "2026-10-30T00:00:00.000Z",
+  "regressionThresholdPercent": 10,
+  "profile": {
+    "runner": "ubuntu-24.04",
+    "runnerImageOS": "ubuntu24",
+    "flutterVersion": "3.41.4",
+    "dartVersion": "3.11.1",
+    "javaVersion": "openjdk version \"17.0.20\" 2026-07-21",
+    "androidApiLevel": 35,
+    "systemImageTarget": "google_apis",
+    "architecture": "x86_64",
+    "hardwareProfile": "pixel_6",
+    "configuredCores": 4,
+    "configuredRamMb": 4096,
+    "configuredHeapMb": 512,
+    "guestCpuCount": 4,
+    "dalvikHeap": "576m",
+    "locale": "en-US",
+    "displaySize": "Physical size: 1080x2400",
+    "displayDensity": "Physical density: 420",
+    "emulatorVersion": "36.6.11",
+    "emulatorBuild": 15507667,
+    "systemImageFingerprint": "google/sdk_gphone64_x86_64/emu64xa:15/AE3A.240806.043/12960925:userdebug/dev-keys",
+    "emulatorOptions": "-no-window -accel on -no-metrics -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none -no-snapshot -no-snapshot-save -no-snapshot-load"
+  },
+  "fixtures": {
+    "documentBytes": 1048691,
+    "scrollLines": 10000,
+    "codeLines": 1000,
+    "searchDocuments": 500,
+    "searchCorpusBytes": 71890,
+    "locale": "en-US",
+    "viewportLogicalWidth": 390,
+    "viewportLogicalHeight": 844,
+    "devicePixelRatio": 3
+  },
+  "metrics": {
+    "document_open_first_render_ms": {
+      "unit": "ms",
+      "aggregation": "median",
+      "baselineValue": 8929.448
+    },
+    "decode_parse_ms": {
+      "unit": "ms",
+      "aggregation": "median",
+      "baselineValue": 690.923
+    },
+    "widget_build_ms": {
+      "unit": "ms",
+      "aggregation": "median",
+      "baselineValue": 7898.222
+    },
+    "scroll_frame_time_ms": {
+      "unit": "ms",
+      "aggregation": "p95",
+      "baselineValue": 147.127
+    },
+    "code_highlight_ms": {
+      "unit": "ms",
+      "aggregation": "median",
+      "baselineValue": 36.985
+    },
+    "mermaid_cold_render_ms": {
+      "unit": "ms",
+      "aggregation": "median",
+      "baselineValue": 564.542
+    },
+    "library_search_ms": {
+      "unit": "ms",
+      "aggregation": "median",
+      "baselineValue": 656.0
+    }
+  },
+  "provenance": {
+    "calibrationRuns": [
+      {
+        "runId": "30529697649-1",
+        "runAttempt": 1,
+        "commitSha": "7a4f81483dcbb99f46c3ff36e5f92b5c961be615",
+        "recordedAt": "2026-07-30T09:14:02Z",
+        "runnerImageVersion": "20260720.247.2",
+        "guestMemoryKb": 2531948,
+        "resultSha256": "945fb0334dbf7b9fcd3e1fdc421084911f9fccfa7fa21a39e716d36b8318a597"
+      },
+      {
+        "runId": "30529697649-2",
+        "runAttempt": 1,
+        "commitSha": "7a4f81483dcbb99f46c3ff36e5f92b5c961be615",
+        "recordedAt": "2026-07-30T09:13:45Z",
+        "runnerImageVersion": "20260720.247.2",
+        "guestMemoryKb": 2531944,
+        "resultSha256": "864de73af6cdd154102912630db49a179330b94bc157e4c1b2ac2edfded03d0e"
+      },
+      {
+        "runId": "30529697649-3",
+        "runAttempt": 2,
+        "commitSha": "7a4f81483dcbb99f46c3ff36e5f92b5c961be615",
+        "recordedAt": "2026-07-30T10:19:54Z",
+        "runnerImageVersion": "20260726.254.1",
+        "guestMemoryKb": 2531948,
+        "resultSha256": "774d065c854ef19c1c67fc441249a19e9296488eeb455d58b60a964498d15ebf"
+      },
+      {
+        "runId": "30529697649-4",
+        "runAttempt": 1,
+        "commitSha": "7a4f81483dcbb99f46c3ff36e5f92b5c961be615",
+        "recordedAt": "2026-07-30T09:13:46Z",
+        "runnerImageVersion": "20260720.247.2",
+        "guestMemoryKb": 2531948,
+        "resultSha256": "cec40816e64acc6410e4cb378d76f7b291221d65d04250331f2a425d50fd1e4e"
+      },
+      {
+        "runId": "30529697649-5",
+        "runAttempt": 1,
+        "commitSha": "7a4f81483dcbb99f46c3ff36e5f92b5c961be615",
+        "recordedAt": "2026-07-30T09:13:32Z",
+        "runnerImageVersion": "20260726.254.1",
+        "guestMemoryKb": 2531944,
+        "resultSha256": "71e287e68c33c87abfe1559ea5236ea0f2ea6d1a498736093a3201aa9a4d51ee"
+      }
+    ]
+  }
+}
