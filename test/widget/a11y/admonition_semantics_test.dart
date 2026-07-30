@@ -4,7 +4,15 @@ import 'package:markdown_viewer/features/viewer/application/markdown_extensions/
 import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_view.dart';
 import 'package:markdown_viewer/l10n/generated/app_localizations.dart';
 
+import 'semantics_audit.dart';
+
 void main() {
+  late AppLocalizations l10n;
+
+  setUpAll(() async {
+    l10n = await AppLocalizations.delegate.load(const Locale('en'));
+  });
+
   Widget harness(AdmonitionKind kind) {
     return MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -19,45 +27,44 @@ void main() {
   }
 
   for (final kind in AdmonitionKind.values) {
-    testWidgets('${kind.name} admonition title has header semantics', (
+    testWidgets('should ${kind.name} admonition title has header semantics', (
       tester,
     ) async {
-      await tester.pumpWidget(harness(kind));
-      await tester.pumpAndSettle();
+      await withSemanticsAudit(tester, () async {
+        await tester.pumpWidget(harness(kind));
+        await tester.pumpAndSettle();
 
-      // The title Text is wrapped in Semantics(header: true).
-      // Find the semantics node that contains the title label.
-      final titleNode = tester.getSemantics(
-        find.byWidgetPredicate(
-          (w) => w is Semantics && w.properties.header == true,
-        ),
-      );
+        final title = titleForAdmonition(l10n, kind);
+        final titleNode = tester.getSemantics(find.bySemanticsLabel(title));
 
-      expect(
-        titleNode,
-        matchesSemantics(isHeader: true),
-        reason:
-            'Admonition "${kind.name}" title must carry isHeader so screen '
-            'readers announce it as a section heading.',
-      );
+        expect(
+          titleNode,
+          matchesSemantics(label: title, isHeader: true),
+          reason:
+              'Admonition "${kind.name}" title must carry isHeader so screen '
+              'readers announce it as a section heading.',
+        );
+      });
     });
   }
 
-  testWidgets('admonition icon is excluded from the semantics tree', (
+  testWidgets('should admonition icon is excluded from the semantics tree', (
     tester,
   ) async {
-    await tester.pumpWidget(harness(AdmonitionKind.note));
-    await tester.pumpAndSettle();
+    await withSemanticsAudit(tester, () async {
+      await tester.pumpWidget(harness(AdmonitionKind.note));
+      await tester.pumpAndSettle();
 
-    // There must be no semantics node for the decorative icon.
-    // The icon is wrapped in ExcludeSemantics so it should not
-    // appear as an image node in the tree.
-    expect(
-      find.bySemanticsLabel(RegExp('info|icon', caseSensitive: false)),
-      findsNothing,
-      reason:
-          'The admonition icon is decorative and must not appear in the '
-          'semantics tree.',
-    );
+      expect(
+        find.ancestor(
+          of: find.byIcon(Icons.info_outline),
+          matching: find.byType(ExcludeSemantics),
+        ),
+        findsOneWidget,
+        reason:
+            'The decorative icon must remain structurally excluded from '
+            'semantics.',
+      );
+    });
   });
 }

@@ -68,31 +68,34 @@ void main() {
   }
 
   group('FolderFileMaterializer', () {
-    test('bookmark-less folders short-circuit to the source path', () async {
-      final fake = _FakeChannel(payload: Uint8List(0));
-      final materializer = makeMaterializer(fake);
+    test(
+      'should bookmark-less folders short-circuit to the source path',
+      () async {
+        final fake = _FakeChannel(payload: Uint8List(0));
+        final materializer = makeMaterializer(fake);
 
-      final folder = LibraryFolder(
-        path: '/tmp/notes',
-        addedAt: DateTime.utc(2026, 4, 14),
-      );
+        final folder = LibraryFolder(
+          path: '/tmp/notes',
+          addedAt: DateTime.utc(2026, 4, 14),
+        );
 
-      final result = await materializer.materialize(
-        folder: folder,
-        sourcePath: '/tmp/notes/readme.md',
-      );
+        final result = await materializer.materialize(
+          folder: folder,
+          sourcePath: '/tmp/notes/readme.md',
+        );
 
-      expect(result, '/tmp/notes/readme.md');
-      expect(
-        fake.reads,
-        isEmpty,
-        reason:
-            'No bookmark means no native channel hop — the path is '
-            'returned verbatim.',
-      );
-    });
+        expect(result, '/tmp/notes/readme.md');
+        expect(
+          fake.reads,
+          isEmpty,
+          reason:
+              'No bookmark means no native channel hop — the path is '
+              'returned verbatim.',
+        );
+      },
+    );
 
-    test('bookmarked folders write the channel bytes into the cache and '
+    test('should bookmarked folders write the channel bytes into the cache and '
         'return the cache path', () async {
       final payload = Uint8List.fromList('# Hello'.codeUnits);
       final fake = _FakeChannel(payload: payload);
@@ -118,7 +121,7 @@ void main() {
       expect(fake.reads.single.path, '/tmp/notes/intro.md');
     });
 
-    test('preserves the .markdown extension when present', () async {
+    test('should preserves the .markdown extension when present', () async {
       final fake = _FakeChannel(
         payload: Uint8List.fromList('payload'.codeUnits),
       );
@@ -139,7 +142,7 @@ void main() {
     });
 
     test(
-      'two materializations of the same source land at the same slot',
+      'should two materializations of the same source land at the same slot',
       () async {
         final firstFake = _FakeChannel(
           payload: Uint8List.fromList('first'.codeUnits),

@@ -543,17 +543,15 @@ class _SkipBar extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(right: 12),
               child: Semantics(
-                // TextButton already announces as a button but the
-                // label parameter pins the spoken text to the
-                // localized "Skip" / "Atla" string regardless of any
-                // future styling that might wrap the child in a
-                // decorator that interferes with auto-label pickup.
                 button: true,
                 label: label,
-                child: TextButton(
-                  onPressed: onSkip,
-                  style: TextButton.styleFrom(foregroundColor: accentColor),
-                  child: Text(label),
+                onTap: onSkip,
+                child: ExcludeSemantics(
+                  child: TextButton(
+                    onPressed: onSkip,
+                    style: TextButton.styleFrom(foregroundColor: accentColor),
+                    child: Text(label),
+                  ),
                 ),
               ),
             ),
@@ -592,18 +590,6 @@ class _OnboardingPageView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Fade + slide-up tweens for the entrance animation. The body
-    // text is delayed behind the title so the two pieces of copy
-    // don't land on the screen simultaneously.
-    final titleFade = CurvedAnimation(
-      parent: entrance,
-      curve: const Interval(0.0, 0.7, curve: Curves.easeOutCubic),
-    );
-    final bodyFade = CurvedAnimation(
-      parent: entrance,
-      curve: const Interval(0.25, 1.0, curve: Curves.easeOutCubic),
-    );
-
     // Only show the secondary CTA on Android — iOS has no equivalent
     // default-apps settings screen so the button would be a dead
     // affordance. The text copy on the same step already explains
@@ -636,20 +622,25 @@ class _OnboardingPageView extends StatelessWidget {
                   _HeroCluster(step: step, accent: accent, pulse: pulse),
                   const SizedBox(height: 48),
                   _EntranceSlide(
-                    animation: titleFade,
-                    child: Text(
-                      step.title(l10n),
-                      textAlign: TextAlign.center,
-                      style: textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: Theme.of(context).colorScheme.onSurface,
-                        height: 1.2,
+                    animation: entrance,
+                    curve: const Interval(0, 0.7, curve: Curves.easeOutCubic),
+                    child: Semantics(
+                      header: true,
+                      child: Text(
+                        step.title(l10n),
+                        textAlign: TextAlign.center,
+                        style: textTheme.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: Theme.of(context).colorScheme.onSurface,
+                          height: 1.2,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(height: 16),
                   _EntranceSlide(
-                    animation: bodyFade,
+                    animation: entrance,
+                    curve: const Interval(0.25, 1, curve: Curves.easeOutCubic),
                     child: Text(
                       step.body(l10n),
                       textAlign: TextAlign.center,
@@ -662,7 +653,12 @@ class _OnboardingPageView extends StatelessWidget {
                   if (showCta) ...[
                     const SizedBox(height: 20),
                     _EntranceSlide(
-                      animation: bodyFade,
+                      animation: entrance,
+                      curve: const Interval(
+                        0.25,
+                        1,
+                        curve: Curves.easeOutCubic,
+                      ),
                       child: TextButton.icon(
                         onPressed: () => onOpenDefaultHandlerSettings?.call(),
                         style: TextButton.styleFrom(
@@ -688,9 +684,14 @@ class _OnboardingPageView extends StatelessWidget {
 /// child widget can stay a simple `Text` — no Tween plumbing leaks
 /// into the step manifest.
 class _EntranceSlide extends StatelessWidget {
-  const _EntranceSlide({required this.animation, required this.child});
+  const _EntranceSlide({
+    required this.animation,
+    required this.curve,
+    required this.child,
+  });
 
   final Animation<double> animation;
+  final Curve curve;
   final Widget child;
 
   @override
@@ -698,10 +699,11 @@ class _EntranceSlide extends StatelessWidget {
     return AnimatedBuilder(
       animation: animation,
       builder: (context, innerChild) {
+        final value = curve.transform(animation.value);
         return Opacity(
-          opacity: animation.value,
+          opacity: value,
           child: Transform.translate(
-            offset: Offset(0, 24 * (1 - animation.value)),
+            offset: Offset(0, 24 * (1 - value)),
             child: innerChild,
           ),
         );

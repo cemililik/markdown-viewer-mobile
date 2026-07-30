@@ -15,12 +15,14 @@ void main() {
   // restore it on teardown so a later file does not inherit the
   // mutation.
   TestWidgetsFlutterBinding.ensureInitialized();
-  final originalUpdateInterval =
-      VisibilityDetectorController.instance.updateInterval;
-  VisibilityDetectorController.instance.updateInterval = Duration.zero;
-  tearDownAll(() {
-    VisibilityDetectorController.instance.updateInterval =
-        originalUpdateInterval;
+  setUp(() {
+    final originalUpdateInterval =
+        VisibilityDetectorController.instance.updateInterval;
+    VisibilityDetectorController.instance.updateInterval = Duration.zero;
+    addTearDown(() {
+      VisibilityDetectorController.instance.updateInterval =
+          originalUpdateInterval;
+    });
   });
 
   Document parseFixture(String name) => parseMarkdownFixture(name);
@@ -51,7 +53,7 @@ void main() {
   }
 
   group('MathView', () {
-    testWidgets('renders a valid inline expression as a Math widget', (
+    testWidgets('should renders a valid inline expression as a Math widget', (
       tester,
     ) async {
       await tester.pumpWidget(
@@ -73,20 +75,21 @@ void main() {
       );
     });
 
-    testWidgets('renders a valid display expression with horizontal scroll', (
-      tester,
-    ) async {
-      await tester.pumpWidget(
-        standaloneHarness(const MathView.display(expression: r'\frac{a}{b}')),
-      );
-      await tester.pumpAndSettle();
+    testWidgets(
+      'should renders a valid display expression with horizontal scroll',
+      (tester) async {
+        await tester.pumpWidget(
+          standaloneHarness(const MathView.display(expression: r'\frac{a}{b}')),
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.byType(Math), findsOneWidget);
-      expect(find.byType(SingleChildScrollView), findsOneWidget);
-    });
+        expect(find.byType(Math), findsOneWidget);
+        expect(find.byType(SingleChildScrollView), findsOneWidget);
+      },
+    );
 
     testWidgets(
-      'falls back to an inline error placeholder on malformed input',
+      'should falls back to an inline error placeholder on malformed input',
       (tester) async {
         const malformed = r'\frac{1}{';
         await tester.pumpWidget(
@@ -115,7 +118,7 @@ void main() {
 
   group('MarkdownView math integration', () {
     testWidgets(
-      'inline `\$ … \$` in a paragraph reaches the rendered tree as inline Math',
+      'should inline `\$ … \$` in a paragraph reaches the rendered tree as inline Math',
       (tester) async {
         useTallSurface(tester);
         final doc = parseFixture('math.md');
@@ -145,30 +148,31 @@ void main() {
       },
     );
 
-    testWidgets('malformed math in the fixture does not crash the viewer', (
-      tester,
-    ) async {
-      useTallSurface(tester);
-      final doc = parseFixture('math.md');
+    testWidgets(
+      'should malformed math in the fixture does not crash the viewer',
+      (tester) async {
+        useTallSurface(tester);
+        final doc = parseFixture('math.md');
 
-      await tester.pumpWidget(markdownHarness(doc));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(markdownHarness(doc));
+        await tester.pumpAndSettle();
 
-      // A successfully rendered fixture means the malformed
-      // expressions each took the onErrorFallback path instead of
-      // throwing out of the build. The rest of the document must
-      // still be visible; pick a sentence that sits *after* the
-      // broken blocks as a regression marker.
-      expect(
-        find.textContaining(
-          'The document keeps rendering after the broken blocks',
-          findRichText: true,
-        ),
-        findsOneWidget,
-      );
-    });
+        // A successfully rendered fixture means the malformed
+        // expressions each took the onErrorFallback path instead of
+        // throwing out of the build. The rest of the document must
+        // still be visible; pick a sentence that sits *after* the
+        // broken blocks as a regression marker.
+        expect(
+          find.textContaining(
+            'The document keeps rendering after the broken blocks',
+            findRichText: true,
+          ),
+          findsOneWidget,
+        );
+      },
+    );
 
-    testWidgets('literal dollar signs do not trigger math rendering', (
+    testWidgets('should literal dollar signs do not trigger math rendering', (
       tester,
     ) async {
       useTallSurface(tester);
@@ -184,7 +188,7 @@ void main() {
     });
 
     testWidgets(
-      'math widget sizes are stable across scroll (no layout jitter)',
+      'should math widget sizes are stable across scroll (no layout jitter)',
       (tester) async {
         // Render on a viewport that is deliberately shorter than the
         // document so a scroll is necessary to bring later math blocks

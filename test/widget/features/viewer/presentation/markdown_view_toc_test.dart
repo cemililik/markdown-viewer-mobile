@@ -26,12 +26,14 @@ import '../../../../_helpers/markdown_fixtures.dart';
 /// navigation again.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
-  final originalUpdateInterval =
-      VisibilityDetectorController.instance.updateInterval;
-  VisibilityDetectorController.instance.updateInterval = Duration.zero;
-  tearDownAll(() {
-    VisibilityDetectorController.instance.updateInterval =
-        originalUpdateInterval;
+  setUp(() {
+    final originalUpdateInterval =
+        VisibilityDetectorController.instance.updateInterval;
+    VisibilityDetectorController.instance.updateInterval = Duration.zero;
+    addTearDown(() {
+      VisibilityDetectorController.instance.updateInterval =
+          originalUpdateInterval;
+    });
   });
 
   Widget harness(
@@ -57,7 +59,7 @@ void main() {
   }
 
   testWidgets(
-    'onTocList fires with a widgetIndex for every heading in the document',
+    'should onTocList fires with a widgetIndex for every heading in the document',
     (tester) async {
       tester.view.physicalSize = const Size(1200, 4000);
       tester.view.devicePixelRatio = 1.0;
@@ -108,7 +110,7 @@ void main() {
   );
 
   testWidgets(
-    'blockKeys grows to cover every widgetIndex captured via onTocList',
+    'should blockKeys grows to cover every widgetIndex captured via onTocList',
     (tester) async {
       tester.view.physicalSize = const Size(1200, 4000);
       tester.view.devicePixelRatio = 1.0;

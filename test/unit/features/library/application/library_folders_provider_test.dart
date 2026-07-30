@@ -30,7 +30,7 @@ ProviderContainer _containerWith(_FakeStore store) {
 
 void main() {
   group('LibraryFoldersController', () {
-    test('seeds initial state from the store, newest first', () {
+    test('should seeds initial state from the store, newest first', () {
       final store = _FakeStore([
         LibraryFolder(path: '/tmp/older', addedAt: DateTime.utc(2026, 4, 13)),
         LibraryFolder(path: '/tmp/newer', addedAt: DateTime.utc(2026, 4, 14)),
@@ -43,7 +43,7 @@ void main() {
       expect(state[1].path, '/tmp/older');
     });
 
-    test('add prepends a new entry and persists', () {
+    test('should add prepends a new entry and persists', () {
       final store = _FakeStore();
       final container = _containerWith(store);
 
@@ -59,7 +59,7 @@ void main() {
       expect(store.writeCount, 1);
     });
 
-    test('add carries the optional iOS security-scoped bookmark', () {
+    test('should add carries the optional iOS security-scoped bookmark', () {
       final store = _FakeStore();
       final container = _containerWith(store);
 
@@ -71,7 +71,7 @@ void main() {
       expect(state.first.bookmark, 'base64-blob');
     });
 
-    test('add returns false and is a no-op for a duplicate path', () {
+    test('should add returns false and is a no-op for a duplicate path', () {
       final store = _FakeStore([
         LibraryFolder(path: '/tmp/dup', addedAt: DateTime.utc(2026, 4, 14)),
       ]);
@@ -86,7 +86,7 @@ void main() {
       expect(store.writeCount, 0);
     });
 
-    test('remove drops the matching entry and persists', () {
+    test('should remove drops the matching entry and persists', () {
       final store = _FakeStore([
         LibraryFolder(path: '/tmp/a', addedAt: DateTime.utc(2026, 4, 14)),
         LibraryFolder(path: '/tmp/b', addedAt: DateTime.utc(2026, 4, 13)),
@@ -103,7 +103,7 @@ void main() {
       expect(store.writeCount, 1);
     });
 
-    test('remove is a no-op when the path is not present', () {
+    test('should remove is a no-op when the path is not present', () {
       final store = _FakeStore([
         LibraryFolder(path: '/tmp/a', addedAt: DateTime.utc(2026, 4, 14)),
       ]);
@@ -117,7 +117,7 @@ void main() {
       expect(store.writeCount, 0);
     });
 
-    test('rename writes the trimmed customName and persists', () {
+    test('should rename writes the trimmed customName and persists', () {
       final store = _FakeStore([
         LibraryFolder(path: '/tmp/notes', addedAt: DateTime.utc(2026, 4, 14)),
       ]);
@@ -133,7 +133,7 @@ void main() {
       expect(store.writeCount, 1);
     });
 
-    test('rename normalises empty / whitespace input back to null', () {
+    test('should rename normalises empty / whitespace input back to null', () {
       final store = _FakeStore([
         LibraryFolder(
           path: '/tmp/notes',
@@ -155,7 +155,7 @@ void main() {
       expect(store.writeCount, 1);
     });
 
-    test('rename clamps over-long input to the source-rename cap', () {
+    test('should rename clamps over-long input to the source-rename cap', () {
       final store = _FakeStore([
         LibraryFolder(path: '/tmp/notes', addedAt: DateTime.utc(2026, 4, 14)),
       ]);
@@ -172,7 +172,7 @@ void main() {
       expect(state.first.customName!.runes.length, lessThanOrEqualTo(64));
     });
 
-    test('rename is a no-op when the path is not present', () {
+    test('should rename is a no-op when the path is not present', () {
       final store = _FakeStore([
         LibraryFolder(path: '/tmp/a', addedAt: DateTime.utc(2026, 4, 14)),
       ]);
@@ -185,26 +185,29 @@ void main() {
       expect(store.writeCount, 0);
     });
 
-    test('rename short-circuits when the normalised value is unchanged', () {
-      final store = _FakeStore([
-        LibraryFolder(
-          path: '/tmp/notes',
-          addedAt: DateTime.utc(2026, 4, 14),
-          customName: 'Notes',
-        ),
-      ]);
-      final container = _containerWith(store);
+    test(
+      'should rename short-circuits when the normalised value is unchanged',
+      () {
+        final store = _FakeStore([
+          LibraryFolder(
+            path: '/tmp/notes',
+            addedAt: DateTime.utc(2026, 4, 14),
+            customName: 'Notes',
+          ),
+        ]);
+        final container = _containerWith(store);
 
-      container
-          .read(libraryFoldersControllerProvider.notifier)
-          .rename(path: '/tmp/notes', customName: '  Notes  ');
+        container
+            .read(libraryFoldersControllerProvider.notifier)
+            .rename(path: '/tmp/notes', customName: '  Notes  ');
 
-      // No write — the trimmed input matches the persisted value.
-      expect(store.writeCount, 0);
-    });
+        // No write — the trimmed input matches the persisted value.
+        expect(store.writeCount, 0);
+      },
+    );
 
     test(
-      'updateBookmark preserves the rename — regression guard for the '
+      'should updateBookmark preserves the rename — regression guard for the '
       'pre-1.3.0 fresh-constructor path that silently dropped customName',
       () {
         final store = _FakeStore([

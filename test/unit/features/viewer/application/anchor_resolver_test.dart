@@ -14,17 +14,17 @@ void main() {
       _h('Third Step', 'third-step', level: 3),
     ];
 
-    test('plain lowercase slug matches the corresponding heading', () {
+    test('should plain lowercase slug matches the corresponding heading', () {
       final result = resolveAnchor(href: '#my-heading', headings: headings);
       expect(result?.text, 'My Heading');
     });
 
-    test('mismatched case still resolves (GitHub parity)', () {
+    test('should mismatched case still resolves (GitHub parity)', () {
       final result = resolveAnchor(href: '#My-Heading', headings: headings);
       expect(result?.text, 'My Heading');
     });
 
-    test('percent-encoded space resolves (e.g. `%20`)', () {
+    test('should percent-encoded space resolves (e.g. `%20`)', () {
       // A renderer that URL-encodes the slug instead of hyphenating
       // it (`my%20heading`) must still land on the same target.
       final result = resolveAnchor(
@@ -34,7 +34,7 @@ void main() {
       expect(result?.anchor, 'my heading');
     });
 
-    test('plus-sign-as-space (`+`) resolves', () {
+    test('should plus-sign-as-space (`+`) resolves', () {
       final result = resolveAnchor(
         href: '#my+heading',
         headings: [_h('my heading', 'my heading')],
@@ -42,19 +42,22 @@ void main() {
       expect(result?.anchor, 'my heading');
     });
 
-    test('percent-encoded space-separated href resolves via slug pipeline', () {
-      // A renderer that URL-encodes a human-readable fragment
-      // (`#My Heading With Spaces` → `#My%20Heading%20With%20Spaces`)
-      // must land on the slugified heading anchor. Exercises the
-      // new slugify() candidate added to resolveAnchor.
-      final r = resolveAnchor(
-        href: '#My%20Heading%20With%20Spaces',
-        headings: [_h('My Heading With Spaces', 'my-heading-with-spaces')],
-      );
-      expect(r?.anchor, 'my-heading-with-spaces');
-    });
+    test(
+      'should percent-encoded space-separated href resolves via slug pipeline',
+      () {
+        // A renderer that URL-encodes a human-readable fragment
+        // (`#My Heading With Spaces` → `#My%20Heading%20With%20Spaces`)
+        // must land on the slugified heading anchor. Exercises the
+        // new slugify() candidate added to resolveAnchor.
+        final r = resolveAnchor(
+          href: '#My%20Heading%20With%20Spaces',
+          headings: [_h('My Heading With Spaces', 'my-heading-with-spaces')],
+        );
+        expect(r?.anchor, 'my-heading-with-spaces');
+      },
+    );
 
-    test('percent-encoded unicode slug resolves', () {
+    test('should percent-encoded unicode slug resolves', () {
       // `kullanıcı-ayarları` — Turkish characters encoded as
       // `kullan%C4%B1c%C4%B1-ayarlar%C4%B1`.
       final result = resolveAnchor(
@@ -64,12 +67,12 @@ void main() {
       expect(result?.anchor, 'kullanıcı-ayarları');
     });
 
-    test('returns null when no heading matches', () {
+    test('should returns null when no heading matches', () {
       final result = resolveAnchor(href: '#nowhere', headings: headings);
       expect(result, isNull);
     });
 
-    test('returns null for non-anchor href', () {
+    test('should returns null for non-anchor href', () {
       final result = resolveAnchor(
         href: 'https://example.com',
         headings: headings,
@@ -77,26 +80,29 @@ void main() {
       expect(result, isNull);
     });
 
-    test('case mismatch at several mix points resolves to same slug', () {
-      // Covers the path where `_onLinkTap` (or a GitHub renderer that
-      // preserved the author's capitalisation in the href) hands us
-      // a mixed-case href that must still reach the lowercased slug.
-      expect(
-        resolveAnchor(href: '#My-Heading', headings: headings)?.anchor,
-        'my-heading',
-      );
-      expect(
-        resolveAnchor(href: '#MY-HEADING', headings: headings)?.anchor,
-        'my-heading',
-      );
-    });
+    test(
+      'should case mismatch at several mix points resolves to same slug',
+      () {
+        // Covers the path where `_onLinkTap` (or a GitHub renderer that
+        // preserved the author's capitalisation in the href) hands us
+        // a mixed-case href that must still reach the lowercased slug.
+        expect(
+          resolveAnchor(href: '#My-Heading', headings: headings)?.anchor,
+          'my-heading',
+        );
+        expect(
+          resolveAnchor(href: '#MY-HEADING', headings: headings)?.anchor,
+          'my-heading',
+        );
+      },
+    );
 
-    test('empty anchor (`#` alone) returns null', () {
+    test('should empty anchor (`#` alone) returns null', () {
       final result = resolveAnchor(href: '#', headings: headings);
       expect(result, isNull);
     });
 
-    test('malformed percent escape falls through to raw comparison', () {
+    test('should malformed percent escape falls through to raw comparison', () {
       // `%ZZ` is not a valid encoded byte. `decodeComponent` throws;
       // we swallow and keep the raw path. A heading with that literal
       // anchor still resolves.
@@ -107,7 +113,7 @@ void main() {
       expect(result?.anchor, 'literal%zz');
     });
 
-    test('first match wins when two headings share a slug', () {
+    test('should first match wins when two headings share a slug', () {
       final result = resolveAnchor(
         href: '#dup',
         headings: [_h('First', 'dup'), _h('Second', 'dup')],

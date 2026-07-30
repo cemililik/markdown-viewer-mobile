@@ -1148,7 +1148,10 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
           child: FloatingActionButton.small(
             tooltip: l10n.viewerBackToTopTooltip,
             onPressed: _scrollToTop,
-            child: const Icon(Icons.arrow_upward),
+            child: Icon(
+              Icons.arrow_upward,
+              semanticLabel: l10n.viewerBackToTopTooltip,
+            ),
           ),
         ),
       ),
@@ -1184,7 +1187,10 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
               ),
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.share_outlined),
+                  icon: Icon(
+                    Icons.share_outlined,
+                    semanticLabel: l10n.viewerShareTooltip,
+                  ),
                   tooltip: l10n.viewerShareTooltip,
                   onPressed:
                       dataDocument == null
@@ -1192,14 +1198,20 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                           : () => _showShareMenu(dataDocument),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.search),
+                  icon: Icon(
+                    Icons.search,
+                    semanticLabel: l10n.viewerSearchOpenTooltip,
+                  ),
                   tooltip: l10n.viewerSearchOpenTooltip,
                   onPressed: dataDocument == null ? null : _openSearch,
                 ),
                 Builder(
                   builder:
                       (context) => IconButton(
-                        icon: const Icon(Icons.format_list_bulleted),
+                        icon: Icon(
+                          Icons.format_list_bulleted,
+                          semanticLabel: l10n.viewerTocOpenTooltip,
+                        ),
                         tooltip: l10n.viewerTocOpenTooltip,
                         onPressed:
                             dataDocument == null
@@ -1208,7 +1220,10 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                       ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.text_format),
+                  icon: Icon(
+                    Icons.text_format,
+                    semanticLabel: l10n.viewerReadingPanelOpenTooltip,
+                  ),
                   tooltip: l10n.viewerReadingPanelOpenTooltip,
                   onPressed:
                       dataDocument == null
@@ -1222,6 +1237,8 @@ class _ViewerScreenState extends ConsumerState<ViewerScreen> {
                       message: l10n.viewerBookmarkSaveTooltip,
                       child: Semantics(
                         button: true,
+                        label: l10n.viewerBookmarkSaveTooltip,
+                        toggled: bookmarked,
                         onLongPressHint: l10n.viewerBookmarkLongPressHint,
                         child: InkResponse(
                           onTap: _saveBookmark,

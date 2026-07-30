@@ -136,7 +136,7 @@ void main() {
       },
     );
 
-    test('stamps each heading with the top-level block it lives in', () {
+    test('should stamps each heading with the top-level block it lives in', () {
       // Four top-level blocks: heading, paragraph, heading, list.
       const source =
           '# First\n'
@@ -159,7 +159,7 @@ void main() {
     });
 
     test(
-      'nested headings carry the block index of their enclosing container',
+      'should nested headings carry the block index of their enclosing container',
       () {
         // The single top-level block is a blockquote that holds
         // a heading inside it. The heading should be extracted

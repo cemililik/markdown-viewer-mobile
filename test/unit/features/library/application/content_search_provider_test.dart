@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/features/library/application/content_search_provider.dart';
 
 void main() {
-  test('idle state is empty by default', () {
+  test('should idle state is empty by default', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
     final state = container.read(contentSearchControllerProvider);
@@ -12,7 +12,7 @@ void main() {
     expect(state.isLoading, isFalse);
   });
 
-  test('empty query reverts to idle immediately', () {
+  test('should empty query reverts to idle immediately', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
     container
@@ -39,7 +39,7 @@ void main() {
   // the state-machine behaviour of the notifier itself.
 
   test(
-    'non-empty submit flips the state to loading with the normalised query',
+    'should non-empty submit flips the state to loading with the normalised query',
     () {
       final container = ProviderContainer();
       addTearDown(container.dispose);
@@ -57,7 +57,7 @@ void main() {
     },
   );
 
-  test('clear() returns the notifier to idle', () {
+  test('should clear() returns the notifier to idle', () {
     final container = ProviderContainer();
     addTearDown(container.dispose);
     final notifier = container.read(contentSearchControllerProvider.notifier);

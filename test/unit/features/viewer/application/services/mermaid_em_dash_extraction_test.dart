@@ -32,29 +32,11 @@ gantt
 ```
 ''';
 
-    test('em-dash characters survive the AST → string round-trip', () {
+    test('should em-dash characters survive the AST → string round-trip', () {
       final codes = extractMermaidCodes(source);
       expect(codes, hasLength(1));
 
       final code = codes.first;
-      // Print the extracted code for human inspection — useful when
-      // diagnosing a silent transformation in the markdown parser.
-      // ignore: avoid_print
-      print('---- extracted code (length ${code.length}) ----');
-      // ignore: avoid_print
-      print(code);
-      // ignore: avoid_print
-      print('---- non-ASCII characters ----');
-      for (var i = 0; i < code.length; i += 1) {
-        final cu = code.codeUnitAt(i);
-        if (cu > 127) {
-          // ignore: avoid_print
-          print(
-            '  idx=$i char="${code[i]}" code=$cu (0x${cu.toRadixString(16)})',
-          );
-        }
-      }
-
       // Hard assertions: the literal em-dash must survive intact and
       // no HTML entity form must leak through.
       expect(

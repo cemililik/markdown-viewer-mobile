@@ -91,9 +91,13 @@ void main() {
   // `TapGestureRecognizer`. Ignoring it keeps the test signal
   // meaningful instead of alarming on a framework-internal
   // bookkeeping path.
-  LeakTesting.settings = LeakTesting.settings.withIgnored(
-    classes: const ['_LiveImage', 'ImageStreamCompleterHandle'],
-  );
+  setUp(() {
+    final original = LeakTesting.settings;
+    LeakTesting.settings = original.withIgnored(
+      classes: const ['_LiveImage', 'ImageStreamCompleterHandle'],
+    );
+    addTearDown(() => LeakTesting.settings = original);
+  });
 
   Widget harness(Widget child) {
     return MaterialApp(
@@ -105,7 +109,7 @@ void main() {
   }
 
   testWidgets(
-    'renders close button and keeps reset hidden until transform is dirty',
+    'should renders close button and keeps reset hidden until transform is dirty',
     (tester) async {
       await tester.pumpWidget(
         harness(
@@ -139,7 +143,7 @@ void main() {
     },
   );
 
-  testWidgets('tapping close pops the route', (tester) async {
+  testWidgets('should tapping close pops the route', (tester) async {
     final navigatorKey = GlobalKey<NavigatorState>();
     var popped = false;
 
@@ -188,40 +192,41 @@ void main() {
     expect(popped, isTrue);
   });
 
-  testWidgets('close button stays reachable after a tap on the diagram body', (
-    tester,
-  ) async {
-    // A prior iteration wrapped the image in a GestureDetector that
-    // toggled the chrome bar on tap. A missed tap on the close
-    // button hid the close button itself — with the status bar
-    // suppressed by immersive mode on iOS, the user had no
-    // fallback affordance. This regression guards the persistent
-    // chrome: the close icon must remain hit-testable after a
-    // tap on any part of the diagram body.
-    await tester.pumpWidget(
-      harness(
-        DiagramFullscreenScreen(
-          args: DiagramFullscreenArgs(
-            pngBytes: _pixelPng,
-            width: 200,
-            height: 100,
+  testWidgets(
+    'should close button stays reachable after a tap on the diagram body',
+    (tester) async {
+      // A prior iteration wrapped the image in a GestureDetector that
+      // toggled the chrome bar on tap. A missed tap on the close
+      // button hid the close button itself — with the status bar
+      // suppressed by immersive mode on iOS, the user had no
+      // fallback affordance. This regression guards the persistent
+      // chrome: the close icon must remain hit-testable after a
+      // tap on any part of the diagram body.
+      await tester.pumpWidget(
+        harness(
+          DiagramFullscreenScreen(
+            args: DiagramFullscreenArgs(
+              pngBytes: _pixelPng,
+              width: 200,
+              height: 100,
+            ),
           ),
         ),
-      ),
-    );
-    await tester.pumpAndSettle();
+      );
+      await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.close), findsOneWidget);
+      expect(find.byIcon(Icons.close), findsOneWidget);
 
-    // Tap well below the chrome bar on the diagram body — 300 dp
-    // from the top clears the SafeArea + chrome padding on every
-    // reasonable test viewport.
-    await tester.tapAt(const Offset(200, 400));
-    await tester.pumpAndSettle();
+      // Tap well below the chrome bar on the diagram body — 300 dp
+      // from the top clears the SafeArea + chrome padding on every
+      // reasonable test viewport.
+      await tester.tapAt(const Offset(200, 400));
+      await tester.pumpAndSettle();
 
-    // Close icon must still be visible AND tappable.
-    expect(find.byIcon(Icons.close), findsOneWidget);
-    final closeFinder = find.byIcon(Icons.close);
-    expect(tester.getSize(closeFinder).height, greaterThan(0));
-  });
+      // Close icon must still be visible AND tappable.
+      expect(find.byIcon(Icons.close), findsOneWidget);
+      final closeFinder = find.byIcon(Icons.close);
+      expect(tester.getSize(closeFinder).height, greaterThan(0));
+    },
+  );
 }

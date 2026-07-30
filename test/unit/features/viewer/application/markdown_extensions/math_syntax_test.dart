@@ -214,14 +214,14 @@ Prose after.
   });
 
   group('factory shape', () {
-    test('block factory returns one DisplayMathBlockSyntax', () {
+    test('should block factory returns one DisplayMathBlockSyntax', () {
       final syntaxes = buildMathBlockSyntaxes();
 
       expect(syntaxes, hasLength(1));
       expect(syntaxes.single, isA<DisplayMathBlockSyntax>());
     });
 
-    test('inline factory returns one InlineMathSyntax', () {
+    test('should inline factory returns one InlineMathSyntax', () {
       // Regression guard: a future refactor must not silently ship
       // a list of zero (forgetting to register) or two (re-adding
       // the deleted DisplayMathSyntax) inline syntaxes.

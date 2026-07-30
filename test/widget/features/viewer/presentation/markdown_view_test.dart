@@ -15,22 +15,26 @@ void main() {
   // duration of this file and restore it on tearDown so we don't
   // pollute any later test that loads the same singleton.
   TestWidgetsFlutterBinding.ensureInitialized();
-  final originalUpdateInterval =
-      VisibilityDetectorController.instance.updateInterval;
-  VisibilityDetectorController.instance.updateInterval = Duration.zero;
-  tearDownAll(() {
-    VisibilityDetectorController.instance.updateInterval =
-        originalUpdateInterval;
-  });
 
   // `markdown_widget` instantiates a `TapGestureRecognizer` per inline
   // link / footnote reference and never disposes them when the widget
   // unmounts (upstream issue, not under our control). Ignore that
   // class for this file so the package's bug does not mask real
   // application-side leaks; everything else continues to be tracked.
-  LeakTesting.settings = LeakTesting.settings.withIgnored(
-    classes: const ['TapGestureRecognizer'],
-  );
+  setUp(() {
+    final originalUpdateInterval =
+        VisibilityDetectorController.instance.updateInterval;
+    final originalLeakSettings = LeakTesting.settings;
+    VisibilityDetectorController.instance.updateInterval = Duration.zero;
+    LeakTesting.settings = originalLeakSettings.withIgnored(
+      classes: const ['TapGestureRecognizer'],
+    );
+    addTearDown(() {
+      VisibilityDetectorController.instance.updateInterval =
+          originalUpdateInterval;
+      LeakTesting.settings = originalLeakSettings;
+    });
+  });
 
   Document parseFixture(String name) => parseMarkdownFixture(name);
 
@@ -81,7 +85,7 @@ void main() {
   }
 
   group('MarkdownView code blocks', () {
-    testWidgets('renders Dart fence with multiple highlighted spans', (
+    testWidgets('should renders Dart fence with multiple highlighted spans', (
       tester,
     ) async {
       useTallSurface(tester);
@@ -114,7 +118,9 @@ void main() {
       );
     });
 
-    testWidgets('falls back gracefully on an unknown language', (tester) async {
+    testWidgets('should falls back gracefully on an unknown language', (
+      tester,
+    ) async {
       useTallSurface(tester);
       final doc = parseFixture('code_blocks.md');
 
@@ -136,28 +142,29 @@ void main() {
       );
     });
 
-    testWidgets('renders the same content in dark theme without crashing', (
-      tester,
-    ) async {
-      useTallSurface(tester);
-      // Regression guard: the dark `PreConfig` path uses different
-      // colours and a different highlight theme map. A typo there
-      // would only show up the first time someone flips the theme.
-      final doc = parseFixture('code_blocks.md');
+    testWidgets(
+      'should renders the same content in dark theme without crashing',
+      (tester) async {
+        useTallSurface(tester);
+        // Regression guard: the dark `PreConfig` path uses different
+        // colours and a different highlight theme map. A typo there
+        // would only show up the first time someone flips the theme.
+        final doc = parseFixture('code_blocks.md');
 
-      await tester.pumpWidget(harness(doc, brightness: Brightness.dark));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(harness(doc, brightness: Brightness.dark));
+        await tester.pumpAndSettle();
 
-      expect(find.byType(MarkdownView), findsOneWidget);
-      expect(
-        find.textContaining('void main()', findRichText: true),
-        findsOneWidget,
-      );
-    });
+        expect(find.byType(MarkdownView), findsOneWidget);
+        expect(
+          find.textContaining('void main()', findRichText: true),
+          findsOneWidget,
+        );
+      },
+    );
   });
 
   group('MarkdownView GFM features', () {
-    testWidgets('renders table headers and body cells as text nodes', (
+    testWidgets('should renders table headers and body cells as text nodes', (
       tester,
     ) async {
       useTallSurface(tester);
@@ -177,7 +184,7 @@ void main() {
       expect(find.textContaining('500 ms', findRichText: true), findsOneWidget);
     });
 
-    testWidgets('renders task list checkboxes', (tester) async {
+    testWidgets('should renders task list checkboxes', (tester) async {
       useTallSurface(tester);
       final doc = parseFixture('gfm_features.md');
 
@@ -192,7 +199,7 @@ void main() {
       expect(find.byIcon(Icons.check_box_outline_blank), findsNWidgets(2));
     });
 
-    testWidgets('strips footnote definitions from the document body', (
+    testWidgets('should strips footnote definitions from the document body', (
       tester,
     ) async {
       useTallSurface(tester);
@@ -224,19 +231,20 @@ void main() {
       );
     });
 
-    testWidgets('renders strikethrough text without dropping characters', (
-      tester,
-    ) async {
-      useTallSurface(tester);
-      final doc = parseFixture('gfm_features.md');
+    testWidgets(
+      'should renders strikethrough text without dropping characters',
+      (tester) async {
+        useTallSurface(tester);
+        final doc = parseFixture('gfm_features.md');
 
-      await tester.pumpWidget(harness(doc));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(harness(doc));
+        await tester.pumpAndSettle();
 
-      expect(
-        find.textContaining('struck-out', findRichText: true),
-        findsOneWidget,
-      );
-    });
+        expect(
+          find.textContaining('struck-out', findRichText: true),
+          findsOneWidget,
+        );
+      },
+    );
   });
 }

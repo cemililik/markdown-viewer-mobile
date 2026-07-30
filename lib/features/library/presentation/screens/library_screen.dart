@@ -277,7 +277,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         leading: Builder(
           builder:
               (context) => IconButton(
-                icon: const Icon(Icons.menu),
+                icon: Icon(
+                  Icons.menu,
+                  semanticLabel: l10n.libraryFoldersOpenDrawerTooltip,
+                ),
                 tooltip: l10n.libraryFoldersOpenDrawerTooltip,
                 onPressed: () => Scaffold.of(context).openDrawer(),
               ),
@@ -286,7 +289,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         actions: [
           if (activeSource case SyncedRepoSource(:final syncedRepo))
             IconButton(
-              icon: const Icon(Icons.sync),
+              icon: Icon(Icons.sync, semanticLabel: l10n.syncRefreshTooltip),
               tooltip: l10n.syncRefreshTooltip,
               onPressed:
                   () => context.push(
@@ -294,7 +297,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                   ),
             ),
           IconButton(
-            icon: const Icon(Icons.settings_outlined),
+            icon: Icon(
+              Icons.settings_outlined,
+              semanticLabel: l10n.navSettings,
+            ),
             tooltip: l10n.navSettings,
             onPressed: () => context.push(SettingsRoute.location()),
           ),
@@ -930,21 +936,30 @@ class _LibraryPopulatedBodyState extends ConsumerState<_LibraryPopulatedBody> {
     return SliverToBoxAdapter(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
-        child: Row(
-          children: [
-            if (icon != null) ...[
-              Icon(icon, size: 16, color: theme.colorScheme.onSurfaceVariant),
-              const SizedBox(width: 6),
-            ],
-            Text(
-              title,
-              style: theme.textTheme.labelLarge?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-                letterSpacing: 0.2,
+        child: Semantics(
+          header: true,
+          child: Row(
+            children: [
+              if (icon != null) ...[
+                ExcludeSemantics(
+                  child: Icon(
+                    icon,
+                    size: 16,
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(width: 6),
+              ],
+              Text(
+                title,
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.2,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

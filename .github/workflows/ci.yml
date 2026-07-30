@@ -91,6 +91,46 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+  golden-test:
+    name: Golden tests (macOS 26, Xcode 26.4.1)
+    runs-on: macos-26
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Select Xcode 26.4.1
+        run: sudo xcode-select -s /Applications/Xcode_26.4.1.app/Contents/Developer
+
+      - name: Verify Xcode version
+        run: xcodebuild -version
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.22.0
+        with:
+          flutter-version: '3.41.4'
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Fetch bundled mermaid runtime
+        run: bash tool/fetch_mermaid.sh
+
+      - name: Run golden comparisons
+        run: flutter test --tags golden test/golden
+
+      - name: Upload golden failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: golden-failures
+          path: test/golden/**/failures/
+          if-no-files-found: ignore
+          retention-days: 7
+
   build-android:
     name: Android debug build
     runs-on: ubuntu-latest

@@ -89,6 +89,7 @@ class _NoopEnumerator implements FolderEnumerator {
 
 /// Shared prefs instance, initialized once in the file's setUp.
 late SharedPreferences _testPrefs;
+late AppLocalizations _l10n;
 
 Widget _harness(
   RecentDocumentsStore store, {
@@ -145,6 +146,10 @@ Widget _harness(
 }
 
 void main() {
+  setUpAll(() async {
+    _l10n = await AppLocalizations.delegate.load(const Locale('en'));
+  });
+
   setUp(() async {
     SharedPreferences.setMockInitialValues(<String, Object>{});
     _testPrefs = await SharedPreferences.getInstance();
@@ -152,16 +157,16 @@ void main() {
 
   group('LibraryScreen', () {
     testWidgets(
-      'empty state shows the welcome icon plus three onboarding buttons',
+      'should empty state shows the welcome icon plus three onboarding buttons',
       (tester) async {
         await tester.pumpWidget(_harness(_InMemoryStore()));
         await tester.pumpAndSettle();
 
         expect(find.byIcon(Icons.menu_book_outlined), findsOneWidget);
-        expect(find.text('No documents yet'), findsOneWidget);
-        expect(find.text('Open file'), findsOneWidget);
-        expect(find.text('Open folder'), findsOneWidget);
-        expect(find.text('Sync repository'), findsOneWidget);
+        expect(find.text(_l10n.libraryEmptyTitle), findsOneWidget);
+        expect(find.text(_l10n.libraryActionMenuOpenFile), findsOneWidget);
+        expect(find.text(_l10n.libraryActionMenuOpenFolder), findsOneWidget);
+        expect(find.text(_l10n.libraryActionMenuSyncRepo), findsOneWidget);
         expect(
           find.byType(FloatingActionButton),
           findsNothing,
@@ -171,7 +176,7 @@ void main() {
     );
 
     testWidgets(
-      'AppBar hamburger opens the source picker drawer with Recents + Add source',
+      'should AppBar hamburger opens the source picker drawer with Recents + Add source',
       (tester) async {
         await tester.pumpWidget(_harness(_InMemoryStore()));
         await tester.pumpAndSettle();
@@ -181,19 +186,19 @@ void main() {
         // text may appear in other places like Recents body
         // headers when a folder has recent documents; in the
         // empty harness that is not a worry.)
-        expect(find.text('Folders'), findsNothing);
+        expect(find.text(_l10n.libraryFoldersDrawerTitle), findsNothing);
 
-        await tester.tap(find.byTooltip('Open folders'));
+        await tester.tap(find.byTooltip(_l10n.libraryFoldersOpenDrawerTooltip));
         await tester.pumpAndSettle();
 
-        expect(find.text('Folders'), findsOneWidget);
-        expect(find.text('Recents'), findsOneWidget);
-        expect(find.text('Add source'), findsOneWidget);
+        expect(find.text(_l10n.libraryFoldersDrawerTitle), findsOneWidget);
+        expect(find.text(_l10n.librarySourceRecents), findsOneWidget);
+        expect(find.text(_l10n.libraryAddSourceButton), findsOneWidget);
       },
     );
 
     testWidgets(
-      'drawer renders a tile for every persisted library folder under Sources',
+      'should drawer renders a tile for every persisted library folder under Sources',
       (tester) async {
         final foldersStore = _InMemoryFoldersStore([
           LibraryFolder(path: '/tmp/notes', addedAt: DateTime.utc(2026, 4, 14)),
@@ -204,14 +209,17 @@ void main() {
           _harness(_InMemoryStore(), foldersStore: foldersStore),
         );
         await tester.pumpAndSettle();
-        await tester.tap(find.byTooltip('Open folders'));
+        await tester.tap(find.byTooltip(_l10n.libraryFoldersOpenDrawerTooltip));
         await tester.pumpAndSettle();
 
         // Scope to the Drawer because _RecentsEmptyWithSources also renders
         // folder basenames in the main body behind the open drawer.
         final inDrawer = find.byType(Drawer);
         expect(
-          find.descendant(of: inDrawer, matching: find.text('Sources')),
+          find.descendant(
+            of: inDrawer,
+            matching: find.text(_l10n.librarySourceSectionHeader),
+          ),
           findsOneWidget,
         );
         expect(
@@ -226,7 +234,7 @@ void main() {
     );
 
     testWidgets(
-      'selecting a folder in the drawer switches the body to its tree view',
+      'should selecting a folder in the drawer switches the body to its tree view',
       (tester) async {
         final foldersStore = _InMemoryFoldersStore([
           LibraryFolder(path: '/tmp/notes', addedAt: DateTime.utc(2026, 4, 14)),
@@ -239,7 +247,7 @@ void main() {
 
         // Open drawer, tap the folder tile inside the drawer specifically
         // (the body also renders a "notes" tile in _RecentsEmptyWithSources).
-        await tester.tap(find.byTooltip('Open folders'));
+        await tester.tap(find.byTooltip(_l10n.libraryFoldersOpenDrawerTooltip));
         await tester.pumpAndSettle();
         await tester.tap(
           find.descendant(
@@ -251,36 +259,43 @@ void main() {
 
         // AppBar title now shows the folder basename; the
         // folder-scoped search placeholder appears in the body.
-        expect(find.text('Search in notes'), findsOneWidget);
+        expect(
+          find.text(_l10n.libraryFolderSourceSearchHint('notes')),
+          findsOneWidget,
+        );
         // Greeting no longer shows because we left the Recents
         // source.
-        expect(find.text('Good morning'), findsNothing);
-        expect(find.text('Good afternoon'), findsNothing);
-        expect(find.text('Good evening'), findsNothing);
+        expect(find.text(_l10n.libraryGreetingMorning), findsNothing);
+        expect(find.text(_l10n.libraryGreetingAfternoon), findsNothing);
+        expect(find.text(_l10n.libraryGreetingEvening), findsNothing);
       },
     );
 
-    testWidgets('populated Recents source shows an extended Open file FAB', (
-      tester,
-    ) async {
-      final store = _InMemoryStore([
-        RecentDocument(
-          documentId: const DocumentId('/tmp/alpha.md'),
-          openedAt: DateTime.now(),
-        ),
-      ]);
+    testWidgets(
+      'should populated Recents source shows an extended Open file FAB',
+      (tester) async {
+        final store = _InMemoryStore([
+          RecentDocument(
+            documentId: const DocumentId('/tmp/alpha.md'),
+            openedAt: DateTime.now(),
+          ),
+        ]);
 
-      await tester.pumpWidget(_harness(store));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(_harness(store));
+        await tester.pumpAndSettle();
 
-      expect(
-        find.widgetWithText(FloatingActionButton, 'Open file'),
-        findsOneWidget,
-      );
-    });
+        expect(
+          find.widgetWithText(
+            FloatingActionButton,
+            _l10n.libraryActionMenuOpenFile,
+          ),
+          findsOneWidget,
+        );
+      },
+    );
 
     testWidgets(
-      'populated state shows greeting + search + Today group + tile + FAB',
+      'should populated state shows greeting + search + Today group + tile + FAB',
       (tester) async {
         final now = DateTime.now();
         final store = _InMemoryStore([
@@ -299,9 +314,9 @@ void main() {
 
         // Greeting header: one of three salutations based on hour.
         final greetingCandidates = {
-          'Good morning',
-          'Good afternoon',
-          'Good evening',
+          _l10n.libraryGreetingMorning,
+          _l10n.libraryGreetingAfternoon,
+          _l10n.libraryGreetingEvening,
         };
         expect(
           greetingCandidates.any((g) => find.text(g).evaluate().isNotEmpty),
@@ -310,14 +325,14 @@ void main() {
               'Greeting header must render one of the three time-of-day '
               'salutations.',
         );
-        expect(find.text('2 recent documents'), findsOneWidget);
+        expect(find.text(_l10n.libraryGreetingSubtitle(2)), findsOneWidget);
 
         // Search field.
-        expect(find.text('Search recents'), findsOneWidget);
+        expect(find.text(_l10n.librarySearchHint), findsOneWidget);
 
         // Today group header (both alpha.md and beta.md were touched
         // within the current day).
-        expect(find.text('Today'), findsOneWidget);
+        expect(find.text(_l10n.libraryRecentGroupToday), findsOneWidget);
 
         // Tiles.
         expect(find.text('alpha.md'), findsOneWidget);
@@ -325,17 +340,20 @@ void main() {
 
         // Extended Open file FAB on the populated Recents source.
         expect(
-          find.widgetWithText(FloatingActionButton, 'Open file'),
+          find.widgetWithText(
+            FloatingActionButton,
+            _l10n.libraryActionMenuOpenFile,
+          ),
           findsOneWidget,
         );
 
         // Old empty state is gone.
-        expect(find.text('No documents yet'), findsNothing);
+        expect(find.text(_l10n.libraryEmptyTitle), findsNothing);
       },
     );
 
     testWidgets(
-      'pinned entries appear in their own section above the time groups',
+      'should pinned entries appear in their own section above the time groups',
       (tester) async {
         final now = DateTime.now();
         final store = _InMemoryStore([
@@ -353,15 +371,15 @@ void main() {
         await tester.pumpWidget(_harness(store));
         await tester.pumpAndSettle();
 
-        expect(find.text('Pinned'), findsOneWidget);
-        expect(find.text('Today'), findsOneWidget);
+        expect(find.text(_l10n.libraryRecentPinnedSection), findsOneWidget);
+        expect(find.text(_l10n.libraryRecentGroupToday), findsOneWidget);
         expect(find.text('pinned.md'), findsOneWidget);
         expect(find.text('regular.md'), findsOneWidget);
       },
     );
 
     testWidgets(
-      'search filters tiles by basename and shows the empty state when no match',
+      'should search filters tiles by basename and shows the empty state when no match',
       (tester) async {
         final now = DateTime.now();
         final store = _InMemoryStore([
@@ -387,14 +405,14 @@ void main() {
         // No-match path: empty state copy appears.
         await tester.enterText(find.byType(TextField), 'zzz');
         await tester.pumpAndSettle();
-        expect(find.text('No matching documents'), findsOneWidget);
+        expect(find.text(_l10n.librarySearchNoResults), findsOneWidget);
         expect(find.text('alpha.md'), findsNothing);
         expect(find.text('beta.md'), findsNothing);
       },
     );
 
     testWidgets(
-      'preview snippet appears as a third subtitle line when set on the entry',
+      'should preview snippet appears as a third subtitle line when set on the entry',
       (tester) async {
         final store = _InMemoryStore([
           RecentDocument(
@@ -411,37 +429,42 @@ void main() {
       },
     );
 
-    testWidgets('Clear all opens a confirmation dialog and wipes the list', (
-      tester,
-    ) async {
-      final store = _InMemoryStore([
-        RecentDocument(
-          documentId: const DocumentId('/tmp/alpha.md'),
-          openedAt: DateTime.now(),
-        ),
-      ]);
+    testWidgets(
+      'should Clear all opens a confirmation dialog and wipes the list',
+      (tester) async {
+        final store = _InMemoryStore([
+          RecentDocument(
+            documentId: const DocumentId('/tmp/alpha.md'),
+            openedAt: DateTime.now(),
+          ),
+        ]);
 
-      await tester.pumpWidget(_harness(store));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(_harness(store));
+        await tester.pumpAndSettle();
 
-      // Scroll the trailing Clear all button into view — it sits
-      // below the tiles and may be off-screen on the default test
-      // surface.
-      await tester.scrollUntilVisible(
-        find.widgetWithText(TextButton, 'Clear all'),
-        200,
-        scrollable: find.byType(Scrollable).first,
-      );
-      await tester.tap(find.widgetWithText(TextButton, 'Clear all'));
-      await tester.pumpAndSettle();
-      expect(find.text('Clear recent documents?'), findsOneWidget);
+        // Scroll the trailing Clear all button into view — it sits
+        // below the tiles and may be off-screen on the default test
+        // surface.
+        await tester.scrollUntilVisible(
+          find.widgetWithText(TextButton, _l10n.libraryRecentClearAll),
+          200,
+          scrollable: find.byType(Scrollable).first,
+        );
+        await tester.tap(
+          find.widgetWithText(TextButton, _l10n.libraryRecentClearAll),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text(_l10n.libraryRecentClearConfirmTitle), findsOneWidget);
 
-      await tester.tap(find.widgetWithText(FilledButton, 'Clear all'));
-      await tester.pumpAndSettle();
+        await tester.tap(
+          find.widgetWithText(FilledButton, _l10n.libraryRecentClearAll),
+        );
+        await tester.pumpAndSettle();
 
-      expect(find.text('alpha.md'), findsNothing);
-      expect(find.text('No documents yet'), findsOneWidget);
-    });
+        expect(find.text('alpha.md'), findsNothing);
+        expect(find.text(_l10n.libraryEmptyTitle), findsOneWidget);
+      },
+    );
   });
 
   group('library helpers', () {
@@ -451,7 +474,7 @@ void main() {
       l10n = await AppLocalizations.delegate.load(const Locale('en'));
     });
 
-    test('greetingFor picks morning/afternoon/evening by hour', () {
+    test('should greetingFor picks morning/afternoon/evening by hour', () {
       expect(greetingFor(5, l10n), 'Good morning');
       expect(greetingFor(11, l10n), 'Good morning');
       expect(greetingFor(12, l10n), 'Good afternoon');
@@ -460,34 +483,43 @@ void main() {
       expect(greetingFor(4, l10n), 'Good evening');
     });
 
-    test('formatRelativeOpenedAt returns Just now for sub-minute deltas', () {
-      final now = DateTime.now().subtract(const Duration(seconds: 10));
-      expect(formatRelativeOpenedAt(l10n, now), 'Just now');
-    });
+    test(
+      'should formatRelativeOpenedAt returns Just now for sub-minute deltas',
+      () {
+        final now = DateTime.now().subtract(const Duration(seconds: 10));
+        expect(formatRelativeOpenedAt(l10n, now), 'Just now');
+      },
+    );
 
-    test('formatRelativeOpenedAt returns minutes-ago plural', () {
+    test('should formatRelativeOpenedAt returns minutes-ago plural', () {
       final now = DateTime.now().subtract(const Duration(minutes: 5));
       expect(formatRelativeOpenedAt(l10n, now), '5 minutes ago');
     });
 
-    test('formatRelativeOpenedAt returns hours-ago plural', () {
+    test('should formatRelativeOpenedAt returns hours-ago plural', () {
       final now = DateTime.now().subtract(const Duration(hours: 3));
       expect(formatRelativeOpenedAt(l10n, now), '3 hours ago');
     });
 
-    test('formatRelativeOpenedAt returns Yesterday for one day ago', () {
+    test('should formatRelativeOpenedAt returns Yesterday for one day ago', () {
       final now = DateTime.now().subtract(const Duration(days: 1, hours: 1));
       expect(formatRelativeOpenedAt(l10n, now), 'Yesterday');
     });
 
-    test('formatRelativeOpenedAt returns days-ago plural below one week', () {
-      final now = DateTime.now().subtract(const Duration(days: 4));
-      expect(formatRelativeOpenedAt(l10n, now), '4 days ago');
-    });
+    test(
+      'should formatRelativeOpenedAt returns days-ago plural below one week',
+      () {
+        final now = DateTime.now().subtract(const Duration(days: 4));
+        expect(formatRelativeOpenedAt(l10n, now), '4 days ago');
+      },
+    );
 
-    test('formatRelativeOpenedAt falls through to long-ago after a week', () {
-      final now = DateTime.now().subtract(const Duration(days: 30));
-      expect(formatRelativeOpenedAt(l10n, now), 'A while back');
-    });
+    test(
+      'should formatRelativeOpenedAt falls through to long-ago after a week',
+      () {
+        final now = DateTime.now().subtract(const Duration(days: 30));
+        expect(formatRelativeOpenedAt(l10n, now), 'A while back');
+      },
+    );
   });
 }

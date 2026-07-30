@@ -34,7 +34,19 @@ STAGED_ARB_FILE=$(mktemp)
 PARTIAL_FILE=$(mktemp)
 STAGED_CACHED_FILE=$(mktemp)
 STAGED_WORKING_FILE=$(mktemp)
-trap 'rm -f "$STAGED_DART_FILE" "$STAGED_ARB_FILE" "$PARTIAL_FILE" "$STAGED_CACHED_FILE" "$STAGED_WORKING_FILE"' EXIT
+STAGED_GOLDEN_FAILURE_FILE=$(mktemp)
+trap 'rm -f "$STAGED_DART_FILE" "$STAGED_ARB_FILE" "$PARTIAL_FILE" "$STAGED_CACHED_FILE" "$STAGED_WORKING_FILE" "$STAGED_GOLDEN_FAILURE_FILE"' EXIT
+
+# Alchemist writes diff diagnostics below a `failures/` directory. They are
+# useful locally but are evidence of a red comparison, never a baseline.
+git diff --cached --name-only -z --diff-filter=ACMR \
+  -- ':(glob)test/golden/**/failures/**' > "$STAGED_GOLDEN_FAILURE_FILE" || true
+if [[ -s "$STAGED_GOLDEN_FAILURE_FILE" ]]; then
+  GOLDEN_FAILURES=$(tr '\0' '\n' < "$STAGED_GOLDEN_FAILURE_FILE")
+  fail "Golden failure diagnostics cannot be committed:
+
+$GOLDEN_FAILURES"
+fi
 
 # 1) Reject partially-staged Dart or ARB files. dart format and the ARB
 #    parity check inspect the working tree, so a file that has both

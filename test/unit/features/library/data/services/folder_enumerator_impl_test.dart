@@ -38,7 +38,7 @@ void main() {
     }
 
     test(
-      'returns markdown files and subdirectories at the top level',
+      'should returns markdown files and subdirectories at the top level',
       () async {
         await touchFile('readme.md');
         await touchFile('notes.markdown');
@@ -65,7 +65,7 @@ void main() {
       },
     );
 
-    test('hides dot-files and dot-folders', () async {
+    test('should hides dot-files and dot-folders', () async {
       await touchFile('readme.md');
       await touchFile('.hidden.md');
       await mkdir('.git');
@@ -77,7 +77,7 @@ void main() {
       expect(entries.map((e) => e.name), ['readme.md']);
     });
 
-    test('hides non-markdown files', () async {
+    test('should hides non-markdown files', () async {
       await touchFile('readme.md');
       await touchFile('notes.txt');
       await touchFile('photo.jpg');
@@ -89,7 +89,7 @@ void main() {
       expect(entries.map((e) => e.name), ['readme.md']);
     });
 
-    test('returns an empty list for an empty directory', () async {
+    test('should returns an empty list for an empty directory', () async {
       final entries = await const FolderEnumeratorImpl().enumerate(
         _bareFolder(tmp),
       );
@@ -97,7 +97,7 @@ void main() {
       expect(entries, isEmpty);
     });
 
-    test('throws on a missing directory', () async {
+    test('should throws on a missing directory', () async {
       final missing = p.join(tmp.path, 'does-not-exist');
 
       expect(
@@ -108,7 +108,7 @@ void main() {
       );
     });
 
-    test('case-insensitive .md / .markdown extension match', () async {
+    test('should case-insensitive .md / .markdown extension match', () async {
       await touchFile('readme.MD');
       await touchFile('notes.Markdown');
 
@@ -140,32 +140,35 @@ void main() {
       await file.writeAsString('# placeholder');
     }
 
-    test('walks the full tree and returns every markdown file', () async {
-      await touchFile('readme.md');
-      await touchFile('chapter-1/intro.md');
-      await touchFile('chapter-1/details/deep.md');
-      await touchFile('chapter-2/notes.markdown');
-      await touchFile('chapter-2/photo.png');
-      await touchFile('chapter-2/.ignored.md');
+    test(
+      'should walks the full tree and returns every markdown file',
+      () async {
+        await touchFile('readme.md');
+        await touchFile('chapter-1/intro.md');
+        await touchFile('chapter-1/details/deep.md');
+        await touchFile('chapter-2/notes.markdown');
+        await touchFile('chapter-2/photo.png');
+        await touchFile('chapter-2/.ignored.md');
 
-      final entries = await const FolderEnumeratorImpl().enumerateRecursive(
-        _bareFolder(tmp),
-      );
+        final entries = await const FolderEnumeratorImpl().enumerateRecursive(
+          _bareFolder(tmp),
+        );
 
-      final names = entries.map((e) => e.name).toSet();
-      expect(
-        names,
-        containsAll(['readme.md', 'intro.md', 'deep.md', 'notes.markdown']),
-      );
-      expect(names.contains('photo.png'), isFalse);
-      expect(
-        names.contains('.ignored.md'),
-        isFalse,
-        reason: 'Dot-prefixed files must be skipped by the walk.',
-      );
-    });
+        final names = entries.map((e) => e.name).toSet();
+        expect(
+          names,
+          containsAll(['readme.md', 'intro.md', 'deep.md', 'notes.markdown']),
+        );
+        expect(names.contains('photo.png'), isFalse);
+        expect(
+          names.contains('.ignored.md'),
+          isFalse,
+          reason: 'Dot-prefixed files must be skipped by the walk.',
+        );
+      },
+    );
 
-    test('skips dot-prefixed directories entirely', () async {
+    test('should skips dot-prefixed directories entirely', () async {
       await touchFile('readme.md');
       await touchFile('.git/HEAD.md');
       await touchFile('.cache/doc.md');
@@ -178,14 +181,14 @@ void main() {
       expect(entries.first.name, 'readme.md');
     });
 
-    test('returns an empty list for an empty directory', () async {
+    test('should returns an empty list for an empty directory', () async {
       final entries = await const FolderEnumeratorImpl().enumerateRecursive(
         _bareFolder(tmp),
       );
       expect(entries, isEmpty);
     });
 
-    test('returns alphabetically sorted results', () async {
+    test('should returns alphabetically sorted results', () async {
       await touchFile('c/c.md');
       await touchFile('a/a.md');
       await touchFile('b/b.md');
@@ -197,7 +200,7 @@ void main() {
       expect(entries.map((e) => e.name), ['a.md', 'b.md', 'c.md']);
     });
 
-    test('throws on a missing directory', () async {
+    test('should throws on a missing directory', () async {
       final missing = p.join(tmp.path, 'does-not-exist');
       expect(
         () => const FolderEnumeratorImpl().enumerateRecursive(

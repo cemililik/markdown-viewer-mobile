@@ -24,24 +24,30 @@ void main() {
       );
     }
 
-    test('wraps the payload in the mermaid init directive sigil and ends with '
-        'a newline so the actual diagram source starts on a fresh line', () {
-      final directive = buildMermaidInitDirective(lightScheme);
+    test(
+      'should wraps the payload in the mermaid init directive sigil and ends with '
+      'a newline so the actual diagram source starts on a fresh line',
+      () {
+        final directive = buildMermaidInitDirective(lightScheme);
 
-      expect(directive, startsWith('%%{init: '));
-      expect(directive, endsWith('%%\n'));
-    });
+        expect(directive, startsWith('%%{init: '));
+        expect(directive, endsWith('%%\n'));
+      },
+    );
 
-    test('pins theme to "base" so themeVariables overrides take effect', () {
-      final directive = buildMermaidInitDirective(lightScheme);
-      final payload =
-          jsonDecode(stripWrapper(directive)) as Map<String, dynamic>;
+    test(
+      'should pins theme to "base" so themeVariables overrides take effect',
+      () {
+        final directive = buildMermaidInitDirective(lightScheme);
+        final payload =
+            jsonDecode(stripWrapper(directive)) as Map<String, dynamic>;
 
-      expect(payload['theme'], 'base');
-      expect(payload['themeVariables'], isA<Map<String, dynamic>>());
-    });
+        expect(payload['theme'], 'base');
+        expect(payload['themeVariables'], isA<Map<String, dynamic>>());
+      },
+    );
 
-    test('every colour variable value is a #RRGGBB hex string', () {
+    test('should every colour variable value is a #RRGGBB hex string', () {
       final directive = buildMermaidInitDirective(lightScheme);
       final payload =
           jsonDecode(stripWrapper(directive)) as Map<String, dynamic>;
@@ -68,71 +74,80 @@ void main() {
       }
     });
 
-    test('mindmap branch palette covers the cScale slots used by mermaid', () {
-      final directive = buildMermaidInitDirective(lightScheme);
-      final payload =
-          jsonDecode(stripWrapper(directive)) as Map<String, dynamic>;
-      final vars = payload['themeVariables'] as Map<String, dynamic>;
+    test(
+      'should mindmap branch palette covers the cScale slots used by mermaid',
+      () {
+        final directive = buildMermaidInitDirective(lightScheme);
+        final payload =
+            jsonDecode(stripWrapper(directive)) as Map<String, dynamic>;
+        final vars = payload['themeVariables'] as Map<String, dynamic>;
 
-      // Mermaid mindmap reads its branch fills from `cScale<i>`
-      // and the matching label colours from `cScaleLabel<i>`.
-      // The peer colours for the connecting lines come from
-      // `cScalePeer<i>`. We seed all three series for the
-      // first twelve slots so deep mindmaps still get themed.
-      for (var i = 0; i < 12; i += 1) {
+        // Mermaid mindmap reads its branch fills from `cScale<i>`
+        // and the matching label colours from `cScaleLabel<i>`.
+        // The peer colours for the connecting lines come from
+        // `cScalePeer<i>`. We seed all three series for the
+        // first twelve slots so deep mindmaps still get themed.
+        for (var i = 0; i < 12; i += 1) {
+          expect(
+            vars,
+            containsPair('cScale$i', isA<String>()),
+            reason:
+                'cScale$i must be set so mindmap branch $i picks '
+                'up the project palette',
+          );
+          expect(vars, containsPair('cScaleLabel$i', isA<String>()));
+          expect(vars, containsPair('cScalePeer$i', isA<String>()));
+        }
+        expect(vars, containsPair('fontSize', '16px'));
+      },
+    );
+
+    test(
+      'should covers every diagram type the viewer fixture exercises (flowchart, '
+      'sequence, class, state, gantt, ER)',
+      () {
+        final directive = buildMermaidInitDirective(lightScheme);
+        final payload =
+            jsonDecode(stripWrapper(directive)) as Map<String, dynamic>;
+        final vars = payload['themeVariables'] as Map<String, dynamic>;
+
+        // Core
+        expect(vars, containsPair('background', isA<String>()));
+        expect(vars, containsPair('primaryColor', isA<String>()));
+        expect(vars, containsPair('lineColor', isA<String>()));
+        // Flowchart
+        expect(vars, containsPair('nodeBkg', isA<String>()));
+        expect(vars, containsPair('clusterBkg', isA<String>()));
+        // Sequence
+        expect(vars, containsPair('actorBkg', isA<String>()));
+        expect(vars, containsPair('signalColor', isA<String>()));
+        // State
+        expect(vars, containsPair('compositeBackground', isA<String>()));
+        // Gantt
+        expect(vars, containsPair('taskBkgColor', isA<String>()));
+        expect(vars, containsPair('todayLineColor', isA<String>()));
+        // ER
+        expect(vars, containsPair('relationColor', isA<String>()));
+      },
+    );
+
+    test(
+      'should produces a different palette for light vs dark schemes built from '
+      'the same seed',
+      () {
+        final lightDirective = buildMermaidInitDirective(lightScheme);
+        final darkDirective = buildMermaidInitDirective(darkScheme);
+
         expect(
-          vars,
-          containsPair('cScale$i', isA<String>()),
+          lightDirective,
+          isNot(equals(darkDirective)),
           reason:
-              'cScale$i must be set so mindmap branch $i picks '
-              'up the project palette',
+              'Light and dark ColorSchemes must produce different '
+              'init directives so the renderer cache buckets them '
+              'separately and the user sees the right palette per '
+              'theme mode.',
         );
-        expect(vars, containsPair('cScaleLabel$i', isA<String>()));
-        expect(vars, containsPair('cScalePeer$i', isA<String>()));
-      }
-      expect(vars, containsPair('fontSize', '16px'));
-    });
-
-    test('covers every diagram type the viewer fixture exercises (flowchart, '
-        'sequence, class, state, gantt, ER)', () {
-      final directive = buildMermaidInitDirective(lightScheme);
-      final payload =
-          jsonDecode(stripWrapper(directive)) as Map<String, dynamic>;
-      final vars = payload['themeVariables'] as Map<String, dynamic>;
-
-      // Core
-      expect(vars, containsPair('background', isA<String>()));
-      expect(vars, containsPair('primaryColor', isA<String>()));
-      expect(vars, containsPair('lineColor', isA<String>()));
-      // Flowchart
-      expect(vars, containsPair('nodeBkg', isA<String>()));
-      expect(vars, containsPair('clusterBkg', isA<String>()));
-      // Sequence
-      expect(vars, containsPair('actorBkg', isA<String>()));
-      expect(vars, containsPair('signalColor', isA<String>()));
-      // State
-      expect(vars, containsPair('compositeBackground', isA<String>()));
-      // Gantt
-      expect(vars, containsPair('taskBkgColor', isA<String>()));
-      expect(vars, containsPair('todayLineColor', isA<String>()));
-      // ER
-      expect(vars, containsPair('relationColor', isA<String>()));
-    });
-
-    test('produces a different palette for light vs dark schemes built from '
-        'the same seed', () {
-      final lightDirective = buildMermaidInitDirective(lightScheme);
-      final darkDirective = buildMermaidInitDirective(darkScheme);
-
-      expect(
-        lightDirective,
-        isNot(equals(darkDirective)),
-        reason:
-            'Light and dark ColorSchemes must produce different '
-            'init directives so the renderer cache buckets them '
-            'separately and the user sees the right palette per '
-            'theme mode.',
-      );
-    });
+      },
+    );
   });
 }

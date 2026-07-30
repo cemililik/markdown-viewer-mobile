@@ -1,10 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
-import 'package:flutter_highlight/themes/atom-one-dark.dart' as hl_dark;
-import 'package:flutter_highlight/themes/atom-one-light.dart' as hl_light;
-// `highlight` is a transitive dependency of `flutter_highlight`; see
-// the rationale next to the matching import in `lib/main.dart`.
-// ignore: depend_on_referenced_packages
-import 'package:highlight/highlight.dart' as hi;
+import 'package:flutter_highlighting/themes/atom-one-dark.dart' as hl_dark;
+import 'package:flutter_highlighting/themes/atom-one-light.dart' as hl_light;
 import 'package:markdown/markdown.dart' as md;
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
@@ -18,6 +16,8 @@ import 'package:markdown_viewer/features/viewer/presentation/widgets/math_view.d
 import 'package:markdown_viewer/features/viewer/presentation/widgets/mermaid_block.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/search_highlight_syntax.dart';
 import 'package:markdown_widget/markdown_widget.dart';
+import 'package:re_highlight/languages/all.dart' as reh_languages;
+import 'package:re_highlight/re_highlight.dart' as reh;
 
 /// Pre-built `MarkdownGenerator` reused for every render of every
 /// [MarkdownView] instance.
@@ -77,6 +77,9 @@ final MarkdownGenerator _markdownGenerator = MarkdownGenerator(
 /// at file scope so a cache miss does not re-compile the pattern
 /// every time a new document is opened.
 final RegExp _wordSplitRegex = RegExp(r'\s+');
+
+final reh.Highlight _syntaxHighlighter =
+    reh.Highlight()..registerLanguages(reh_languages.builtinAllLanguages);
 
 int _estimateReadingMinutes(Document document) {
   final cached = _readingMinutesCache[document];
@@ -617,9 +620,13 @@ class MarkdownView extends StatelessWidget {
       borderRadius: const BorderRadius.all(Radius.circular(8)),
       border: Border.all(color: scheme.outlineVariant, width: 0.5),
     );
-    final hlTheme =
-        isDark ? hl_dark.atomOneDarkTheme : hl_light.atomOneLightTheme;
     final fallbackStyle = TextStyle(color: scheme.onSurface);
+    final hlTheme = ensureCodeThemeContrast(
+      isDark ? hl_dark.atomOneDarkTheme : hl_light.atomOneLightTheme,
+      background:
+          isDark ? scheme.surfaceContainerHigh : scheme.surfaceContainerLow,
+      fallback: scheme.onSurface,
+    );
 
     return PreConfig(
       decoration: blockDecoration,
@@ -632,7 +639,7 @@ class MarkdownView extends StatelessWidget {
       // whole-content one.
       //
       // The package's own `CodeBlockNode.build` splits the fence body
-      // by newlines and calls `highlight.parse` on each line in
+      // by newlines and calls its legacy highlighter on each line in
       // isolation. That breaks languages whose tokenisation needs
       // multi-line context — most visibly JSON, whose top-level mode
       // marks any non-whitespace outside `{…}` / `[…]` as illegal, so a
@@ -701,7 +708,79 @@ class MarkdownView extends StatelessWidget {
   }
 }
 
-/// Parses [source] with `package:highlight` and returns a flat list of
+/// Returns a syntax theme whose text colours meet WCAG AA contrast.
+///
+/// Third-party highlight palettes assume their own bundled background, while
+/// the viewer deliberately renders code on Material theme surfaces. Each token
+/// colour is therefore moved only as far toward [fallback] as needed to reach
+/// [minimumRatio] against [background]. Font weight and style are preserved.
+@visibleForTesting
+Map<String, TextStyle> ensureCodeThemeContrast(
+  Map<String, TextStyle> theme, {
+  required Color background,
+  required Color fallback,
+  double minimumRatio = 4.5,
+}) {
+  return theme.map((name, style) {
+    final color = style.color;
+    if (color == null) {
+      return MapEntry(name, style);
+    }
+    return MapEntry(
+      name,
+      style.copyWith(
+        color: _ensureContrast(
+          color,
+          background: background,
+          fallback: fallback,
+          minimumRatio: minimumRatio,
+        ),
+      ),
+    );
+  });
+}
+
+Color _ensureContrast(
+  Color foreground, {
+  required Color background,
+  required Color fallback,
+  required double minimumRatio,
+}) {
+  if (_contrastRatio(foreground, background) >= minimumRatio) {
+    return foreground;
+  }
+  if (_contrastRatio(fallback, background) < minimumRatio) {
+    return fallback;
+  }
+
+  var insufficient = 0.0;
+  var sufficient = 1.0;
+  for (var iteration = 0; iteration < 12; iteration += 1) {
+    final midpoint = (insufficient + sufficient) / 2;
+    final candidate = Color.lerp(foreground, fallback, midpoint)!;
+    if (_contrastRatio(candidate, background) >= minimumRatio) {
+      sufficient = midpoint;
+    } else {
+      insufficient = midpoint;
+    }
+  }
+  return Color.lerp(foreground, fallback, sufficient)!;
+}
+
+double _contrastRatio(Color foreground, Color background) {
+  final opaqueForeground = Color.alphaBlend(foreground, background);
+  final lighter = math.max(
+    opaqueForeground.computeLuminance(),
+    background.computeLuminance(),
+  );
+  final darker = math.min(
+    opaqueForeground.computeLuminance(),
+    background.computeLuminance(),
+  );
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
+/// Parses [source] with `package:re_highlight` and returns a list of
 /// [InlineSpan]s ready for a `Text.rich` body.
 ///
 /// This is the whole-content replacement for `markdown_widget`'s own
@@ -711,15 +790,9 @@ class MarkdownView extends StatelessWidget {
 /// null, the source is returned as a single unstyled span so unknown /
 /// hint-less fences still render as plain monospace code.
 ///
-/// Token-to-style resolution keeps the semantics of
-/// `convertHiNodes` but drops its `style.merge` step: that merge
-/// overrode every per-token colour from the active `flutter_highlight`
-/// theme with whatever colour sat on the outer textStyle, which is
-/// exactly the flattening we removed from `codeTextStyle` above. The
-/// outer `Text.rich` passes `codeTextStyle` on the root `TextSpan`, so
-/// font family, fontSize and height still propagate — the per-token
-/// `TextSpan.style` only carries the colour (and italic for comments /
-/// emphasis) and inherits everything else.
+/// The renderer receives [fallback] as its base and the contrast-adjusted
+/// token [theme], so unknown scopes remain readable without flattening the
+/// recognised token colours.
 List<InlineSpan> _highlightFullBlock({
   required String source,
   required String? language,
@@ -729,48 +802,21 @@ List<InlineSpan> _highlightFullBlock({
   if (language == null) {
     return [TextSpan(text: source, style: fallback)];
   }
-  final hi.Result result;
+  final normalizedLanguage = language.toLowerCase();
+  if (_syntaxHighlighter.getLanguage(normalizedLanguage) == null) {
+    return [TextSpan(text: source, style: fallback)];
+  }
+
   try {
-    result = hi.highlight.parse(source, language: language);
+    final result = _syntaxHighlighter.highlight(
+      code: source,
+      language: normalizedLanguage,
+    );
+    final renderer = reh.TextSpanRenderer(fallback, theme);
+    result.render(renderer);
+    final span = renderer.span;
+    return span == null ? [TextSpan(text: source, style: fallback)] : [span];
   } catch (_) {
     return [TextSpan(text: source, style: fallback)];
   }
-  final nodes = result.nodes ?? const <hi.Node>[];
-  if (nodes.isEmpty) {
-    return [TextSpan(text: source, style: fallback)];
-  }
-
-  final spans = <InlineSpan>[];
-  var current = spans;
-  final stack = <List<InlineSpan>>[];
-
-  void traverse(hi.Node node, TextStyle? parentStyle) {
-    // Classed children override the ancestor style; un-classed
-    // descendants inherit the nearest resolved ancestor style so
-    // nested spans pick up the wrapper's colour instead of dropping
-    // to `fallback`.
-    final ownThemeStyle =
-        node.className == null ? null : theme[node.className!];
-    final resolvedStyle = ownThemeStyle ?? parentStyle;
-    final spanStyle = resolvedStyle ?? fallback;
-    if (node.value != null) {
-      current.add(TextSpan(text: node.value, style: spanStyle));
-      return;
-    }
-    final children = node.children;
-    if (children == null) return;
-    final nested = <InlineSpan>[];
-    current.add(TextSpan(children: nested, style: spanStyle));
-    stack.add(current);
-    current = nested;
-    for (final child in children) {
-      traverse(child, resolvedStyle);
-    }
-    current = stack.isEmpty ? spans : stack.removeLast();
-  }
-
-  for (final node in nodes) {
-    traverse(node, null);
-  }
-  return spans;
 }

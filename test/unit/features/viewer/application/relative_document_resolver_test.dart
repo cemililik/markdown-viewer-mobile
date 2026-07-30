@@ -9,7 +9,7 @@ void main() {
   const currentDoc = '/home/user/docs/guide.md';
 
   group('resolveRelativeDocument', () {
-    test('sibling file resolves to the document-directory path', () {
+    test('should sibling file resolves to the document-directory path', () {
       final r = resolveRelativeDocument(
         href: 'api.md',
         currentDocumentPath: currentDoc,
@@ -18,7 +18,7 @@ void main() {
       expect(r?.fragment, '');
     });
 
-    test('explicit `./` prefix works the same as bare', () {
+    test('should explicit `./` prefix works the same as bare', () {
       final r = resolveRelativeDocument(
         href: './intro.markdown',
         currentDocumentPath: currentDoc,
@@ -26,7 +26,7 @@ void main() {
       expect(r?.path, p.normalize('/home/user/docs/intro.markdown'));
     });
 
-    test('`..` traversal normalises correctly', () {
+    test('should `..` traversal normalises correctly', () {
       final r = resolveRelativeDocument(
         href: '../shared/types.md',
         currentDocumentPath: currentDoc,
@@ -34,7 +34,7 @@ void main() {
       expect(r?.path, p.normalize('/home/user/shared/types.md'));
     });
 
-    test('file + fragment splits the anchor out', () {
+    test('should file + fragment splits the anchor out', () {
       final r = resolveRelativeDocument(
         href: 'guide.md#configuration',
         currentDocumentPath: currentDoc,
@@ -43,7 +43,7 @@ void main() {
       expect(r?.fragment, 'configuration');
     });
 
-    test('empty href returns null', () {
+    test('should empty href returns null', () {
       final r = resolveRelativeDocument(
         href: '',
         currentDocumentPath: currentDoc,
@@ -51,7 +51,7 @@ void main() {
       expect(r, isNull);
     });
 
-    test('pure-anchor href returns null (caller handles anchors)', () {
+    test('should pure-anchor href returns null (caller handles anchors)', () {
       final r = resolveRelativeDocument(
         href: '#section',
         currentDocumentPath: currentDoc,
@@ -59,7 +59,7 @@ void main() {
       expect(r, isNull);
     });
 
-    test('absolute path href returns null', () {
+    test('should absolute path href returns null', () {
       // A schemeless absolute href would let malicious markdown
       // aim at `/etc/passwd` or similar. Refuse by construction.
       final r = resolveRelativeDocument(
@@ -69,7 +69,7 @@ void main() {
       expect(r, isNull);
     });
 
-    test('href with a scheme returns null', () {
+    test('should href with a scheme returns null', () {
       final r = resolveRelativeDocument(
         href: 'https://example.com/doc.md',
         currentDocumentPath: currentDoc,
@@ -77,7 +77,7 @@ void main() {
       expect(r, isNull);
     });
 
-    test('non-markdown extension returns null', () {
+    test('should non-markdown extension returns null', () {
       final r = resolveRelativeDocument(
         href: 'logo.png',
         currentDocumentPath: currentDoc,
@@ -85,7 +85,7 @@ void main() {
       expect(r, isNull);
     });
 
-    test('uppercase MARKDOWN extension still resolves', () {
+    test('should uppercase MARKDOWN extension still resolves', () {
       final r = resolveRelativeDocument(
         href: 'README.MD',
         currentDocumentPath: currentDoc,
@@ -93,7 +93,7 @@ void main() {
       expect(r?.path, p.normalize('/home/user/docs/README.MD'));
     });
 
-    test('percent-encoded filename resolves (with %20 space)', () {
+    test('should percent-encoded filename resolves (with %20 space)', () {
       // Matches the encoding fix in `resolveRelativeDocument`:
       // the href may carry percent-escaped bytes that must be
       // decoded before the extension check and filesystem join.
@@ -104,7 +104,7 @@ void main() {
       expect(r?.path, p.normalize('/home/user/docs/api docs.md'));
     });
 
-    test('percent-encoded Unicode filename resolves', () {
+    test('should percent-encoded Unicode filename resolves', () {
       final r = resolveRelativeDocument(
         href: 'kullan%C4%B1c%C4%B1.md',
         currentDocumentPath: currentDoc,

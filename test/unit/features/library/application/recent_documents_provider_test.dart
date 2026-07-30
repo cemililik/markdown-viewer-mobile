@@ -35,7 +35,7 @@ ProviderContainer _containerWith(_FakeStore store) {
 
 void main() {
   group('RecentDocumentsController', () {
-    test('seeds initial state from the store', () {
+    test('should seeds initial state from the store', () {
       final seed = [
         RecentDocument(
           documentId: const DocumentId('/tmp/a.md'),
@@ -49,7 +49,7 @@ void main() {
       expect(state.first.documentId.value, '/tmp/a.md');
     });
 
-    test('touch prepends a new entry to the top of the list', () {
+    test('should touch prepends a new entry to the top of the list', () {
       final store = _FakeStore([
         RecentDocument(
           documentId: const DocumentId('/tmp/old.md'),
@@ -69,7 +69,7 @@ void main() {
       expect(store.writeCount, 1);
     });
 
-    test('touch carries the preview snippet onto the fresh entry', () {
+    test('should touch carries the preview snippet onto the fresh entry', () {
       final store = _FakeStore();
       final container = _containerWith(store);
 
@@ -84,7 +84,7 @@ void main() {
       expect(state.first.preview, 'first paragraph of the document');
     });
 
-    test('touch carries the display name onto the fresh entry', () {
+    test('should touch carries the display name onto the fresh entry', () {
       final store = _FakeStore();
       final container = _containerWith(store);
 
@@ -99,37 +99,40 @@ void main() {
       expect(state.first.displayName, 'readme.md');
     });
 
-    test('touch preserves an existing display name when the call does not '
-        'provide a new one', () {
-      final store = _FakeStore([
-        RecentDocument(
-          documentId: const DocumentId('/tmp/cache/sha256hash.md'),
-          openedAt: DateTime.utc(2026, 4, 13),
-          displayName: 'readme.md',
-        ),
-      ]);
-      final container = _containerWith(store);
+    test(
+      'should touch preserves an existing display name when the call does not '
+      'provide a new one',
+      () {
+        final store = _FakeStore([
+          RecentDocument(
+            documentId: const DocumentId('/tmp/cache/sha256hash.md'),
+            openedAt: DateTime.utc(2026, 4, 13),
+            displayName: 'readme.md',
+          ),
+        ]);
+        final container = _containerWith(store);
 
-      container
-          .read(recentDocumentsControllerProvider.notifier)
-          .touch(
-            const DocumentId('/tmp/cache/sha256hash.md'),
-            preview: 'updated preview',
-          );
+        container
+            .read(recentDocumentsControllerProvider.notifier)
+            .touch(
+              const DocumentId('/tmp/cache/sha256hash.md'),
+              preview: 'updated preview',
+            );
 
-      final state = container.read(recentDocumentsControllerProvider);
-      expect(
-        state.first.displayName,
-        'readme.md',
-        reason:
-            'Re-touching an entry without a displayName argument must '
-            'keep the previously stamped name intact.',
-      );
-      expect(state.first.preview, 'updated preview');
-    });
+        final state = container.read(recentDocumentsControllerProvider);
+        expect(
+          state.first.displayName,
+          'readme.md',
+          reason:
+              'Re-touching an entry without a displayName argument must '
+              'keep the previously stamped name intact.',
+        );
+        expect(state.first.preview, 'updated preview');
+      },
+    );
 
     test(
-      'touch preserves the pinned flag on re-open so a tap does not unpin',
+      'should touch preserves the pinned flag on re-open so a tap does not unpin',
       () {
         final store = _FakeStore([
           RecentDocument(
@@ -157,30 +160,33 @@ void main() {
       },
     );
 
-    test('touch deduplicates by path and promotes the existing entry', () {
-      final store = _FakeStore([
-        RecentDocument(
-          documentId: const DocumentId('/tmp/a.md'),
-          openedAt: DateTime.utc(2026, 4, 13),
-        ),
-        RecentDocument(
-          documentId: const DocumentId('/tmp/b.md'),
-          openedAt: DateTime.utc(2026, 4, 12),
-        ),
-      ]);
-      final container = _containerWith(store);
+    test(
+      'should touch deduplicates by path and promotes the existing entry',
+      () {
+        final store = _FakeStore([
+          RecentDocument(
+            documentId: const DocumentId('/tmp/a.md'),
+            openedAt: DateTime.utc(2026, 4, 13),
+          ),
+          RecentDocument(
+            documentId: const DocumentId('/tmp/b.md'),
+            openedAt: DateTime.utc(2026, 4, 12),
+          ),
+        ]);
+        final container = _containerWith(store);
 
-      container
-          .read(recentDocumentsControllerProvider.notifier)
-          .touch(const DocumentId('/tmp/b.md'));
+        container
+            .read(recentDocumentsControllerProvider.notifier)
+            .touch(const DocumentId('/tmp/b.md'));
 
-      final state = container.read(recentDocumentsControllerProvider);
-      expect(state, hasLength(2));
-      expect(state[0].documentId.value, '/tmp/b.md');
-      expect(state[1].documentId.value, '/tmp/a.md');
-    });
+        final state = container.read(recentDocumentsControllerProvider);
+        expect(state, hasLength(2));
+        expect(state[0].documentId.value, '/tmp/b.md');
+        expect(state[1].documentId.value, '/tmp/a.md');
+      },
+    );
 
-    test('touch caps the list at 20 entries (most recent wins)', () {
+    test('should touch caps the list at 20 entries (most recent wins)', () {
       // Seed is stored most-recent-first, so index 0 is the newest
       // entry and index 19 is the oldest. After prepending the fresh
       // touch, the oldest (tail) entry must be the one that drops.
@@ -213,7 +219,7 @@ void main() {
       );
     });
 
-    test('remove drops the matching entry and persists', () {
+    test('should remove drops the matching entry and persists', () {
       final store = _FakeStore([
         RecentDocument(
           documentId: const DocumentId('/tmp/a.md'),
@@ -236,7 +242,7 @@ void main() {
       expect(store.writeCount, 1);
     });
 
-    test('remove is a no-op when the path is not in the list', () {
+    test('should remove is a no-op when the path is not in the list', () {
       final store = _FakeStore([
         RecentDocument(
           documentId: const DocumentId('/tmp/a.md'),
@@ -253,7 +259,7 @@ void main() {
       expect(store.writeCount, 0);
     });
 
-    test('clear wipes the list and persists the empty state', () {
+    test('should clear wipes the list and persists the empty state', () {
       final store = _FakeStore([
         RecentDocument(
           documentId: const DocumentId('/tmp/a.md'),
@@ -268,7 +274,7 @@ void main() {
       expect(store.writeCount, 1);
     });
 
-    test('clear is a no-op when the list is already empty', () {
+    test('should clear is a no-op when the list is already empty', () {
       final store = _FakeStore();
       final container = _containerWith(store);
 
@@ -277,38 +283,41 @@ void main() {
       expect(store.writeCount, 0);
     });
 
-    test('togglePin flips the pinned flag and re-sorts pinned to the top', () {
-      final store = _FakeStore([
-        RecentDocument(
-          documentId: const DocumentId('/tmp/a.md'),
-          openedAt: DateTime.utc(2026, 4, 13, 10),
-        ),
-        RecentDocument(
-          documentId: const DocumentId('/tmp/b.md'),
-          openedAt: DateTime.utc(2026, 4, 13, 9),
-        ),
-      ]);
-      final container = _containerWith(store);
+    test(
+      'should togglePin flips the pinned flag and re-sorts pinned to the top',
+      () {
+        final store = _FakeStore([
+          RecentDocument(
+            documentId: const DocumentId('/tmp/a.md'),
+            openedAt: DateTime.utc(2026, 4, 13, 10),
+          ),
+          RecentDocument(
+            documentId: const DocumentId('/tmp/b.md'),
+            openedAt: DateTime.utc(2026, 4, 13, 9),
+          ),
+        ]);
+        final container = _containerWith(store);
 
-      container
-          .read(recentDocumentsControllerProvider.notifier)
-          .togglePin(const DocumentId('/tmp/b.md'));
+        container
+            .read(recentDocumentsControllerProvider.notifier)
+            .togglePin(const DocumentId('/tmp/b.md'));
 
-      final afterPin = container.read(recentDocumentsControllerProvider);
-      expect(afterPin.first.documentId.value, '/tmp/b.md');
-      expect(afterPin.first.isPinned, isTrue);
-      expect(afterPin[1].documentId.value, '/tmp/a.md');
+        final afterPin = container.read(recentDocumentsControllerProvider);
+        expect(afterPin.first.documentId.value, '/tmp/b.md');
+        expect(afterPin.first.isPinned, isTrue);
+        expect(afterPin[1].documentId.value, '/tmp/a.md');
 
-      container
-          .read(recentDocumentsControllerProvider.notifier)
-          .togglePin(const DocumentId('/tmp/b.md'));
+        container
+            .read(recentDocumentsControllerProvider.notifier)
+            .togglePin(const DocumentId('/tmp/b.md'));
 
-      final afterUnpin = container.read(recentDocumentsControllerProvider);
-      expect(afterUnpin.first.documentId.value, '/tmp/a.md');
-      expect(afterUnpin[1].isPinned, isFalse);
-    });
+        final afterUnpin = container.read(recentDocumentsControllerProvider);
+        expect(afterUnpin.first.documentId.value, '/tmp/a.md');
+        expect(afterUnpin[1].isPinned, isFalse);
+      },
+    );
 
-    test('togglePin is a no-op when the path is not present', () {
+    test('should togglePin is a no-op when the path is not present', () {
       final store = _FakeStore([
         RecentDocument(
           documentId: const DocumentId('/tmp/a.md'),
@@ -325,7 +334,7 @@ void main() {
     });
 
     test(
-      'pinned entries are exempt from the 20-entry cap on the unpinned tail',
+      'should pinned entries are exempt from the 20-entry cap on the unpinned tail',
       () {
         final pinned = List<RecentDocument>.generate(
           5,

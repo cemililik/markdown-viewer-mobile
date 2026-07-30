@@ -12,6 +12,21 @@ void main() {
   Future<AppLocalizations> loadLocale(String code) =>
       AppLocalizations.delegate.load(Locale(code));
 
+  const failures = <Failure>[
+    FileNotFoundFailure(message: 'x'),
+    PermissionDeniedFailure(message: 'x'),
+    ParseFailure(message: 'x'),
+    RenderFailure(message: 'x'),
+    NetworkUnavailableFailure(message: 'x'),
+    RateLimitedFailure(message: 'x'),
+    AuthFailure(message: 'x'),
+    RepoNotFoundFailure(message: 'x'),
+    RepoTooLargeFailure(message: 'x'),
+    PartialSyncFailure(message: 'x', syncedCount: 1, failedCount: 1),
+    UnsupportedProviderFailure(message: 'x'),
+    UnknownFailure(message: 'x'),
+  ];
+
   group('mapFailureToViewerMessage (en)', () {
     late AppLocalizations l10n;
 
@@ -19,7 +34,7 @@ void main() {
       l10n = await loadLocale('en');
     });
 
-    test('FileNotFoundFailure maps to the errorFileNotFound key', () {
+    test('should FileNotFoundFailure maps to the errorFileNotFound key', () {
       const failure = FileNotFoundFailure(message: 'x');
 
       final result = mapFailureToViewerMessage(failure, l10n);
@@ -27,15 +42,18 @@ void main() {
       expect(result, l10n.errorFileNotFound);
     });
 
-    test('PermissionDeniedFailure maps to the errorPermissionDenied key', () {
-      const failure = PermissionDeniedFailure(message: 'x');
+    test(
+      'should PermissionDeniedFailure maps to the errorPermissionDenied key',
+      () {
+        const failure = PermissionDeniedFailure(message: 'x');
 
-      final result = mapFailureToViewerMessage(failure, l10n);
+        final result = mapFailureToViewerMessage(failure, l10n);
 
-      expect(result, l10n.errorPermissionDenied);
-    });
+        expect(result, l10n.errorPermissionDenied);
+      },
+    );
 
-    test('ParseFailure maps to the errorParseFailed key', () {
+    test('should ParseFailure maps to the errorParseFailed key', () {
       const failure = ParseFailure(message: 'x');
 
       final result = mapFailureToViewerMessage(failure, l10n);
@@ -43,7 +61,7 @@ void main() {
       expect(result, l10n.errorParseFailed);
     });
 
-    test('RenderFailure maps to the errorRenderFailed key', () {
+    test('should RenderFailure maps to the errorRenderFailed key', () {
       const failure = RenderFailure(message: 'x');
 
       final result = mapFailureToViewerMessage(failure, l10n);
@@ -51,12 +69,55 @@ void main() {
       expect(result, l10n.errorRenderFailed);
     });
 
-    test('UnknownFailure maps to the errorUnknown key', () {
+    test('should UnknownFailure maps to the errorUnknown key', () {
       const failure = UnknownFailure(message: 'x');
 
       final result = mapFailureToViewerMessage(failure, l10n);
 
       expect(result, l10n.errorUnknown);
+    });
+
+    test('should cover every concrete Failure subtype', () {
+      expect(
+        failures.map((failure) => failure.runtimeType).toSet(),
+        hasLength(12),
+      );
+    });
+
+    test('should deliberately map fallback failure types to errorUnknown', () {
+      for (final failure in failures.where(
+        (failure) =>
+            failure is PartialSyncFailure ||
+            failure is UnsupportedProviderFailure ||
+            failure is UnknownFailure,
+      )) {
+        expect(mapFailureToViewerMessage(failure, l10n), l10n.errorUnknown);
+      }
+    });
+
+    test('should return the expected key for every Failure subtype', () {
+      final expected = <Type, String>{
+        FileNotFoundFailure: l10n.errorFileNotFound,
+        PermissionDeniedFailure: l10n.errorPermissionDenied,
+        ParseFailure: l10n.errorParseFailed,
+        RenderFailure: l10n.errorRenderFailed,
+        NetworkUnavailableFailure: l10n.errorNetworkUnavailable,
+        RateLimitedFailure: l10n.errorRateLimited,
+        AuthFailure: l10n.errorAuthFailed,
+        RepoNotFoundFailure: l10n.errorRepoNotFound,
+        RepoTooLargeFailure: l10n.errorRepoTooLarge,
+        PartialSyncFailure: l10n.errorUnknown,
+        UnsupportedProviderFailure: l10n.errorUnknown,
+        UnknownFailure: l10n.errorUnknown,
+      };
+
+      for (final failure in failures) {
+        expect(
+          mapFailureToViewerMessage(failure, l10n),
+          expected[failure.runtimeType],
+          reason: '${failure.runtimeType} must map to its intended ARB key',
+        );
+      }
     });
   });
 
@@ -70,14 +131,6 @@ void main() {
       // without a real translation would fail this test immediately.
       final en = await loadLocale('en');
       final tr = await loadLocale('tr');
-
-      const failures = <Failure>[
-        FileNotFoundFailure(message: 'x'),
-        PermissionDeniedFailure(message: 'x'),
-        ParseFailure(message: 'x'),
-        RenderFailure(message: 'x'),
-        UnknownFailure(message: 'x'),
-      ];
 
       for (final f in failures) {
         final enMessage = mapFailureToViewerMessage(f, en);

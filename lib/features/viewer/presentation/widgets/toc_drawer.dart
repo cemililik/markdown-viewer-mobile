@@ -41,6 +41,7 @@ class TocDrawer extends StatelessWidget {
     final headings = document.headings;
 
     return Drawer(
+      semanticLabel: l10n.viewerTocTitle,
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -54,10 +55,13 @@ class TocDrawer extends StatelessWidget {
                     color: theme.colorScheme.primary,
                   ),
                   const SizedBox(width: 12),
-                  Text(
-                    l10n.viewerTocTitle,
-                    style: theme.textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w600,
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      l10n.viewerTocTitle,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ],
@@ -142,16 +146,19 @@ class _TocEntry extends StatelessWidget {
       button: true,
       label: heading.text,
       hint: context.l10n.viewerTocNavigateHint,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: EdgeInsets.fromLTRB(20 + indent, 10, 20, 10),
-          child: ExcludeSemantics(
-            child: Text(
-              heading.text,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: textStyle,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 48),
+        child: InkWell(
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(20 + indent, 10, 20, 10),
+            child: ExcludeSemantics(
+              child: Text(
+                heading.text,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: textStyle,
+              ),
             ),
           ),
         ),

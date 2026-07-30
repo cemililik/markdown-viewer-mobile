@@ -60,7 +60,7 @@ void main() {
 
   group('MermaidRendererImpl (real WebView)', () {
     testWidgets(
-      'renders a flowchart source to a non-empty PNG bitmap with natural '
+      'should renders a flowchart source to a non-empty PNG bitmap with natural '
       'pixel dimensions',
       (tester) async {
         final result = await renderer.render('flowchart TD\n  Start --> Stop');
@@ -90,7 +90,7 @@ void main() {
     );
 
     testWidgets(
-      'returns MermaidRenderFailure for a deliberately broken diagram '
+      'should returns MermaidRenderFailure for a deliberately broken diagram '
       'without crashing the renderer',
       (tester) async {
         final result = await renderer.render('flowchart LR\n  A -->');
@@ -109,7 +109,7 @@ void main() {
       },
     );
 
-    testWidgets('cache short-circuits a repeated identical render', (
+    testWidgets('should cache short-circuits a repeated identical render', (
       tester,
     ) async {
       const source = 'flowchart LR\n  Cached --> Hit';
@@ -131,34 +131,36 @@ void main() {
       );
     });
 
-    testWidgets('every diagram type from the fixture renders without throwing', (
-      tester,
-    ) async {
-      // Mirrors the kinds enumerated in
-      // `test/fixtures/markdown/mermaid.md`. Anything that fails
-      // here would break a real reading session.
-      const sources = <String, String>{
-        'flowchart': 'flowchart LR\n  A --> B',
-        'sequence': 'sequenceDiagram\n  Alice->>Bob: hi\n  Bob-->>Alice: hello',
-        'class': 'classDiagram\n  class Foo { +bar() }',
-        'state': 'stateDiagram-v2\n  [*] --> Idle\n  Idle --> [*]',
-        'er': 'erDiagram\n  USER ||--o{ DOCUMENT : owns',
-        'gantt':
-            'gantt\n  title T\n  dateFormat YYYY-MM-DD\n  section S\n  Task :a, 2026-04-01, 1d',
-      };
+    testWidgets(
+      'should every diagram type from the fixture renders without throwing',
+      (tester) async {
+        // Mirrors the kinds enumerated in
+        // `test/fixtures/markdown/mermaid.md`. Anything that fails
+        // here would break a real reading session.
+        const sources = <String, String>{
+          'flowchart': 'flowchart LR\n  A --> B',
+          'sequence':
+              'sequenceDiagram\n  Alice->>Bob: hi\n  Bob-->>Alice: hello',
+          'class': 'classDiagram\n  class Foo { +bar() }',
+          'state': 'stateDiagram-v2\n  [*] --> Idle\n  Idle --> [*]',
+          'er': 'erDiagram\n  USER ||--o{ DOCUMENT : owns',
+          'gantt':
+              'gantt\n  title T\n  dateFormat YYYY-MM-DD\n  section S\n  Task :a, 2026-04-01, 1d',
+        };
 
-      for (final entry in sources.entries) {
-        final result = await renderer.render(entry.value);
-        expect(
-          result,
-          isA<MermaidRenderSuccess>(),
-          reason: '${entry.key} diagram must render successfully',
-        );
-      }
-    });
+        for (final entry in sources.entries) {
+          final result = await renderer.render(entry.value);
+          expect(
+            result,
+            isA<MermaidRenderSuccess>(),
+            reason: '${entry.key} diagram must render successfully',
+          );
+        }
+      },
+    );
 
     testWidgets(
-      'cache hit-rate reaches 100 % after repeated identical renders',
+      'should cache hit-rate reaches 100 % after repeated identical renders',
       (tester) async {
         const source = 'flowchart LR\n  HitRate --> Check';
 
@@ -189,27 +191,27 @@ void main() {
       },
     );
 
-    testWidgets('cold prewarm + first render stays under the 800 ms budget', (
-      tester,
-    ) async {
-      // Captured in setUpAll before any other render warmed the
-      // cache. The 800 ms budget comes from
-      // docs/rendering-pipeline.md and the Phase 1.6 roadmap.
-      // Logged unconditionally so a future regression has an
-      // easy data point to inspect, even if the assertion stays
-      // green.
-      // ignore: avoid_print
-      print(
-        'mermaid cold path (prewarm + first render): '
-        '${prewarmAndFirstRender.inMilliseconds} ms',
-      );
-      expect(
-        prewarmAndFirstRender.inMilliseconds,
-        lessThan(800),
-        reason:
-            'Cold path budget from docs/rendering-pipeline.md and '
-            'Phase 1.6 — see roadmap.md for the contract.',
-      );
-    });
+    testWidgets(
+      'should cold prewarm + first render stays under the 800 ms budget',
+      (tester) async {
+        // Captured in setUpAll before any other render warmed the
+        // cache. The 800 ms budget comes from
+        // docs/rendering-pipeline.md and the Phase 1.6 roadmap.
+        // Logged unconditionally so a future regression has an
+        // easy data point to inspect, even if the assertion stays
+        // green.
+        printOnFailure(
+          'mermaid cold path (prewarm + first render): '
+          '${prewarmAndFirstRender.inMilliseconds} ms',
+        );
+        expect(
+          prewarmAndFirstRender.inMilliseconds,
+          lessThan(800),
+          reason:
+              'Cold path budget from docs/rendering-pipeline.md and '
+              'Phase 1.6 — see roadmap.md for the contract.',
+        );
+      },
+    );
   });
 }

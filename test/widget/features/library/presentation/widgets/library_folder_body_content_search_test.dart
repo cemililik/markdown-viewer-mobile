@@ -84,6 +84,11 @@ class _StubContentSearch implements LibraryContentSearch {
 
 void main() {
   final folder = LibraryFolder(path: '/stub', addedAt: DateTime(2026, 1, 1));
+  late AppLocalizations l10n;
+
+  setUpAll(() async {
+    l10n = await AppLocalizations.delegate.load(const Locale('en'));
+  });
 
   Widget harness({required LibraryContentSearch searchService}) {
     return ProviderScope(
@@ -110,7 +115,7 @@ void main() {
   }
 
   testWidgets(
-    'content matches surface below filename matches when the query has no filename hit',
+    'should content matches surface below filename matches when the query has no filename hit',
     (tester) async {
       // "Dart" does not appear in `readme.md` or `notes.md`, so the
       // filename filter yields nothing. The content stub returns a
@@ -144,14 +149,17 @@ void main() {
       // Old bug: this would render the "No matching files in stub"
       // empty state because the filename filter misses. Now the
       // content section renders with the match.
-      expect(find.text('No matching files in stub'), findsNothing);
-      expect(find.text('Inside documents'), findsOneWidget);
+      expect(
+        find.text(l10n.libraryFolderSourceSearchNoResults('stub')),
+        findsNothing,
+      );
+      expect(find.text(l10n.libraryContentSearchHeader), findsOneWidget);
       expect(find.text('notes.md'), findsOneWidget);
     },
   );
 
   testWidgets(
-    'short queries (< 3 chars) suppress the content section entirely',
+    'should short queries (< 3 chars) suppress the content section entirely',
     (tester) async {
       // At 1–2 characters the content scan is a noise-trap (too
       // many false positives, wasted isolate work). The body
@@ -183,12 +191,12 @@ void main() {
       expect(find.text('readme.md'), findsOneWidget);
       // Content header stays hidden until the query reaches the
       // min length.
-      expect(find.text('Inside documents'), findsNothing);
+      expect(find.text(l10n.libraryContentSearchHeader), findsNothing);
     },
   );
 
   testWidgets(
-    'content section shows an empty-state message when the scan finishes with no hits',
+    'should content section shows an empty-state message when the scan finishes with no hits',
     (tester) async {
       // The scan runs (query ≥ 3 chars) but the source has no hits.
       // The "No matches in any document" line should appear beneath
@@ -218,9 +226,12 @@ void main() {
 
       // Neither filename filter nor content scan hits — the body
       // falls back to the single centred "no matches" hint.
-      expect(find.text('No matching files in stub'), findsOneWidget);
+      expect(
+        find.text(l10n.libraryFolderSourceSearchNoResults('stub')),
+        findsOneWidget,
+      );
       // Content header must not stand alone without content.
-      expect(find.text('Inside documents'), findsNothing);
+      expect(find.text(l10n.libraryContentSearchHeader), findsNothing);
     },
   );
 }

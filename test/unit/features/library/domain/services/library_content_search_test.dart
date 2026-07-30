@@ -13,7 +13,7 @@ void main() {
       );
     }
 
-    test('empty query returns no matches', () {
+    test('should empty query returns no matches', () {
       final result = searchInContents(
         ContentSearchRequest(
           documents: [doc('a', 'The quick brown fox.')],
@@ -23,7 +23,7 @@ void main() {
       expect(result, isEmpty);
     });
 
-    test('returns only documents that contain the query', () {
+    test('should returns only documents that contain the query', () {
       final result = searchInContents(
         ContentSearchRequest(
           documents: [
@@ -37,7 +37,7 @@ void main() {
       expect(result.map((m) => m.displayName), ['gamma.md', 'alpha.md']);
     });
 
-    test('case-insensitive match works on ALL-CAPS and Turkish', () {
+    test('should case-insensitive match works on ALL-CAPS and Turkish', () {
       final result = searchInContents(
         ContentSearchRequest(
           documents: [
@@ -64,7 +64,7 @@ void main() {
       expect(ascii, hasLength(1));
     });
 
-    test('match count is accurate for repeated hits', () {
+    test('should match count is accurate for repeated hits', () {
       final result = searchInContents(
         ContentSearchRequest(
           documents: [doc('a', 'todo todo todo foo TODO')],
@@ -74,21 +74,24 @@ void main() {
       expect(result.single.matchCount, 4);
     });
 
-    test('sorts results by descending match count then alphabetically', () {
-      final result = searchInContents(
-        ContentSearchRequest(
-          documents: [
-            doc('b', 'cat cat'),
-            doc('a', 'cat cat cat'),
-            doc('c', 'cat'),
-          ],
-          normalisedQuery: 'cat',
-        ),
-      );
-      expect(result.map((m) => m.displayName), ['a.md', 'b.md', 'c.md']);
-    });
+    test(
+      'should sorts results by descending match count then alphabetically',
+      () {
+        final result = searchInContents(
+          ContentSearchRequest(
+            documents: [
+              doc('b', 'cat cat'),
+              doc('a', 'cat cat cat'),
+              doc('c', 'cat'),
+            ],
+            normalisedQuery: 'cat',
+          ),
+        );
+        expect(result.map((m) => m.displayName), ['a.md', 'b.md', 'c.md']);
+      },
+    );
 
-    test('respects maxResults cap', () {
+    test('should respects maxResults cap', () {
       final docs = [for (var i = 0; i < 60; i++) doc('d$i', 'lorem ipsum $i')];
       final result = searchInContents(
         ContentSearchRequest(
@@ -100,7 +103,7 @@ void main() {
       expect(result, hasLength(10));
     });
 
-    test('snippet centres on the first match and preserves offset', () {
+    test('should snippet centres on the first match and preserves offset', () {
       final body = 'Before text. ${'x' * 40}keyword${'y' * 40} after text.';
       final result = searchInContents(
         ContentSearchRequest(
@@ -119,7 +122,7 @@ void main() {
       );
     });
 
-    test('snippet collapses whitespace so output stays on one line', () {
+    test('should snippet collapses whitespace so output stays on one line', () {
       const body = 'line1\n\n\nhello\n\nline3';
       final result = searchInContents(
         ContentSearchRequest(
@@ -138,7 +141,7 @@ void main() {
       );
     });
 
-    test('empty documents are skipped', () {
+    test('should empty documents are skipped', () {
       final result = searchInContents(
         ContentSearchRequest(
           documents: [doc('a', ''), doc('b', 'real content matches')],
@@ -149,7 +152,7 @@ void main() {
       expect(result.single.displayName, 'b.md');
     });
 
-    test('documents without the query do not appear in results', () {
+    test('should documents without the query do not appear in results', () {
       final result = searchInContents(
         ContentSearchRequest(
           documents: [

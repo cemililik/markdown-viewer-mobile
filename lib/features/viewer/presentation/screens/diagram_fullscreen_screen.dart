@@ -271,13 +271,11 @@ class _DiagramFullscreenScreenState extends State<DiagramFullscreenScreen>
   }
 }
 
-/// Tonal 44-dp hit-target icon button used by the fullscreen
+/// Tonal 48-dp hit-target icon button used by the fullscreen
 /// chrome bar. Uses the active [ColorScheme]'s `surfaceContainerHighest`
 /// + `onSurface` so the button reads as an app-chrome affordance on
-/// light, dark and sepia themes — same styling the inline
-/// [`_DiagramIconButton`] uses on the reading surface, which keeps
-/// the two entry points visually paired. Stays 44 × 44 for
-/// touch-target compliance even when the visible icon is smaller.
+/// light, dark and sepia themes. Stays 48 × 48 for Android touch-target
+/// compliance even when the visible icon is smaller.
 class _ChromeIconButton extends StatelessWidget {
   const _ChromeIconButton({
     required this.icon,
@@ -305,8 +303,12 @@ class _ChromeIconButton extends StatelessWidget {
         // Reference: code-review CR-20260419-016.
         iconSize: 20,
         padding: const EdgeInsets.all(6),
-        constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
-        icon: Icon(icon, color: theme.colorScheme.onSurface),
+        constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+        icon: Icon(
+          icon,
+          color: theme.colorScheme.onSurface,
+          semanticLabel: tooltip,
+        ),
         onPressed: onPressed,
       ),
     );

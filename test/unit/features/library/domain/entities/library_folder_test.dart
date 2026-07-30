@@ -3,7 +3,7 @@ import 'package:markdown_viewer/features/library/domain/entities/library_folder.
 
 void main() {
   group('LibraryFolder.displayName', () {
-    test('returns the trimmed customName when one is set', () {
+    test('should returns the trimmed customName when one is set', () {
       final folder = LibraryFolder(
         path: '/tmp/markdown-viewer',
         addedAt: DateTime.utc(2026, 4, 14),
@@ -13,7 +13,7 @@ void main() {
       expect(folder.displayName, 'My Notes');
     });
 
-    test('falls back to the path basename when customName is null', () {
+    test('should falls back to the path basename when customName is null', () {
       final folder = LibraryFolder(
         path: '/Users/dev/Documents/notes',
         addedAt: DateTime.utc(2026, 4, 14),
@@ -23,7 +23,7 @@ void main() {
     });
 
     test(
-      'falls back to the path basename when customName is empty / whitespace',
+      'should falls back to the path basename when customName is empty / whitespace',
       () {
         final empty = LibraryFolder(
           path: '/tmp/notes',
@@ -41,17 +41,20 @@ void main() {
       },
     );
 
-    test('falls back to the full path when no basename can be derived', () {
-      // `p.basename('/')` is empty — that branch of the
-      // displayName getter must surface the full path instead of
-      // returning an empty string the UI cannot render.
-      final folder = LibraryFolder(
-        path: '/',
-        addedAt: DateTime.utc(2026, 4, 14),
-      );
+    test(
+      'should falls back to the full path when no basename can be derived',
+      () {
+        // `p.basename('/')` is empty — that branch of the
+        // displayName getter must surface the full path instead of
+        // returning an empty string the UI cannot render.
+        final folder = LibraryFolder(
+          path: '/',
+          addedAt: DateTime.utc(2026, 4, 14),
+        );
 
-      expect(folder.displayName, '/');
-    });
+        expect(folder.displayName, '/');
+      },
+    );
   });
 
   group('LibraryFolder.copyWith', () {
@@ -62,7 +65,7 @@ void main() {
       customName: 'Notes',
     );
 
-    test('leaves untouched fields unchanged', () {
+    test('should leaves untouched fields unchanged', () {
       final copy = original.copyWith(addedAt: DateTime.utc(2026, 4, 15));
 
       expect(copy.path, original.path);
@@ -72,7 +75,7 @@ void main() {
     });
 
     test(
-      'explicit null clears bookmark — sentinel distinguishes from omit',
+      'should explicit null clears bookmark — sentinel distinguishes from omit',
       () {
         final cleared = original.copyWith(bookmark: null);
 
@@ -83,16 +86,19 @@ void main() {
       },
     );
 
-    test('explicit null clears customName so displayName falls back', () {
-      final cleared = original.copyWith(customName: null);
+    test(
+      'should explicit null clears customName so displayName falls back',
+      () {
+        final cleared = original.copyWith(customName: null);
 
-      expect(cleared.customName, isNull);
-      expect(cleared.displayName, 'notes');
-      // Other fields preserved.
-      expect(cleared.bookmark, 'original-blob');
-    });
+        expect(cleared.customName, isNull);
+        expect(cleared.displayName, 'notes');
+        // Other fields preserved.
+        expect(cleared.bookmark, 'original-blob');
+      },
+    );
 
-    test('omitting an argument is not the same as passing null', () {
+    test('should omitting an argument is not the same as passing null', () {
       // Regression guard for the sentinel pattern: a hand-rolled
       // `copyWith({String? bookmark})` that defaulted to `null`
       // would silently drop bookmark on every rename / update call.

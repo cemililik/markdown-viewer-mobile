@@ -3,11 +3,11 @@ import 'package:markdown_viewer/features/viewer/presentation/widgets/footnote_vi
 
 void main() {
   group('extractFootnotes', () {
-    test('returns empty map for source with no definitions', () {
+    test('should returns empty map for source with no definitions', () {
       expect(extractFootnotes('Hello world.'), isEmpty);
     });
 
-    test('extracts a single-line definition', () {
+    test('should extracts a single-line definition', () {
       const source = 'Text[^1] here.\n\n[^1]: The footnote content.';
       final result = extractFootnotes(source);
 
@@ -15,7 +15,7 @@ void main() {
       expect(result['1'], 'The footnote content.');
     });
 
-    test('extracts multiple definitions', () {
+    test('should extracts multiple definitions', () {
       const source = '''
 See [^a] and [^b].
 
@@ -28,19 +28,19 @@ See [^a] and [^b].
       expect(result['b'], 'Second footnote.');
     });
 
-    test('joins multi-line continuation into a single string', () {
+    test('should joins multi-line continuation into a single string', () {
       const source = '[^1]: First line.\n    Continuation here.';
       final result = extractFootnotes(source);
 
       expect(result['1'], 'First line. Continuation here.');
     });
 
-    test('trims leading and trailing whitespace from content', () {
+    test('should trims leading and trailing whitespace from content', () {
       const source = '[^x]:   spaced content   ';
       expect(extractFootnotes(source)['x'], 'spaced content');
     });
 
-    test('handles alphanumeric and hyphenated ids', () {
+    test('should handles alphanumeric and hyphenated ids', () {
       const source = '[^fn-abc]: Alpha.\n[^123]: Numeric.';
       final result = extractFootnotes(source);
 
@@ -48,19 +48,22 @@ See [^a] and [^b].
       expect(result['123'], 'Numeric.');
     });
 
-    test('returns empty content string for a definition with no body', () {
-      const source = '[^empty]:';
-      expect(extractFootnotes(source)['empty'], '');
-    });
+    test(
+      'should returns empty content string for a definition with no body',
+      () {
+        const source = '[^empty]:';
+        expect(extractFootnotes(source)['empty'], '');
+      },
+    );
   });
 
   group('stripFootnoteDefs', () {
-    test('returns source unchanged when no definitions are present', () {
+    test('should returns source unchanged when no definitions are present', () {
       const source = 'Hello world.';
       expect(stripFootnoteDefs(source), source);
     });
 
-    test('removes a single-line definition', () {
+    test('should removes a single-line definition', () {
       const source = 'Body text.\n\n[^1]: Footnote here.\n\nMore text.';
       final result = stripFootnoteDefs(source);
 
@@ -69,7 +72,7 @@ See [^a] and [^b].
       expect(result, contains('More text.'));
     });
 
-    test('removes a multi-line definition', () {
+    test('should removes a multi-line definition', () {
       const source = '[^1]: Line one.\n    Line two.\n\nParagraph.';
       final result = stripFootnoteDefs(source);
 
@@ -79,7 +82,7 @@ See [^a] and [^b].
       expect(result, contains('Paragraph.'));
     });
 
-    test('removes multiple definitions', () {
+    test('should removes multiple definitions', () {
       const source = '[^a]: Alpha.\n[^b]: Beta.\n\nContent.';
       final result = stripFootnoteDefs(source);
 
@@ -88,12 +91,15 @@ See [^a] and [^b].
       expect(result, contains('Content.'));
     });
 
-    test('does not remove inline references — only block definitions', () {
-      const source = 'See[^1] this.\n\n[^1]: Definition.';
-      final result = stripFootnoteDefs(source);
+    test(
+      'should does not remove inline references — only block definitions',
+      () {
+        const source = 'See[^1] this.\n\n[^1]: Definition.';
+        final result = stripFootnoteDefs(source);
 
-      expect(result, contains('[^1]'));
-      expect(result, isNot(contains('[^1]:')));
-    });
+        expect(result, contains('[^1]'));
+        expect(result, isNot(contains('[^1]:')));
+      },
+    );
   });
 }

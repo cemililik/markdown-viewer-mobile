@@ -1,5 +1,4 @@
 import 'package:alchemist/alchemist.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 
@@ -11,31 +10,31 @@ void main() {
   // is an upstream package issue, not application code — ignore the
   // class for this golden file so its bug does not mask real leaks
   // elsewhere.
-  LeakTesting.settings = LeakTesting.settings.withIgnored(
-    classes: const ['TapGestureRecognizer'],
-  );
+  setUp(() {
+    final original = LeakTesting.settings;
+    LeakTesting.settings = original.withIgnored(
+      classes: const ['TapGestureRecognizer'],
+    );
+    addTearDown(() => LeakTesting.settings = original);
+  });
 
   group('Admonitions golden', () {
     goldenTest(
-      'note, warning, tip, and caution admonition blocks',
+      'should note, warning, tip, and caution admonition blocks',
       fileName: 'admonitions',
       pumpBeforeTest: goldenPumpBeforeTest,
       pumpWidget: goldenPumpWidget,
       builder:
           () => GoldenTestGroup(
-            children: [
-              GoldenTestScenario(
-                name: 'light',
-                child: markdownGoldenHarness('admonitions.md'),
-              ),
-              GoldenTestScenario(
-                name: 'dark',
-                child: markdownGoldenHarness(
-                  'admonitions.md',
-                  brightness: Brightness.dark,
-                ),
-              ),
-            ],
+            children: standardGoldenScenarios(
+              builder:
+                  (locale, textScaler, brightness) => markdownGoldenHarness(
+                    'admonitions.md',
+                    brightness: brightness,
+                    locale: locale,
+                    textScaler: textScaler,
+                  ),
+            ),
           ),
     );
   });

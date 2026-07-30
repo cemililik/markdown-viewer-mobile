@@ -37,14 +37,14 @@ void main() {
   }
 
   group('AdmonitionKind.tryFromName', () {
-    test('recognises every known kind case-insensitively', () {
+    test('should recognises every known kind case-insensitively', () {
       for (final kind in AdmonitionKind.values) {
         expect(AdmonitionKind.tryFromName(kind.name), kind);
         expect(AdmonitionKind.tryFromName(kind.name.toUpperCase()), kind);
       }
     });
 
-    test('returns null for unknown kind names', () {
+    test('should returns null for unknown kind names', () {
       expect(AdmonitionKind.tryFromName(''), isNull);
       expect(AdmonitionKind.tryFromName('unknown'), isNull);
       expect(AdmonitionKind.tryFromName('danger'), isNull);
@@ -52,7 +52,7 @@ void main() {
   });
 
   group('tryParseAdmonitionKind', () {
-    test('returns the kind for each markdown-alert div variant', () {
+    test('should returns the kind for each markdown-alert div variant', () {
       // Every kind emitted by package:markdown's AlertBlockSyntax
       // must round-trip through tryParseAdmonitionKind into the
       // matching enum value.
@@ -64,34 +64,40 @@ void main() {
       }
     });
 
-    test('returns null for a plain div without the markdown-alert class', () {
-      final element = md.Element.empty('div')
-        ..attributes['class'] = 'some-other-class';
+    test(
+      'should returns null for a plain div without the markdown-alert class',
+      () {
+        final element = md.Element.empty('div')
+          ..attributes['class'] = 'some-other-class';
 
-      expect(tryParseAdmonitionKind(element), isNull);
-    });
+        expect(tryParseAdmonitionKind(element), isNull);
+      },
+    );
 
-    test('returns null for a div with no class attribute at all', () {
+    test('should returns null for a div with no class attribute at all', () {
       final element = md.Element.empty('div');
 
       expect(tryParseAdmonitionKind(element), isNull);
     });
 
-    test('returns null for a non-div element even with the alert class', () {
-      final element = md.Element.empty('span')
-        ..attributes['class'] = 'markdown-alert markdown-alert-note';
+    test(
+      'should returns null for a non-div element even with the alert class',
+      () {
+        final element = md.Element.empty('span')
+          ..attributes['class'] = 'markdown-alert markdown-alert-note';
 
-      expect(tryParseAdmonitionKind(element), isNull);
-    });
+        expect(tryParseAdmonitionKind(element), isNull);
+      },
+    );
 
-    test('returns null when the kind token is unknown', () {
+    test('should returns null when the kind token is unknown', () {
       final element = md.Element.empty('div')
         ..attributes['class'] = 'markdown-alert markdown-alert-danger';
 
       expect(tryParseAdmonitionKind(element), isNull);
     });
 
-    test('tolerates extra whitespace between class tokens', () {
+    test('should tolerates extra whitespace between class tokens', () {
       final element = md.Element.empty('div')
         ..attributes['class'] = '  markdown-alert   markdown-alert-warning  ';
 
@@ -100,7 +106,7 @@ void main() {
   });
 
   group('AlertBlockSyntax integration', () {
-    test('produces a markdown-alert div for every fixture kind', () {
+    test('should produces a markdown-alert div for every fixture kind', () {
       const source = '''
 > [!NOTE]
 > Body one.
@@ -131,15 +137,18 @@ void main() {
       ]);
     });
 
-    test('leaves a plain blockquote as a blockquote element, not a div', () {
-      const source = '''
+    test(
+      'should leaves a plain blockquote as a blockquote element, not a div',
+      () {
+        const source = '''
 > Just a normal blockquote without a kind marker.
 ''';
 
-      final nodes = parse(source);
+        final nodes = parse(source);
 
-      expect(findByTag(nodes, 'div'), isEmpty);
-      expect(findByTag(nodes, 'blockquote'), hasLength(1));
-    });
+        expect(findByTag(nodes, 'div'), isEmpty);
+        expect(findByTag(nodes, 'blockquote'), hasLength(1));
+      },
+    );
   });
 }

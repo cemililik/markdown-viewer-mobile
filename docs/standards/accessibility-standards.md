@@ -21,7 +21,7 @@ Target: **WCAG 2.1 Level AA** on all themes and screens.
 - Body text: 4.5:1 minimum on background
 - Large text and icons: 3:1 minimum
 - Code blocks: measured separately for both themes
-- Theme tokens are validated in `test/a11y/contrast_test.dart`
+- Theme tokens are validated in `test/widget/a11y/contrast_test.dart`
 
 ## Touch Targets
 

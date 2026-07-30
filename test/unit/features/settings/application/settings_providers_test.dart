@@ -1,30 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/features/settings/application/settings_providers.dart';
-import 'package:markdown_viewer/features/settings/data/settings_store_impl.dart';
 import 'package:markdown_viewer/features/settings/domain/app_locale.dart';
 import 'package:markdown_viewer/features/settings/domain/app_theme_mode.dart';
 import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:markdown_viewer/features/settings/domain/repositories/settings_store.dart';
 
-/// Unit tests for [ThemeModeController], [LocaleController],
-/// [ReadingSettingsController], and [KeepScreenOnController]. All four
-/// controllers share the same "seed from store, mutate in memory,
-/// fire-and-forget persistence" shape, so one test file covers them all.
-///
-/// The tests run against a real [SettingsStore] backed by the in-memory
-/// `SharedPreferences.setMockInitialValues`. That lets us verify both
-/// the initial-seed path and the persistence side-effect without
-/// mocking the store itself — there is no behaviour in the store
-/// worth mocking.
 void main() {
+  late _RecordingSettingsStore store;
+
   setUp(() {
-    SharedPreferences.setMockInitialValues(<String, Object>{});
+    store = _RecordingSettingsStore();
   });
 
-  Future<ProviderContainer> buildContainer() async {
-    final prefs = await SharedPreferences.getInstance();
-    final store = SettingsStoreImpl(prefs);
+  ProviderContainer buildContainer() {
     final container = ProviderContainer(
       overrides: [settingsStoreProvider.overrideWithValue(store)],
     );
@@ -33,128 +22,95 @@ void main() {
   }
 
   group('ThemeModeController', () {
-    test('seeds its initial value from the settings store', () async {
-      SharedPreferences.setMockInitialValues({'settings.themeMode': 'dark'});
-      final container = await buildContainer();
+    test('should seed its initial value from the settings store', () {
+      store.themeMode = AppThemeMode.dark;
+
+      final container = buildContainer();
 
       expect(container.read(themeModeControllerProvider), AppThemeMode.dark);
     });
 
-    test(
-      'defaults to AppThemeMode.system when no value has been persisted',
-      () async {
-        final container = await buildContainer();
+    test('should default to system theme when no value is persisted', () {
+      final container = buildContainer();
 
-        expect(
-          container.read(themeModeControllerProvider),
-          AppThemeMode.system,
-        );
-      },
-    );
-
-    test('set updates in-memory state synchronously', () async {
-      final container = await buildContainer();
-      final notifier = container.read(themeModeControllerProvider.notifier);
-
-      notifier.set(AppThemeMode.light);
-
-      expect(container.read(themeModeControllerProvider), AppThemeMode.light);
+      expect(container.read(themeModeControllerProvider), AppThemeMode.system);
     });
 
-    test('set persists the value through the underlying store', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStoreImpl(prefs);
-      final container = ProviderContainer(
-        overrides: [settingsStoreProvider.overrideWithValue(store)],
-      );
-      addTearDown(container.dispose);
-
-      container
-          .read(themeModeControllerProvider.notifier)
-          .set(AppThemeMode.dark);
-
-      // Give the fire-and-forget write a microtask to land.
-      await Future<void>.delayed(Duration.zero);
-      expect(store.readAppThemeMode(), AppThemeMode.dark);
-    });
-
-    test('set persists AppThemeMode.sepia correctly', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStoreImpl(prefs);
-      final container = ProviderContainer(
-        overrides: [settingsStoreProvider.overrideWithValue(store)],
-      );
-      addTearDown(container.dispose);
+    test('should update state and persist a changed theme', () {
+      final container = buildContainer();
 
       container
           .read(themeModeControllerProvider.notifier)
           .set(AppThemeMode.sepia);
 
-      await Future<void>.delayed(Duration.zero);
-      expect(store.readAppThemeMode(), AppThemeMode.sepia);
+      expect(container.read(themeModeControllerProvider), AppThemeMode.sepia);
+      expect(store.themeMode, AppThemeMode.sepia);
+      expect(store.themeWrites, 1);
     });
 
-    test('set is a no-op when the value is unchanged', () async {
-      final container = await buildContainer();
-      final notifier = container.read(themeModeControllerProvider.notifier);
-      final before = container.read(themeModeControllerProvider);
+    test('should skip persistence when the theme is unchanged', () {
+      final container = buildContainer();
 
-      notifier.set(before);
+      container
+          .read(themeModeControllerProvider.notifier)
+          .set(AppThemeMode.system);
 
-      expect(container.read(themeModeControllerProvider), before);
+      expect(store.themeWrites, 0);
     });
   });
 
   group('LocaleController', () {
-    test('seeds its initial value from the settings store', () async {
-      SharedPreferences.setMockInitialValues({'settings.localeTag': 'tr'});
-      final container = await buildContainer();
+    test('should seed its initial value from the settings store', () {
+      store.locale = AppLocale.turkish;
+
+      final container = buildContainer();
 
       expect(container.read(localeControllerProvider), AppLocale.turkish);
     });
 
-    test(
-      'defaults to AppLocale.system when no value has been persisted',
-      () async {
-        final container = await buildContainer();
+    test('should default to system locale when no value is persisted', () {
+      final container = buildContainer();
 
-        expect(container.read(localeControllerProvider), AppLocale.system);
-      },
-    );
+      expect(container.read(localeControllerProvider), AppLocale.system);
+    });
 
-    test('set updates in-memory state and persists', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStoreImpl(prefs);
-      final container = ProviderContainer(
-        overrides: [settingsStoreProvider.overrideWithValue(store)],
-      );
-      addTearDown(container.dispose);
+    test('should update state and persist a changed locale', () {
+      final container = buildContainer();
 
       container.read(localeControllerProvider.notifier).set(AppLocale.english);
 
       expect(container.read(localeControllerProvider), AppLocale.english);
-      await Future<void>.delayed(Duration.zero);
-      expect(store.readLocale(), AppLocale.english);
+      expect(store.locale, AppLocale.english);
+      expect(store.localeWrites, 1);
+    });
+
+    test('should skip persistence when the locale is unchanged', () {
+      final container = buildContainer();
+
+      container.read(localeControllerProvider.notifier).set(AppLocale.system);
+
+      expect(store.localeWrites, 0);
     });
   });
 
   group('ReadingSettingsController', () {
-    test('seeds initial state from the store defaults', () async {
-      final container = await buildContainer();
+    test('should seed initial state from the store', () {
+      store.readingSettings = const ReadingSettings(
+        fontScale: 1.2,
+        width: ReadingWidth.wide,
+        lineHeight: ReadingLineHeight.airy,
+      );
 
-      final state = container.read(readingSettingsControllerProvider);
-      expect(state.fontScale, ReadingSettings.defaults.fontScale);
-      expect(state.width, ReadingSettings.defaults.width);
-      expect(state.lineHeight, ReadingSettings.defaults.lineHeight);
+      final container = buildContainer();
+
+      expect(
+        container.read(readingSettingsControllerProvider),
+        store.readingSettings,
+      );
     });
 
-    test('setFontScale updates in-memory state and persists', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStoreImpl(prefs);
-      final container = ProviderContainer(
-        overrides: [settingsStoreProvider.overrideWithValue(store)],
-      );
-      addTearDown(container.dispose);
+    test('should update state and persist a changed font scale', () {
+      final container = buildContainer();
 
       container
           .read(readingSettingsControllerProvider.notifier)
@@ -164,122 +120,159 @@ void main() {
         container.read(readingSettingsControllerProvider).fontScale,
         closeTo(1.2, 1e-9),
       );
-      await Future<void>.delayed(Duration.zero);
-      expect(store.readReadingSettings().fontScale, closeTo(1.2, 1e-9));
+      expect(store.readingSettings.fontScale, closeTo(1.2, 1e-9));
+      expect(store.readingWrites, 1);
     });
 
-    test('setFontScale clamps values outside the supported window', () async {
-      final container = await buildContainer();
-
-      container
-          .read(readingSettingsControllerProvider.notifier)
-          .setFontScale(5);
-      expect(
-        container.read(readingSettingsControllerProvider).fontScale,
-        ReadingSettings.maxFontScale,
+    test('should clamp font scale before persisting it', () {
+      final container = buildContainer();
+      final controller = container.read(
+        readingSettingsControllerProvider.notifier,
       );
 
-      container
-          .read(readingSettingsControllerProvider.notifier)
-          .setFontScale(0.1);
-      expect(
-        container.read(readingSettingsControllerProvider).fontScale,
-        ReadingSettings.minFontScale,
-      );
+      controller.setFontScale(5);
+      expect(store.readingSettings.fontScale, ReadingSettings.maxFontScale);
+
+      controller.setFontScale(0.1);
+      expect(store.readingSettings.fontScale, ReadingSettings.minFontScale);
+      expect(store.readingWrites, 2);
     });
 
-    test('setWidth and setLineHeight update state independently', () async {
-      final container = await buildContainer();
+    test('should update width and line height independently', () {
+      final container = buildContainer();
+      final controller = container.read(
+        readingSettingsControllerProvider.notifier,
+      );
 
-      container
-          .read(readingSettingsControllerProvider.notifier)
-          .setWidth(ReadingWidth.wide);
-      container
-          .read(readingSettingsControllerProvider.notifier)
-          .setLineHeight(ReadingLineHeight.airy);
+      controller
+        ..setWidth(ReadingWidth.wide)
+        ..setLineHeight(ReadingLineHeight.airy);
 
       final state = container.read(readingSettingsControllerProvider);
       expect(state.width, ReadingWidth.wide);
       expect(state.lineHeight, ReadingLineHeight.airy);
       expect(state.fontScale, ReadingSettings.defaults.fontScale);
+      expect(store.readingWrites, 2);
     });
 
-    test('resetToDefaults restores all three knobs and persists', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStoreImpl(prefs);
-      final container = ProviderContainer(
-        overrides: [settingsStoreProvider.overrideWithValue(store)],
+    test('should restore and persist every reading default', () {
+      store.readingSettings = const ReadingSettings(
+        fontScale: 1.4,
+        width: ReadingWidth.wide,
+        lineHeight: ReadingLineHeight.airy,
       );
-      addTearDown(container.dispose);
-
-      container
-          .read(readingSettingsControllerProvider.notifier)
-          .setFontScale(1.4);
-      container
-          .read(readingSettingsControllerProvider.notifier)
-          .setWidth(ReadingWidth.wide);
-      container
-          .read(readingSettingsControllerProvider.notifier)
-          .setLineHeight(ReadingLineHeight.airy);
+      final container = buildContainer();
 
       container
           .read(readingSettingsControllerProvider.notifier)
           .resetToDefaults();
 
-      final state = container.read(readingSettingsControllerProvider);
-      expect(state.fontScale, ReadingSettings.defaults.fontScale);
-      expect(state.width, ReadingSettings.defaults.width);
-      expect(state.lineHeight, ReadingSettings.defaults.lineHeight);
-      await Future<void>.delayed(Duration.zero);
       expect(
-        store.readReadingSettings().fontScale,
-        ReadingSettings.defaults.fontScale,
+        container.read(readingSettingsControllerProvider),
+        ReadingSettings.defaults,
       );
-      expect(store.readReadingSettings().width, ReadingSettings.defaults.width);
-      expect(
-        store.readReadingSettings().lineHeight,
-        ReadingSettings.defaults.lineHeight,
+      expect(store.readingSettings, ReadingSettings.defaults);
+      expect(store.readingWrites, 1);
+    });
+
+    test('should skip persistence when reading settings are unchanged', () {
+      final container = buildContainer();
+      final controller = container.read(
+        readingSettingsControllerProvider.notifier,
       );
+
+      controller
+        ..setFontScale(ReadingSettings.defaults.fontScale)
+        ..setWidth(ReadingSettings.defaults.width)
+        ..setLineHeight(ReadingSettings.defaults.lineHeight)
+        ..resetToDefaults();
+
+      expect(store.readingWrites, 0);
     });
   });
 
   group('KeepScreenOnController', () {
-    test('defaults to false on a fresh install', () async {
-      final container = await buildContainer();
+    test('should seed its initial value from the settings store', () {
+      store.keepScreenOn = true;
 
-      expect(container.read(keepScreenOnControllerProvider), isFalse);
-    });
-
-    test('set updates in-memory state synchronously', () async {
-      final container = await buildContainer();
-      final notifier = container.read(keepScreenOnControllerProvider.notifier);
-
-      notifier.set(true);
+      final container = buildContainer();
 
       expect(container.read(keepScreenOnControllerProvider), isTrue);
     });
 
-    test('set persists the value through the underlying store', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStoreImpl(prefs);
-      final container = ProviderContainer(
-        overrides: [settingsStoreProvider.overrideWithValue(store)],
-      );
-      addTearDown(container.dispose);
+    test('should update state and persist a changed value', () {
+      final container = buildContainer();
 
       container.read(keepScreenOnControllerProvider.notifier).set(true);
 
-      await Future<void>.delayed(Duration.zero);
-      expect(store.readKeepScreenOn(), isTrue);
+      expect(container.read(keepScreenOnControllerProvider), isTrue);
+      expect(store.keepScreenOn, isTrue);
+      expect(store.keepScreenOnWrites, 1);
     });
 
-    test('set is a no-op when the value is unchanged', () async {
-      final container = await buildContainer();
-      final notifier = container.read(keepScreenOnControllerProvider.notifier);
+    test('should skip persistence when the value is unchanged', () {
+      final container = buildContainer();
 
-      notifier.set(false);
+      container.read(keepScreenOnControllerProvider.notifier).set(false);
 
-      expect(container.read(keepScreenOnControllerProvider), isFalse);
+      expect(store.keepScreenOnWrites, 0);
     });
   });
+}
+
+final class _RecordingSettingsStore implements SettingsStore {
+  AppThemeMode themeMode = AppThemeMode.system;
+  AppLocale locale = AppLocale.system;
+  ReadingSettings readingSettings = ReadingSettings.defaults;
+  bool keepScreenOn = false;
+  bool hasSeenBookmarkHint = false;
+
+  int themeWrites = 0;
+  int localeWrites = 0;
+  int readingWrites = 0;
+  int keepScreenOnWrites = 0;
+
+  @override
+  AppThemeMode readAppThemeMode() => themeMode;
+
+  @override
+  Future<void> writeAppThemeMode(AppThemeMode mode) async {
+    themeWrites += 1;
+    themeMode = mode;
+  }
+
+  @override
+  AppLocale readLocale() => locale;
+
+  @override
+  Future<void> writeLocale(AppLocale value) async {
+    localeWrites += 1;
+    locale = value;
+  }
+
+  @override
+  ReadingSettings readReadingSettings() => readingSettings;
+
+  @override
+  Future<void> writeReadingSettings(ReadingSettings value) async {
+    readingWrites += 1;
+    readingSettings = value;
+  }
+
+  @override
+  bool readKeepScreenOn() => keepScreenOn;
+
+  @override
+  Future<void> writeKeepScreenOn(bool value) async {
+    keepScreenOnWrites += 1;
+    keepScreenOn = value;
+  }
+
+  @override
+  bool readHasSeenBookmarkHint() => hasSeenBookmarkHint;
+
+  @override
+  Future<void> markBookmarkHintSeen() async {
+    hasSeenBookmarkHint = true;
+  }
 }

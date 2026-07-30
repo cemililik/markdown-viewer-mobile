@@ -76,36 +76,37 @@ void main() {
     );
   }
 
-  testWidgets('wraps the body in a RefreshIndicator', (tester) async {
+  testWidgets('should wraps the body in a RefreshIndicator', (tester) async {
     await tester.pumpWidget(harness(onRefresh: () async {}));
     await tester.pumpAndSettle();
     expect(find.byType(RefreshIndicator), findsOneWidget);
   });
 
-  testWidgets('swipe-down gesture invokes the provided onRefresh callback', (
-    tester,
-  ) async {
-    var refreshCalls = 0;
-    await tester.pumpWidget(
-      harness(
-        onRefresh: () async {
-          refreshCalls += 1;
-        },
-      ),
-    );
-    await tester.pumpAndSettle();
+  testWidgets(
+    'should swipe-down gesture invokes the provided onRefresh callback',
+    (tester) async {
+      var refreshCalls = 0;
+      await tester.pumpWidget(
+        harness(
+          onRefresh: () async {
+            refreshCalls += 1;
+          },
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    // Pull-to-refresh drag: start near the top of the list and
-    // travel ~300 dp downward so the RefreshIndicator crosses its
-    // trigger distance.
-    await tester.drag(find.byType(ListView), const Offset(0, 300));
-    await tester.pumpAndSettle();
+      // Pull-to-refresh drag: start near the top of the list and
+      // travel ~300 dp downward so the RefreshIndicator crosses its
+      // trigger distance.
+      await tester.drag(find.byType(ListView), const Offset(0, 300));
+      await tester.pumpAndSettle();
 
-    expect(refreshCalls, 1);
-  });
+      expect(refreshCalls, 1);
+    },
+  );
 
   testWidgets(
-    'refreshTick bump during an active search does not crash the body',
+    'should refreshTick bump during an active search does not crash the body',
     (tester) async {
       // Regression guard. An earlier version of `didUpdateWidget`
       // unconditionally nulled the cached recursive-walk future when

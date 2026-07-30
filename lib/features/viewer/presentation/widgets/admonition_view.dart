@@ -66,13 +66,15 @@ class AdmonitionView extends StatelessWidget {
                 child: Icon(palette.icon, size: 20, color: palette.accent),
               ),
               const SizedBox(width: 8),
-              Semantics(
-                header: true,
-                child: Text(
-                  title,
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: palette.accent,
-                    fontWeight: FontWeight.w600,
+              Expanded(
+                child: Semantics(
+                  header: true,
+                  child: Text(
+                    title,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      color: palette.accent,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
               ),

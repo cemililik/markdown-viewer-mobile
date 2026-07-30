@@ -3,12 +3,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// Guards the key-set parity invariant between every ARB locale file
-/// and the source-of-truth English file. A missing key on a
-/// non-source locale falls through to the English string at runtime,
-/// which is both jarring for users and silently lossy — adding a
-/// translation and forgetting to wire the key would never surface
-/// without this check.
+/// Guards message, placeholder, and plural-category parity between every ARB
+/// locale file and the source-of-truth English file.
 ///
 /// The pre-commit hook performs the same check to catch mistakes at
 /// commit time; this test guarantees the check also runs in CI, per
@@ -16,41 +12,43 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('locale completeness', () {
     final arbDir = Directory('lib/l10n');
+    late Map<String, dynamic> english;
+    late List<File> otherLocales;
 
-    test('every non-source ARB has the same key set as app_en.arb', () {
+    setUpAll(() {
       expect(
         arbDir.existsSync(),
         isTrue,
         reason: 'Expected lib/l10n/ to exist relative to the project root',
       );
-
       final enFile = File('lib/l10n/app_en.arb');
       expect(
         enFile.existsSync(),
         isTrue,
         reason: 'Source locale app_en.arb must exist',
       );
-
-      final enKeys = _messageKeys(enFile);
-
-      final otherLocales =
+      english = _decodeArb(enFile);
+      otherLocales =
           arbDir
               .listSync()
               .whereType<File>()
               .where(
-                (f) =>
-                    f.path.endsWith('.arb') && !f.path.endsWith('app_en.arb'),
+                (file) =>
+                    file.path.endsWith('.arb') &&
+                    !file.path.endsWith('app_en.arb'),
               )
               .toList();
-
       expect(
         otherLocales,
         isNotEmpty,
         reason: 'Expected at least one non-English ARB file',
       );
+    });
 
+    test('should keep every locale message key in parity with English', () {
+      final enKeys = _messageKeys(english);
       for (final file in otherLocales) {
-        final localeKeys = _messageKeys(file);
+        final localeKeys = _messageKeys(_decodeArb(file));
         final missing = enKeys.difference(localeKeys);
         final extra = localeKeys.difference(enKeys);
 
@@ -70,15 +68,72 @@ void main() {
         );
       }
     });
+
+    test('should keep placeholder sets in parity with English', () {
+      for (final file in otherLocales) {
+        final locale = _decodeArb(file);
+        for (final key in _messageKeys(english)) {
+          final sourceMessage = english[key]! as String;
+          final localizedMessage = locale[key]! as String;
+          final expected = _placeholderReferences(sourceMessage);
+          final actual = _placeholderReferences(localizedMessage);
+          expect(
+            actual,
+            expected,
+            reason:
+                '${_basename(file.path)} message "$key" must use the same '
+                'placeholder set as app_en.arb',
+          );
+        }
+      }
+    });
+
+    test('should keep plural categories in parity with English', () {
+      for (final key in _messageKeys(english)) {
+        final sourceMessage = english[key];
+        if (sourceMessage is! String || !sourceMessage.contains(', plural,')) {
+          continue;
+        }
+        final expected = _pluralCategories(sourceMessage);
+
+        for (final file in otherLocales) {
+          final locale = _decodeArb(file);
+          final localizedMessage = locale[key];
+          expect(
+            localizedMessage,
+            isA<String>(),
+            reason: '${_basename(file.path)} message "$key" must be a string',
+          );
+          expect(
+            _pluralCategories(localizedMessage! as String),
+            expected,
+            reason:
+                '${_basename(file.path)} plural "$key" must declare the same '
+                'categories as app_en.arb',
+          );
+        }
+      }
+    });
   });
 }
+
+Map<String, dynamic> _decodeArb(File arb) =>
+    json.decode(arb.readAsStringSync()) as Map<String, dynamic>;
 
 /// Returns the set of user-facing message keys in [arb], excluding
 /// metadata keys (those starting with `@`) and the top-level
 /// `@@locale` / `@@context` markers.
-Set<String> _messageKeys(File arb) {
-  final decoded = json.decode(arb.readAsStringSync()) as Map<String, dynamic>;
-  return decoded.keys.where((k) => !k.startsWith('@')).toSet();
-}
+Set<String> _messageKeys(Map<String, dynamic> arb) =>
+    arb.keys.where((key) => !key.startsWith('@')).toSet();
+
+Set<String> _placeholderReferences(String message) =>
+    RegExp(
+      r'\{([A-Za-z_][A-Za-z0-9_]*)(?:\s*,|\})',
+    ).allMatches(message).map((match) => match.group(1)!).toSet();
+
+Set<String> _pluralCategories(String message) =>
+    RegExp(
+      r'(?:^|\s)(=\d+|zero|one|two|few|many|other)\s*\{',
+    ).allMatches(message).map((match) => match.group(1)!).toSet();
 
 String _basename(String path) => path.split(Platform.pathSeparator).last;

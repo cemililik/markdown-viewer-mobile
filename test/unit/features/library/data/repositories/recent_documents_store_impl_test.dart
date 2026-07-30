@@ -33,38 +33,41 @@ void main() {
       if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
     });
 
-    test('returns an empty list on a fresh install', () async {
+    test('should returns an empty list on a fresh install', () async {
       final prefs = await SharedPreferences.getInstance();
       final store = RecentDocumentsStoreImpl(prefs);
 
       expect(store.read(), isEmpty);
     });
 
-    test('write then read round-trips entries preserving order', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = RecentDocumentsStoreImpl(prefs);
-      final entries = <RecentDocument>[
-        RecentDocument(
-          documentId: DocumentId(pathA),
-          openedAt: DateTime.utc(2026, 4, 13, 10),
-        ),
-        RecentDocument(
-          documentId: DocumentId(pathB),
-          openedAt: DateTime.utc(2026, 4, 13, 9),
-        ),
-      ];
+    test(
+      'should write then read round-trips entries preserving order',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = RecentDocumentsStoreImpl(prefs);
+        final entries = <RecentDocument>[
+          RecentDocument(
+            documentId: DocumentId(pathA),
+            openedAt: DateTime.utc(2026, 4, 13, 10),
+          ),
+          RecentDocument(
+            documentId: DocumentId(pathB),
+            openedAt: DateTime.utc(2026, 4, 13, 9),
+          ),
+        ];
 
-      await store.write(entries);
-      final round = store.read();
+        await store.write(entries);
+        final round = store.read();
 
-      expect(round, hasLength(2));
-      expect(round[0].documentId.value, pathA);
-      expect(round[0].openedAt.toUtc(), DateTime.utc(2026, 4, 13, 10));
-      expect(round[1].documentId.value, pathB);
-      expect(round[1].openedAt.toUtc(), DateTime.utc(2026, 4, 13, 9));
-    });
+        expect(round, hasLength(2));
+        expect(round[0].documentId.value, pathA);
+        expect(round[0].openedAt.toUtc(), DateTime.utc(2026, 4, 13, 10));
+        expect(round[1].documentId.value, pathB);
+        expect(round[1].openedAt.toUtc(), DateTime.utc(2026, 4, 13, 9));
+      },
+    );
 
-    test('writing an empty list clears any existing entries', () async {
+    test('should writing an empty list clears any existing entries', () async {
       final prefs = await SharedPreferences.getInstance();
       final store = RecentDocumentsStoreImpl(prefs);
 
@@ -82,7 +85,7 @@ void main() {
     });
 
     test(
-      'returns an empty list when the stored blob is not valid JSON',
+      'should returns an empty list when the stored blob is not valid JSON',
       () async {
         SharedPreferences.setMockInitialValues(<String, Object>{
           'library.recentDocuments': 'not json{',
@@ -94,24 +97,27 @@ void main() {
       },
     );
 
-    test('round-trips the display name for folder-sourced files', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = RecentDocumentsStoreImpl(prefs);
+    test(
+      'should round-trips the display name for folder-sourced files',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = RecentDocumentsStoreImpl(prefs);
 
-      await store.write(<RecentDocument>[
-        RecentDocument(
-          documentId: DocumentId(pathA),
-          openedAt: DateTime.utc(2026, 4, 14),
-          displayName: 'readme.md',
-        ),
-      ]);
+        await store.write(<RecentDocument>[
+          RecentDocument(
+            documentId: DocumentId(pathA),
+            openedAt: DateTime.utc(2026, 4, 14),
+            displayName: 'readme.md',
+          ),
+        ]);
 
-      final round = store.read();
-      expect(round, hasLength(1));
-      expect(round.first.displayName, 'readme.md');
-    });
+        final round = store.read();
+        expect(round, hasLength(1));
+        expect(round.first.displayName, 'readme.md');
+      },
+    );
 
-    test('round-trips the pinned flag and preview snippet', () async {
+    test('should round-trips the pinned flag and preview snippet', () async {
       final prefs = await SharedPreferences.getInstance();
       final store = RecentDocumentsStoreImpl(prefs);
 
@@ -137,7 +143,7 @@ void main() {
     });
 
     test(
-      'accepts legacy entries without the pinned / preview fields',
+      'should accepts legacy entries without the pinned / preview fields',
       () async {
         final legacyPath = '${tempDir.path}/legacy.md';
         File(legacyPath).writeAsStringSync('');
@@ -156,36 +162,39 @@ void main() {
       },
     );
 
-    test('skips malformed entries but keeps the well-formed ones', () async {
-      final pathC = '${tempDir.path}/c.md';
-      final pathD = '${tempDir.path}/d.md';
-      File(pathD).writeAsStringSync('');
-      // Intentionally do NOT touch pathC — its entry is still
-      // dropped, but via the "openedAt: not-a-date" malformed-entry
-      // branch rather than an existsSync check (that filter was
-      // removed as part of CR-20260419-019). The "pinned missing
-      // file" case is now handled by the viewer surfacing a localised
-      // error on tap instead of by the read path silently dropping
-      // the entry.
-      SharedPreferences.setMockInitialValues(<String, Object>{
-        'library.recentDocuments':
-            '[{"path":"$pathA","openedAt":"2026-04-13T10:00:00.000Z"},'
-            '{"path":""},'
-            '{"path":"$pathC","openedAt":"not-a-date"},'
-            '{"path":"$pathD","openedAt":"2026-04-13T09:00:00.000Z"}]',
-      });
-      final prefs = await SharedPreferences.getInstance();
-      final store = RecentDocumentsStoreImpl(prefs);
+    test(
+      'should skips malformed entries but keeps the well-formed ones',
+      () async {
+        final pathC = '${tempDir.path}/c.md';
+        final pathD = '${tempDir.path}/d.md';
+        File(pathD).writeAsStringSync('');
+        // Intentionally do NOT touch pathC — its entry is still
+        // dropped, but via the "openedAt: not-a-date" malformed-entry
+        // branch rather than an existsSync check (that filter was
+        // removed as part of CR-20260419-019). The "pinned missing
+        // file" case is now handled by the viewer surfacing a localised
+        // error on tap instead of by the read path silently dropping
+        // the entry.
+        SharedPreferences.setMockInitialValues(<String, Object>{
+          'library.recentDocuments':
+              '[{"path":"$pathA","openedAt":"2026-04-13T10:00:00.000Z"},'
+              '{"path":""},'
+              '{"path":"$pathC","openedAt":"not-a-date"},'
+              '{"path":"$pathD","openedAt":"2026-04-13T09:00:00.000Z"}]',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final store = RecentDocumentsStoreImpl(prefs);
 
-      final round = store.read();
+        final round = store.read();
 
-      expect(round, hasLength(2));
-      expect(round[0].documentId.value, pathA);
-      expect(round[1].documentId.value, pathD);
-    });
+        expect(round, hasLength(2));
+        expect(round[0].documentId.value, pathA);
+        expect(round[1].documentId.value, pathD);
+      },
+    );
 
     test(
-      'read() returns stale entries intact; cold start never hits disk',
+      'should read() returns stale entries intact; cold start never hits disk',
       () async {
         // Behaviour change: `read()` is purely in-memory. Earlier
         // versions called `File(path).existsSync()` per entry, which

@@ -33,12 +33,14 @@ import 'package:visibility_detector/visibility_detector.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  final originalUpdateInterval =
-      VisibilityDetectorController.instance.updateInterval;
-  VisibilityDetectorController.instance.updateInterval = Duration.zero;
-  tearDownAll(() {
-    VisibilityDetectorController.instance.updateInterval =
-        originalUpdateInterval;
+  setUp(() {
+    final originalUpdateInterval =
+        VisibilityDetectorController.instance.updateInterval;
+    VisibilityDetectorController.instance.updateInterval = Duration.zero;
+    addTearDown(() {
+      VisibilityDetectorController.instance.updateInterval =
+          originalUpdateInterval;
+    });
   });
 
   const MarkdownParser parser = MarkdownParser();
@@ -96,7 +98,7 @@ void main() {
   // ── Decode + Parse ──────────────────────────────────────────────────
 
   group('Decode + Parse benchmark', () {
-    test('parses a ~1 MB document in under 200 ms', () {
+    test('should parses a ~1 MB document in under 200 ms', () {
       final bytes = generateLargeMarkdown(targetKb: 1024);
 
       final stopwatch = Stopwatch()..start();
@@ -106,8 +108,7 @@ void main() {
       );
       stopwatch.stop();
 
-      // ignore: avoid_print
-      print(
+      printOnFailure(
         'Decode + Parse (${(bytes.length / 1024).round()} KB): '
         '${stopwatch.elapsedMilliseconds} ms  '
         '(${doc.lineCount} lines, ${doc.headings.length} headings)',
@@ -126,92 +127,94 @@ void main() {
   // ── Widget Build ────────────────────────────────────────────────────
 
   group('Widget Build benchmark', () {
-    testWidgets('builds the widget tree for a ~1 MB document in under 150 ms', (
-      tester,
-    ) async {
-      // Use a standard 390×844 (iPhone 14) logical-pixel viewport so
-      // the layout pass mirrors a real device.
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 3.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
+    testWidgets(
+      'should builds the widget tree for a ~1 MB document in under 150 ms',
+      (tester) async {
+        // Use a standard 390×844 (iPhone 14) logical-pixel viewport so
+        // the layout pass mirrors a real device.
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 3.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
 
-      final bytes = generateLargeMarkdown(targetKb: 1024);
-      final doc = parser.parse(
-        id: const DocumentId('benchmark/large'),
-        bytes: bytes,
-      );
+        final bytes = generateLargeMarkdown(targetKb: 1024);
+        final doc = parser.parse(
+          id: const DocumentId('benchmark/large'),
+          bytes: bytes,
+        );
 
-      final stopwatch = Stopwatch()..start();
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(body: MarkdownView(document: doc)),
-        ),
-      );
-      // One `pump` advances past the initial build frame.
-      await tester.pump();
-      stopwatch.stop();
+        final stopwatch = Stopwatch()..start();
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(body: MarkdownView(document: doc)),
+          ),
+        );
+        // One `pump` advances past the initial build frame.
+        await tester.pump();
+        stopwatch.stop();
 
-      // ignore: avoid_print
-      print('Widget Build (~1 MB doc): ${stopwatch.elapsedMilliseconds} ms');
+        printOnFailure(
+          'Widget Build (~1 MB doc): ${stopwatch.elapsedMilliseconds} ms',
+        );
 
-      expect(
-        stopwatch.elapsedMilliseconds,
-        lessThan(150),
-        reason:
-            'Widget Build budget from docs/rendering-pipeline.md: '
-            '< 150 ms for a 1 MB document on reference hardware.',
-      );
-    });
+        expect(
+          stopwatch.elapsedMilliseconds,
+          lessThan(150),
+          reason:
+              'Widget Build budget from docs/rendering-pipeline.md: '
+              '< 150 ms for a 1 MB document on reference hardware.',
+        );
+      },
+    );
   });
 
   // ── Code Highlight ──────────────────────────────────────────────────
 
   group('Code Highlight benchmark', () {
-    testWidgets('syntax-highlights a 1 000-line Dart block in under 50 ms', (
-      tester,
-    ) async {
-      tester.view.physicalSize = const Size(390, 844);
-      tester.view.devicePixelRatio = 3.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
+    testWidgets(
+      'should syntax-highlights a 1 000-line Dart block in under 50 ms',
+      (tester) async {
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 3.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
 
-      final bytes = generateCodeHeavyMarkdown(lineCount: 1000);
-      final doc = parser.parse(
-        id: const DocumentId('benchmark/code'),
-        bytes: bytes,
-      );
+        final bytes = generateCodeHeavyMarkdown(lineCount: 1000);
+        final doc = parser.parse(
+          id: const DocumentId('benchmark/code'),
+          bytes: bytes,
+        );
 
-      final stopwatch = Stopwatch()..start();
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(body: MarkdownView(document: doc)),
-        ),
-      );
-      await tester.pump();
-      stopwatch.stop();
+        final stopwatch = Stopwatch()..start();
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(body: MarkdownView(document: doc)),
+          ),
+        );
+        await tester.pump();
+        stopwatch.stop();
 
-      // ignore: avoid_print
-      print(
-        'Code Highlight (1 000-line Dart block): '
-        '${stopwatch.elapsedMilliseconds} ms',
-      );
+        printOnFailure(
+          'Code Highlight (1 000-line Dart block): '
+          '${stopwatch.elapsedMilliseconds} ms',
+        );
 
-      expect(
-        stopwatch.elapsedMilliseconds,
-        lessThan(50),
-        reason:
-            'Code Highlight budget from docs/rendering-pipeline.md: '
-            '< 50 ms for a 1 000-line block on reference hardware.',
-      );
-    });
+        expect(
+          stopwatch.elapsedMilliseconds,
+          lessThan(50),
+          reason:
+              'Code Highlight budget from docs/rendering-pipeline.md: '
+              '< 50 ms for a 1 000-line block on reference hardware.',
+        );
+      },
+    );
   });
 }

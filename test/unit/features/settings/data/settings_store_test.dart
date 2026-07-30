@@ -15,7 +15,7 @@ void main() {
     });
 
     test(
-      'readAppThemeMode returns AppThemeMode.system on a fresh install',
+      'should readAppThemeMode returns AppThemeMode.system on a fresh install',
       () async {
         final prefs = await SharedPreferences.getInstance();
         final store = SettingsStoreImpl(prefs);
@@ -25,7 +25,7 @@ void main() {
     );
 
     test(
-      'writeAppThemeMode persists the value so a subsequent read returns it',
+      'should writeAppThemeMode persists the value so a subsequent read returns it',
       () async {
         final prefs = await SharedPreferences.getInstance();
         final store = SettingsStoreImpl(prefs);
@@ -37,18 +37,25 @@ void main() {
       },
     );
 
-    test('writeAppThemeMode round-trips every AppThemeMode value', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStoreImpl(prefs);
+    test(
+      'should writeAppThemeMode round-trips every AppThemeMode value',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = SettingsStoreImpl(prefs);
 
-      for (final mode in AppThemeMode.values) {
-        await store.writeAppThemeMode(mode);
-        expect(store.readAppThemeMode(), mode, reason: 'round trip for $mode');
-      }
-    });
+        for (final mode in AppThemeMode.values) {
+          await store.writeAppThemeMode(mode);
+          expect(
+            store.readAppThemeMode(),
+            mode,
+            reason: 'round trip for $mode',
+          );
+        }
+      },
+    );
 
     test(
-      'readAppThemeMode decodes legacy ThemeMode tags without migration',
+      'should readAppThemeMode decodes legacy ThemeMode tags without migration',
       () async {
         // A prefs value written by an older build that used Flutter's
         // ThemeMode tag strings must decode transparently.
@@ -72,25 +79,31 @@ void main() {
       },
     );
 
-    test('readAppThemeMode returns AppThemeMode.system when the stored tag is '
-        'unrecognised', () async {
-      SharedPreferences.setMockInitialValues({
-        'settings.themeMode': 'ultraviolet',
-      });
-      final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStoreImpl(prefs);
+    test(
+      'should readAppThemeMode returns AppThemeMode.system when the stored tag is '
+      'unrecognised',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'settings.themeMode': 'ultraviolet',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final store = SettingsStoreImpl(prefs);
 
-      expect(store.readAppThemeMode(), AppThemeMode.system);
-    });
+        expect(store.readAppThemeMode(), AppThemeMode.system);
+      },
+    );
 
-    test('readLocale returns AppLocale.system on a fresh install', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStoreImpl(prefs);
+    test(
+      'should readLocale returns AppLocale.system on a fresh install',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = SettingsStoreImpl(prefs);
 
-      expect(store.readLocale(), AppLocale.system);
-    });
+        expect(store.readLocale(), AppLocale.system);
+      },
+    );
 
-    test('writeLocale round-trips every AppLocale value', () async {
+    test('should writeLocale round-trips every AppLocale value', () async {
       final prefs = await SharedPreferences.getInstance();
       final store = SettingsStoreImpl(prefs);
 
@@ -101,7 +114,7 @@ void main() {
       }
     });
 
-    test('readLocale returns AppLocale.system when the stored tag is '
+    test('should readLocale returns AppLocale.system when the stored tag is '
         'unrecognised', () async {
       SharedPreferences.setMockInitialValues({'settings.localeTag': 'klingon'});
       final prefs = await SharedPreferences.getInstance();
@@ -111,7 +124,7 @@ void main() {
     });
 
     test(
-      'readHasSeenBookmarkHint defaults to false on a fresh install',
+      'should readHasSeenBookmarkHint defaults to false on a fresh install',
       () async {
         final prefs = await SharedPreferences.getInstance();
         final store = SettingsStoreImpl(prefs);
@@ -121,7 +134,7 @@ void main() {
     );
 
     test(
-      'markBookmarkHintSeen persists and makes the flag read back as true',
+      'should markBookmarkHintSeen persists and makes the flag read back as true',
       () async {
         final prefs = await SharedPreferences.getInstance();
         final store = SettingsStoreImpl(prefs);
@@ -134,7 +147,7 @@ void main() {
     );
 
     test(
-      'readReadingSettings returns the defaults on a fresh install',
+      'should readReadingSettings returns the defaults on a fresh install',
       () async {
         final prefs = await SharedPreferences.getInstance();
         final store = SettingsStoreImpl(prefs);
@@ -146,26 +159,29 @@ void main() {
       },
     );
 
-    test('writeReadingSettings round-trips the three knobs together', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStoreImpl(prefs);
+    test(
+      'should writeReadingSettings round-trips the three knobs together',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = SettingsStoreImpl(prefs);
 
-      await store.writeReadingSettings(
-        const ReadingSettings(
-          fontScale: 1.15,
-          width: ReadingWidth.wide,
-          lineHeight: ReadingLineHeight.airy,
-        ),
-      );
-      final reopened = SettingsStoreImpl(prefs);
-      final read = reopened.readReadingSettings();
+        await store.writeReadingSettings(
+          const ReadingSettings(
+            fontScale: 1.15,
+            width: ReadingWidth.wide,
+            lineHeight: ReadingLineHeight.airy,
+          ),
+        );
+        final reopened = SettingsStoreImpl(prefs);
+        final read = reopened.readReadingSettings();
 
-      expect(read.fontScale, closeTo(1.15, 1e-9));
-      expect(read.width, ReadingWidth.wide);
-      expect(read.lineHeight, ReadingLineHeight.airy);
-    });
+        expect(read.fontScale, closeTo(1.15, 1e-9));
+        expect(read.width, ReadingWidth.wide);
+        expect(read.lineHeight, ReadingLineHeight.airy);
+      },
+    );
 
-    test('writeReadingSettings clamps an out-of-range font scale to the '
+    test('should writeReadingSettings clamps an out-of-range font scale to the '
         'supported window', () async {
       final prefs = await SharedPreferences.getInstance();
       final store = SettingsStoreImpl(prefs);
@@ -182,24 +198,30 @@ void main() {
       expect(read.fontScale, ReadingSettings.maxFontScale);
     });
 
-    test('readKeepScreenOn defaults to false on a fresh install', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStoreImpl(prefs);
+    test(
+      'should readKeepScreenOn defaults to false on a fresh install',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = SettingsStoreImpl(prefs);
 
-      expect(store.readKeepScreenOn(), isFalse);
-    });
+        expect(store.readKeepScreenOn(), isFalse);
+      },
+    );
 
-    test('writeKeepScreenOn persists and round-trips the value', () async {
-      final prefs = await SharedPreferences.getInstance();
-      final store = SettingsStoreImpl(prefs);
+    test(
+      'should writeKeepScreenOn persists and round-trips the value',
+      () async {
+        final prefs = await SharedPreferences.getInstance();
+        final store = SettingsStoreImpl(prefs);
 
-      await store.writeKeepScreenOn(true);
-      final reopened = SettingsStoreImpl(prefs);
-      expect(reopened.readKeepScreenOn(), isTrue);
+        await store.writeKeepScreenOn(true);
+        final reopened = SettingsStoreImpl(prefs);
+        expect(reopened.readKeepScreenOn(), isTrue);
 
-      await store.writeKeepScreenOn(false);
-      final reopened2 = SettingsStoreImpl(prefs);
-      expect(reopened2.readKeepScreenOn(), isFalse);
-    });
+        await store.writeKeepScreenOn(false);
+        final reopened2 = SettingsStoreImpl(prefs);
+        expect(reopened2.readKeepScreenOn(), isFalse);
+      },
+    );
   });
 }

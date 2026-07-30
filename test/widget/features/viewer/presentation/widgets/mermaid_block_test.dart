@@ -25,15 +25,27 @@ MermaidRenderSuccess _successResult({double width = 200, double height = 60}) {
 }
 
 void main() {
+  late AppLocalizations en;
+  late AppLocalizations tr;
+
+  setUpAll(() async {
+    en = await AppLocalizations.delegate.load(const Locale('en'));
+    tr = await AppLocalizations.delegate.load(const Locale('tr'));
+  });
+
   // `Image.memory` registers `ImageStreamCompleterHandle` and the
   // framework-internal `_LiveImage` against the global Flutter image
   // cache. The cache deliberately retains both past widget tear-down
   // for reuse, so leak_tracker sees them as undisposed even though
   // no application code is leaking. Ignore both classes for this
   // file only.
-  LeakTesting.settings = LeakTesting.settings.withIgnored(
-    classes: const ['ImageStreamCompleterHandle', '_LiveImage'],
-  );
+  setUp(() {
+    final original = LeakTesting.settings;
+    LeakTesting.settings = original.withIgnored(
+      classes: const ['ImageStreamCompleterHandle', '_LiveImage'],
+    );
+    addTearDown(() => LeakTesting.settings = original);
+  });
 
   Widget harness({
     required MermaidRenderer renderer,
@@ -63,24 +75,25 @@ void main() {
   }
 
   group('MermaidBlock', () {
-    testWidgets('shows the loading placeholder while the future is pending', (
-      tester,
-    ) async {
-      final renderer = _PendingMermaidRenderer();
+    testWidgets(
+      'should shows the loading placeholder while the future is pending',
+      (tester) async {
+        final renderer = _PendingMermaidRenderer();
 
-      await tester.pumpWidget(harness(renderer: renderer));
+        await tester.pumpWidget(harness(renderer: renderer));
 
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-      expect(find.text('Rendering diagram…'), findsOneWidget);
+        expect(find.byType(CircularProgressIndicator), findsOneWidget);
+        expect(find.text(en.mermaidLoading), findsOneWidget);
 
-      // Resolve the pending future so the dispose path doesn't leak
-      // a microtask into the next test run.
-      renderer.completeWith(_successResult());
-      await tester.pumpAndSettle();
-    });
+        // Resolve the pending future so the dispose path doesn't leak
+        // a microtask into the next test run.
+        renderer.completeWith(_successResult());
+        await tester.pumpAndSettle();
+      },
+    );
 
     testWidgets(
-      'renders an Image when the renderer returns a successful result',
+      'should renders an Image when the renderer returns a successful result',
       (tester) async {
         final renderer = _CannedMermaidRenderer(_successResult());
 
@@ -93,7 +106,7 @@ void main() {
     );
 
     testWidgets(
-      'renders the localized error placeholder when the renderer fails',
+      'should renders the localized error placeholder when the renderer fails',
       (tester) async {
         final renderer = _CannedMermaidRenderer(
           const MermaidRenderFailure('mermaid parse error'),
@@ -102,15 +115,8 @@ void main() {
         await tester.pumpWidget(harness(renderer: renderer));
         await tester.pumpAndSettle();
 
-        // Both the title and body of the error placeholder must be
-        // present, looked up by their localized text. Using
-        // find.text here is acceptable because the test pins the
-        // locale to English explicitly via the harness.
-        expect(find.text('Diagram could not be rendered'), findsOneWidget);
-        expect(
-          find.text('Check the diagram syntax and try again.'),
-          findsOneWidget,
-        );
+        expect(find.text(en.mermaidRenderErrorTitle), findsOneWidget);
+        expect(find.text(en.mermaidRenderErrorBody), findsOneWidget);
         // The renderer's failure message is surfaced as a small
         // monospace detail line so on-device debugging has
         // something concrete to read.
@@ -120,7 +126,7 @@ void main() {
     );
 
     testWidgets(
-      'renders Turkish localized strings on the error placeholder when '
+      'should renders Turkish localized strings on the error placeholder when '
       'locale is tr',
       (tester) async {
         final renderer = _CannedMermaidRenderer(
@@ -132,12 +138,12 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        expect(find.text('Diyagram görüntülenemedi'), findsOneWidget);
+        expect(find.text(tr.mermaidRenderErrorTitle), findsOneWidget);
       },
     );
 
     testWidgets(
-      'threads a Material 3 themeVariables init directive into render() '
+      'should threads a Material 3 themeVariables init directive into render() '
       'when the source has no init of its own',
       (tester) async {
         final renderer = _CannedMermaidRenderer(_successResult());
@@ -154,7 +160,7 @@ void main() {
     );
 
     testWidgets(
-      'differentiates light and dark renders via different init directives',
+      'should differentiates light and dark renders via different init directives',
       (tester) async {
         final lightRenderer = _CannedMermaidRenderer(_successResult());
         await tester.pumpWidget(
@@ -182,7 +188,7 @@ void main() {
     );
 
     testWidgets(
-      'passes an empty init directive when the user source already has one',
+      'should passes an empty init directive when the user source already has one',
       (tester) async {
         final renderer = _CannedMermaidRenderer(_successResult());
 
@@ -207,7 +213,7 @@ void main() {
     );
 
     testWidgets(
-      'wraps the rendered image in an InteractiveViewer with a SizedBox '
+      'should wraps the rendered image in an InteractiveViewer with a SizedBox '
       'parent whose dimensions preserve the renderer-supplied aspect ratio',
       (tester) async {
         final renderer = _CannedMermaidRenderer(
@@ -234,27 +240,30 @@ void main() {
       },
     );
 
-    testWidgets('falls back to a 16:9 aspect ratio when the renderer reports a '
-        'zero-sized bitmap', (tester) async {
-      final renderer = _CannedMermaidRenderer(
-        _successResult(width: 0, height: 0),
-      );
+    testWidgets(
+      'should falls back to a 16:9 aspect ratio when the renderer reports a '
+      'zero-sized bitmap',
+      (tester) async {
+        final renderer = _CannedMermaidRenderer(
+          _successResult(width: 0, height: 0),
+        );
 
-      await tester.pumpWidget(harness(renderer: renderer));
-      await tester.pumpAndSettle();
+        await tester.pumpWidget(harness(renderer: renderer));
+        await tester.pumpAndSettle();
 
-      final sized = tester.widget<SizedBox>(
-        find.ancestor(
-          of: find.byType(InteractiveViewer),
-          matching: find.byType(SizedBox),
-        ),
-      );
-      final computedRatio = sized.width! / sized.height!;
-      expect(computedRatio, closeTo(16 / 9, 1e-3));
-    });
+        final sized = tester.widget<SizedBox>(
+          find.ancestor(
+            of: find.byType(InteractiveViewer),
+            matching: find.byType(SizedBox),
+          ),
+        );
+        final computedRatio = sized.width! / sized.height!;
+        expect(computedRatio, closeTo(16 / 9, 1e-3));
+      },
+    );
 
     testWidgets(
-      'caps the displayed diagram height at 60% of the screen height for '
+      'should caps the displayed diagram height at 60% of the screen height for '
       'tall diagrams so the outer scroll always has room to catch gestures',
       (tester) async {
         // 200×2000 is a ~1:10 aspect ratio — the classic tall
@@ -285,7 +294,7 @@ void main() {
     );
 
     testWidgets(
-      'rebuilds and re-renders when the MermaidBlock.code prop changes',
+      'should rebuilds and re-renders when the MermaidBlock.code prop changes',
       (tester) async {
         final renderer = _CodeAwareMermaidRenderer({
           'flowchart LR; A-->B': _successResult(width: 100, height: 60),

@@ -14,16 +14,16 @@ SyncedRepo _seed({String? customName}) => SyncedRepo(
 
 void main() {
   group('SyncedRepo.displayName', () {
-    test('falls back to owner/repo when no customName is set', () {
+    test('should falls back to owner/repo when no customName is set', () {
       expect(_seed().displayName, 'cemililik/markdown-viewer-mobile');
     });
 
-    test('returns the trimmed customName when one is set', () {
+    test('should returns the trimmed customName when one is set', () {
       expect(_seed(customName: '  My Docs  ').displayName, 'My Docs');
     });
 
     test(
-      'falls back to owner/repo when customName is empty or whitespace-only',
+      'should falls back to owner/repo when customName is empty or whitespace-only',
       () {
         expect(
           _seed(customName: '').displayName,

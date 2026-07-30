@@ -9,33 +9,39 @@ const _currentClose = '\uE003';
 
 void main() {
   group('buildHighlightedSource', () {
-    test('returns original source unchanged when matchOffsets is empty', () {
-      const source = 'hello world';
+    test(
+      'should returns original source unchanged when matchOffsets is empty',
+      () {
+        const source = 'hello world';
 
-      final result = buildHighlightedSource(
-        source: source,
-        matchOffsets: const [],
-        queryLength: 5,
-        currentMatchIndex: 0,
-      );
+        final result = buildHighlightedSource(
+          source: source,
+          matchOffsets: const [],
+          queryLength: 5,
+          currentMatchIndex: 0,
+        );
 
-      expect(result, source);
-    });
+        expect(result, source);
+      },
+    );
 
-    test('returns original source unchanged when queryLength is zero', () {
-      const source = 'hello world';
+    test(
+      'should returns original source unchanged when queryLength is zero',
+      () {
+        const source = 'hello world';
 
-      final result = buildHighlightedSource(
-        source: source,
-        matchOffsets: const [0],
-        queryLength: 0,
-        currentMatchIndex: 0,
-      );
+        final result = buildHighlightedSource(
+          source: source,
+          matchOffsets: const [0],
+          queryLength: 0,
+          currentMatchIndex: 0,
+        );
 
-      expect(result, source);
-    });
+        expect(result, source);
+      },
+    );
 
-    test('wraps the single match with current-match markers', () {
+    test('should wraps the single match with current-match markers', () {
       const source = 'hello world';
 
       final result = buildHighlightedSource(
@@ -48,7 +54,7 @@ void main() {
       expect(result, 'hello ${_currentOpen}world$_currentClose');
     });
 
-    test('wraps non-current match with normal markers', () {
+    test('should wraps non-current match with normal markers', () {
       const source = 'foo bar foo';
 
       final result = buildHighlightedSource(
@@ -64,26 +70,29 @@ void main() {
       );
     });
 
-    test('handles currentMatchIndex pointing at the first of many matches', () {
-      const source = 'aa bb aa cc aa';
-      final offsets = [0, 6, 12];
+    test(
+      'should handles currentMatchIndex pointing at the first of many matches',
+      () {
+        const source = 'aa bb aa cc aa';
+        final offsets = [0, 6, 12];
 
-      final result = buildHighlightedSource(
-        source: source,
-        matchOffsets: offsets,
-        queryLength: 2,
-        currentMatchIndex: 0,
-      );
+        final result = buildHighlightedSource(
+          source: source,
+          matchOffsets: offsets,
+          queryLength: 2,
+          currentMatchIndex: 0,
+        );
 
-      expect(
-        result,
-        '${_currentOpen}aa$_currentClose bb '
-        '${_normalOpen}aa$_normalClose cc '
-        '${_normalOpen}aa$_normalClose',
-      );
-    });
+        expect(
+          result,
+          '${_currentOpen}aa$_currentClose bb '
+          '${_normalOpen}aa$_normalClose cc '
+          '${_normalOpen}aa$_normalClose',
+        );
+      },
+    );
 
-    test('handles match at the very start of source', () {
+    test('should handles match at the very start of source', () {
       const source = 'world hello';
 
       final result = buildHighlightedSource(
@@ -96,7 +105,7 @@ void main() {
       expect(result, '${_currentOpen}world$_currentClose hello');
     });
 
-    test('handles match at the very end of source', () {
+    test('should handles match at the very end of source', () {
       const source = 'hello world';
 
       final result = buildHighlightedSource(
@@ -109,7 +118,7 @@ void main() {
       expect(result, 'hello ${_currentOpen}world$_currentClose');
     });
 
-    test('skips matches that fall inside a fenced code block', () {
+    test('should skips matches that fall inside a fenced code block', () {
       const source = '```\nhello world\n```\nhello outside';
 
       // "hello" appears at offset 4 (inside fence) and at offset 20 (outside).
@@ -131,7 +140,7 @@ void main() {
       );
     });
 
-    test('skips matches that fall inside an inline code span', () {
+    test('should skips matches that fall inside an inline code span', () {
       const source = 'See `hello` for details. hello again.';
       // "hello" at offset 5 (inside backticks) and offset 25 (outside).
 
@@ -147,27 +156,30 @@ void main() {
       expect(result, contains('`hello`'));
     });
 
-    test('preserves text between and around multiple matches exactly', () {
-      const source = 'ab cd ab';
+    test(
+      'should preserves text between and around multiple matches exactly',
+      () {
+        const source = 'ab cd ab';
 
-      final result = buildHighlightedSource(
-        source: source,
-        matchOffsets: const [0, 6],
-        queryLength: 2,
-        currentMatchIndex: 0,
-      );
+        final result = buildHighlightedSource(
+          source: source,
+          matchOffsets: const [0, 6],
+          queryLength: 2,
+          currentMatchIndex: 0,
+        );
 
-      // Text between matches must be unchanged.
-      expect(result, contains(' cd '));
-    });
+        // Text between matches must be unchanged.
+        expect(result, contains(' cd '));
+      },
+    );
   });
 
   group('findCodeRanges', () {
-    test('returns empty list for source with no code regions', () {
+    test('should returns empty list for source with no code regions', () {
       expect(findCodeRanges('plain text'), isEmpty);
     });
 
-    test('identifies a fenced code block range', () {
+    test('should identifies a fenced code block range', () {
       const source = 'before\n```\ncode\n```\nafter';
       final ranges = findCodeRanges(source);
 
@@ -179,7 +191,7 @@ void main() {
       );
     });
 
-    test('identifies an inline code span', () {
+    test('should identifies an inline code span', () {
       const source = 'use `foo` here';
       final ranges = findCodeRanges(source);
 
@@ -191,7 +203,7 @@ void main() {
     });
 
     test(
-      'does not report inline code inside a fenced block as a separate range',
+      'should does not report inline code inside a fenced block as a separate range',
       () {
         const source = '```\n`inner`\n```';
         final ranges = findCodeRanges(source);

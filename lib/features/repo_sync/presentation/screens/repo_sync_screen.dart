@@ -515,20 +515,26 @@ class _StatusCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
-        borderRadius: const BorderRadius.all(Radius.circular(16)),
-      ),
-      child: Row(
-        children: [
-          SizedBox(width: 24, height: 24, child: icon),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Text(message, style: Theme.of(context).textTheme.bodyMedium),
-          ),
-        ],
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHigh,
+          borderRadius: const BorderRadius.all(Radius.circular(16)),
+        ),
+        child: Row(
+          children: [
+            SizedBox(width: 24, height: 24, child: icon),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                message,
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -545,25 +551,28 @@ class _DownloadCard extends StatelessWidget {
     final l10n = context.l10n;
     final scheme = Theme.of(context).colorScheme;
     final progress = total == 0 ? 0.0 : current / total;
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: scheme.surfaceContainerHigh,
-        borderRadius: const BorderRadius.all(Radius.circular(16)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l10n.syncProgress(current, total),
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 12),
-          LinearProgressIndicator(
-            value: progress,
-            borderRadius: const BorderRadius.all(Radius.circular(4)),
-          ),
-        ],
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: scheme.surfaceContainerHigh,
+          borderRadius: const BorderRadius.all(Radius.circular(16)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.syncProgress(current, total),
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            LinearProgressIndicator(
+              value: progress,
+              borderRadius: const BorderRadius.all(Radius.circular(4)),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -584,74 +593,77 @@ class _ResultCard extends ConsumerWidget {
     final onColor =
         isPartial ? scheme.onTertiaryContainer : scheme.onPrimaryContainer;
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: const BorderRadius.all(Radius.circular(16)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                isPartial
-                    ? Icons.warning_amber_outlined
-                    : Icons.check_circle_outline,
-                color: onColor,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  isPartial ? l10n.syncPartial : l10n.syncCompleted,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: onColor,
-                    fontWeight: FontWeight.w600,
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: const BorderRadius.all(Radius.circular(16)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  isPartial
+                      ? Icons.warning_amber_outlined
+                      : Icons.check_circle_outline,
+                  color: onColor,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    isPartial ? l10n.syncPartial : l10n.syncCompleted,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: onColor,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            result.isIncremental
-                ? l10n.syncStatsIncremental(
-                  result.downloadedCount,
-                  result.skippedCount,
-                )
-                : l10n.syncFilesFound(result.syncedCount),
-            style: Theme.of(
-              context,
-            ).textTheme.bodySmall?.copyWith(color: onColor),
-          ),
-          const SizedBox(height: 16),
-          // G — navigate to the synced repo in the library.
-          Row(
-            children: [
-              FilledButton.tonal(
-                style: FilledButton.styleFrom(
-                  backgroundColor: onColor.withValues(alpha: 0.15),
-                  foregroundColor: onColor,
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              result.isIncremental
+                  ? l10n.syncStatsIncremental(
+                    result.downloadedCount,
+                    result.skippedCount,
+                  )
+                  : l10n.syncFilesFound(result.syncedCount),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: onColor),
+            ),
+            const SizedBox(height: 16),
+            // G — navigate to the synced repo in the library.
+            Row(
+              children: [
+                FilledButton.tonal(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: onColor.withValues(alpha: 0.15),
+                    foregroundColor: onColor,
+                  ),
+                  onPressed: () {
+                    ref
+                        .read(activeLibrarySourceProvider.notifier)
+                        .selectSyncedRepo(result.repo);
+                    context.go(LibraryRoute.location());
+                  },
+                  child: Text(l10n.syncOpenInLibrary),
                 ),
-                onPressed: () {
-                  ref
-                      .read(activeLibrarySourceProvider.notifier)
-                      .selectSyncedRepo(result.repo);
-                  context.go(LibraryRoute.location());
-                },
-                child: Text(l10n.syncOpenInLibrary),
-              ),
-              const SizedBox(width: 8),
-              TextButton(
-                style: TextButton.styleFrom(foregroundColor: onColor),
-                onPressed:
-                    () => ref.read(repoSyncNotifierProvider.notifier).reset(),
-                child: Text(l10n.syncSyncAnotherButton),
-              ),
-            ],
-          ),
-        ],
+                const SizedBox(width: 8),
+                TextButton(
+                  style: TextButton.styleFrom(foregroundColor: onColor),
+                  onPressed:
+                      () => ref.read(repoSyncNotifierProvider.notifier).reset(),
+                  child: Text(l10n.syncSyncAnotherButton),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -678,36 +690,39 @@ class _ErrorCard extends ConsumerWidget {
       _ => l10n.errorUnknown,
     };
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: scheme.errorContainer,
-        borderRadius: const BorderRadius.all(Radius.circular(16)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.error_outline, color: scheme.onErrorContainer),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  message,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: scheme.onErrorContainer,
+    return Semantics(
+      liveRegion: true,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: scheme.errorContainer,
+          borderRadius: const BorderRadius.all(Radius.circular(16)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.error_outline, color: scheme.onErrorContainer),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    message,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: scheme.onErrorContainer,
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          FilledButton.tonal(
-            onPressed:
-                () => ref.read(repoSyncNotifierProvider.notifier).reset(),
-            child: Text(l10n.actionRetry),
-          ),
-        ],
+              ],
+            ),
+            const SizedBox(height: 16),
+            FilledButton.tonal(
+              onPressed:
+                  () => ref.read(repoSyncNotifierProvider.notifier).reset(),
+              child: Text(l10n.actionRetry),
+            ),
+          ],
+        ),
       ),
     );
   }
