@@ -18,11 +18,6 @@ mkdir -p build/quality-logs/android build/performance
 flutter --version
 adb devices -l
 emulator_binary="${ANDROID_HOME:?ANDROID_HOME is required}/emulator/emulator"
-if ! acceleration_status="$("$emulator_binary" -accel-check 2>&1)"; then
-  printf '%s\n' "$acceleration_status" >&2
-  exit 1
-fi
-printf '%s\n' "$acceleration_status"
 adb shell wm size 1080x2400
 adb shell wm density 420
 adb shell settings put global window_animation_scale 0
@@ -31,14 +26,16 @@ adb shell settings put global animator_duration_scale 0
 
 if [[ "$RUN_ANDROID_CRITICAL" == "true" ]]; then
   critical_arguments=(
-    integration_test/mermaid_render_test.dart
-    -d "emulator-${EMULATOR_PORT:-5554}"
+    --driver=test_driver/integration_test.dart
+    --target=integration_test/mermaid_render_test.dart
+    --device-id "emulator-${EMULATOR_PORT:-5554}"
     --no-dds
+    --timeout 1800
   )
   if [[ "${CRITICAL_NEGATIVE_CONTROL:-false}" == "true" ]]; then
     critical_arguments+=(--dart-define=MERMAID_GATE_NEGATIVE_CONTROL=true)
   fi
-  flutter test "${critical_arguments[@]}" \
+  flutter drive "${critical_arguments[@]}" \
     2>&1 | tee build/quality-logs/android/integration.log
 fi
 
@@ -102,7 +99,7 @@ if [[ "$RUN_ANDROID_BENCHMARK" == "true" ]]; then
         displayDensity: $actual_density,
         emulatorVersion: $emulator_version,
         systemImageFingerprint: $system_image,
-        emulatorOptions: "-no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none -no-snapshot -no-snapshot-save -no-snapshot-load"
+        emulatorOptions: "-no-window -accel on -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none -no-snapshot -no-snapshot-save -no-snapshot-load"
       },
       run: {
         runId: $run_id,

@@ -51,6 +51,7 @@ void main() {
         'ram-size: 4096M',
         'heap-size: 512M',
         'disable-linux-hw-accel: false',
+        '-accel on',
       ]) {
         expect(reusableWorkflow, contains(literal));
       }
@@ -141,6 +142,7 @@ void main() {
           File('tool/ci/run_ios_integration.sh').readAsStringSync();
       for (final runner in [androidRunner, iosRunner]) {
         expect(runner, contains('integration_test/mermaid_render_test.dart'));
+        expect(runner, contains('flutter drive'));
         expect(runner, contains('--no-dds'));
         expect(runner, isNot(contains('flutter test || true')));
       }

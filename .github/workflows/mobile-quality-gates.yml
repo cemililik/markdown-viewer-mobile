@@ -114,6 +114,7 @@ jobs:
           disable-linux-hw-accel: false
           emulator-options: >-
             -no-window
+            -accel on
             -gpu swiftshader_indirect
             -noaudio
             -no-boot-anim
