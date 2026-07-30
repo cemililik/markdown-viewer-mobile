@@ -27,6 +27,7 @@ if [[ "$RUN_ANDROID_CRITICAL" == "true" ]]; then
   critical_arguments=(
     integration_test/mermaid_render_test.dart
     -d "emulator-${EMULATOR_PORT:-5554}"
+    --no-dds
   )
   if [[ "${CRITICAL_NEGATIVE_CONTROL:-false}" == "true" ]]; then
     critical_arguments+=(--dart-define=MERMAID_GATE_NEGATIVE_CONTROL=true)

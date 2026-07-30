@@ -10,4 +10,5 @@ xcodebuild -version
 flutter test \
   integration_test/mermaid_render_test.dart \
   -d "$SIMULATOR_UDID" \
+  --no-dds \
   2>&1 | tee build/quality-logs/ios/integration.log
