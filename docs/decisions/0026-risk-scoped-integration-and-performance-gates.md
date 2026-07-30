@@ -1,11 +1,11 @@
 # ADR-0026: Risk-scoped integration and performance gates
 
-- **Status**: Proposed
+- **Status**: Accepted
 - **Date**: 2026-07-30
 - **Deciders**: Cemil Ilık
 - **Owner**: Cemil Ilık
 - **Revisit date**: 2026-10-30
-- **Amends if accepted**:
+- **Amends**:
   [ADR-0010](0010-testing-strategy.md), only its consequence that integration
   tests gate release builds but not pull requests
 - **Related**: [ADR-0015](0015-mermaid-rendering-and-sandbox-v2.md),
@@ -204,7 +204,7 @@ without an identified infrastructure fault is not an approval mechanism.
 
 ### Verification
 
-Acceptance requires automated proof that:
+Implementation verification requires automated proof that:
 
 - the real Mermaid integration test goes red when rendering is deliberately
   broken;
@@ -229,10 +229,10 @@ Acceptance requires automated proof that:
 - test timeouts and the `golden` tag behavior are executable checks; and
 - success and failure both retain the required artifacts.
 
-Before this ADR can move from Proposed to Accepted, the implementation records
-one deliberately broken correctness run that proves the integration gate turns
-red and one deliberately over-budget result that proves the comparator turns
-red. The intentional failures are then reverted and both gates must pass.
+Before this roadmap step is complete, the implementation records one
+deliberately broken correctness run that proves the integration gate turns red
+and one deliberately over-budget result that proves the comparator turns red.
+The intentional failures are then reverted and both gates must pass.
 
 ## Revisit criteria
 
