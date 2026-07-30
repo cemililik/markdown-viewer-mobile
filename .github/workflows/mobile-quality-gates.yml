@@ -79,16 +79,15 @@ jobs:
 
       - name: Enable KVM hardware acceleration
         run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
-            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm || true
-          if [[ ! -r /dev/kvm || ! -w /dev/kvm ]]; then
+          if [[ ! -c /dev/kvm ]]; then
             ls -l /dev/kvm || true
             lscpu
-            echo "::error::This hosted runner does not expose usable KVM acceleration."
+            echo "::error::This hosted runner does not expose a KVM device."
             exit 1
           fi
+          sudo chmod 0666 /dev/kvm
+          "${ANDROID_HOME:?ANDROID_HOME is required}/emulator/emulator" \
+            -accel-check
 
       - name: Run fixed Android quality profile
         uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0

@@ -40,11 +40,14 @@ if [[ "$RUN_ANDROID_BENCHMARK" == "true" ]]; then
   flutter_json="$(flutter --version --machine)"
   flutter_version="$(jq -r '.frameworkVersion' <<<"$flutter_json")"
   dart_version="$(jq -r '.dartSdkVersion' <<<"$flutter_json")"
-  java_version="$(java -version 2>&1 | head -n 1)"
-  emulator_version="$(
-    "${ANDROID_HOME:?ANDROID_HOME is required}/emulator/emulator" -version \
-      2>&1 | head -n 1
-  )"
+  java_version_output="$(java -version 2>&1)"
+  java_version="${java_version_output%%$'\n'*}"
+  emulator_binary="${ANDROID_HOME:?ANDROID_HOME is required}/emulator/emulator"
+  if ! emulator_version_output="$("$emulator_binary" -version 2>&1)"; then
+    printf '%s\n' "$emulator_version_output" >&2
+    exit 1
+  fi
+  emulator_version="${emulator_version_output%%$'\n'*}"
   system_image="$(adb shell getprop ro.build.fingerprint | tr -d '\r')"
   actual_locale="$(adb shell getprop persist.sys.locale | tr -d '\r')"
   if [[ -z "$actual_locale" ]]; then

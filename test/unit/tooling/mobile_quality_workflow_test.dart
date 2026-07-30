@@ -141,8 +141,10 @@ void main() {
           File('tool/ci/run_ios_integration.sh').readAsStringSync();
       for (final runner in [androidRunner, iosRunner]) {
         expect(runner, contains('integration_test/mermaid_render_test.dart'));
+        expect(runner, contains('--no-dds'));
         expect(runner, isNot(contains('flutter test || true')));
       }
+      expect(RegExp('--no-dds').allMatches(androidRunner), hasLength(2));
       expect(
         _job(pullRequestWorkflow, 'integration-gate'),
         contains('test "\$CRITICAL_RESULT" = "success"'),
