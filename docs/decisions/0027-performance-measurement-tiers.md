@@ -52,9 +52,10 @@ decision:
    a hosted virtual machine is not a Pixel 6a and cannot truthfully pass or
    fail a Pixel 6a product claim.
 2. Pinning the guest shape and toolchain does not pin the physical host.
-   Complete run-level values varied by approximately 19 percent for document
-   open and 82 percent for content search. Even the observed guest
-   `MemTotal` differed by 4 KiB between otherwise identical emulators.
+   The maximum run-level value exceeded the minimum by approximately 19
+   percent for document open and 82 percent for content search. Even the
+   observed guest `MemTotal` differed by 4 KiB between otherwise identical
+   emulators.
    Treating volatile observations as exact profile identity would reject valid
    calibration inputs, while using the median of these runners with a
    10-percent threshold would create a gate that its own calibration data
@@ -64,7 +65,7 @@ This satisfies ADR-0026's revisit criterion for hosted-runner behavior that
 prevents the fixed profile from producing a useful regression signal. It does
 not justify increasing any product budget. The measurements also do not prove
 that a physical Pixel 6a misses a budget, so they are not sufficient evidence
-for the separate document-virtualisation decision required by roadmap item
+for the separate document-virtualization decision required by roadmap item
 `W4-01`.
 
 ## Decision
@@ -185,7 +186,7 @@ Before acceptance is implemented:
 
 - CI makes only claims its execution environment can support.
 - Pixel 6a and iPhone 12 targets remain strict instead of being inflated to
-  accommodate hosted virtualisation.
+  accommodate hosted virtualization.
 - The initial baseline does not fail on variability already observed in its
   own calibration sample.
 - Volatile diagnostics remain available without corrupting fixed-profile
@@ -208,7 +209,7 @@ Before acceptance is implemented:
 
 - Existing measurements remain evidence of the current hosted implementation,
   not evidence for or against a physical Pixel 6a.
-- The later `W4-01` virtualisation ADR still requires the measurements and
+- The later `W4-01` virtualization ADR still requires the measurements and
   dependencies named by that roadmap item.
 
 ## Alternatives considered
@@ -222,7 +223,7 @@ support a truthful product claim.
 ### Raise the product budgets to the hosted measurements
 
 Rejected because it would weaken user-experience targets based on unrelated
-virtualisation overhead and variable host allocation.
+virtualization overhead and variable host allocation.
 
 ### Use the median of five hosted runs
 
