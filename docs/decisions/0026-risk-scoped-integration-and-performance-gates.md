@@ -6,8 +6,8 @@
 - **Owner**: Cemil Ilık
 - **Revisit date**: 2026-10-30
 - **Amends if accepted**:
-  [ADR-0010](0010-testing-strategy.md), only the rule that integration tests
-  gate release builds but not pull requests
+  [ADR-0010](0010-testing-strategy.md), only its consequence that integration
+  tests gate release builds but not pull requests
 - **Related**: [ADR-0015](0015-mermaid-rendering-and-sandbox-v2.md),
   [ADR-0024](0024-platform-support-and-responsive-layout.md),
   [ADR-0025](0025-codegen-lint-and-toolchain-maintenance.md)
@@ -17,11 +17,12 @@ preserving the existing signed-release and store-delivery path.
 
 ## Context
 
-ADR-0010 establishes a layered test strategy and states that integration tests
-gate release builds only so pull-request CI remains fast. The binding testing
-standard also requires critical integration coverage on both Android and iOS,
-while the performance standard requires the benchmark suite on every pull
-request against `main`.
+ADR-0010 establishes a layered test strategy and states in its consequences
+that integration tests gate release builds only so pull-request CI remains
+fast. The binding [testing standard][testing-standard] repeats that release-only
+rule and requires critical integration coverage on both Android and iOS. The
+binding [performance standard][performance-standard] separately requires the
+benchmark suite on every pull request against `main`.
 
 The approved roadmap makes the conflict concrete:
 
@@ -89,16 +90,20 @@ The path classifier is covered by table-driven tests. An unrecognized or
 unparseable change set fails closed by running the critical suite.
 
 The Android performance benchmark runs on every pull request targeting `main`,
-as required by the performance standard. It may share one prepared emulator
-with the critical suite, but a skipped critical step must not skip the
-benchmark.
+as required by the [performance standard][performance-standard]. This broader
+scope is intentional: dependencies, application startup, shared rendering
+code, platform integration, and toolchain changes can regress measured
+behavior without changing a viewer-owned path. The benchmark may share one
+prepared emulator with the critical suite, but a skipped critical step must
+not skip the benchmark.
 
 ### Release-tag gates
 
 Every `v*` release tag runs the critical integration suite on both:
 
 - a pinned Android emulator; and
-- the pinned iOS simulator and Xcode family selected by ADR-0024.
+- the pinned iOS 26.4 simulator and Xcode 26.4.1 selected by ADR-0024 and
+  available on GitHub's `macos-26` runner.
 
 The Android tag gate also runs the performance benchmark. Android and iOS
 signed-build jobs wait for their corresponding integration gate, and store
@@ -163,8 +168,9 @@ The initial enforced product budgets are:
 | Search a representative library of 500 markdown files | `< 200 ms` |
 
 The benchmark records fixture sizes and counts in its result so a smaller or
-truncated corpus cannot create a false improvement. UTF-8 fixtures are created
-from encoded bytes, never from `String.codeUnits`.
+truncated corpus cannot create a false improvement. UTF-8 fixtures use
+`utf8.encode`, never `String.codeUnits`, because Dart exposes UTF-16 code units
+and treating them as file bytes corrupts non-ASCII and surrogate-pair content.
 
 The comparison tool validates the schema, metric set, units, device profile,
 sample count, and baseline provenance before comparing values. Missing,
@@ -179,9 +185,9 @@ before/after measurements and a reason. It cannot be regenerated automatically
 from the pull request under test.
 
 A budget increase or a regression above 10 percent still requires the review
-and justification mandated by the performance standard. Re-running a failed
-benchmark without an identified infrastructure fault is not an approval
-mechanism.
+and justification mandated by the
+[performance standard][performance-standard]. Re-running a failed benchmark
+without an identified infrastructure fault is not an approval mechanism.
 
 ### Failure and timeout policy
 
@@ -216,15 +222,28 @@ Acceptance requires automated proof that:
 - all required metrics and five measured samples are present;
 - an absolute-budget breach fails;
 - a regression of more than 10 percent fails;
-- exactly 10 percent does not fail because the standard says "more than";
+- exactly 10 percent does not fail because the
+  [performance standard][performance-standard] says "more than";
 - missing or malformed JSON fails;
 - `.codeUnits` cannot reappear in benchmark fixture encoding;
 - test timeouts and the `golden` tag behavior are executable checks; and
 - success and failure both retain the required artifacts.
 
-The implementation also performs one controlled negative run for the
-correctness gate and one for the budget comparator before this ADR can move
-from Proposed to Accepted.
+Before this ADR can move from Proposed to Accepted, the implementation records
+one deliberately broken correctness run that proves the integration gate turns
+red and one deliberately over-budget result that proves the comparator turns
+red. The intentional failures are then reverted and both gates must pass.
+
+## Revisit criteria
+
+Revisit this decision before the scheduled date if:
+
+- the product adopts a sustained 120 Hz scrolling target and needs a separate
+  8.33 ms frame-time tier;
+- hosted-runner or emulator changes prevent the fixed profile from producing a
+  useful regression signal; or
+- CI duration or reliability data supports a different gate split without
+  weakening pull-request or release protection.
 
 ## Consequences
 
@@ -317,9 +336,13 @@ secret surface.
 - [GitHub-hosted runner image lifecycle][github-runner-images]
 - [GitHub required-check behavior for filtered workflows][github-status-checks]
 - [Android Emulator Runner configuration][android-emulator-runner]
+- [GitHub Actions `macos-26` installed-software inventory][github-macos-26]
 
 [flutter-integration]: https://docs.flutter.dev/testing/integration-tests
 [flutter-profile]: https://docs.flutter.dev/cookbook/testing/integration/profiling
 [github-runner-images]: https://docs.github.com/en/actions/concepts/runners/github-hosted-runners
 [github-status-checks]: https://docs.github.com/en/actions/how-tos/manage-workflow-runs/skip-workflow-runs
 [android-emulator-runner]: https://github.com/ReactiveCircus/android-emulator-runner
+[github-macos-26]: https://github.com/actions/runner-images/blob/main/images/macos/macos-26-Readme.md
+[testing-standard]: ../standards/testing-standards.md
+[performance-standard]: ../standards/performance-standards.md
