@@ -7,7 +7,6 @@ import 'package:markdown_viewer/features/library/domain/entities/library_folder.
 import 'package:markdown_viewer/features/library/domain/services/library_content_search.dart';
 import 'package:markdown_viewer/features/repo_sync/application/repo_sync_providers.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
-import 'package:path/path.dart' as p;
 
 /// Application-layer binding for the [LibraryContentSearch] port.
 ///
@@ -181,11 +180,8 @@ final contentSearchControllerProvider =
       ContentSearchController.new,
     );
 
-/// Convenience label builder — matches the display format the
-/// existing source-picker drawer uses (`Folder: basename`) so a
-/// search hit badge looks like everywhere else the source name
-/// appears.
-String defaultFolderSourceLabel(LibraryFolder folder) {
-  final basename = p.basename(folder.path);
-  return basename.isEmpty ? folder.path : basename;
-}
+/// Routes through [LibraryFolder.displayName] so a renamed folder
+/// surfaces its custom label on the content-search hit badge with
+/// the same fallback chain (`customName` → basename → path) used
+/// everywhere else the source name appears.
+String defaultFolderSourceLabel(LibraryFolder folder) => folder.displayName;

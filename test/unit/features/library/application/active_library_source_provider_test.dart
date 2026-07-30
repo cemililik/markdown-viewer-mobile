@@ -85,5 +85,70 @@ void main() {
 
       expect(container.read(activeLibrarySourceProvider), isA<RecentsSource>());
     });
+
+    test('rebuilds the held FolderSource entity when the active folder is '
+        'renamed so the AppBar / drawer pick up the fresh customName', () {
+      final folder = LibraryFolder(
+        path: '/tmp/notes',
+        addedAt: DateTime.utc(2026, 4, 14),
+      );
+      final container = _containerWith(_FakeStore([folder]));
+
+      container.read(activeLibrarySourceProvider);
+      container.read(activeLibrarySourceProvider.notifier).selectFolder(folder);
+
+      container
+          .read(libraryFoldersControllerProvider.notifier)
+          .rename(path: '/tmp/notes', customName: 'My Notes');
+
+      final state = container.read(activeLibrarySourceProvider);
+      expect(state, isA<FolderSource>());
+      expect((state as FolderSource).folder.customName, 'My Notes');
+      expect(state.folder.displayName, 'My Notes');
+    });
+
+    test('rebuilds the held FolderSource entity when the bookmark is '
+        'refreshed so iOS scoped-bookmark updates reach the active source', () {
+      final folder = LibraryFolder(
+        path: '/tmp/ios',
+        addedAt: DateTime.utc(2026, 4, 14),
+        bookmark: 'stale-blob',
+      );
+      final container = _containerWith(_FakeStore([folder]));
+
+      container.read(activeLibrarySourceProvider);
+      container.read(activeLibrarySourceProvider.notifier).selectFolder(folder);
+
+      container
+          .read(libraryFoldersControllerProvider.notifier)
+          .updateBookmark(path: '/tmp/ios', bookmark: 'fresh-blob');
+
+      final state = container.read(activeLibrarySourceProvider);
+      expect(state, isA<FolderSource>());
+      expect((state as FolderSource).folder.bookmark, 'fresh-blob');
+    });
+
+    test('leaves the active source untouched when the folder list emits '
+        'an unrelated change (no spurious rebuild)', () {
+      final folder = LibraryFolder(
+        path: '/tmp/notes',
+        addedAt: DateTime.utc(2026, 4, 14),
+      );
+      final container = _containerWith(_FakeStore([folder]));
+
+      container.read(activeLibrarySourceProvider);
+      container.read(activeLibrarySourceProvider.notifier).selectFolder(folder);
+      final before = container.read(activeLibrarySourceProvider);
+
+      // Adding an unrelated folder should not rewrite the active
+      // source — the listener should only react to the matching
+      // path's customName / bookmark changing.
+      container
+          .read(libraryFoldersControllerProvider.notifier)
+          .add('/tmp/other');
+
+      final after = container.read(activeLibrarySourceProvider);
+      expect(identical(before, after), isTrue);
+    });
   });
 }

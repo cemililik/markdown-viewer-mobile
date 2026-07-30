@@ -22,29 +22,64 @@ import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.d
 class ActiveLibrarySourceController extends Notifier<LibrarySource> {
   @override
   LibrarySource build() {
-    // Watch the folder list so a removed folder resets us to Recents.
+    // Watch the folder list. Three reactions:
+    //   - removed folder       → reset to Recents (stale-pointer guard).
+    //   - renamed folder       → replace the held entity so the
+    //     library AppBar / source-picker labels rebuild against the
+    //     fresh `customName` without waiting on the next user
+    //     navigation.
+    //   - refreshed bookmark   → replace the held entity so the
+    //     iOS security-scoped bookmark on the active source picks
+    //     up `LibraryFoldersController.updateBookmark` writes
+    //     instead of staying on the stale blob.
     ref.listen(libraryFoldersControllerProvider, (previous, next) {
       final current = state;
       if (current is FolderSource) {
-        final stillExists = next.any(
-          (folder) => folder.path == current.folder.path,
-        );
-        if (!stillExists) {
+        LibraryFolder? match;
+        for (final folder in next) {
+          if (folder.path == current.folder.path) {
+            match = folder;
+            break;
+          }
+        }
+        if (match == null) {
           state = const RecentsSource();
+        } else if (match.customName != current.folder.customName ||
+            match.bookmark != current.folder.bookmark) {
+          state = FolderSource(match);
         }
       }
     });
 
-    // Watch the synced-repos list so a deleted repo also resets to Recents.
+    // Same fan-out for the synced-repos list. The provider is a
+    // FutureProvider so loading / error states have no list to
+    // diff against — bail out instead of treating "no data yet"
+    // as "the active repo was removed" and dumping the user back
+    // to Recents on every cold start or provider invalidation.
+    //
+    // The "any field changed" check uses the Freezed-generated
+    // value equality on `SyncedRepo` so a re-sync that updated
+    // `localRoot`, `status`, `fileCount`, `lastSyncedAt`, or
+    // `etag` (alongside the rename code path) flows the fresh
+    // entity into the active source. Holding only the customName
+    // diff would let the AppBar / drawer subtitle render against
+    // a stale `lastSyncedAt`.
     ref.listen(syncedReposProvider, (previous, next) {
+      if (!next.hasValue) return;
+      final repos = next.value!;
       final current = state;
       if (current is SyncedRepoSource) {
-        final repos = next.value ?? <SyncedRepo>[];
-        final stillExists = repos.any(
-          (SyncedRepo r) => r.id == current.syncedRepo.id,
-        );
-        if (!stillExists) {
+        SyncedRepo? match;
+        for (final r in repos) {
+          if (r.id == current.syncedRepo.id) {
+            match = r;
+            break;
+          }
+        }
+        if (match == null) {
           state = const RecentsSource();
+        } else if (match != current.syncedRepo) {
+          state = SyncedRepoSource(match);
         }
       }
     });

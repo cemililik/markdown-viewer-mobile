@@ -1,7 +1,7 @@
 name: markdown_viewer
 description: A mobile-first markdown viewer for iOS and Android with rich rendering for mermaid, math, code, tables, and more.
 publish_to: 'none'
-version: 1.2.1+2
+version: 1.3.0+3
 
 environment:
   sdk: ">=3.7.0 <4.0.0"

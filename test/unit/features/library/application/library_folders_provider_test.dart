@@ -116,5 +116,124 @@ void main() {
       expect(container.read(libraryFoldersControllerProvider), hasLength(1));
       expect(store.writeCount, 0);
     });
+
+    test('rename writes the trimmed customName and persists', () {
+      final store = _FakeStore([
+        LibraryFolder(path: '/tmp/notes', addedAt: DateTime.utc(2026, 4, 14)),
+      ]);
+      final container = _containerWith(store);
+
+      container
+          .read(libraryFoldersControllerProvider.notifier)
+          .rename(path: '/tmp/notes', customName: '  My Notes  ');
+
+      final state = container.read(libraryFoldersControllerProvider);
+      expect(state.first.customName, 'My Notes');
+      expect(state.first.displayName, 'My Notes');
+      expect(store.writeCount, 1);
+    });
+
+    test('rename normalises empty / whitespace input back to null', () {
+      final store = _FakeStore([
+        LibraryFolder(
+          path: '/tmp/notes',
+          addedAt: DateTime.utc(2026, 4, 14),
+          customName: 'Old',
+        ),
+      ]);
+      final container = _containerWith(store);
+
+      container
+          .read(libraryFoldersControllerProvider.notifier)
+          .rename(path: '/tmp/notes', customName: '   ');
+
+      final state = container.read(libraryFoldersControllerProvider);
+      expect(state.first.customName, isNull);
+      // displayName falls back to the basename now that the override
+      // is gone.
+      expect(state.first.displayName, 'notes');
+      expect(store.writeCount, 1);
+    });
+
+    test('rename clamps over-long input to the source-rename cap', () {
+      final store = _FakeStore([
+        LibraryFolder(path: '/tmp/notes', addedAt: DateTime.utc(2026, 4, 14)),
+      ]);
+      final container = _containerWith(store);
+
+      // 200 chars — well over the 64-char cap.
+      container
+          .read(libraryFoldersControllerProvider.notifier)
+          .rename(path: '/tmp/notes', customName: 'a' * 200);
+
+      final state = container.read(libraryFoldersControllerProvider);
+      expect(state.first.customName, isNotNull);
+      // Codepoint length must not exceed the cap.
+      expect(state.first.customName!.runes.length, lessThanOrEqualTo(64));
+    });
+
+    test('rename is a no-op when the path is not present', () {
+      final store = _FakeStore([
+        LibraryFolder(path: '/tmp/a', addedAt: DateTime.utc(2026, 4, 14)),
+      ]);
+      final container = _containerWith(store);
+
+      container
+          .read(libraryFoldersControllerProvider.notifier)
+          .rename(path: '/tmp/ghost', customName: 'X');
+
+      expect(store.writeCount, 0);
+    });
+
+    test('rename short-circuits when the normalised value is unchanged', () {
+      final store = _FakeStore([
+        LibraryFolder(
+          path: '/tmp/notes',
+          addedAt: DateTime.utc(2026, 4, 14),
+          customName: 'Notes',
+        ),
+      ]);
+      final container = _containerWith(store);
+
+      container
+          .read(libraryFoldersControllerProvider.notifier)
+          .rename(path: '/tmp/notes', customName: '  Notes  ');
+
+      // No write — the trimmed input matches the persisted value.
+      expect(store.writeCount, 0);
+    });
+
+    test(
+      'updateBookmark preserves the rename — regression guard for the '
+      'pre-1.3.0 fresh-constructor path that silently dropped customName',
+      () {
+        final store = _FakeStore([
+          LibraryFolder(
+            path: '/tmp/ios',
+            addedAt: DateTime.utc(2026, 4, 14),
+            bookmark: 'old-blob',
+            customName: 'My iOS Folder',
+          ),
+        ]);
+        final container = _containerWith(store);
+
+        container
+            .read(libraryFoldersControllerProvider.notifier)
+            .updateBookmark(path: '/tmp/ios', bookmark: 'fresh-blob');
+
+        // Assert both halves of the contract:
+        //   1. In-memory state — the UI rebuilds against this.
+        //   2. Persistence side-effect — the store write is the
+        //      part that survives a cold restart, and the
+        //      pre-1.3.0 regression skipped this side as well.
+        final state = container.read(libraryFoldersControllerProvider);
+        expect(state.first.bookmark, 'fresh-blob');
+        expect(state.first.customName, 'My iOS Folder');
+        expect(store.writeCount, 1);
+        final persisted = store.read();
+        expect(persisted.first.bookmark, 'fresh-blob');
+        expect(persisted.first.customName, 'My iOS Folder');
+      },
+    );
   });
 }

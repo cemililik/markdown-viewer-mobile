@@ -89,7 +89,12 @@ phase; see [roadmap.md](roadmap.md) for scheduling.
 - **Pinned files** — long-press → Pin to top; exempt from LRU eviction
 - **Folder browser** — left-side source-picker drawer; multi-root; lazy
   expansion tree in the body when a folder source is active; flat search
-  across the full subtree
+  across the full subtree; collapse-all icon next to the search bar
+  closes every expanded folder at once
+- **Source rename** — long-press a folder or synced-repo source to
+  assign a custom display label. The override persists across re-syncs
+  and cold starts; an empty confirm clears it back to the default
+  (path basename for folders, `owner/repo` for synced repos)
 - **Native folder access** — iOS security-scoped bookmarks + Android SAF
   persistent URI permissions via custom method-channel bridges; dart:io
   never touches content:// URIs directly

@@ -80,6 +80,46 @@ void main() {
       expect(round.first.bookmark, isNull);
     });
 
+    test('round-trips the optional customName field', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final store = LibraryFoldersStoreImpl(prefs);
+
+      await store.write(<LibraryFolder>[
+        LibraryFolder(
+          path: '/tmp/renamed',
+          addedAt: DateTime.utc(2026, 4, 14),
+          customName: 'My Notes',
+        ),
+        LibraryFolder(path: '/tmp/plain', addedAt: DateTime.utc(2026, 4, 13)),
+      ]);
+
+      final round = store.read();
+      expect(round, hasLength(2));
+      expect(round[0].customName, 'My Notes');
+      expect(round[0].displayName, 'My Notes');
+      expect(round[1].customName, isNull);
+      expect(round[1].displayName, 'plain');
+    });
+
+    test('accepts legacy entries written without the customName key', () async {
+      // Forward-compat regression guard: any entry persisted by a
+      // pre-1.3.0 build has no `customName` key. The decode must
+      // treat that as `null` (no override) rather than dropping
+      // the entry.
+      SharedPreferences.setMockInitialValues(<String, Object>{
+        'library.folders':
+            '[{"path":"/tmp/legacy","addedAt":"2026-04-14T10:00:00.000Z"},'
+            '{"path":"/tmp/with-bookmark","addedAt":"2026-04-13T10:00:00.000Z","bookmark":"blob"}]',
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final store = LibraryFoldersStoreImpl(prefs);
+
+      final round = store.read();
+      expect(round, hasLength(2));
+      expect(round[0].customName, isNull);
+      expect(round[1].customName, isNull);
+    });
+
     test('skips malformed entries but keeps the well-formed ones', () async {
       SharedPreferences.setMockInitialValues(<String, Object>{
         'library.folders':

@@ -23,7 +23,12 @@ mixin _$SyncedRepo {
  String get localRoot;/// When the last successful (or partial) sync completed.
  DateTime get lastSyncedAt;/// Number of files in the local mirror after the last sync.
  int get fileCount;/// Health of the last sync run.
- SyncStatus get status;
+ SyncStatus get status;/// Optional user-supplied display name. When non-null and
+/// non-empty, [displayName] returns this instead of the default
+/// `owner/repo` form so a long path like
+/// `cemililik/markdown-viewer-mobile` can be shortened to a
+/// readable label in the drawer.
+ String? get customName;
 /// Create a copy of SyncedRepo
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -34,16 +39,16 @@ $SyncedRepoCopyWith<SyncedRepo> get copyWith => _$SyncedRepoCopyWithImpl<SyncedR
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SyncedRepo&&(identical(other.id, id) || other.id == id)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.owner, owner) || other.owner == owner)&&(identical(other.repo, repo) || other.repo == repo)&&(identical(other.ref, ref) || other.ref == ref)&&(identical(other.subPath, subPath) || other.subPath == subPath)&&(identical(other.localRoot, localRoot) || other.localRoot == localRoot)&&(identical(other.lastSyncedAt, lastSyncedAt) || other.lastSyncedAt == lastSyncedAt)&&(identical(other.fileCount, fileCount) || other.fileCount == fileCount)&&(identical(other.status, status) || other.status == status));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SyncedRepo&&(identical(other.id, id) || other.id == id)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.owner, owner) || other.owner == owner)&&(identical(other.repo, repo) || other.repo == repo)&&(identical(other.ref, ref) || other.ref == ref)&&(identical(other.subPath, subPath) || other.subPath == subPath)&&(identical(other.localRoot, localRoot) || other.localRoot == localRoot)&&(identical(other.lastSyncedAt, lastSyncedAt) || other.lastSyncedAt == lastSyncedAt)&&(identical(other.fileCount, fileCount) || other.fileCount == fileCount)&&(identical(other.status, status) || other.status == status)&&(identical(other.customName, customName) || other.customName == customName));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,provider,owner,repo,ref,subPath,localRoot,lastSyncedAt,fileCount,status);
+int get hashCode => Object.hash(runtimeType,id,provider,owner,repo,ref,subPath,localRoot,lastSyncedAt,fileCount,status,customName);
 
 @override
 String toString() {
-  return 'SyncedRepo(id: $id, provider: $provider, owner: $owner, repo: $repo, ref: $ref, subPath: $subPath, localRoot: $localRoot, lastSyncedAt: $lastSyncedAt, fileCount: $fileCount, status: $status)';
+  return 'SyncedRepo(id: $id, provider: $provider, owner: $owner, repo: $repo, ref: $ref, subPath: $subPath, localRoot: $localRoot, lastSyncedAt: $lastSyncedAt, fileCount: $fileCount, status: $status, customName: $customName)';
 }
 
 
@@ -54,7 +59,7 @@ abstract mixin class $SyncedRepoCopyWith<$Res>  {
   factory $SyncedRepoCopyWith(SyncedRepo value, $Res Function(SyncedRepo) _then) = _$SyncedRepoCopyWithImpl;
 @useResult
 $Res call({
- int id, String provider, String owner, String repo, String ref, String subPath, String localRoot, DateTime lastSyncedAt, int fileCount, SyncStatus status
+ int id, String provider, String owner, String repo, String ref, String subPath, String localRoot, DateTime lastSyncedAt, int fileCount, SyncStatus status, String? customName
 });
 
 
@@ -71,7 +76,7 @@ class _$SyncedRepoCopyWithImpl<$Res>
 
 /// Create a copy of SyncedRepo
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? provider = null,Object? owner = null,Object? repo = null,Object? ref = null,Object? subPath = null,Object? localRoot = null,Object? lastSyncedAt = null,Object? fileCount = null,Object? status = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? provider = null,Object? owner = null,Object? repo = null,Object? ref = null,Object? subPath = null,Object? localRoot = null,Object? lastSyncedAt = null,Object? fileCount = null,Object? status = null,Object? customName = freezed,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,provider: null == provider ? _self.provider : provider // ignore: cast_nullable_to_non_nullable
@@ -83,7 +88,8 @@ as String,localRoot: null == localRoot ? _self.localRoot : localRoot // ignore: 
 as String,lastSyncedAt: null == lastSyncedAt ? _self.lastSyncedAt : lastSyncedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,fileCount: null == fileCount ? _self.fileCount : fileCount // ignore: cast_nullable_to_non_nullable
 as int,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as SyncStatus,
+as SyncStatus,customName: freezed == customName ? _self.customName : customName // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -168,10 +174,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String provider,  String owner,  String repo,  String ref,  String subPath,  String localRoot,  DateTime lastSyncedAt,  int fileCount,  SyncStatus status)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String provider,  String owner,  String repo,  String ref,  String subPath,  String localRoot,  DateTime lastSyncedAt,  int fileCount,  SyncStatus status,  String? customName)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _SyncedRepo() when $default != null:
-return $default(_that.id,_that.provider,_that.owner,_that.repo,_that.ref,_that.subPath,_that.localRoot,_that.lastSyncedAt,_that.fileCount,_that.status);case _:
+return $default(_that.id,_that.provider,_that.owner,_that.repo,_that.ref,_that.subPath,_that.localRoot,_that.lastSyncedAt,_that.fileCount,_that.status,_that.customName);case _:
   return orElse();
 
 }
@@ -189,10 +195,10 @@ return $default(_that.id,_that.provider,_that.owner,_that.repo,_that.ref,_that.s
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String provider,  String owner,  String repo,  String ref,  String subPath,  String localRoot,  DateTime lastSyncedAt,  int fileCount,  SyncStatus status)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String provider,  String owner,  String repo,  String ref,  String subPath,  String localRoot,  DateTime lastSyncedAt,  int fileCount,  SyncStatus status,  String? customName)  $default,) {final _that = this;
 switch (_that) {
 case _SyncedRepo():
-return $default(_that.id,_that.provider,_that.owner,_that.repo,_that.ref,_that.subPath,_that.localRoot,_that.lastSyncedAt,_that.fileCount,_that.status);case _:
+return $default(_that.id,_that.provider,_that.owner,_that.repo,_that.ref,_that.subPath,_that.localRoot,_that.lastSyncedAt,_that.fileCount,_that.status,_that.customName);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -209,10 +215,10 @@ return $default(_that.id,_that.provider,_that.owner,_that.repo,_that.ref,_that.s
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String provider,  String owner,  String repo,  String ref,  String subPath,  String localRoot,  DateTime lastSyncedAt,  int fileCount,  SyncStatus status)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String provider,  String owner,  String repo,  String ref,  String subPath,  String localRoot,  DateTime lastSyncedAt,  int fileCount,  SyncStatus status,  String? customName)?  $default,) {final _that = this;
 switch (_that) {
 case _SyncedRepo() when $default != null:
-return $default(_that.id,_that.provider,_that.owner,_that.repo,_that.ref,_that.subPath,_that.localRoot,_that.lastSyncedAt,_that.fileCount,_that.status);case _:
+return $default(_that.id,_that.provider,_that.owner,_that.repo,_that.ref,_that.subPath,_that.localRoot,_that.lastSyncedAt,_that.fileCount,_that.status,_that.customName);case _:
   return null;
 
 }
@@ -224,7 +230,7 @@ return $default(_that.id,_that.provider,_that.owner,_that.repo,_that.ref,_that.s
 
 
 class _SyncedRepo extends SyncedRepo {
-  const _SyncedRepo({required this.id, required this.provider, required this.owner, required this.repo, required this.ref, this.subPath = '', required this.localRoot, required this.lastSyncedAt, this.fileCount = 0, this.status = SyncStatus.ok}): super._();
+  const _SyncedRepo({required this.id, required this.provider, required this.owner, required this.repo, required this.ref, this.subPath = '', required this.localRoot, required this.lastSyncedAt, this.fileCount = 0, this.status = SyncStatus.ok, this.customName}): super._();
   
 
 @override final  int id;
@@ -246,6 +252,12 @@ class _SyncedRepo extends SyncedRepo {
 @override@JsonKey() final  int fileCount;
 /// Health of the last sync run.
 @override@JsonKey() final  SyncStatus status;
+/// Optional user-supplied display name. When non-null and
+/// non-empty, [displayName] returns this instead of the default
+/// `owner/repo` form so a long path like
+/// `cemililik/markdown-viewer-mobile` can be shortened to a
+/// readable label in the drawer.
+@override final  String? customName;
 
 /// Create a copy of SyncedRepo
 /// with the given fields replaced by the non-null parameter values.
@@ -257,16 +269,16 @@ _$SyncedRepoCopyWith<_SyncedRepo> get copyWith => __$SyncedRepoCopyWithImpl<_Syn
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SyncedRepo&&(identical(other.id, id) || other.id == id)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.owner, owner) || other.owner == owner)&&(identical(other.repo, repo) || other.repo == repo)&&(identical(other.ref, ref) || other.ref == ref)&&(identical(other.subPath, subPath) || other.subPath == subPath)&&(identical(other.localRoot, localRoot) || other.localRoot == localRoot)&&(identical(other.lastSyncedAt, lastSyncedAt) || other.lastSyncedAt == lastSyncedAt)&&(identical(other.fileCount, fileCount) || other.fileCount == fileCount)&&(identical(other.status, status) || other.status == status));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SyncedRepo&&(identical(other.id, id) || other.id == id)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.owner, owner) || other.owner == owner)&&(identical(other.repo, repo) || other.repo == repo)&&(identical(other.ref, ref) || other.ref == ref)&&(identical(other.subPath, subPath) || other.subPath == subPath)&&(identical(other.localRoot, localRoot) || other.localRoot == localRoot)&&(identical(other.lastSyncedAt, lastSyncedAt) || other.lastSyncedAt == lastSyncedAt)&&(identical(other.fileCount, fileCount) || other.fileCount == fileCount)&&(identical(other.status, status) || other.status == status)&&(identical(other.customName, customName) || other.customName == customName));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,id,provider,owner,repo,ref,subPath,localRoot,lastSyncedAt,fileCount,status);
+int get hashCode => Object.hash(runtimeType,id,provider,owner,repo,ref,subPath,localRoot,lastSyncedAt,fileCount,status,customName);
 
 @override
 String toString() {
-  return 'SyncedRepo(id: $id, provider: $provider, owner: $owner, repo: $repo, ref: $ref, subPath: $subPath, localRoot: $localRoot, lastSyncedAt: $lastSyncedAt, fileCount: $fileCount, status: $status)';
+  return 'SyncedRepo(id: $id, provider: $provider, owner: $owner, repo: $repo, ref: $ref, subPath: $subPath, localRoot: $localRoot, lastSyncedAt: $lastSyncedAt, fileCount: $fileCount, status: $status, customName: $customName)';
 }
 
 
@@ -277,7 +289,7 @@ abstract mixin class _$SyncedRepoCopyWith<$Res> implements $SyncedRepoCopyWith<$
   factory _$SyncedRepoCopyWith(_SyncedRepo value, $Res Function(_SyncedRepo) _then) = __$SyncedRepoCopyWithImpl;
 @override @useResult
 $Res call({
- int id, String provider, String owner, String repo, String ref, String subPath, String localRoot, DateTime lastSyncedAt, int fileCount, SyncStatus status
+ int id, String provider, String owner, String repo, String ref, String subPath, String localRoot, DateTime lastSyncedAt, int fileCount, SyncStatus status, String? customName
 });
 
 
@@ -294,7 +306,7 @@ class __$SyncedRepoCopyWithImpl<$Res>
 
 /// Create a copy of SyncedRepo
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? provider = null,Object? owner = null,Object? repo = null,Object? ref = null,Object? subPath = null,Object? localRoot = null,Object? lastSyncedAt = null,Object? fileCount = null,Object? status = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? provider = null,Object? owner = null,Object? repo = null,Object? ref = null,Object? subPath = null,Object? localRoot = null,Object? lastSyncedAt = null,Object? fileCount = null,Object? status = null,Object? customName = freezed,}) {
   return _then(_SyncedRepo(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,provider: null == provider ? _self.provider : provider // ignore: cast_nullable_to_non_nullable
@@ -306,7 +318,8 @@ as String,localRoot: null == localRoot ? _self.localRoot : localRoot // ignore: 
 as String,lastSyncedAt: null == lastSyncedAt ? _self.lastSyncedAt : lastSyncedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,fileCount: null == fileCount ? _self.fileCount : fileCount // ignore: cast_nullable_to_non_nullable
 as int,status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
-as SyncStatus,
+as SyncStatus,customName: freezed == customName ? _self.customName : customName // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

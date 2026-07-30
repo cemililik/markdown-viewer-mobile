@@ -5,22 +5,27 @@ Flutter. Designed to be the best reading experience for `.md` documents
 on a phone — including Mermaid diagrams, LaTeX math, syntax-highlighted
 code, tables, footnotes, and admonitions.
 
+<a href="https://apps.apple.com/us/app/markdown-viewer-mobile/id6762259375"><img src="docs/assets/badge-app-store.svg" height="40" alt="Download on the App Store"></a>&nbsp;&nbsp;<a href="https://play.google.com/store/apps/details?id=com.cemililik.markdown_viewer"><img src="docs/assets/badge-google-play.png" height="40" alt="Get it on Google Play"></a>
+
 ## Status
 
-**v1.2.0 — prepared 2026-04-20.** Phases 0–7 complete. Planned as the
-final active-development iteration for the app: v1.2 consolidates the
-findings from three parallel 2026-04-19 reviews (code / security /
-performance — 134 findings total), closes every P1 / High and most
-P2 / Medium items, and ships the mermaid dark-mode rendering fixes
-surfaced during on-device verification. Available on TestFlight and
-the Play Console production track.
+**v1.3.0 — released 2026-04-21.** Live on the App Store and Google Play.
+Phases 0–7 complete. v1.3 is a small library-ergonomics release driven
+by post-launch user feedback: a collapse-all button next to the search
+bar so deep folder dives do not strand the user with a tower of open
+expansion tiles, and a Rename action on folder / synced-repo sources
+so long GitHub paths (`cemililik/markdown-viewer-mobile`) can be
+shortened to a readable alias in the drawer.
 
-v1.0 shipped after a full-application code review (128 findings across 8
-streams — all P0/P1 findings closed, architecture layer refactored), a
-dedicated security review (1 High + 8 Medium findings — the High and four
-Medium findings resolved before tagging), and `leak_tracker` globally
-enabled in the test harness. See [docs/roadmap.md](docs/roadmap.md) for
-the full delivery history and post-v1 candidates.
+v1.2 consolidated the findings from three parallel 2026-04-19 reviews
+(code / security / performance — 134 findings total). v1.2.1 patched
+the large-repo sync error message, document sharing, and the nested
+folder tree display bug. v1.0 shipped after a full-application code
+review (128 findings across 8 streams — all P0/P1 findings closed,
+architecture layer refactored), a dedicated security review, and
+`leak_tracker` globally enabled in the test harness. See
+[docs/roadmap.md](docs/roadmap.md) for the full delivery history and
+post-v1 candidates.
 
 ## Features
 

@@ -15,7 +15,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// {
 ///   "path": "<String>",
 ///   "addedAt": "<ISO-8601 String>",
-///   "bookmark": "<base64 String, optional>"
+///   "bookmark": "<base64 String, optional>",
+///   "customName": "<String, optional>"
 /// }
 /// ```
 ///
@@ -67,6 +68,7 @@ class LibraryFoldersStoreImpl implements LibraryFoldersStore {
         final addedAt = DateTime.tryParse(addedAtRaw);
         if (addedAt == null) continue;
         final bookmarkRaw = item['bookmark'];
+        final customNameRaw = item['customName'];
         entries.add(
           LibraryFolder(
             // Portable form resolves back to the current absolute
@@ -81,6 +83,10 @@ class LibraryFoldersStoreImpl implements LibraryFoldersStore {
             bookmark:
                 bookmarkRaw is String && bookmarkRaw.isNotEmpty
                     ? bookmarkRaw
+                    : null,
+            customName:
+                customNameRaw is String && customNameRaw.isNotEmpty
+                    ? customNameRaw
                     : null,
           ),
         );
@@ -117,6 +123,10 @@ class LibraryFoldersStoreImpl implements LibraryFoldersStore {
         final bookmark = folder.bookmark;
         if (bookmark != null && bookmark.isNotEmpty) {
           map['bookmark'] = bookmark;
+        }
+        final customName = folder.customName;
+        if (customName != null && customName.isNotEmpty) {
+          map['customName'] = customName;
         }
         return map;
       }).toList(),

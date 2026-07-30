@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_viewer/core/errors/log_and_drop.dart';
+import 'package:markdown_viewer/core/text/source_rename.dart';
 import 'package:markdown_viewer/features/library/domain/entities/library_folder.dart';
 import 'package:markdown_viewer/features/library/domain/repositories/library_folders_store.dart';
 import 'package:markdown_viewer/features/library/domain/services/folder_enumerator.dart';
@@ -99,16 +100,45 @@ class LibraryFoldersController extends Notifier<List<LibraryFolder>> {
     final index = state.indexWhere((folder) => folder.path == path);
     if (index < 0) return;
     final updatedList = [...state];
-    updatedList[index] = LibraryFolder(
-      path: state[index].path,
-      addedAt: state[index].addedAt,
-      bookmark: bookmark,
-    );
+    // Preserve every other field (notably `customName`) by going
+    // through `copyWith` rather than a fresh constructor — the
+    // earlier hand-rolled rebuild silently dropped any user-set
+    // rename when iOS handed back a refreshed bookmark.
+    updatedList[index] = state[index].copyWith(bookmark: bookmark);
     state = _ordered(updatedList);
     dropWithLog(
       ref,
       ref.read(libraryFoldersStoreProvider).write(state),
       'library.folders.updateBookmark',
+    );
+  }
+
+  /// Replaces the [LibraryFolder.customName] on the entry at [path]
+  /// with [customName]. Passing `null` or an empty / whitespace-only
+  /// string clears the override so [LibraryFolder.displayName] falls
+  /// back to the path basename. Inputs are normalised through
+  /// [normaliseRenameInput] (trim + clamp to [sourceRenameMaxLength]
+  /// codepoints) so a non-UI caller cannot bypass the input cap.
+  ///
+  /// No-op when no entry matches [path] **or** when the normalised
+  /// value already equals the persisted `customName` — re-writing
+  /// the same value would otherwise queue a redundant disk write
+  /// and a misleading "renamed" snackbar at the call site.
+  ///
+  /// Persistence is fire-and-forget on the same `dropWithLog` path
+  /// as `add` / `remove`.
+  void rename({required String path, required String? customName}) {
+    final index = state.indexWhere((folder) => folder.path == path);
+    if (index < 0) return;
+    final normalised = normaliseRenameInput(customName);
+    if (normalised == state[index].customName) return;
+    final updatedList = [...state];
+    updatedList[index] = state[index].copyWith(customName: normalised);
+    state = _ordered(updatedList);
+    dropWithLog(
+      ref,
+      ref.read(libraryFoldersStoreProvider).write(state),
+      'library.folders.rename',
     );
   }
 

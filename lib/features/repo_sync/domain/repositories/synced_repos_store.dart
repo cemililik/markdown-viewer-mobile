@@ -78,4 +78,10 @@ abstract interface class SyncedReposStore {
   /// clears a stale value (e.g. after a ref change that invalidated
   /// the cached tree). No-op when [repoId] does not exist.
   Future<void> writeEtag(int repoId, String? etag);
+
+  /// Persists the user-supplied [customName] for [repoId]. Passing
+  /// `null` or an empty string clears the override so [SyncedRepo.displayName]
+  /// falls back to the default `owner/repo` form. No-op when [repoId]
+  /// does not exist.
+  Future<void> rename(int repoId, String? customName);
 }

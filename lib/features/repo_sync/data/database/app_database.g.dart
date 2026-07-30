@@ -125,6 +125,17 @@ class $SyncedReposTable extends SyncedRepos
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _customNameMeta = const VerificationMeta(
+    'customName',
+  );
+  @override
+  late final GeneratedColumn<String> customName = GeneratedColumn<String>(
+    'custom_name',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -138,6 +149,7 @@ class $SyncedReposTable extends SyncedRepos
     fileCount,
     status,
     etag,
+    customName,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -229,6 +241,12 @@ class $SyncedReposTable extends SyncedRepos
         etag.isAcceptableOrUnknown(data['etag']!, _etagMeta),
       );
     }
+    if (data.containsKey('custom_name')) {
+      context.handle(
+        _customNameMeta,
+        customName.isAcceptableOrUnknown(data['custom_name']!, _customNameMeta),
+      );
+    }
     return context;
   }
 
@@ -292,6 +310,10 @@ class $SyncedReposTable extends SyncedRepos
         DriftSqlType.string,
         data['${effectivePrefix}etag'],
       ),
+      customName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}custom_name'],
+      ),
     );
   }
 
@@ -329,6 +351,13 @@ class SyncedRepoRow extends DataClass implements Insertable<SyncedRepoRow> {
   /// release without a second schema bump. Nullable because
   /// backfilled rows have no ETag until the next successful sync.
   final String? etag;
+
+  /// Optional user-supplied display name shown in the library
+  /// drawer and content-search labels in place of the default
+  /// `owner/repo` form. Trimmed and `null`-coalesced upstream so an
+  /// empty input is stored as NULL (the "no override" state) rather
+  /// than an empty string. Nullable because most rows are unrenamed.
+  final String? customName;
   const SyncedRepoRow({
     required this.id,
     required this.provider,
@@ -341,6 +370,7 @@ class SyncedRepoRow extends DataClass implements Insertable<SyncedRepoRow> {
     required this.fileCount,
     required this.status,
     this.etag,
+    this.customName,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -358,6 +388,9 @@ class SyncedRepoRow extends DataClass implements Insertable<SyncedRepoRow> {
     if (!nullToAbsent || etag != null) {
       map['etag'] = Variable<String>(etag);
     }
+    if (!nullToAbsent || customName != null) {
+      map['custom_name'] = Variable<String>(customName);
+    }
     return map;
   }
 
@@ -374,6 +407,10 @@ class SyncedRepoRow extends DataClass implements Insertable<SyncedRepoRow> {
       fileCount: Value(fileCount),
       status: Value(status),
       etag: etag == null && nullToAbsent ? const Value.absent() : Value(etag),
+      customName:
+          customName == null && nullToAbsent
+              ? const Value.absent()
+              : Value(customName),
     );
   }
 
@@ -394,6 +431,7 @@ class SyncedRepoRow extends DataClass implements Insertable<SyncedRepoRow> {
       fileCount: serializer.fromJson<int>(json['fileCount']),
       status: serializer.fromJson<String>(json['status']),
       etag: serializer.fromJson<String?>(json['etag']),
+      customName: serializer.fromJson<String?>(json['customName']),
     );
   }
   @override
@@ -411,6 +449,7 @@ class SyncedRepoRow extends DataClass implements Insertable<SyncedRepoRow> {
       'fileCount': serializer.toJson<int>(fileCount),
       'status': serializer.toJson<String>(status),
       'etag': serializer.toJson<String?>(etag),
+      'customName': serializer.toJson<String?>(customName),
     };
   }
 
@@ -426,6 +465,7 @@ class SyncedRepoRow extends DataClass implements Insertable<SyncedRepoRow> {
     int? fileCount,
     String? status,
     Value<String?> etag = const Value.absent(),
+    Value<String?> customName = const Value.absent(),
   }) => SyncedRepoRow(
     id: id ?? this.id,
     provider: provider ?? this.provider,
@@ -438,6 +478,7 @@ class SyncedRepoRow extends DataClass implements Insertable<SyncedRepoRow> {
     fileCount: fileCount ?? this.fileCount,
     status: status ?? this.status,
     etag: etag.present ? etag.value : this.etag,
+    customName: customName.present ? customName.value : this.customName,
   );
   SyncedRepoRow copyWithCompanion(SyncedReposCompanion data) {
     return SyncedRepoRow(
@@ -455,6 +496,8 @@ class SyncedRepoRow extends DataClass implements Insertable<SyncedRepoRow> {
       fileCount: data.fileCount.present ? data.fileCount.value : this.fileCount,
       status: data.status.present ? data.status.value : this.status,
       etag: data.etag.present ? data.etag.value : this.etag,
+      customName:
+          data.customName.present ? data.customName.value : this.customName,
     );
   }
 
@@ -471,7 +514,8 @@ class SyncedRepoRow extends DataClass implements Insertable<SyncedRepoRow> {
           ..write('lastSyncedAt: $lastSyncedAt, ')
           ..write('fileCount: $fileCount, ')
           ..write('status: $status, ')
-          ..write('etag: $etag')
+          ..write('etag: $etag, ')
+          ..write('customName: $customName')
           ..write(')'))
         .toString();
   }
@@ -489,6 +533,7 @@ class SyncedRepoRow extends DataClass implements Insertable<SyncedRepoRow> {
     fileCount,
     status,
     etag,
+    customName,
   );
   @override
   bool operator ==(Object other) =>
@@ -504,7 +549,8 @@ class SyncedRepoRow extends DataClass implements Insertable<SyncedRepoRow> {
           other.lastSyncedAt == this.lastSyncedAt &&
           other.fileCount == this.fileCount &&
           other.status == this.status &&
-          other.etag == this.etag);
+          other.etag == this.etag &&
+          other.customName == this.customName);
 }
 
 class SyncedReposCompanion extends UpdateCompanion<SyncedRepoRow> {
@@ -519,6 +565,7 @@ class SyncedReposCompanion extends UpdateCompanion<SyncedRepoRow> {
   final Value<int> fileCount;
   final Value<String> status;
   final Value<String?> etag;
+  final Value<String?> customName;
   const SyncedReposCompanion({
     this.id = const Value.absent(),
     this.provider = const Value.absent(),
@@ -531,6 +578,7 @@ class SyncedReposCompanion extends UpdateCompanion<SyncedRepoRow> {
     this.fileCount = const Value.absent(),
     this.status = const Value.absent(),
     this.etag = const Value.absent(),
+    this.customName = const Value.absent(),
   });
   SyncedReposCompanion.insert({
     this.id = const Value.absent(),
@@ -544,6 +592,7 @@ class SyncedReposCompanion extends UpdateCompanion<SyncedRepoRow> {
     this.fileCount = const Value.absent(),
     this.status = const Value.absent(),
     this.etag = const Value.absent(),
+    this.customName = const Value.absent(),
   }) : provider = Value(provider),
        owner = Value(owner),
        repo = Value(repo),
@@ -562,6 +611,7 @@ class SyncedReposCompanion extends UpdateCompanion<SyncedRepoRow> {
     Expression<int>? fileCount,
     Expression<String>? status,
     Expression<String>? etag,
+    Expression<String>? customName,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -575,6 +625,7 @@ class SyncedReposCompanion extends UpdateCompanion<SyncedRepoRow> {
       if (fileCount != null) 'file_count': fileCount,
       if (status != null) 'status': status,
       if (etag != null) 'etag': etag,
+      if (customName != null) 'custom_name': customName,
     });
   }
 
@@ -590,6 +641,7 @@ class SyncedReposCompanion extends UpdateCompanion<SyncedRepoRow> {
     Value<int>? fileCount,
     Value<String>? status,
     Value<String?>? etag,
+    Value<String?>? customName,
   }) {
     return SyncedReposCompanion(
       id: id ?? this.id,
@@ -603,6 +655,7 @@ class SyncedReposCompanion extends UpdateCompanion<SyncedRepoRow> {
       fileCount: fileCount ?? this.fileCount,
       status: status ?? this.status,
       etag: etag ?? this.etag,
+      customName: customName ?? this.customName,
     );
   }
 
@@ -642,6 +695,9 @@ class SyncedReposCompanion extends UpdateCompanion<SyncedRepoRow> {
     if (etag.present) {
       map['etag'] = Variable<String>(etag.value);
     }
+    if (customName.present) {
+      map['custom_name'] = Variable<String>(customName.value);
+    }
     return map;
   }
 
@@ -658,7 +714,8 @@ class SyncedReposCompanion extends UpdateCompanion<SyncedRepoRow> {
           ..write('lastSyncedAt: $lastSyncedAt, ')
           ..write('fileCount: $fileCount, ')
           ..write('status: $status, ')
-          ..write('etag: $etag')
+          ..write('etag: $etag, ')
+          ..write('customName: $customName')
           ..write(')'))
         .toString();
   }
@@ -1167,6 +1224,7 @@ typedef $$SyncedReposTableCreateCompanionBuilder =
       Value<int> fileCount,
       Value<String> status,
       Value<String?> etag,
+      Value<String?> customName,
     });
 typedef $$SyncedReposTableUpdateCompanionBuilder =
     SyncedReposCompanion Function({
@@ -1181,6 +1239,7 @@ typedef $$SyncedReposTableUpdateCompanionBuilder =
       Value<int> fileCount,
       Value<String> status,
       Value<String?> etag,
+      Value<String?> customName,
     });
 
 final class $$SyncedReposTableReferences
@@ -1267,6 +1326,11 @@ class $$SyncedReposTableFilterComposer
 
   ColumnFilters<String> get etag => $composableBuilder(
     column: $table.etag,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customName => $composableBuilder(
+    column: $table.customName,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1359,6 +1423,11 @@ class $$SyncedReposTableOrderingComposer
     column: $table.etag,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get customName => $composableBuilder(
+    column: $table.customName,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SyncedReposTableAnnotationComposer
@@ -1404,6 +1473,11 @@ class $$SyncedReposTableAnnotationComposer
 
   GeneratedColumn<String> get etag =>
       $composableBuilder(column: $table.etag, builder: (column) => column);
+
+  GeneratedColumn<String> get customName => $composableBuilder(
+    column: $table.customName,
+    builder: (column) => column,
+  );
 
   Expression<T> syncedFilesRefs<T extends Object>(
     Expression<T> Function($$SyncedFilesTableAnnotationComposer a) f,
@@ -1471,6 +1545,7 @@ class $$SyncedReposTableTableManager
                 Value<int> fileCount = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String?> etag = const Value.absent(),
+                Value<String?> customName = const Value.absent(),
               }) => SyncedReposCompanion(
                 id: id,
                 provider: provider,
@@ -1483,6 +1558,7 @@ class $$SyncedReposTableTableManager
                 fileCount: fileCount,
                 status: status,
                 etag: etag,
+                customName: customName,
               ),
           createCompanionCallback:
               ({
@@ -1497,6 +1573,7 @@ class $$SyncedReposTableTableManager
                 Value<int> fileCount = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<String?> etag = const Value.absent(),
+                Value<String?> customName = const Value.absent(),
               }) => SyncedReposCompanion.insert(
                 id: id,
                 provider: provider,
@@ -1509,6 +1586,7 @@ class $$SyncedReposTableTableManager
                 fileCount: fileCount,
                 status: status,
                 etag: etag,
+                customName: customName,
               ),
           withReferenceMapper:
               (p0) =>

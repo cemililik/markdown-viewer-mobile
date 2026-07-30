@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:drift/drift.dart';
 import 'package:markdown_viewer/core/path/sandbox_path.dart';
+import 'package:markdown_viewer/core/text/source_rename.dart';
 import 'package:markdown_viewer/features/repo_sync/data/database/app_database.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/entities/synced_repo.dart';
 import 'package:markdown_viewer/features/repo_sync/domain/repositories/synced_repos_store.dart';
@@ -50,6 +51,29 @@ class SyncedReposStoreImpl implements SyncedReposStore {
         status: Value(_statusToString(repo.status)),
       );
       await _db.updateRepo(companion);
+      // Read the canonical row back so the return value carries
+      // every persisted column — including `customName` and `etag`,
+      // which the companion intentionally omits to preserve their
+      // existing values across a re-sync. Returning `repo.copyWith(
+      // id: existing.id)` would drop the user's rename whenever a
+      // sync notifier built the input from URL parts.
+      //
+      // Fall back to the natural-key lookup if the id-keyed read
+      // misses (degenerate race: another writer deleted the row
+      // between our update and our read-back). Returning the
+      // input-shaped `copyWith(id: existing.id)` is a last-resort
+      // safety net — preferable to returning `null` to a caller
+      // that expects a non-null contract.
+      final updatedRow =
+          await _db.getRepoById(existing.id) ??
+          await _db.getRepoByNaturalKey(
+            provider: repo.provider,
+            owner: repo.owner,
+            repo: repo.repo,
+            ref: repo.ref,
+            subPath: repo.subPath,
+          );
+      if (updatedRow != null) return _rowToEntity(updatedRow);
       return repo.copyWith(id: existing.id);
     }
 
@@ -152,6 +176,11 @@ class SyncedReposStoreImpl implements SyncedReposStore {
       _db.updateEtag(repoId, etag);
 
   @override
+  Future<void> rename(int repoId, String? customName) {
+    return _db.updateCustomName(repoId, normaliseRenameInput(customName));
+  }
+
+  @override
   Future<void> deleteFilesNotIn(int repoId, Set<String> retainedPaths) {
     // Single batched SQL statement (`DELETE … WHERE … NOT IN`)
     // handled by the drift DAO. The previous per-row loop issued one
@@ -181,6 +210,7 @@ class SyncedReposStoreImpl implements SyncedReposStore {
     ),
     fileCount: row.fileCount,
     status: _statusFromString(row.status),
+    customName: row.customName,
   );
 
   static SyncStatus _statusFromString(String s) => switch (s) {
