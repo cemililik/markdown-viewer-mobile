@@ -43,7 +43,7 @@ permissions:
 
 env:
   FLUTTER_VERSION: '3.41.4'
-  JAVA_VERSION: '17'
+  JAVA_VERSION: '17.0.20+8'
 
 jobs:
   android:
@@ -97,6 +97,7 @@ jobs:
           CRITICAL_NEGATIVE_CONTROL: ${{ inputs.critical_negative_control }}
         with:
           api-level: 35
+          emulator-build: 15507667
           target: google_apis
           arch: x86_64
           profile: pixel_6

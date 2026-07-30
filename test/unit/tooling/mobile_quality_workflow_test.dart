@@ -43,7 +43,9 @@ void main() {
       );
       for (final literal in const [
         'runs-on: ubuntu-24.04',
+        "JAVA_VERSION: '17.0.20+8'",
         'api-level: 35',
+        'emulator-build: 15507667',
         'target: google_apis',
         'arch: x86_64',
         'profile: pixel_6',
