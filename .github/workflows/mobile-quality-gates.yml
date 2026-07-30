@@ -121,14 +121,14 @@ jobs:
             -no-snapshot
             -no-snapshot-save
             -no-snapshot-load
-            -prop persist.sys.locale=en-US
           script: bash tool/ci/run_android_quality_gate.sh
 
       - name: Capture Android device log
         if: always()
         run: |
           mkdir -p build/quality-logs/android
-          adb logcat -d > build/quality-logs/android/logcat.txt || true
+          timeout 30s adb logcat -d \
+            > build/quality-logs/android/logcat.txt || true
 
       - name: Upload Android quality diagnostics
         if: always()

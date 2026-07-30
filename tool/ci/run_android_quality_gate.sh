@@ -82,7 +82,7 @@ if [[ "$RUN_ANDROID_BENCHMARK" == "true" ]]; then
         displayDensity: $actual_density,
         emulatorVersion: $emulator_version,
         systemImageFingerprint: $system_image,
-        emulatorOptions: "-no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none -no-snapshot -no-snapshot-save -no-snapshot-load -prop persist.sys.locale=en-US"
+        emulatorOptions: "-no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none -no-snapshot -no-snapshot-save -no-snapshot-load"
       },
       run: {
         runId: $run_id,
