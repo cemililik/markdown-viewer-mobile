@@ -8,6 +8,7 @@ void main() {
     goldenTest(
       'should render heading levels correctly when captured',
       fileName: 'headings',
+      tags: const ['golden'],
       pumpBeforeTest: goldenPumpBeforeTest,
       pumpWidget: goldenPumpWidget,
       builder:

@@ -78,6 +78,7 @@ void main() {
   goldenTest(
     'should render the LibraryScreen empty state across locale, theme, and scale when captured',
     fileName: 'library_empty',
+    tags: const ['golden'],
     pumpBeforeTest: goldenPumpBeforeTest,
     pumpWidget: goldenPumpWidget,
     builder:
@@ -97,6 +98,7 @@ void main() {
   goldenTest(
     'should render the ViewerScreen error state across locale, theme, and scale when captured',
     fileName: 'viewer_error',
+    tags: const ['golden'],
     pumpBeforeTest: goldenPumpBeforeTest,
     pumpWidget: goldenPumpWidget,
     builder:
@@ -134,6 +136,7 @@ void main() {
   goldenTest(
     'should render the ViewerScreen loading state across locale, theme, and scale when captured',
     fileName: 'viewer_loading',
+    tags: const ['golden'],
     pumpBeforeTest: _goldenPumpPendingState,
     pumpWidget: goldenPumpWidget,
     builder:
@@ -171,6 +174,7 @@ void main() {
   goldenTest(
     'should render the SettingsScreen across locale, theme, and scale when captured',
     fileName: 'settings',
+    tags: const ['golden'],
     pumpBeforeTest: goldenPumpBeforeTest,
     pumpWidget: goldenPumpWidget,
     builder:
@@ -200,6 +204,7 @@ void main() {
   goldenTest(
     'should render the OnboardingScreen across locale, theme, and scale when captured',
     fileName: 'onboarding',
+    tags: const ['golden'],
     pumpBeforeTest: goldenPumpBeforeTest,
     pumpWidget: goldenPumpWidget,
     builder:
@@ -226,6 +231,7 @@ void main() {
   goldenTest(
     'should render the RepoSyncScreen across locale, theme, and scale when captured',
     fileName: 'repo_sync',
+    tags: const ['golden'],
     pumpBeforeTest: goldenPumpBeforeTest,
     pumpWidget: goldenPumpWidget,
     builder:
@@ -257,6 +263,7 @@ void main() {
   goldenTest(
     'should render the DiagramFullscreenScreen across locale, theme, and scale when captured',
     fileName: 'diagram_fullscreen',
+    tags: const ['golden'],
     pumpBeforeTest: goldenPumpBeforeTestWithImages,
     pumpWidget: goldenPumpWidget,
     builder:
@@ -282,6 +289,7 @@ void main() {
   goldenTest(
     'should render transformed diagram chrome across locale, theme, and scale when captured',
     fileName: 'diagram_fullscreen_transformed',
+    tags: const ['golden'],
     pumpBeforeTest: _goldenPumpTransformedDiagram,
     pumpWidget: goldenPumpWidget,
     builder:

@@ -5,20 +5,26 @@
 | Metric | Budget | Reference device |
 |--------|--------|------------------|
 | Cold start to first frame | < 1.5s | Pixel 6a |
-| Parse + render 1MB doc | < 500ms | Pixel 6a |
-| Scroll FPS (10k-line doc) | ≥ 60fps sustained | Pixel 6a |
-| Mermaid render (typical) | < 800ms | iPhone 12 |
+| Open + first-render 1MB doc | < 500ms | Pixel 6a |
+| Decode + parse 1MB doc | < 200ms | Pixel 6a |
+| Build 1MB document widget tree | < 150ms | Pixel 6a |
+| Scroll 10k-line doc | p95 frame time ≤ 16.67ms | Pixel 6a |
+| Mermaid prewarm + typical first render | < 800ms | iPhone 12 |
 | Code highlight (1k lines) | < 50ms | Pixel 6a |
+| Search 500 markdown files | < 200ms | Pixel 6a |
 | Install size | < 20MB | Release build |
 | RSS memory (typical doc) | < 150MB | Pixel 6a |
 
-Any PR that regresses a budget by more than 10% must be justified and
-approved by two reviewers.
+CI fails when an enforced metric exceeds either its absolute budget or its
+versioned fixed-profile baseline by more than 10%. A budget increase or
+baseline regression requires a dedicated justification and approval by two
+reviewers.
 
 ## Profiling
 
 - Use Flutter DevTools for all profiling
-- Profile **release builds**, never debug
+- Use Flutter profile mode for automated measurements and release mode for
+  final reference-device profiling; never use debug timings
 - Reproducible benchmarks live in `integration_test/benchmark/`
 
 ## Rules
@@ -55,8 +61,16 @@ approved by two reviewers.
 ## Regression Testing
 
 - `integration_test/benchmark/` runs in CI on every PR against `main`
-- Benchmarks fail CI when any budget regresses by more than 10%
-- Historical data is stored for trend analysis
+- One warm-up and five measured repetitions are required
+- Latency gates use the median; frame-time gates use the 95th percentile
+- Benchmarks fail on an absolute breach or a regression above 10%
+- The fixed profile, raw results, comparison report, and timeline summaries
+  are retained for 90 days
+- Baselines are versioned and may change only in a dedicated reviewed commit
+
+See
+[ADR-0026](../decisions/0026-risk-scoped-integration-and-performance-gates.md)
+for the fixed profile, baseline provenance, and fail-closed schema.
 
 ## Anti-Patterns
 

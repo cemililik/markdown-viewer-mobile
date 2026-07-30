@@ -8,6 +8,7 @@ void main() {
     goldenTest(
       'should render inline and display math blocks when captured',
       fileName: 'math_view',
+      tags: const ['golden'],
       pumpBeforeTest: goldenPumpBeforeTest,
       pumpWidget: goldenPumpWidget,
       builder:

@@ -1,0 +1,221 @@
+name: Mobile quality gates
+
+on:
+  workflow_call:
+    inputs:
+      run_android_critical:
+        description: Run the real Android WebView integration suite.
+        required: false
+        default: false
+        type: boolean
+      run_android_benchmark:
+        description: Run and enforce the fixed-profile Android benchmark.
+        required: false
+        default: false
+        type: boolean
+      run_ios_critical:
+        description: Run the real iOS WebView integration suite.
+        required: false
+        default: false
+        type: boolean
+      critical_negative_control:
+        description: Deliberately fail the temporary critical-gate control.
+        required: false
+        default: false
+        type: boolean
+      benchmark_mode:
+        description: Enforce a baseline or emit an absolute-budget calibration.
+        required: false
+        default: enforce
+        type: string
+      calibration_index:
+        description: Distinguishes parallel calibration evidence.
+        required: false
+        default: ''
+        type: string
+      artifact_suffix:
+        description: Unique suffix for artifacts in the caller workflow.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: '3.41.4'
+  JAVA_VERSION: '17'
+
+jobs:
+  android:
+    name: Android integration and performance
+    if: ${{ inputs.run_android_critical || inputs.run_android_benchmark }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.22.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Fetch bundled Mermaid runtime
+        run: bash tool/fetch_mermaid.sh
+
+      - name: Enable KVM hardware acceleration
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+          test -r /dev/kvm
+          test -w /dev/kvm
+
+      - name: Run fixed Android quality profile
+        uses: reactivecircus/android-emulator-runner@e89f39f1abbbd05b1113a29cf4db69e7540cae5a # v2.37.0
+        env:
+          RUN_ANDROID_CRITICAL: ${{ inputs.run_android_critical }}
+          RUN_ANDROID_BENCHMARK: ${{ inputs.run_android_benchmark }}
+          BENCHMARK_MODE: ${{ inputs.benchmark_mode }}
+          BENCHMARK_CALIBRATION_INDEX: ${{ inputs.calibration_index }}
+          CRITICAL_NEGATIVE_CONTROL: ${{ inputs.critical_negative_control }}
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6
+          cores: 4
+          ram-size: 4096M
+          heap-size: 512M
+          sdcard-path-or-size: 512M
+          disk-size: 4096M
+          avd-name: markdown_viewer_fixed_profile
+          emulator-port: 5554
+          force-avd-creation: true
+          emulator-boot-timeout: 900
+          disable-animations: true
+          disable-spellchecker: true
+          disable-linux-hw-accel: false
+          emulator-options: >-
+            -no-window
+            -gpu swiftshader_indirect
+            -noaudio
+            -no-boot-anim
+            -camera-back none
+            -camera-front none
+            -no-snapshot
+            -no-snapshot-save
+            -no-snapshot-load
+            -prop persist.sys.locale=en-US
+          script: bash tool/ci/run_android_quality_gate.sh
+
+      - name: Capture Android device log
+        if: always()
+        run: |
+          mkdir -p build/quality-logs/android
+          adb logcat -d > build/quality-logs/android/logcat.txt || true
+
+      - name: Upload Android quality diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: android-quality-${{ inputs.artifact_suffix }}
+          path: |
+            build/quality-logs/android/
+            build/integration_test/
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Upload performance evidence
+        if: ${{ always() && inputs.run_android_benchmark }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: performance-${{ inputs.artifact_suffix }}
+          path: build/performance/
+          if-no-files-found: error
+          retention-days: 90
+
+  ios:
+    name: iOS integration
+    if: ${{ inputs.run_ios_critical }}
+    runs-on: macos-26
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout without persisted credentials
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode 26.4.1
+        run: sudo xcode-select -s /Applications/Xcode_26.4.1.app/Contents/Developer
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2.22.0
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Fetch bundled Mermaid runtime
+        run: bash tool/fetch_mermaid.sh
+
+      - name: Create and boot pinned iOS simulator
+        id: simulator
+        run: |
+          set -euo pipefail
+          UDID="$(xcrun simctl create \
+            MarkdownViewerCI \
+            com.apple.CoreSimulator.SimDeviceType.iPhone-17 \
+            com.apple.CoreSimulator.SimRuntime.iOS-26-4)"
+          echo "udid=$UDID" >> "$GITHUB_OUTPUT"
+          xcrun simctl boot "$UDID"
+          xcrun simctl bootstatus "$UDID" -b
+
+      - name: Run iOS critical integration suite
+        env:
+          SIMULATOR_UDID: ${{ steps.simulator.outputs.udid }}
+        run: bash tool/ci/run_ios_integration.sh
+
+      - name: Capture iOS simulator log
+        if: always() && steps.simulator.outputs.udid != ''
+        run: |
+          mkdir -p build/quality-logs/ios
+          xcrun simctl spawn "${{ steps.simulator.outputs.udid }}" \
+            log show --last 30m \
+            > build/quality-logs/ios/simulator.log || true
+
+      - name: Delete iOS simulator
+        if: always() && steps.simulator.outputs.udid != ''
+        run: |
+          xcrun simctl shutdown "${{ steps.simulator.outputs.udid }}" || true
+          xcrun simctl delete "${{ steps.simulator.outputs.udid }}" || true
+
+      - name: Upload iOS quality diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ios-quality-${{ inputs.artifact_suffix }}
+          path: |
+            build/quality-logs/ios/
+            build/integration_test/
+          if-no-files-found: warn
+          retention-days: 90

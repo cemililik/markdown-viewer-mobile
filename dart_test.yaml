@@ -1,5 +1,12 @@
+timeout: 60s
+
 tags:
   golden:
     description: >
       Tests that compare against committed golden image files.
       Run with --update-goldens to regenerate the baseline images.
+    timeout: 2x
+
+presets:
+  ci:
+    reporter: expanded

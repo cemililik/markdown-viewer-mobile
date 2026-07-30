@@ -1,7 +1,5 @@
-import 'dart:collection';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_highlighting/themes/atom-one-dark.dart' as hl_dark;
 import 'package:flutter_highlighting/themes/atom-one-light.dart' as hl_light;
@@ -13,14 +11,13 @@ import 'package:markdown_viewer/features/viewer/application/markdown_extensions/
 import 'package:markdown_viewer/features/viewer/application/services/pdf_exporter.dart'
     show extractMermaidCodes;
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
+import 'package:markdown_viewer/features/viewer/presentation/services/syntax_highlight_service.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/admonition_view.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/footnote_view.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/math_view.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/mermaid_block.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/search_highlight_syntax.dart';
 import 'package:markdown_widget/markdown_widget.dart';
-import 'package:re_highlight/languages/all.dart' as reh_languages;
-import 'package:re_highlight/re_highlight.dart' as reh;
 
 /// Pre-built `MarkdownGenerator` reused for every render of every
 /// [MarkdownView] instance.
@@ -82,7 +79,7 @@ final MarkdownGenerator _markdownGenerator = MarkdownGenerator(
 final RegExp _wordSplitRegex = RegExp(r'\s+');
 
 final _syntaxHighlightServiceProvider = Provider.autoDispose(
-  (ref) => _SyntaxHighlightService(),
+  (ref) => SyntaxHighlightService(),
 );
 
 int _estimateReadingMinutes(Document document) {
@@ -573,7 +570,7 @@ class MarkdownView extends ConsumerWidget {
   PreConfig _buildPreConfig(
     ThemeData theme,
     Document doc,
-    _SyntaxHighlightService syntaxHighlightService,
+    SyntaxHighlightService syntaxHighlightService,
   ) {
     // Extract mermaid codes using our own parser path which
     // correctly preserves Unicode characters (em-dash, etc.).
@@ -793,7 +790,6 @@ double _contrastRatio(Color foreground, Color background) {
 }
 
 const _backgroundHighlightLineThreshold = 2000;
-const _highlightCacheCapacity = 64;
 
 final class _CodeBlock extends StatefulWidget {
   const _CodeBlock({
@@ -812,14 +808,14 @@ final class _CodeBlock extends StatefulWidget {
   final TextStyle fallback;
   final TextStyle textStyle;
   final BoxDecoration decoration;
-  final _SyntaxHighlightService highlighter;
+  final SyntaxHighlightService highlighter;
 
   @override
   State<_CodeBlock> createState() => _CodeBlockState();
 }
 
 final class _CodeBlockState extends State<_CodeBlock> {
-  Future<List<_HighlightToken>>? _backgroundTokens;
+  Future<List<SyntaxHighlightToken>>? _backgroundTokens;
 
   @override
   void initState() {
@@ -870,7 +866,7 @@ final class _CodeBlockState extends State<_CodeBlock> {
       );
     }
 
-    return FutureBuilder<List<_HighlightToken>>(
+    return FutureBuilder<List<SyntaxHighlightToken>>(
       future: backgroundTokens,
       builder:
           (context, snapshot) => _buildContainer(
@@ -885,7 +881,7 @@ final class _CodeBlockState extends State<_CodeBlock> {
     TextSpan(text: widget.source, style: widget.fallback),
   ];
 
-  List<InlineSpan> _toInlineSpans(List<_HighlightToken> tokens) {
+  List<InlineSpan> _toInlineSpans(List<SyntaxHighlightToken> tokens) {
     if (tokens.isEmpty) return _plainText();
     return [
       for (final token in tokens)
@@ -911,155 +907,6 @@ final class _CodeBlockState extends State<_CodeBlock> {
       ),
     );
   }
-}
-
-final class _SyntaxHighlightService {
-  _SyntaxHighlightService()
-    : _highlighter =
-          (reh.Highlight()
-            ..registerLanguages(reh_languages.builtinAllLanguages));
-
-  final reh.Highlight _highlighter;
-  final LinkedHashMap<_HighlightCacheKey, List<_HighlightToken>> _syncCache =
-      LinkedHashMap();
-  final LinkedHashMap<_HighlightCacheKey, Future<List<_HighlightToken>>>
-  _asyncCache = LinkedHashMap();
-
-  bool supports(String language) => _highlighter.getLanguage(language) != null;
-
-  List<_HighlightToken> highlightSynchronously(String source, String language) {
-    final key = _HighlightCacheKey(source, language);
-    final cached = _syncCache.remove(key);
-    if (cached != null) {
-      _syncCache[key] = cached;
-      return cached;
-    }
-
-    final tokens = _highlight(
-      highlighter: _highlighter,
-      source: source,
-      language: language,
-    );
-    _syncCache[key] = tokens;
-    _trimCache(_syncCache);
-    return tokens;
-  }
-
-  Future<List<_HighlightToken>> highlightInBackground(
-    String source,
-    String language,
-  ) {
-    final key = _HighlightCacheKey(source, language);
-    final cached = _asyncCache.remove(key);
-    if (cached != null) {
-      _asyncCache[key] = cached;
-      return cached;
-    }
-
-    final result = _runBackgroundHighlight(source, language);
-    _asyncCache[key] = result;
-    _trimCache(_asyncCache);
-    return result;
-  }
-
-  Future<List<_HighlightToken>> _runBackgroundHighlight(
-    String source,
-    String language,
-  ) async {
-    try {
-      final serialized = await compute(_highlightInWorker, {
-        'source': source,
-        'language': language,
-      });
-      return [
-        for (final token in serialized)
-          _HighlightToken(text: token['text'] ?? '', scope: token['scope']),
-      ];
-    } catch (_) {
-      return [_HighlightToken(text: source)];
-    }
-  }
-
-  void _trimCache<T>(LinkedHashMap<_HighlightCacheKey, T> cache) {
-    while (cache.length > _highlightCacheCapacity) {
-      cache.remove(cache.keys.first);
-    }
-  }
-}
-
-final class _HighlightCacheKey {
-  const _HighlightCacheKey(this.source, this.language);
-
-  final String source;
-  final String language;
-
-  @override
-  bool operator ==(Object other) =>
-      other is _HighlightCacheKey &&
-      source == other.source &&
-      language == other.language;
-
-  @override
-  int get hashCode => Object.hash(source, language);
-}
-
-final class _HighlightToken {
-  const _HighlightToken({required this.text, this.scope});
-
-  final String text;
-  final String? scope;
-}
-
-List<Map<String, String?>> _highlightInWorker(Map<String, String> request) {
-  final highlighter =
-      reh.Highlight()..registerLanguages(reh_languages.builtinAllLanguages);
-  return _highlight(
-    highlighter: highlighter,
-    source: request['source'] ?? '',
-    language: request['language'] ?? '',
-  ).map((token) => {'text': token.text, 'scope': token.scope}).toList();
-}
-
-List<_HighlightToken> _highlight({
-  required reh.Highlight highlighter,
-  required String source,
-  required String language,
-}) {
-  try {
-    final result = highlighter.highlight(code: source, language: language);
-    final renderer = _HighlightTokenRenderer();
-    result.render(renderer);
-    return renderer.tokens.isEmpty
-        ? [_HighlightToken(text: source)]
-        : renderer.tokens;
-  } catch (_) {
-    return [_HighlightToken(text: source)];
-  }
-}
-
-final class _HighlightTokenRenderer implements reh.HighlightRenderer {
-  final List<String?> _scopeStack = [];
-  final List<_HighlightToken> _tokens = [];
-
-  List<_HighlightToken> get tokens => List.unmodifiable(_tokens);
-
-  @override
-  void addText(String text) {
-    if (text.isEmpty) return;
-    final scope = _scopeStack.isEmpty ? null : _scopeStack.last;
-    if (_tokens.isNotEmpty && _tokens.last.scope == scope) {
-      final previous = _tokens.removeLast();
-      _tokens.add(_HighlightToken(text: previous.text + text, scope: scope));
-      return;
-    }
-    _tokens.add(_HighlightToken(text: text, scope: scope));
-  }
-
-  @override
-  void openNode(reh.DataNode node) => _scopeStack.add(node.scope);
-
-  @override
-  void closeNode(reh.DataNode node) => _scopeStack.removeLast();
 }
 
 bool _hasMoreThanLines(String source, int threshold) {

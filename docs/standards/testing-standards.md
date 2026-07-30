@@ -103,4 +103,11 @@ Don't test:
 
 - `flutter test --coverage` must pass on every PR
 - Coverage delta is tracked by CI
-- Integration tests gate release builds (not every PR)
+- Viewer-sensitive PRs run the Android critical integration suite
+- Every release tag runs the critical integration suite on Android and iOS
+- The fixed-profile Android performance benchmark runs on every PR
+- Integration and performance jobs receive no signing or store secrets
+
+See
+[ADR-0026](../decisions/0026-risk-scoped-integration-and-performance-gates.md)
+for path classification, release dependencies, and failure policy.

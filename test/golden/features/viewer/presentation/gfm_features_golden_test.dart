@@ -19,6 +19,7 @@ void main() {
     goldenTest(
       'should render tables, task lists, strikethrough, and footnote refs when captured',
       fileName: 'gfm_features',
+      tags: const ['golden'],
       pumpBeforeTest: goldenPumpBeforeTest,
       pumpWidget: goldenPumpWidget,
       builder:

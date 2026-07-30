@@ -4,6 +4,10 @@ import 'package:integration_test/integration_test.dart';
 import 'package:markdown_viewer/features/viewer/data/services/mermaid/mermaid_renderer_impl.dart';
 import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer.dart';
 
+const _negativeGateControl = bool.fromEnvironment(
+  'MERMAID_GATE_NEGATIVE_CONTROL',
+);
+
 /// End-to-end mermaid renderer test against a real
 /// `HeadlessInAppWebView` running the bundled `mermaid.min.js`.
 ///
@@ -22,39 +26,29 @@ import 'package:markdown_viewer/features/viewer/domain/services/mermaid_renderer
 ///    the output is validated by checking the PNG signature bytes.
 /// 3. A deliberately broken diagram surfaces as a typed
 ///    [MermaidRenderFailure] without crashing the renderer.
-/// 4. The cache short-circuits a repeat render — the second call
-///    completes in a fraction of the cold-render time.
-/// 5. End-to-end (`prewarm + first render`) stays under the 800 ms
-///    budget from `docs/rendering-pipeline.md` and the Phase 1.6
-///    roadmap entry.
+/// 4. A repeated identical render is served from the renderer cache.
 ///
-/// All five together cover the two checklist items the unit + widget
-/// tests intentionally could not (real WebView round-trip and the
-/// performance budget) so Phase 1.6 can close out as ✅.
+/// Performance measurements live in `integration_test/benchmark/` so a noisy
+/// timing relationship cannot hide or retry a correctness failure.
 void main() {
-  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  binding.defaultTestTimeout = const Timeout(Duration(minutes: 5));
 
   late MermaidRendererImpl renderer;
-  late Duration prewarmAndFirstRender;
+  late String mermaidJs;
 
   setUpAll(() async {
-    final mermaidJs = await rootBundle.loadString(
-      'assets/mermaid/mermaid.min.js',
-    );
-    renderer = MermaidRendererImpl.production(mermaidJs: mermaidJs);
-
-    // Measure prewarm + first render together — the first render is
-    // what users actually wait for when they open a mermaid-heavy
-    // document for the first time, so the budget covers both legs
-    // of the cold path.
-    final stopwatch = Stopwatch()..start();
-    await renderer.prewarm();
-    await renderer.render('flowchart LR\n  A --> B');
-    stopwatch.stop();
-    prewarmAndFirstRender = stopwatch.elapsed;
+    if (_negativeGateControl) {
+      fail('Controlled failure: the real Mermaid gate must turn red.');
+    }
+    mermaidJs = await rootBundle.loadString('assets/mermaid/mermaid.min.js');
   });
 
-  tearDownAll(() async {
+  setUp(() {
+    renderer = MermaidRendererImpl.production(mermaidJs: mermaidJs);
+  });
+
+  tearDown(() async {
     await renderer.dispose();
   });
 
@@ -102,33 +96,9 @@ void main() {
           reason: 'mermaid parse errors must surface a non-empty message',
         );
 
-        // The renderer must keep working after a broken render —
-        // this is the inline-error contract from ADR-0005.
+        // A malformed diagram must not poison the reusable renderer queue.
         final recovery = await renderer.render('flowchart LR\n  X --> Y');
         expect(recovery, isA<MermaidRenderSuccess>());
-      },
-    );
-
-    testWidgets(
-      'should confirm that cache short-circuits a repeated identical render when the widget is exercised',
-      (tester) async {
-        const source = 'flowchart LR\n  Cached --> Hit';
-
-        final coldStopwatch = Stopwatch()..start();
-        await renderer.render(source);
-        coldStopwatch.stop();
-
-        final warmStopwatch = Stopwatch()..start();
-        await renderer.render(source);
-        warmStopwatch.stop();
-
-        expect(
-          warmStopwatch.elapsedMicroseconds,
-          lessThan(coldStopwatch.elapsedMicroseconds),
-          reason:
-              'Warm render hit the LRU cache and must come back faster '
-              'than the cold render that paid the JS eval cost.',
-        );
       },
     );
 
@@ -188,29 +158,6 @@ void main() {
           reason:
               'The warm render must not add a miss — the SVG was already '
               'in the LRU cache.',
-        );
-      },
-    );
-
-    testWidgets(
-      'should confirm that cold prewarm + first render stays under the 800 ms budget when the widget is exercised',
-      (tester) async {
-        // Captured in setUpAll before any other render warmed the
-        // cache. The 800 ms budget comes from
-        // docs/rendering-pipeline.md and the Phase 1.6 roadmap.
-        // Logged unconditionally so a future regression has an
-        // easy data point to inspect, even if the assertion stays
-        // green.
-        printOnFailure(
-          'mermaid cold path (prewarm + first render): '
-          '${prewarmAndFirstRender.inMilliseconds} ms',
-        );
-        expect(
-          prewarmAndFirstRender.inMilliseconds,
-          lessThan(800),
-          reason:
-              'Cold path budget from docs/rendering-pipeline.md and '
-              'Phase 1.6 — see roadmap.md for the contract.',
         );
       },
     );

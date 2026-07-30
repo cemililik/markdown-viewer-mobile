@@ -22,6 +22,7 @@ void main() {
     goldenTest(
       'should render note, warning, tip, and caution admonition blocks when captured',
       fileName: 'admonitions',
+      tags: const ['golden'],
       pumpBeforeTest: goldenPumpBeforeTest,
       pumpWidget: goldenPumpWidget,
       builder:

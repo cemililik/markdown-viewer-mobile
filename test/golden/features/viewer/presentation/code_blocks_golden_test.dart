@@ -8,6 +8,7 @@ void main() {
     goldenTest(
       'should render syntax-highlighted fenced code blocks when captured',
       fileName: 'code_blocks',
+      tags: const ['golden'],
       pumpBeforeTest: goldenPumpBeforeTest,
       pumpWidget: goldenPumpWidget,
       builder:

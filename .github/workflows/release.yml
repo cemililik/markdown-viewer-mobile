@@ -213,12 +213,35 @@ jobs:
       - name: Run tests
         run: flutter test
 
-  # ── 3. Android: signed AAB → Play Console internal track ─────────────
+  # ── 3. Unsigned mobile quality gates ─────────────────────────────────
+  android-quality-gate:
+    name: Android release quality gate
+    needs: [version, verify]
+    uses: ./.github/workflows/mobile-quality-gates.yml
+    with:
+      run_android_critical: true
+      run_android_benchmark: true
+      run_ios_critical: false
+      benchmark_mode: enforce
+      artifact_suffix: release-android
+
+  ios-quality-gate:
+    name: iOS release quality gate
+    needs: [version, verify]
+    uses: ./.github/workflows/mobile-quality-gates.yml
+    with:
+      run_android_critical: false
+      run_android_benchmark: false
+      run_ios_critical: true
+      benchmark_mode: enforce
+      artifact_suffix: release-ios
+
+  # ── 4. Android: signed AAB → Play Console internal track ─────────────
   android-release:
     name: Android (AAB → Play Console internal)
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    needs: [version, verify]
+    needs: [version, verify, android-quality-gate]
     # Gates the signing + upload behind a GitHub Environment. Any
     # required-reviewer list configured on the `release` Environment
     # must approve the deployment before this job's secrets (keystore,
@@ -407,12 +430,12 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-  # ── 4. iOS: signed IPA → TestFlight ──────────────────────────────────
+  # ── 5. iOS: signed IPA → TestFlight ──────────────────────────────────
   ios-release:
     name: iOS (IPA → TestFlight)
     runs-on: macos-latest
     timeout-minutes: 60
-    needs: [version, verify]
+    needs: [version, verify, ios-quality-gate]
     # Matches the android-release gate — both signing jobs run under
     # the protected `release` Environment so required reviewers must
     # approve before the Apple API key and distribution cert are
@@ -556,7 +579,7 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-  # ── 5. GitHub Release with both artifacts attached ───────────────────
+  # ── 6. GitHub Release with both artifacts attached ───────────────────
   github-release:
     name: Publish GitHub Release
     runs-on: ubuntu-latest

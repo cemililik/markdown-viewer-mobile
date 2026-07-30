@@ -1,0 +1,34 @@
+name: Bootstrap benchmark calibration
+
+on:
+  push:
+    branches: [development]
+
+permissions:
+  contents: read
+
+jobs:
+  negative-control:
+    name: Deliberately failing critical-gate control
+    uses: ./.github/workflows/mobile-quality-gates.yml
+    with:
+      run_android_critical: true
+      run_android_benchmark: false
+      run_ios_critical: false
+      critical_negative_control: true
+      artifact_suffix: negative-control
+
+  calibrate:
+    name: Calibration ${{ matrix.index }}
+    strategy:
+      fail-fast: false
+      matrix:
+        index: ['1', '2', '3', '4', '5']
+    uses: ./.github/workflows/mobile-quality-gates.yml
+    with:
+      run_android_critical: false
+      run_android_benchmark: true
+      run_ios_critical: false
+      benchmark_mode: calibrate
+      calibration_index: ${{ matrix.index }}
+      artifact_suffix: calibration-${{ matrix.index }}

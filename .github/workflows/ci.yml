@@ -80,7 +80,7 @@ jobs:
         run: flutter analyze --no-fatal-infos
 
       - name: Run tests with coverage
-        run: flutter test --coverage
+        run: flutter test --coverage --exclude-tags golden --reporter expanded
 
       - name: Upload coverage artifact
         if: always()
@@ -120,7 +120,7 @@ jobs:
         run: bash tool/fetch_mermaid.sh
 
       - name: Run golden comparisons
-        run: flutter test --tags golden test/golden
+        run: flutter test --tags golden test/golden --reporter expanded
 
       - name: Upload golden failure diagnostics
         if: failure()
