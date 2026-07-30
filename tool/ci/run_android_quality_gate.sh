@@ -6,6 +6,14 @@ set -euo pipefail
 : "${RUN_ANDROID_BENCHMARK:?RUN_ANDROID_BENCHMARK is required}"
 : "${BENCHMARK_MODE:?BENCHMARK_MODE is required}"
 
+capture_android_log() {
+  set +e
+  mkdir -p build/quality-logs/android
+  timeout 30s adb logcat -d > build/quality-logs/android/logcat.txt || true
+}
+
+trap capture_android_log EXIT
+
 mkdir -p build/quality-logs/android build/performance
 flutter --version
 adb devices -l
@@ -32,7 +40,10 @@ if [[ "$RUN_ANDROID_BENCHMARK" == "true" ]]; then
   flutter_version="$(jq -r '.frameworkVersion' <<<"$flutter_json")"
   dart_version="$(jq -r '.dartSdkVersion' <<<"$flutter_json")"
   java_version="$(java -version 2>&1 | head -n 1)"
-  emulator_version="$(emulator -version 2>&1 | head -n 1)"
+  emulator_version="$(
+    "${ANDROID_HOME:?ANDROID_HOME is required}/emulator/emulator" -version \
+      2>&1 | head -n 1
+  )"
   system_image="$(adb shell getprop ro.build.fingerprint | tr -d '\r')"
   actual_locale="$(adb shell getprop persist.sys.locale | tr -d '\r')"
   if [[ -z "$actual_locale" ]]; then
