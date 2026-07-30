@@ -115,6 +115,7 @@ jobs:
           emulator-options: >-
             -no-window
             -accel on
+            -no-metrics
             -gpu swiftshader_indirect
             -noaudio
             -no-boot-anim

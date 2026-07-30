@@ -538,9 +538,12 @@ void _validateProfile(Map<String, Object?> profile, String path) {
     'systemImageTarget',
     'architecture',
     'hardwareProfile',
-    'cores',
-    'ramMb',
-    'heapMb',
+    'configuredCores',
+    'configuredRamMb',
+    'configuredHeapMb',
+    'guestCpuCount',
+    'guestMemoryKb',
+    'dalvikHeap',
     'locale',
     'displaySize',
     'displayDensity',
@@ -576,9 +579,12 @@ void _validateProfile(Map<String, Object?> profile, String path) {
     'pixel_6',
     '$path.hardwareProfile is invalid',
   );
-  _expectInteger(profile['cores'], 4, '$path.cores');
-  _expectInteger(profile['ramMb'], 4096, '$path.ramMb');
-  _expectInteger(profile['heapMb'], 512, '$path.heapMb');
+  _expectInteger(profile['configuredCores'], 4, '$path.configuredCores');
+  _expectInteger(profile['configuredRamMb'], 4096, '$path.configuredRamMb');
+  _expectInteger(profile['configuredHeapMb'], 512, '$path.configuredHeapMb');
+  _expectInteger(profile['guestCpuCount'], 4, '$path.guestCpuCount');
+  _positiveInteger(profile['guestMemoryKb'], '$path.guestMemoryKb');
+  _requiredString(profile['dalvikHeap'], '$path.dalvikHeap');
   _expectEqual(profile['locale'], 'en-US', '$path.locale is invalid');
   final size = _requiredString(profile['displaySize'], '$path.displaySize');
   if (!size.contains('1080x2400')) {
@@ -602,6 +608,8 @@ void _validateProfile(Map<String, Object?> profile, String path) {
   );
   for (final requiredOption in const <String>[
     '-no-window',
+    '-accel on',
+    '-no-metrics',
     '-noaudio',
     '-no-boot-anim',
     '-no-snapshot',

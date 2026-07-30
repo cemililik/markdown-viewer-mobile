@@ -61,6 +61,25 @@ if [[ "$RUN_ANDROID_BENCHMARK" == "true" ]]; then
   fi
   actual_size="$(adb shell wm size | tr -d '\r' | tail -n 1)"
   actual_density="$(adb shell wm density | tr -d '\r' | tail -n 1)"
+  guest_cpu_count="$(adb shell nproc | tr -d '\r')"
+  guest_memory_kb="$(
+    adb shell cat /proc/meminfo \
+      | tr -d '\r' \
+      | awk '$1 == "MemTotal:" { print $2; exit }'
+  )"
+  dalvik_heap="$(adb shell getprop dalvik.vm.heapsize | tr -d '\r')"
+  if [[ "$guest_cpu_count" != "4" ]]; then
+    echo "Fixed-profile CPU mismatch: expected 4, got $guest_cpu_count" >&2
+    exit 1
+  fi
+  if [[ ! "$guest_memory_kb" =~ ^[0-9]+$ || "$guest_memory_kb" -le 0 ]]; then
+    echo "Fixed-profile memory metadata is invalid: $guest_memory_kb" >&2
+    exit 1
+  fi
+  if [[ -z "$dalvik_heap" ]]; then
+    echo "Fixed-profile Dalvik heap metadata is empty." >&2
+    exit 1
+  fi
   recorded_at="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
 
   jq -n \
@@ -75,6 +94,9 @@ if [[ "$RUN_ANDROID_BENCHMARK" == "true" ]]; then
     --arg actual_locale "$actual_locale" \
     --arg actual_size "$actual_size" \
     --arg actual_density "$actual_density" \
+    --argjson guest_cpu_count "$guest_cpu_count" \
+    --argjson guest_memory_kb "$guest_memory_kb" \
+    --arg dalvik_heap "$dalvik_heap" \
     --arg run_id "${GITHUB_RUN_ID:?GITHUB_RUN_ID is required}${BENCHMARK_CALIBRATION_INDEX:+-$BENCHMARK_CALIBRATION_INDEX}" \
     --arg commit_sha "${GITHUB_SHA:?GITHUB_SHA is required}" \
     --arg recorded_at "$recorded_at" \
@@ -91,15 +113,18 @@ if [[ "$RUN_ANDROID_BENCHMARK" == "true" ]]; then
         systemImageTarget: "google_apis",
         architecture: "x86_64",
         hardwareProfile: "pixel_6",
-        cores: 4,
-        ramMb: 4096,
-        heapMb: 512,
+        configuredCores: 4,
+        configuredRamMb: 4096,
+        configuredHeapMb: 512,
+        guestCpuCount: $guest_cpu_count,
+        guestMemoryKb: $guest_memory_kb,
+        dalvikHeap: $dalvik_heap,
         locale: $actual_locale,
         displaySize: $actual_size,
         displayDensity: $actual_density,
         emulatorVersion: $emulator_version,
         systemImageFingerprint: $system_image,
-        emulatorOptions: "-no-window -accel on -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none -no-snapshot -no-snapshot-save -no-snapshot-load"
+        emulatorOptions: "-no-window -accel on -no-metrics -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none -no-snapshot -no-snapshot-save -no-snapshot-load"
       },
       run: {
         runId: $run_id,

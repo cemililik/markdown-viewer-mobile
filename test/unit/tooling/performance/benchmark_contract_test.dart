@@ -112,7 +112,7 @@ void main() {
       final result = _copy(_result());
       final environment = result['environment']! as Map<String, Object?>;
       final profile = environment['profile']! as Map<String, Object?>;
-      profile['cores'] = 2;
+      profile['configuredCores'] = 2;
 
       expect(
         () => evaluateBenchmark(
@@ -310,16 +310,20 @@ Map<String, Object?> _profile() => <String, Object?>{
   'systemImageTarget': 'google_apis',
   'architecture': 'x86_64',
   'hardwareProfile': 'pixel_6',
-  'cores': 4,
-  'ramMb': 4096,
-  'heapMb': 512,
+  'configuredCores': 4,
+  'configuredRamMb': 4096,
+  'configuredHeapMb': 512,
+  'guestCpuCount': 4,
+  'guestMemoryKb': 3932160,
+  'dalvikHeap': '576m',
   'locale': 'en-US',
   'displaySize': 'Override size: 1080x2400',
   'displayDensity': 'Override density: 420',
   'emulatorVersion': 'Android emulator version 36.2.2',
   'systemImageFingerprint': 'google/sdk_gphone64_x86_64/emu64',
   'emulatorOptions':
-      '-no-window -noaudio -no-boot-anim -no-snapshot -gpu swiftshader_indirect',
+      '-no-window -accel on -no-metrics -noaudio -no-boot-anim '
+      '-no-snapshot -gpu swiftshader_indirect',
 };
 
 Map<String, Object?> _fixtures() => <String, Object?>{

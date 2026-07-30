@@ -15,7 +15,7 @@ const _negativeGateControl = bool.fromEnvironment(
 /// drives the **production** `MermaidRendererImpl` with its real
 /// `HeadlessMermaidJsChannel`. It must run on a device or simulator
 /// (`flutter drive --target=integration_test/mermaid_render_test.dart
-/// --device-id=<id>`) because `flutter_inappwebview` needs a platform
+/// --device-id=DEVICE_ID`) because `flutter_inappwebview` needs a platform
 /// binding to spin up its native WebView.
 ///
 /// What we lock in here:

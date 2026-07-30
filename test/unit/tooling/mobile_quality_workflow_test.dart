@@ -52,6 +52,7 @@ void main() {
         'heap-size: 512M',
         'disable-linux-hw-accel: false',
         '-accel on',
+        '-no-metrics',
       ]) {
         expect(reusableWorkflow, contains(literal));
       }
