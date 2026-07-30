@@ -17,7 +17,6 @@ trap capture_android_log EXIT
 mkdir -p build/quality-logs/android build/performance
 flutter --version
 adb devices -l
-emulator_binary="${ANDROID_HOME:?ANDROID_HOME is required}/emulator/emulator"
 adb shell wm size 1080x2400
 adb shell wm density 420
 adb shell settings put global window_animation_scale 0
@@ -45,11 +44,18 @@ if [[ "$RUN_ANDROID_BENCHMARK" == "true" ]]; then
   dart_version="$(jq -r '.dartSdkVersion' <<<"$flutter_json")"
   java_version_output="$(java -version 2>&1)"
   java_version="${java_version_output%%$'\n'*}"
-  if ! emulator_version_output="$("$emulator_binary" -version 2>&1)"; then
-    printf '%s\n' "$emulator_version_output" >&2
+  emulator_properties="${ANDROID_HOME:?ANDROID_HOME is required}/emulator/source.properties"
+  emulator_version="$(
+    awk -F= '$1 ~ /^Pkg.Revision[[:space:]]*$/ {
+      gsub(/^[[:space:]]+|[[:space:]]+$/, "", $2)
+      print $2
+      exit
+    }' "$emulator_properties"
+  )"
+  if [[ -z "$emulator_version" ]]; then
+    echo "Android emulator package revision is missing." >&2
     exit 1
   fi
-  emulator_version="${emulator_version_output%%$'\n'*}"
   system_image="$(adb shell getprop ro.build.fingerprint | tr -d '\r')"
   actual_locale="$(adb shell getprop persist.sys.locale | tr -d '\r')"
   if [[ -z "$actual_locale" ]]; then
@@ -123,6 +129,7 @@ if [[ "$RUN_ANDROID_BENCHMARK" == "true" ]]; then
         displaySize: $actual_size,
         displayDensity: $actual_density,
         emulatorVersion: $emulator_version,
+        emulatorBuild: 15507667,
         systemImageFingerprint: $system_image,
         emulatorOptions: "-no-window -accel on -no-metrics -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none -no-snapshot -no-snapshot-save -no-snapshot-load"
       },

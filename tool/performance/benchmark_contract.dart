@@ -548,6 +548,7 @@ void _validateProfile(Map<String, Object?> profile, String path) {
     'displaySize',
     'displayDensity',
     'emulatorVersion',
+    'emulatorBuild',
     'systemImageFingerprint',
     'emulatorOptions',
   };
@@ -598,6 +599,7 @@ void _validateProfile(Map<String, Object?> profile, String path) {
     throw BenchmarkContractException('$path.displayDensity is invalid');
   }
   _requiredString(profile['emulatorVersion'], '$path.emulatorVersion');
+  _expectInteger(profile['emulatorBuild'], 15507667, '$path.emulatorBuild');
   _requiredString(
     profile['systemImageFingerprint'],
     '$path.systemImageFingerprint',

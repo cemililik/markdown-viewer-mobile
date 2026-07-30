@@ -320,6 +320,7 @@ Map<String, Object?> _profile() => <String, Object?>{
   'displaySize': 'Override size: 1080x2400',
   'displayDensity': 'Override density: 420',
   'emulatorVersion': 'Android emulator version 36.2.2',
+  'emulatorBuild': 15507667,
   'systemImageFingerprint': 'google/sdk_gphone64_x86_64/emu64',
   'emulatorOptions':
       '-no-window -accel on -no-metrics -noaudio -no-boot-anim '
