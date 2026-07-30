@@ -1,6 +1,6 @@
 # ADR-0012: Document sync from public git repositories
 
-- **Status**: Accepted
+- **Status**: Superseded by ADR-0019
 - **Date**: 2026-04-12
 - **Depends on**: [ADR-0011](0011-network-access-policy.md)
 

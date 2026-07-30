@@ -1,6 +1,6 @@
 # ADR-0005: Mermaid via sandboxed InAppWebView
 
-- **Status**: Accepted
+- **Status**: Superseded by ADR-0015
 - **Date**: 2026-04-12
 - **Revised**: 2026-04-19 — Decision and Consequences sections
   updated to describe the PNG screenshot pipeline that was actually

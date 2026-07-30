@@ -1,6 +1,6 @@
 # ADR-0014 — Logging, crash reporting, and observability
 
-**Status:** Accepted
+**Status:** Superseded by ADR-0020
 **Date:** 2026-04-16
 **Deciders:** Cemil Ilık
 
