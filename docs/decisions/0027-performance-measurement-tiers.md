@@ -1,11 +1,11 @@
 # ADR-0027: Separate reference-device and hosted performance contracts
 
-- **Status**: Proposed
+- **Status**: Accepted
 - **Date**: 2026-07-30
 - **Deciders**: Cemil Ilık
 - **Owner**: Cemil Ilık
 - **Revisit date**: 2026-10-30
-- **Amends if accepted**:
+- **Amends**:
   [ADR-0026](0026-risk-scoped-integration-and-performance-gates.md), only
   hosted benchmark budget semantics, baseline aggregation, and fixed-profile
   identity

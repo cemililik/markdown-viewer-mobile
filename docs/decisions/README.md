@@ -50,7 +50,7 @@ supersedes an old one with a new ADR.
 | [0024](0024-platform-support-and-responsive-layout.md) | Platform support and responsive layout | Accepted |
 | [0025](0025-codegen-lint-and-toolchain-maintenance.md) | Codegen, Riverpod lint, and toolchain maintenance | Accepted |
 | [0026](0026-risk-scoped-integration-and-performance-gates.md) | Risk-scoped CI quality gates | Accepted |
-| [0027](0027-performance-measurement-tiers.md) | Reference-device and hosted performance contracts | Proposed |
+| [0027](0027-performance-measurement-tiers.md) | Reference-device and hosted performance contracts | Accepted |
 
 ## Metadata and Relationships
 
