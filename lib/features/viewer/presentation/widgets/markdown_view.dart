@@ -1,8 +1,11 @@
+import 'dart:collection';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_highlighting/themes/atom-one-dark.dart' as hl_dark;
 import 'package:flutter_highlighting/themes/atom-one-light.dart' as hl_light;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:markdown_viewer/core/l10n/build_context_l10n.dart';
 import 'package:markdown_viewer/features/settings/domain/reading_settings.dart';
@@ -78,8 +81,9 @@ final MarkdownGenerator _markdownGenerator = MarkdownGenerator(
 /// every time a new document is opened.
 final RegExp _wordSplitRegex = RegExp(r'\s+');
 
-final reh.Highlight _syntaxHighlighter =
-    reh.Highlight()..registerLanguages(reh_languages.builtinAllLanguages);
+final _syntaxHighlightServiceProvider = Provider.autoDispose(
+  (ref) => _SyntaxHighlightService(),
+);
 
 int _estimateReadingMinutes(Document document) {
   final cached = _readingMinutesCache[document];
@@ -168,16 +172,16 @@ class SearchHighlightState {
 /// `markdown_widget` already covers most of the surface we need for
 /// Phase 1: CommonMark + GitHub-Flavoured Markdown (tables, task
 /// lists, footnotes, strikethrough), inline code, links, blockquotes,
-/// and **syntax-highlighted fenced code blocks** via the bundled
-/// `flutter_highlight` themes. We do not need a custom block builder
-/// for any of those.
+/// and syntax-highlighted fenced code blocks through the project-owned
+/// `re_highlight` pipeline. Code blocks need a custom whole-block builder
+/// because `markdown_widget`'s built-in path tokenises each line in isolation.
 ///
 /// On top of the package defaults this widget adds:
 ///
 /// - Material-3-aware [PreConfig]: code blocks sit on
 ///   `colorScheme.surfaceContainer*` instead of the package's
 ///   hard-coded greys, and the syntax theme is `atom-one-light` /
-///   `atom-one-dark` from `flutter_highlight`.
+///   `atom-one-dark` from `flutter_highlighting`.
 /// - LaTeX math via `flutter_math_fork`: `$ … $` inline (via
 ///   [InlineMathSyntax]) and `$$ … $$` display math (via
 ///   [DisplayMathBlockSyntax]) rendered by the `SpanNodeGenerator`s
@@ -219,7 +223,7 @@ final Expando<int> _readingMinutesCache = Expando<int>(
 final Expando<Map<String, String>> _footnotesCache =
     Expando<Map<String, String>>('markdown_view.footnotes');
 
-class MarkdownView extends StatelessWidget {
+class MarkdownView extends ConsumerWidget {
   const MarkdownView({
     required this.document,
     this.controller,
@@ -306,8 +310,9 @@ class MarkdownView extends StatelessWidget {
   final SearchHighlightState? searchHighlight;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final syntaxHighlightService = ref.watch(_syntaxHighlightServiceProvider);
     final base =
         theme.brightness == Brightness.dark
             ? MarkdownConfig.darkConfig
@@ -331,7 +336,7 @@ class MarkdownView extends StatelessWidget {
     );
     final config = base.copy(
       configs: [
-        _buildPreConfig(theme, document),
+        _buildPreConfig(theme, document, syntaxHighlightService),
         _buildTableConfig(),
         pConfigWithLineHeight,
         if (onLinkTap != null) LinkConfig(onTap: onLinkTap),
@@ -565,7 +570,11 @@ class MarkdownView extends StatelessWidget {
     );
   }
 
-  PreConfig _buildPreConfig(ThemeData theme, Document doc) {
+  PreConfig _buildPreConfig(
+    ThemeData theme,
+    Document doc,
+    _SyntaxHighlightService syntaxHighlightService,
+  ) {
     // Extract mermaid codes using our own parser path which
     // correctly preserves Unicode characters (em-dash, etc.).
     // markdown_widget's internal extraction corrupts em-dash
@@ -675,21 +684,14 @@ class MarkdownView extends StatelessWidget {
           mermaidIndex += 1;
           return MermaidBlock(code: cleanCode);
         }
-        final spans = _highlightFullBlock(
+        return _CodeBlock(
           source: content.trimRight(),
           language: language.isEmpty ? null : language,
           theme: hlTheme,
           fallback: fallbackStyle,
-        );
-        return Container(
+          textStyle: codeTextStyle,
           decoration: blockDecoration,
-          margin: const EdgeInsets.symmetric(vertical: 12),
-          padding: const EdgeInsets.all(16),
-          width: double.infinity,
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Text.rich(TextSpan(style: codeTextStyle, children: spans)),
-          ),
+          highlighter: syntaxHighlightService,
         );
       },
     );
@@ -790,43 +792,283 @@ double _contrastRatio(Color foreground, Color background) {
   return (lighter + 0.05) / (darker + 0.05);
 }
 
-/// Parses [source] with `package:re_highlight` and returns a list of
-/// [InlineSpan]s ready for a `Text.rich` body.
-///
-/// This is the whole-content replacement for `markdown_widget`'s own
-/// `highLightSpans`, which splits by lines and highlights each in
-/// isolation — see the long comment on `PreConfig.builder` above for
-/// the JSON regression that motivated the override. When [language] is
-/// null, the source is returned as a single unstyled span so unknown /
-/// hint-less fences still render as plain monospace code.
-///
-/// The renderer receives [fallback] as its base and the contrast-adjusted
-/// token [theme], so unknown scopes remain readable without flattening the
-/// recognised token colours.
-List<InlineSpan> _highlightFullBlock({
-  required String source,
-  required String? language,
-  required Map<String, TextStyle> theme,
-  required TextStyle fallback,
-}) {
-  if (language == null) {
-    return [TextSpan(text: source, style: fallback)];
-  }
-  final normalizedLanguage = language.toLowerCase();
-  if (_syntaxHighlighter.getLanguage(normalizedLanguage) == null) {
-    return [TextSpan(text: source, style: fallback)];
+const _backgroundHighlightLineThreshold = 2000;
+const _highlightCacheCapacity = 64;
+
+final class _CodeBlock extends StatefulWidget {
+  const _CodeBlock({
+    required this.source,
+    required this.language,
+    required this.theme,
+    required this.fallback,
+    required this.textStyle,
+    required this.decoration,
+    required this.highlighter,
+  });
+
+  final String source;
+  final String? language;
+  final Map<String, TextStyle> theme;
+  final TextStyle fallback;
+  final TextStyle textStyle;
+  final BoxDecoration decoration;
+  final _SyntaxHighlightService highlighter;
+
+  @override
+  State<_CodeBlock> createState() => _CodeBlockState();
+}
+
+final class _CodeBlockState extends State<_CodeBlock> {
+  Future<List<_HighlightToken>>? _backgroundTokens;
+
+  @override
+  void initState() {
+    super.initState();
+    _prepareBackgroundHighlight();
   }
 
-  try {
-    final result = _syntaxHighlighter.highlight(
-      code: source,
-      language: normalizedLanguage,
-    );
-    final renderer = reh.TextSpanRenderer(fallback, theme);
-    result.render(renderer);
-    final span = renderer.span;
-    return span == null ? [TextSpan(text: source, style: fallback)] : [span];
-  } catch (_) {
-    return [TextSpan(text: source, style: fallback)];
+  @override
+  void didUpdateWidget(covariant _CodeBlock oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.source != widget.source ||
+        oldWidget.language != widget.language ||
+        !identical(oldWidget.highlighter, widget.highlighter)) {
+      _prepareBackgroundHighlight();
+    }
   }
+
+  void _prepareBackgroundHighlight() {
+    final language = widget.language?.toLowerCase();
+    _backgroundTokens =
+        language != null &&
+                widget.highlighter.supports(language) &&
+                _hasMoreThanLines(
+                  widget.source,
+                  _backgroundHighlightLineThreshold,
+                )
+            ? widget.highlighter.highlightInBackground(widget.source, language)
+            : null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final normalizedLanguage = widget.language?.toLowerCase();
+    if (normalizedLanguage == null ||
+        !widget.highlighter.supports(normalizedLanguage)) {
+      return _buildContainer(_plainText());
+    }
+
+    final backgroundTokens = _backgroundTokens;
+    if (backgroundTokens == null) {
+      return _buildContainer(
+        _toInlineSpans(
+          widget.highlighter.highlightSynchronously(
+            widget.source,
+            normalizedLanguage,
+          ),
+        ),
+      );
+    }
+
+    return FutureBuilder<List<_HighlightToken>>(
+      future: backgroundTokens,
+      builder:
+          (context, snapshot) => _buildContainer(
+            snapshot.data == null
+                ? _plainText()
+                : _toInlineSpans(snapshot.data!),
+          ),
+    );
+  }
+
+  List<InlineSpan> _plainText() => [
+    TextSpan(text: widget.source, style: widget.fallback),
+  ];
+
+  List<InlineSpan> _toInlineSpans(List<_HighlightToken> tokens) {
+    if (tokens.isEmpty) return _plainText();
+    return [
+      for (final token in tokens)
+        TextSpan(
+          text: token.text,
+          style:
+              token.scope == null
+                  ? widget.fallback
+                  : widget.theme[token.scope] ?? widget.fallback,
+        ),
+    ];
+  }
+
+  Widget _buildContainer(List<InlineSpan> spans) {
+    return Container(
+      decoration: widget.decoration,
+      margin: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.all(16),
+      width: double.infinity,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Text.rich(TextSpan(style: widget.textStyle, children: spans)),
+      ),
+    );
+  }
+}
+
+final class _SyntaxHighlightService {
+  _SyntaxHighlightService()
+    : _highlighter =
+          (reh.Highlight()
+            ..registerLanguages(reh_languages.builtinAllLanguages));
+
+  final reh.Highlight _highlighter;
+  final LinkedHashMap<_HighlightCacheKey, List<_HighlightToken>> _syncCache =
+      LinkedHashMap();
+  final LinkedHashMap<_HighlightCacheKey, Future<List<_HighlightToken>>>
+  _asyncCache = LinkedHashMap();
+
+  bool supports(String language) => _highlighter.getLanguage(language) != null;
+
+  List<_HighlightToken> highlightSynchronously(String source, String language) {
+    final key = _HighlightCacheKey(source, language);
+    final cached = _syncCache.remove(key);
+    if (cached != null) {
+      _syncCache[key] = cached;
+      return cached;
+    }
+
+    final tokens = _highlight(
+      highlighter: _highlighter,
+      source: source,
+      language: language,
+    );
+    _syncCache[key] = tokens;
+    _trimCache(_syncCache);
+    return tokens;
+  }
+
+  Future<List<_HighlightToken>> highlightInBackground(
+    String source,
+    String language,
+  ) {
+    final key = _HighlightCacheKey(source, language);
+    final cached = _asyncCache.remove(key);
+    if (cached != null) {
+      _asyncCache[key] = cached;
+      return cached;
+    }
+
+    final result = _runBackgroundHighlight(source, language);
+    _asyncCache[key] = result;
+    _trimCache(_asyncCache);
+    return result;
+  }
+
+  Future<List<_HighlightToken>> _runBackgroundHighlight(
+    String source,
+    String language,
+  ) async {
+    try {
+      final serialized = await compute(_highlightInWorker, {
+        'source': source,
+        'language': language,
+      });
+      return [
+        for (final token in serialized)
+          _HighlightToken(text: token['text'] ?? '', scope: token['scope']),
+      ];
+    } catch (_) {
+      return [_HighlightToken(text: source)];
+    }
+  }
+
+  void _trimCache<T>(LinkedHashMap<_HighlightCacheKey, T> cache) {
+    while (cache.length > _highlightCacheCapacity) {
+      cache.remove(cache.keys.first);
+    }
+  }
+}
+
+final class _HighlightCacheKey {
+  const _HighlightCacheKey(this.source, this.language);
+
+  final String source;
+  final String language;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _HighlightCacheKey &&
+      source == other.source &&
+      language == other.language;
+
+  @override
+  int get hashCode => Object.hash(source, language);
+}
+
+final class _HighlightToken {
+  const _HighlightToken({required this.text, this.scope});
+
+  final String text;
+  final String? scope;
+}
+
+List<Map<String, String?>> _highlightInWorker(Map<String, String> request) {
+  final highlighter =
+      reh.Highlight()..registerLanguages(reh_languages.builtinAllLanguages);
+  return _highlight(
+    highlighter: highlighter,
+    source: request['source'] ?? '',
+    language: request['language'] ?? '',
+  ).map((token) => {'text': token.text, 'scope': token.scope}).toList();
+}
+
+List<_HighlightToken> _highlight({
+  required reh.Highlight highlighter,
+  required String source,
+  required String language,
+}) {
+  try {
+    final result = highlighter.highlight(code: source, language: language);
+    final renderer = _HighlightTokenRenderer();
+    result.render(renderer);
+    return renderer.tokens.isEmpty
+        ? [_HighlightToken(text: source)]
+        : renderer.tokens;
+  } catch (_) {
+    return [_HighlightToken(text: source)];
+  }
+}
+
+final class _HighlightTokenRenderer implements reh.HighlightRenderer {
+  final List<String?> _scopeStack = [];
+  final List<_HighlightToken> _tokens = [];
+
+  List<_HighlightToken> get tokens => List.unmodifiable(_tokens);
+
+  @override
+  void addText(String text) {
+    if (text.isEmpty) return;
+    final scope = _scopeStack.isEmpty ? null : _scopeStack.last;
+    if (_tokens.isNotEmpty && _tokens.last.scope == scope) {
+      final previous = _tokens.removeLast();
+      _tokens.add(_HighlightToken(text: previous.text + text, scope: scope));
+      return;
+    }
+    _tokens.add(_HighlightToken(text: text, scope: scope));
+  }
+
+  @override
+  void openNode(reh.DataNode node) => _scopeStack.add(node.scope);
+
+  @override
+  void closeNode(reh.DataNode node) => _scopeStack.removeLast();
+}
+
+bool _hasMoreThanLines(String source, int threshold) {
+  var lines = 1;
+  for (var index = 0; index < source.length; index += 1) {
+    if (source.codeUnitAt(index) == 0x0A) {
+      lines += 1;
+      if (lines > threshold) return true;
+    }
+  }
+  return false;
 }

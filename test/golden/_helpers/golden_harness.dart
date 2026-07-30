@@ -1,5 +1,6 @@
 import 'package:alchemist/alchemist.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/app/theme.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/markdown_view.dart';
@@ -132,7 +133,7 @@ Widget markdownGoldenHarness(
     appTheme: appTheme,
     locale: locale,
     textScaler: textScaler,
-    home: Scaffold(body: MarkdownView(document: doc)),
+    home: ProviderScope(child: Scaffold(body: MarkdownView(document: doc))),
   );
 }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
 import 'package:markdown_viewer/features/viewer/presentation/widgets/markdown_view.dart';
@@ -44,14 +45,16 @@ void main() {
     return MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
-        body: SizedBox(
-          width: 1200,
-          height: 4000,
-          child: MarkdownView(
-            document: document,
-            blockKeys: blockKeys,
-            onTocList: onTocList,
+      home: ProviderScope(
+        child: Scaffold(
+          body: SizedBox(
+            width: 1200,
+            height: 4000,
+            child: MarkdownView(
+              document: document,
+              blockKeys: blockKeys,
+              onTocList: onTocList,
+            ),
           ),
         ),
       ),

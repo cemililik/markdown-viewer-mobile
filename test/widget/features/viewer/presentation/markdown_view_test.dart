@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 import 'package:markdown_viewer/features/viewer/domain/entities/document.dart';
@@ -65,7 +66,9 @@ void main() {
       theme: ThemeData(brightness: brightness, useMaterial3: true),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(body: MarkdownView(document: document)),
+      home: ProviderScope(
+        child: Scaffold(body: MarkdownView(document: document)),
+      ),
     );
   }
 
@@ -115,6 +118,60 @@ void main() {
               'TextSpans. A leaf-span count of 1 means the highlighter '
               'never ran and the entire fence body collapsed into a '
               'single styled blob — got $spanCount.',
+        );
+      },
+    );
+
+    testWidgets(
+      'should highlight code fences above 2000 lines asynchronously when the widget is exercised',
+      (tester) async {
+        useTallSurface(tester);
+        final body = List.generate(
+          2001,
+          (index) => 'final value$index = $index;',
+        ).join('\n');
+        final source = '```dart\n$body\n```';
+        final document = Document(
+          id: const DocumentId('/tmp/large-code.md'),
+          source: source,
+          headings: const [],
+          lineCount: 2003,
+          byteSize: source.length,
+          topLevelBlockCount: 1,
+        );
+
+        await tester.pumpWidget(harness(document));
+
+        RichText codeBlock() => tester
+            .widgetList<RichText>(find.byType(RichText))
+            .firstWhere(
+              (richText) =>
+                  richText.text.toPlainText().contains('final value0 = 0;'),
+            );
+
+        expect(
+          countTextSpans(codeBlock().text),
+          1,
+          reason:
+              'Large fences must paint a plain-text first frame instead of '
+              'blocking the UI isolate on tokenisation.',
+        );
+
+        final timeout = Stopwatch()..start();
+        while (countTextSpans(codeBlock().text) == 1 &&
+            timeout.elapsed < const Duration(seconds: 10)) {
+          await tester.runAsync(
+            () => Future<void>.delayed(const Duration(milliseconds: 20)),
+          );
+          await tester.pump();
+        }
+
+        expect(
+          countTextSpans(codeBlock().text),
+          greaterThan(1),
+          reason:
+              'The background tokenisation result must replace the '
+              'plain-text first frame.',
         );
       },
     );

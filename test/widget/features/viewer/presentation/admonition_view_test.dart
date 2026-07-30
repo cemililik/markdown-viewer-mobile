@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:leak_tracker_flutter_testing/leak_tracker_flutter_testing.dart';
 import 'package:markdown_viewer/features/viewer/application/markdown_extensions/admonition.dart';
@@ -82,7 +83,9 @@ void main() {
       ],
       supportedLocales: AppLocalizations.supportedLocales,
       theme: ThemeData(useMaterial3: true),
-      home: Scaffold(body: MarkdownView(document: document)),
+      home: ProviderScope(
+        child: Scaffold(body: MarkdownView(document: document)),
+      ),
     );
   }
 

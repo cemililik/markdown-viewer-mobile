@@ -1,9 +1,9 @@
 # Code blocks
 
-The viewer uses `flutter_highlight` with the
-`atom-one-light` / `atom-one-dark` themes depending on the current
-Material-3 brightness. Over 190 languages are recognised — the
-samples below cover the common ones.
+The viewer tokenises whole fenced blocks with `re_highlight` and applies the
+`atom-one-light` / `atom-one-dark` maps from `flutter_highlighting`, selected
+for the current Material-3 brightness. More than 150 languages are recognised;
+the samples below cover the common ones.
 
 ## Plain fenced block (no language hint)
 
