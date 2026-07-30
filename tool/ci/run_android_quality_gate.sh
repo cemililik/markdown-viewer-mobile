@@ -111,7 +111,6 @@ if [[ "$RUN_ANDROID_BENCHMARK" == "true" ]]; then
       profile: {
         runner: $runner,
         runnerImageOS: $image_os,
-        runnerImageVersion: $image_version,
         flutterVersion: $flutter_version,
         dartVersion: $dart_version,
         javaVersion: $java_version,
@@ -123,7 +122,6 @@ if [[ "$RUN_ANDROID_BENCHMARK" == "true" ]]; then
         configuredRamMb: 4096,
         configuredHeapMb: 512,
         guestCpuCount: $guest_cpu_count,
-        guestMemoryKb: $guest_memory_kb,
         dalvikHeap: $dalvik_heap,
         locale: $actual_locale,
         displaySize: $actual_size,
@@ -133,7 +131,9 @@ if [[ "$RUN_ANDROID_BENCHMARK" == "true" ]]; then
         systemImageFingerprint: $system_image,
         emulatorOptions: "-no-window -accel on -no-metrics -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -camera-front none -no-snapshot -no-snapshot-save -no-snapshot-load"
       },
-      run: {
+      runObservations: {
+        runnerImageVersion: $image_version,
+        guestMemoryKb: $guest_memory_kb,
         runId: $run_id,
         runAttempt: $run_attempt,
         commitSha: $commit_sha,

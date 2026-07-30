@@ -60,7 +60,7 @@ void main() {
 
   tearDownAll(() async {
     binding.reportData = <String, Object>{
-      'schemaVersion': 1,
+      'schemaVersion': 2,
       'suite': 'android-fixed-profile-v1',
       'measurement': <String, Object>{
         'warmUpCount': 1,

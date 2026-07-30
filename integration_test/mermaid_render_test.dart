@@ -38,9 +38,6 @@ void main() {
   late String mermaidJs;
 
   setUpAll(() async {
-    if (_negativeGateControl) {
-      fail('Controlled failure: the real Mermaid gate must turn red.');
-    }
     mermaidJs = await rootBundle.loadString('assets/mermaid/mermaid.min.js');
   });
 
@@ -80,6 +77,9 @@ void main() {
         expect(success.pngBytes[7], 0x0A);
         expect(success.width, greaterThan(0));
         expect(success.height, greaterThan(0));
+        if (_negativeGateControl) {
+          fail('Controlled failure: the real Mermaid gate must turn red.');
+        }
       },
     );
 

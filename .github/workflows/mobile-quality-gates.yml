@@ -24,7 +24,7 @@ on:
         default: false
         type: boolean
       benchmark_mode:
-        description: Enforce a baseline or emit an absolute-budget calibration.
+        description: Enforce or calibrate the hosted regression baseline.
         required: false
         default: enforce
         type: string

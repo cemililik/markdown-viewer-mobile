@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
@@ -6,7 +7,7 @@ import '../../../../tool/performance/benchmark_contract.dart';
 
 void main() {
   test(
-    'should pass absolute and relative budgets when a valid result is evaluated',
+    'should pass a hosted regression boundary when a valid result is evaluated',
     () {
       final evaluation = evaluateBenchmark(
         result: _result(),
@@ -51,27 +52,6 @@ void main() {
 
       expect(evaluation.passed, isFalse);
       expect(evaluation.failures.single, contains('more than 10 percent'));
-    },
-  );
-
-  test(
-    'should fail an absolute budget even without a relative regression when the ceiling is evaluated',
-    () {
-      final baseline = _baseline(
-        values: const {'document_open_first_render_ms': 490},
-      );
-      final result = _result(
-        values: const {'document_open_first_render_ms': 500},
-      );
-
-      final evaluation = evaluateBenchmark(
-        result: result,
-        baseline: baseline,
-        now: DateTime.utc(2026, 7, 30),
-      );
-
-      expect(evaluation.passed, isFalse);
-      expect(evaluation.failures.single, contains('absolute budget'));
     },
   );
 
@@ -126,6 +106,59 @@ void main() {
   );
 
   test(
+    'should accept volatile observations when the stable profile is unchanged',
+    () {
+      final result = _result(
+        runnerImageVersion: '20260730.2',
+        guestMemoryKb: 3932164,
+      );
+
+      final evaluation = evaluateBenchmark(
+        result: result,
+        baseline: _baseline(),
+        now: DateTime.utc(2026, 7, 30),
+      );
+
+      expect(evaluation.passed, isTrue);
+    },
+  );
+
+  test(
+    'should reject missing malformed or unexpected run observations when metadata is evaluated',
+    () {
+      final missing = _copy(_result());
+      final missingEnvironment =
+          missing['environment']! as Map<String, Object?>;
+      final missingObservations =
+          missingEnvironment['runObservations']! as Map<String, Object?>;
+      missingObservations.remove('runnerImageVersion');
+      final malformed = _copy(_result());
+      final malformedEnvironment =
+          malformed['environment']! as Map<String, Object?>;
+      final malformedObservations =
+          malformedEnvironment['runObservations']! as Map<String, Object?>;
+      malformedObservations['guestMemoryKb'] = -1;
+      final unexpected = _copy(_result());
+      final unexpectedEnvironment =
+          unexpected['environment']! as Map<String, Object?>;
+      final unexpectedObservations =
+          unexpectedEnvironment['runObservations']! as Map<String, Object?>;
+      unexpectedObservations['hostCpuModel'] = 'uncontrolled';
+
+      for (final result in [missing, malformed, unexpected]) {
+        expect(
+          () => evaluateBenchmark(
+            result: result,
+            baseline: _baseline(),
+            now: DateTime.utc(2026, 7, 30),
+          ),
+          throwsA(isA<BenchmarkContractException>()),
+        );
+      }
+    },
+  );
+
+  test(
     'should reject a stale baseline when its validity window is evaluated',
     () {
       expect(
@@ -146,12 +179,19 @@ void main() {
   );
 
   test(
-    'should build provenance from five green runs when calibration inputs are evaluated',
+    'should use the maximum of five complete runs when calibration inputs are evaluated',
     () {
       final inputs = <CalibrationInput>[
         for (var index = 0; index < 5; index += 1)
           CalibrationInput(
-            result: _result(runId: 'run-$index'),
+            result: _result(
+              runId: 'run-$index',
+              runnerImageVersion: '2026073$index.1',
+              guestMemoryKb: 3932160 + index,
+              values: {
+                'document_open_first_render_ms': 7000.0 + (index * 250.0),
+              },
+            ),
             sha256: index.toString() * 64,
           ),
       ];
@@ -168,13 +208,23 @@ void main() {
       );
 
       expect(evaluation.passed, isTrue);
+      final metrics = baseline['metrics']! as Map<String, Object?>;
+      final documentMetric =
+          metrics['document_open_first_render_ms']! as Map<String, Object?>;
+      expect(documentMetric['baselineValue'], 8000);
       final provenance = baseline['provenance']! as Map<String, Object?>;
       expect(provenance['calibrationRuns'], hasLength(5));
+      final runs = provenance['calibrationRuns']! as List<Object?>;
+      expect(
+        (runs.last! as Map<String, Object?>)['runnerImageVersion'],
+        '20260734.1',
+      );
+      expect((runs.last! as Map<String, Object?>)['guestMemoryKb'], 3932164);
     },
   );
 
   test(
-    'should reject incomplete or over-budget calibration when a baseline is built',
+    'should reject incomplete or differently configured calibration when a baseline is built',
     () {
       final fourRuns = <CalibrationInput>[
         for (var index = 0; index < 4; index += 1)
@@ -183,18 +233,15 @@ void main() {
             sha256: index.toString() * 64,
           ),
       ];
-      final overBudget = <CalibrationInput>[
+      final differentProfile = <CalibrationInput>[
         for (var index = 0; index < 5; index += 1)
           CalibrationInput(
-            result: _result(
-              runId: 'run-$index',
-              values: const {'code_highlight_ms': 50},
-            ),
+            result: _calibrationWithOptionalProfileDrift(index),
             sha256: index.toString() * 64,
           ),
       ];
 
-      for (final calibrations in [fourRuns, overBudget]) {
+      for (final calibrations in [fourRuns, differentProfile]) {
         expect(
           () => buildBenchmarkBaseline(
             calibrations: calibrations,
@@ -206,10 +253,32 @@ void main() {
       }
     },
   );
+
+  test(
+    'should keep the reference-device product budgets unchanged when standards are inspected',
+    () {
+      final standards =
+          File('docs/standards/performance-standards.md').readAsStringSync();
+
+      for (final row in const [
+        '| Open + first-render 1MB doc | < 500ms | Pixel 6a |',
+        '| Decode + parse 1MB doc | < 200ms | Pixel 6a |',
+        '| Build 1MB document widget tree | < 150ms | Pixel 6a |',
+        '| Scroll 10k-line doc | p95 frame time ≤ 16.67ms | Pixel 6a |',
+        '| Mermaid prewarm + typical first render | < 800ms | iPhone 12 |',
+        '| Code highlight (1k lines) | < 50ms | Pixel 6a |',
+        '| Search 500 markdown files | < 200ms | Pixel 6a |',
+      ]) {
+        expect(standards, contains(row));
+      }
+    },
+  );
 }
 
 Map<String, Object?> _result({
   String runId = 'run-1',
+  String runnerImageVersion = '20260727.1',
+  int guestMemoryKb = 3932160,
   Map<String, double> values = const {},
 }) {
   const defaults = <String, double>{
@@ -229,7 +298,9 @@ Map<String, Object?> _result({
     'fixtures': _fixtures(),
     'environment': <String, Object?>{
       'profile': _profile(),
-      'run': <String, Object?>{
+      'runObservations': <String, Object?>{
+        'runnerImageVersion': runnerImageVersion,
+        'guestMemoryKb': guestMemoryKb,
         'runId': runId,
         'runAttempt': 1,
         'commitSha': 'a' * 40,
@@ -280,8 +351,6 @@ Map<String, Object?> _baseline({Map<String, double> values = const {}}) {
         entry.key: <String, Object?>{
           'unit': entry.value.unit,
           'aggregation': entry.value.aggregation,
-          'absoluteBudget': entry.value.absoluteBudget,
-          'comparison': entry.value.comparison.name,
           'baselineValue': resolved[entry.key]!,
         },
     },
@@ -292,6 +361,9 @@ Map<String, Object?> _baseline({Map<String, double> values = const {}}) {
             'runId': 'run-$index',
             'runAttempt': 1,
             'commitSha': 'a' * 40,
+            'recordedAt': '2026-07-30T00:00:00Z',
+            'runnerImageVersion': '20260727.1',
+            'guestMemoryKb': 3932160 + index,
             'resultSha256': index.toString() * 64,
           },
       ],
@@ -302,7 +374,6 @@ Map<String, Object?> _baseline({Map<String, double> values = const {}}) {
 Map<String, Object?> _profile() => <String, Object?>{
   'runner': 'ubuntu-24.04',
   'runnerImageOS': 'ubuntu24',
-  'runnerImageVersion': '20260727.1',
   'flutterVersion': '3.41.4',
   'dartVersion': '3.11.1',
   'javaVersion': '17.0.12',
@@ -314,7 +385,6 @@ Map<String, Object?> _profile() => <String, Object?>{
   'configuredRamMb': 4096,
   'configuredHeapMb': 512,
   'guestCpuCount': 4,
-  'guestMemoryKb': 3932160,
   'dalvikHeap': '576m',
   'locale': 'en-US',
   'displaySize': 'Override size: 1080x2400',
@@ -338,6 +408,16 @@ Map<String, Object?> _fixtures() => <String, Object?>{
   'viewportLogicalHeight': 844,
   'devicePixelRatio': 3,
 };
+
+Map<String, Object?> _calibrationWithOptionalProfileDrift(int index) {
+  final result = _result(runId: 'run-$index');
+  if (index == 4) {
+    final environment = result['environment']! as Map<String, Object?>;
+    final profile = environment['profile']! as Map<String, Object?>;
+    profile['configuredCores'] = 2;
+  }
+  return result;
+}
 
 Map<String, Object?> _copy(Map<String, Object?> value) =>
     (jsonDecode(jsonEncode(value)) as Map).cast<String, Object?>();

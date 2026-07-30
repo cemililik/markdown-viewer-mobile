@@ -14,7 +14,7 @@ jobs:
     with:
       run_android_critical: true
       run_android_benchmark: false
-      run_ios_critical: false
+      run_ios_critical: true
       critical_negative_control: true
       artifact_suffix: negative-control
 

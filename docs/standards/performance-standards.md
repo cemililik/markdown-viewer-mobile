@@ -15,10 +15,12 @@
 | Install size | < 20MB | Release build |
 | RSS memory (typical doc) | < 150MB | Pixel 6a |
 
-CI fails when an enforced metric exceeds either its absolute budget or its
-versioned fixed-profile baseline by more than 10%. A budget increase or
-baseline regression requires a dedicated justification and approval by two
-reviewers.
+The product budgets are evaluated in release mode on their named physical
+reference devices. Hosted CI results are regression observations, not product
+budget claims. Hosted CI fails when an enforced metric exceeds its versioned
+fixed-profile upper-bound baseline by more than 10%. A product-budget increase
+or hosted-baseline increase requires a dedicated justification and approval by
+two reviewers.
 
 ## Profiling
 
@@ -63,14 +65,19 @@ reviewers.
 - `integration_test/benchmark/` runs in CI on every PR against `main`
 - One warm-up and five measured repetitions are required
 - Latency gates use the median; frame-time gates use the 95th percentile
-- Benchmarks fail on an absolute breach or a regression above 10%
+- Hosted benchmarks fail on a regression above 10% from their calibrated
+  upper-bound baseline
+- Product-budget claims require release-mode evidence from the named physical
+  reference device
 - The fixed profile, raw results, comparison report, and timeline summaries
   are retained for 90 days
 - Baselines are versioned and may change only in a dedicated reviewed commit
 
 See
 [ADR-0026](../decisions/0026-risk-scoped-integration-and-performance-gates.md)
-for the fixed profile, baseline provenance, and fail-closed schema.
+for CI scope and failure policy, and
+[ADR-0027](../decisions/0027-performance-measurement-tiers.md) for measurement
+tiers, baseline provenance, and the fail-closed schema.
 
 ## Anti-Patterns
 

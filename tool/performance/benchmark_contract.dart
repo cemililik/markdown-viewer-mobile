@@ -1,84 +1,35 @@
 import 'dart:convert';
 
 /// Version of the machine-readable benchmark and baseline contract.
-const benchmarkSchemaVersion = 1;
+const benchmarkSchemaVersion = 2;
 
-/// Product budgets and aggregation rules approved in ADR-0026.
+/// Hosted regression metrics and aggregation rules approved in ADR-0027.
 const benchmarkMetricPolicies = <String, BenchmarkMetricPolicy>{
   'document_open_first_render_ms': BenchmarkMetricPolicy(
     unit: 'ms',
     aggregation: 'median',
-    absoluteBudget: 500,
-    comparison: BudgetComparison.lessThan,
   ),
-  'decode_parse_ms': BenchmarkMetricPolicy(
-    unit: 'ms',
-    aggregation: 'median',
-    absoluteBudget: 200,
-    comparison: BudgetComparison.lessThan,
-  ),
-  'widget_build_ms': BenchmarkMetricPolicy(
-    unit: 'ms',
-    aggregation: 'median',
-    absoluteBudget: 150,
-    comparison: BudgetComparison.lessThan,
-  ),
-  'scroll_frame_time_ms': BenchmarkMetricPolicy(
-    unit: 'ms',
-    aggregation: 'p95',
-    absoluteBudget: 16.67,
-    comparison: BudgetComparison.lessThanOrEqual,
-  ),
-  'code_highlight_ms': BenchmarkMetricPolicy(
-    unit: 'ms',
-    aggregation: 'median',
-    absoluteBudget: 50,
-    comparison: BudgetComparison.lessThan,
-  ),
+  'decode_parse_ms': BenchmarkMetricPolicy(unit: 'ms', aggregation: 'median'),
+  'widget_build_ms': BenchmarkMetricPolicy(unit: 'ms', aggregation: 'median'),
+  'scroll_frame_time_ms': BenchmarkMetricPolicy(unit: 'ms', aggregation: 'p95'),
+  'code_highlight_ms': BenchmarkMetricPolicy(unit: 'ms', aggregation: 'median'),
   'mermaid_cold_render_ms': BenchmarkMetricPolicy(
     unit: 'ms',
     aggregation: 'median',
-    absoluteBudget: 800,
-    comparison: BudgetComparison.lessThan,
   ),
-  'library_search_ms': BenchmarkMetricPolicy(
-    unit: 'ms',
-    aggregation: 'median',
-    absoluteBudget: 200,
-    comparison: BudgetComparison.lessThan,
-  ),
+  'library_search_ms': BenchmarkMetricPolicy(unit: 'ms', aggregation: 'median'),
 };
-
-/// Direction used when enforcing an absolute product budget.
-enum BudgetComparison {
-  /// The measured value must be strictly below the budget.
-  lessThan,
-
-  /// The measured value may equal the budget but cannot exceed it.
-  lessThanOrEqual,
-}
 
 /// Immutable policy for one benchmark metric.
 final class BenchmarkMetricPolicy {
   /// Creates a metric policy.
-  const BenchmarkMetricPolicy({
-    required this.unit,
-    required this.aggregation,
-    required this.absoluteBudget,
-    required this.comparison,
-  });
+  const BenchmarkMetricPolicy({required this.unit, required this.aggregation});
 
   /// Unit emitted by the benchmark.
   final String unit;
 
   /// Aggregation applied to the five measured samples.
   final String aggregation;
-
-  /// Absolute product ceiling.
-  final double absoluteBudget;
-
-  /// Whether equality at the product ceiling is permitted.
-  final BudgetComparison comparison;
 }
 
 /// A benchmark result together with its content digest for baseline provenance.
@@ -107,7 +58,7 @@ final class BenchmarkEvaluation {
   /// Human-readable violations. Empty means the gate passed.
   final List<String> failures;
 
-  /// Whether every schema, absolute-budget, and regression check passed.
+  /// Whether every schema and hosted-regression check passed.
   bool get passed => failures.isEmpty;
 
   /// Encodes this evaluation as the comparison-report JSON document.
@@ -167,14 +118,21 @@ BenchmarkEvaluation evaluateBenchmark({
     result['environment'],
     'result.environment',
   );
+  _expectExactKeys(resultEnvironment, const {
+    'profile',
+    'runObservations',
+  }, 'result.environment');
   final resultProfile = _requiredMap(
     resultEnvironment['profile'],
     'result.environment.profile',
   );
   _validateProfile(resultProfile, 'result.environment.profile');
-  _validateRunMetadata(
-    _requiredMap(resultEnvironment['run'], 'result.environment.run'),
-    'result.environment.run',
+  _validateRunObservations(
+    _requiredMap(
+      resultEnvironment['runObservations'],
+      'result.environment.runObservations',
+    ),
+    'result.environment.runObservations',
   );
   final baselineProfile = _requiredMap(baseline['profile'], 'baseline.profile');
   _validateProfile(baselineProfile, 'baseline.profile');
@@ -278,17 +236,7 @@ BenchmarkEvaluation evaluateBenchmark({
       'baseline.metrics.$name.baselineValue',
     );
     final allowedRegressionValue = baselineValue * 1.1;
-    final absolutePassed = switch (policy.comparison) {
-      BudgetComparison.lessThan => value < policy.absoluteBudget,
-      BudgetComparison.lessThanOrEqual => value <= policy.absoluteBudget,
-    };
     final regressionPassed = value <= allowedRegressionValue + 0.000001;
-    if (!absolutePassed) {
-      failures.add(
-        '$name exceeded its absolute budget: '
-        '$value ${policy.unit} vs ${policy.absoluteBudget} ${policy.unit}',
-      );
-    }
     if (!regressionPassed) {
       failures.add(
         '$name regressed by more than 10 percent: '
@@ -299,21 +247,19 @@ BenchmarkEvaluation evaluateBenchmark({
       'value': value,
       'unit': policy.unit,
       'aggregation': policy.aggregation,
-      'absoluteBudget': policy.absoluteBudget,
       'baselineValue': baselineValue,
       'maximumRegressionValue': allowedRegressionValue,
-      'absolutePassed': absolutePassed,
       'regressionPassed': regressionPassed,
     };
   }
   return BenchmarkEvaluation(metricReports: reports, failures: failures);
 }
 
-/// Builds a versioned baseline from exactly five complete green calibrations.
+/// Builds a versioned baseline from exactly five complete calibrations.
 ///
 /// Each input must use the same suite, fixed profile, fixture manifest, metric
-/// set, and five-sample measurement contract. Absolute budgets are checked
-/// before any value can become a reference.
+/// set, and five-sample measurement contract. Each metric uses the maximum
+/// complete run-level value as its hosted upper-bound reference.
 Map<String, Object?> buildBenchmarkBaseline({
   required List<CalibrationInput> calibrations,
   required DateTime recordedAt,
@@ -331,6 +277,10 @@ Map<String, Object?> buildBenchmarkBaseline({
     first['environment'],
     'calibration[0].environment',
   );
+  _expectExactKeys(environment, const {
+    'profile',
+    'runObservations',
+  }, 'calibration[0].environment');
   final profile = _requiredMap(
     environment['profile'],
     'calibration[0].environment.profile',
@@ -356,12 +306,16 @@ Map<String, Object?> buildBenchmarkBaseline({
       result['environment'],
       'calibration[$index].environment',
     );
-    _validateRunMetadata(
+    _expectExactKeys(currentEnvironment, const {
+      'profile',
+      'runObservations',
+    }, 'calibration[$index].environment');
+    _validateRunObservations(
       _requiredMap(
-        currentEnvironment['run'],
-        'calibration[$index].environment.run',
+        currentEnvironment['runObservations'],
+        'calibration[$index].environment.runObservations',
       ),
-      'calibration[$index].environment.run',
+      'calibration[$index].environment.runObservations',
     );
     if (!_deepEquals(
       _requiredMap(
@@ -410,15 +364,6 @@ Map<String, Object?> buildBenchmarkBaseline({
         'calibration[$index].metrics.$name',
       );
       final value = _validateCalibrationMetric(metric, name, policy, index);
-      final absolutePassed = switch (policy.comparison) {
-        BudgetComparison.lessThan => value < policy.absoluteBudget,
-        BudgetComparison.lessThanOrEqual => value <= policy.absoluteBudget,
-      };
-      if (!absolutePassed) {
-        throw BenchmarkContractException(
-          'calibration[$index].metrics.$name exceeds the absolute budget',
-        );
-      }
       metricValues[name]!.add(value);
     }
 
@@ -427,22 +372,34 @@ Map<String, Object?> buildBenchmarkBaseline({
         'calibration[$index] has an invalid result SHA-256',
       );
     }
-    final run = _requiredMap(
-      currentEnvironment['run'],
-      'calibration[$index].environment.run',
+    final observations = _requiredMap(
+      currentEnvironment['runObservations'],
+      'calibration[$index].environment.runObservations',
     );
     provenance.add(<String, Object?>{
       'runId': _requiredString(
-        run['runId'],
-        'calibration[$index].environment.run.runId',
+        observations['runId'],
+        'calibration[$index].environment.runObservations.runId',
       ),
       'runAttempt': _positiveInteger(
-        run['runAttempt'],
-        'calibration[$index].environment.run.runAttempt',
+        observations['runAttempt'],
+        'calibration[$index].environment.runObservations.runAttempt',
       ),
       'commitSha': _commitSha(
-        run['commitSha'],
-        'calibration[$index].environment.run.commitSha',
+        observations['commitSha'],
+        'calibration[$index].environment.runObservations.commitSha',
+      ),
+      'recordedAt': _requiredString(
+        observations['recordedAt'],
+        'calibration[$index].environment.runObservations.recordedAt',
+      ),
+      'runnerImageVersion': _requiredString(
+        observations['runnerImageVersion'],
+        'calibration[$index].environment.runObservations.runnerImageVersion',
+      ),
+      'guestMemoryKb': _positiveInteger(
+        observations['guestMemoryKb'],
+        'calibration[$index].environment.runObservations.guestMemoryKb',
       ),
       'resultSha256': calibration.sha256,
     });
@@ -461,12 +418,7 @@ Map<String, Object?> buildBenchmarkBaseline({
         entry.key: <String, Object?>{
           'unit': entry.value.unit,
           'aggregation': entry.value.aggregation,
-          'absoluteBudget': entry.value.absoluteBudget,
-          'comparison': entry.value.comparison.name,
-          'baselineValue': _aggregate(
-            metricValues[entry.key]!,
-            entry.value.aggregation,
-          ),
+          'baselineValue': _maximum(metricValues[entry.key]!),
         },
     },
     'provenance': <String, Object?>{'calibrationRuns': provenance},
@@ -530,7 +482,6 @@ void _validateProfile(Map<String, Object?> profile, String path) {
   const keys = <String>{
     'runner',
     'runnerImageOS',
-    'runnerImageVersion',
     'flutterVersion',
     'dartVersion',
     'javaVersion',
@@ -542,7 +493,6 @@ void _validateProfile(Map<String, Object?> profile, String path) {
     'configuredRamMb',
     'configuredHeapMb',
     'guestCpuCount',
-    'guestMemoryKb',
     'dalvikHeap',
     'locale',
     'displaySize',
@@ -560,7 +510,6 @@ void _validateProfile(Map<String, Object?> profile, String path) {
   }
   _expectEqual(profile['runner'], 'ubuntu-24.04', '$path.runner is invalid');
   _requiredString(profile['runnerImageOS'], '$path.runnerImageOS');
-  _requiredString(profile['runnerImageVersion'], '$path.runnerImageVersion');
   _requiredString(profile['flutterVersion'], '$path.flutterVersion');
   _requiredString(profile['dartVersion'], '$path.dartVersion');
   _requiredString(profile['javaVersion'], '$path.javaVersion');
@@ -584,7 +533,6 @@ void _validateProfile(Map<String, Object?> profile, String path) {
   _expectInteger(profile['configuredRamMb'], 4096, '$path.configuredRamMb');
   _expectInteger(profile['configuredHeapMb'], 512, '$path.configuredHeapMb');
   _expectInteger(profile['guestCpuCount'], 4, '$path.guestCpuCount');
-  _positiveInteger(profile['guestMemoryKb'], '$path.guestMemoryKb');
   _requiredString(profile['dalvikHeap'], '$path.dalvikHeap');
   _expectEqual(profile['locale'], 'en-US', '$path.locale is invalid');
   final size = _requiredString(profile['displaySize'], '$path.displaySize');
@@ -669,12 +617,31 @@ void _validateFixtures(Map<String, Object?> fixtures, String path) {
   _expectInteger(fixtures['devicePixelRatio'], 3, '$path.devicePixelRatio');
 }
 
-void _validateRunMetadata(Map<String, Object?> run, String path) {
-  _requiredString(run['runId'], '$path.runId');
-  _positiveInteger(run['runAttempt'], '$path.runAttempt');
-  _commitSha(run['commitSha'], '$path.commitSha');
+void _validateRunObservations(Map<String, Object?> observations, String path) {
+  const keys = <String>{
+    'runnerImageVersion',
+    'guestMemoryKb',
+    'runId',
+    'runAttempt',
+    'commitSha',
+    'recordedAt',
+  };
+  if (observations.keys.toSet().length != keys.length ||
+      !observations.keys.toSet().containsAll(keys)) {
+    throw BenchmarkContractException(
+      '$path must contain exactly the run-observation metadata keys',
+    );
+  }
+  _requiredString(
+    observations['runnerImageVersion'],
+    '$path.runnerImageVersion',
+  );
+  _positiveInteger(observations['guestMemoryKb'], '$path.guestMemoryKb');
+  _requiredString(observations['runId'], '$path.runId');
+  _positiveInteger(observations['runAttempt'], '$path.runAttempt');
+  _commitSha(observations['commitSha'], '$path.commitSha');
   final recordedAt = DateTime.tryParse(
-    _requiredString(run['recordedAt'], '$path.recordedAt'),
+    _requiredString(observations['recordedAt'], '$path.recordedAt'),
   );
   if (recordedAt == null) {
     throw BenchmarkContractException(
@@ -734,6 +701,11 @@ void _validatePolicy(
   String name,
   BenchmarkMetricPolicy policy,
 ) {
+  _expectExactKeys(reference, const {
+    'unit',
+    'aggregation',
+    'baselineValue',
+  }, 'baseline.metrics.$name');
   _expectEqual(
     reference['unit'],
     policy.unit,
@@ -743,21 +715,6 @@ void _validatePolicy(
     reference['aggregation'],
     policy.aggregation,
     'baseline.metrics.$name.aggregation must be ${policy.aggregation}',
-  );
-  final budget = _finiteNumber(
-    reference['absoluteBudget'],
-    'baseline.metrics.$name.absoluteBudget',
-  );
-  if (budget != policy.absoluteBudget) {
-    throw BenchmarkContractException(
-      'baseline.metrics.$name.absoluteBudget must be '
-      '${policy.absoluteBudget}',
-    );
-  }
-  _expectEqual(
-    reference['comparison'],
-    policy.comparison.name,
-    'baseline.metrics.$name.comparison must be ${policy.comparison.name}',
   );
 }
 
@@ -777,6 +734,15 @@ void _validateProvenance(Map<String, Object?> baseline) {
       runs[index],
       'baseline.provenance.calibrationRuns[$index]',
     );
+    _expectExactKeys(run, const {
+      'runId',
+      'runAttempt',
+      'commitSha',
+      'recordedAt',
+      'runnerImageVersion',
+      'guestMemoryKb',
+      'resultSha256',
+    }, 'baseline.provenance.calibrationRuns[$index]');
     _requiredString(
       run['runId'],
       'baseline.provenance.calibrationRuns[$index].runId',
@@ -788,6 +754,26 @@ void _validateProvenance(Map<String, Object?> baseline) {
     _commitSha(
       run['commitSha'],
       'baseline.provenance.calibrationRuns[$index].commitSha',
+    );
+    final recordedAt = DateTime.tryParse(
+      _requiredString(
+        run['recordedAt'],
+        'baseline.provenance.calibrationRuns[$index].recordedAt',
+      ),
+    );
+    if (recordedAt == null) {
+      throw BenchmarkContractException(
+        'baseline.provenance.calibrationRuns[$index].recordedAt '
+        'must be an ISO-8601 timestamp',
+      );
+    }
+    _requiredString(
+      run['runnerImageVersion'],
+      'baseline.provenance.calibrationRuns[$index].runnerImageVersion',
+    );
+    _positiveInteger(
+      run['guestMemoryKb'],
+      'baseline.provenance.calibrationRuns[$index].guestMemoryKb',
     );
     final digest = _requiredString(
       run['resultSha256'],
@@ -812,6 +798,19 @@ void _expectMetricSet(Map<String, Object?> metrics, String path) {
   }
 }
 
+void _expectExactKeys(
+  Map<String, Object?> value,
+  Set<String> expected,
+  String path,
+) {
+  final actual = value.keys.toSet();
+  if (actual.length != expected.length || !actual.containsAll(expected)) {
+    throw BenchmarkContractException(
+      '$path must contain exactly ${expected.toList()..sort()}',
+    );
+  }
+}
+
 double _aggregate(List<double> values, String aggregation) {
   if (values.isEmpty) {
     throw const BenchmarkContractException('cannot aggregate an empty sample');
@@ -825,6 +824,13 @@ double _aggregate(List<double> values, String aggregation) {
         'unsupported aggregation "$aggregation"',
       ),
   };
+}
+
+double _maximum(List<double> values) {
+  if (values.isEmpty) {
+    throw const BenchmarkContractException('cannot select an empty maximum');
+  }
+  return values.reduce((current, value) => value > current ? value : current);
 }
 
 Map<String, Object?> _requiredMap(Object? value, String path) {
